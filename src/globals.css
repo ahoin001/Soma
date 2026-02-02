@@ -4,35 +4,35 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 0 0% 99%;
+    --foreground: 222 25% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 25% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 222 25% 12%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 144 68% 55%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 150 35% 96%;
+    --secondary-foreground: 222 25% 15%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 150 40% 94%;
+    --accent-foreground: 222 25% 12%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 74% 58%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 210 20% 93%;
+    --input: 210 20% 93%;
+    --ring: 144 68% 55%;
 
-    --radius: 0.5rem;
+    --radius: 1.25rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -88,6 +88,38 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
+  .experience-nutrition {
+    --background: 0 0% 99%;
+    --foreground: 222 25% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 25% 12%;
+    --primary: 144 68% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 150 35% 96%;
+    --secondary-foreground: 222 25% 15%;
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 45%;
+    --accent: 150 40% 94%;
+    --accent-foreground: 222 25% 12%;
+    --ring: 144 68% 55%;
+  }
+
+  .experience-fitness {
+    --background: 222 24% 10%;
+    --foreground: 210 40% 98%;
+    --card: 222 20% 13%;
+    --card-foreground: 210 40% 98%;
+    --primary: 170 90% 52%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 222 18% 16%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 222 18% 16%;
+    --muted-foreground: 215 20% 70%;
+    --accent: 180 38% 18%;
+    --accent-foreground: 210 40% 98%;
+    --ring: 170 90% 52%;
+  }
 }
 
 @layer base {
@@ -95,7 +127,80 @@
     @apply border-border;
   }
 
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    min-height: 100%;
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overscroll-behavior: none;
+    scroll-padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+
+  button,
+  [role="button"],
+  a {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer utilities {
+  .safe-pt {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-pb {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-pl {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-pr {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .safe-px {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .safe-py {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }

@@ -18,12 +18,22 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["Lexend Deca", "ui-sans-serif", "system-ui", "sans-serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        aura: {
+          mint: "#E8F8E8",
+          leaf: "#63DB63",
+          primary: "#4ADE80",
+          surface: "#FCFCFC",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -85,10 +95,15 @@ export default {
             height: "0",
           },
         },
+        restBar: {
+          from: { transform: "scaleX(0)" },
+          to: { transform: "scaleX(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        restBar: "restBar 12s linear infinite",
       },
     },
   },

@@ -1,0 +1,13 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="auraGradient" x1="64" y1="48" x2="448" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8EF0C6" />
+      <stop offset="1" stop-color="#1F9F8B" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#auraGradient)" />
+  <path
+    d="M256 118C210 170 214 222 228 260C194 254 170 224 170 190C170 156 190 126 214 98C166 114 136 166 136 220C136 292 196 346 256 394C316 346 376 292 376 220C376 162 336 118 288 98C312 126 332 156 332 190C332 224 308 254 284 260C298 222 302 170 256 118Z"
+    fill="#FFFFFF"
+  />
+</svg>
