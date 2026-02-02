@@ -1,8 +1,16 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FoodItem, MacroKey } from "@/data/mock";
-import { calculateMacroPercent, fetchFoodByBarcode } from "@/data/foodApi";
+import { calculateMacroPercent } from "@/data/foodApi";
 import type { FoodRecord } from "@/types/api";
-import { createFood as createFoodApi, searchFoods as searchFoodsApi } from "@/lib/api";
+import {
+  createFood as createFoodApi,
+  ensureUser,
+  fetchFoodFavorites,
+  fetchFoodHistory,
+  fetchFoodByBarcode,
+  searchFoods as searchFoodsApi,
+  toggleFoodFavorite,
+} from "@/lib/api";
 
 type CacheEntry<T> = {
   updatedAt: number;
@@ -70,7 +78,9 @@ const toFoodItem = (record: FoodRecord): FoodItem => {
     id: record.id,
     name: record.name,
     brand: record.brand ?? undefined,
-    portion: record.portion_label ?? "1 serving",
+    portion:
+      record.portion_label ??
+      (record.portion_grams ? `${record.portion_grams} g` : "100 g"),
     kcal: Number(record.kcal ?? 0),
     emoji: "🍽️",
     barcode: record.barcode ?? undefined,
@@ -104,6 +114,8 @@ const dedupeFoods = (foods: FoodItem[]) => {
 export const useFoodCatalog = () => {
   const [cache, setCache] = useState<FoodCache>(() => loadCache());
   const [results, setResults] = useState<FoodItem[]>([]);
+  const [favorites, setFavorites] = useState<FoodItem[]>([]);
+  const [history, setHistory] = useState<FoodItem[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -127,6 +139,7 @@ export const useFoodCatalog = () => {
         setError(null);
         return;
       }
+      await ensureUser();
       const cached = cache.searches[normalized];
       if (isFresh(cached)) {
         setResults(applyOverrides(cached.value));
@@ -169,7 +182,8 @@ export const useFoodCatalog = () => {
           : null;
       }
       try {
-        const fetched = await fetchFoodByBarcode(barcode);
+        const response = await fetchFoodByBarcode(barcode);
+        const fetched = response.item ? toFoodItem(response.item) : null;
         const nextCache: FoodCache = {
           ...cache,
           barcodes: {
@@ -207,6 +221,20 @@ export const useFoodCatalog = () => {
     [cache, persist],
   );
 
+  const refreshLists = useCallback(async () => {
+    await ensureUser();
+    const [favoriteRes, historyRes] = await Promise.all([
+      fetchFoodFavorites(),
+      fetchFoodHistory(50),
+    ]);
+    setFavorites(favoriteRes.items.map(toFoodItem));
+    setHistory(historyRes.items.map(toFoodItem));
+  }, []);
+
+  useEffect(() => {
+    void refreshLists();
+  }, [refreshLists]);
+
   const createFood = useCallback(
     async (payload: {
       name: string;
@@ -215,6 +243,7 @@ export const useFoodCatalog = () => {
       protein: number;
       fat: number;
     }) => {
+      await ensureUser();
       const response = await createFoodApi({
         name: payload.name,
         kcal: payload.kcal,
@@ -224,14 +253,23 @@ export const useFoodCatalog = () => {
       });
       const created = toFoodItem(response.item);
       setResults((prev) => dedupeFoods([created, ...prev]));
+      await refreshLists();
       return created;
     },
-    [],
+    [refreshLists],
   );
+
+  const setFavorite = useCallback(async (foodId: string, favorite: boolean) => {
+    await ensureUser();
+    await toggleFoodFavorite(foodId, favorite);
+    await refreshLists();
+  }, [refreshLists]);
 
   return useMemo(
     () => ({
       results,
+      favorites,
+      history,
       status,
       error,
       searchFoods,
@@ -239,9 +277,13 @@ export const useFoodCatalog = () => {
       applyOverrides,
       upsertOverride,
       createFood,
+      refreshLists,
+      setFavorite,
     }),
     [
       results,
+      favorites,
+      history,
       status,
       error,
       searchFoods,
@@ -249,6 +291,8 @@ export const useFoodCatalog = () => {
       applyOverrides,
       upsertOverride,
       createFood,
+      refreshLists,
+      setFavorite,
     ],
   );
 };

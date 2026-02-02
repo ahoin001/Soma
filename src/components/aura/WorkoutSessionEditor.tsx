@@ -24,6 +24,9 @@ type EditableExercise = {
   name: string;
   sets: EditableSet[];
   note: string;
+  steps?: string[];
+  guideUrl?: string;
+  customVideoName?: string;
 };
 
 const createId = () => `set_${Math.random().toString(36).slice(2, 9)}`;

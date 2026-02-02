@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FoodItem, MacroTarget, Meal } from "@/data/mock";
 import type { MealEntryItemRecord, MealEntryRecord } from "@/types/api";
-import { createMealEntry, deleteMealEntryItem, fetchMealEntries } from "@/lib/api";
+import { createMealEntry, deleteMealEntryItem, ensureUser, fetchMealEntries } from "@/lib/api";
 import type { LogSection } from "@/types/log";
 
 type Summary = {
@@ -17,6 +17,7 @@ type LastLog = {
   food: FoodItem;
   previousSummary: Summary;
   previousMacros: MacroTarget[];
+  itemId?: string;
 };
 
 const cloneMacros = (macros: MacroTarget[]) =>
@@ -116,6 +117,7 @@ export const useDailyIntake = (
 
   const refreshEntries = useCallback(async () => {
     if (!meals.length) return;
+    await ensureUser();
     const response = await fetchMealEntries(localDate);
     recomputeFromItems(response.entries, response.items);
   }, [localDate, meals.length, recomputeFromItems]);
@@ -144,11 +146,9 @@ export const useDailyIntake = (
 
   const logFood = useCallback(
     async (food: FoodItem, mealTypeId?: string) => {
-      lastLogRef.current = {
-        food,
-        previousSummary: summaryRef.current,
-        previousMacros: cloneMacros(macrosRef.current),
-      };
+      await ensureUser();
+      const previousSummary = summaryRef.current;
+      const previousMacros = cloneMacros(macrosRef.current);
 
       setSummary((prev) => ({
         ...prev,
@@ -163,7 +163,7 @@ export const useDailyIntake = (
         })),
       );
 
-      await createMealEntry({
+      const response = await createMealEntry({
         localDate,
         mealTypeId,
         items: [
@@ -179,20 +179,29 @@ export const useDailyIntake = (
         ],
       });
 
+      lastLogRef.current = {
+        food,
+        previousSummary,
+        previousMacros,
+        itemId: response.items[0]?.id,
+      };
+
       await refreshEntries();
       setSyncPulse();
     },
     [localDate, refreshEntries, setSyncPulse],
   );
 
-  const undoLastLog = useCallback(() => {
+  const undoLastLog = useCallback(async () => {
     if (!lastLogRef.current) return;
-    const { previousSummary, previousMacros } = lastLogRef.current;
-    setSummary(previousSummary);
-    setMacros(cloneMacros(previousMacros));
+    const { itemId } = lastLogRef.current;
+    if (itemId) {
+      await deleteMealEntryItem(itemId);
+    }
+    await refreshEntries();
     lastLogRef.current = null;
     setSyncPulse();
-  }, [setSyncPulse]);
+  }, [refreshEntries, setSyncPulse]);
 
   useEffect(() => {
     summaryRef.current = summary;

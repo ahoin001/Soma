@@ -73,7 +73,7 @@ router.post(
         );
       }
 
-      await client.query(
+      const itemsResult = await client.query(
         `
         INSERT INTO meal_entry_items (
           meal_entry_id,
@@ -89,16 +89,44 @@ router.post(
           micronutrients,
           sort_order
         )
-        VALUES ${values.join(", ")};
+        VALUES ${values.join(", ")}
+        RETURNING *;
         `,
         params,
       );
 
-      return entryResult.rows[0];
+      const historyMap = new Map<string, number>();
+      for (const item of payload.items) {
+        if (!item.foodId) continue;
+        historyMap.set(item.foodId, (historyMap.get(item.foodId) ?? 0) + 1);
+      }
+
+      if (historyMap.size > 0) {
+        const values: string[] = [];
+        const historyParams: unknown[] = [];
+        let idx = 1;
+        for (const [foodId, count] of historyMap.entries()) {
+          values.push(`($${idx++}, $${idx++}, now(), $${idx++})`);
+          historyParams.push(userId, foodId, count);
+        }
+        await client.query(
+          `
+          INSERT INTO user_food_history (user_id, food_id, last_logged_at, times_logged)
+          VALUES ${values.join(", ")}
+          ON CONFLICT (user_id, food_id)
+          DO UPDATE SET
+            last_logged_at = EXCLUDED.last_logged_at,
+            times_logged = user_food_history.times_logged + EXCLUDED.times_logged;
+          `,
+          historyParams,
+        );
+      }
+
+      return { entry: entryResult.rows[0], items: itemsResult.rows };
     });
 
     dayCache.clear();
-    res.status(201).json({ entry });
+    res.status(201).json(entry);
   }),
 );
 
@@ -172,6 +200,7 @@ router.delete(
       ),
     );
 
+    dayCache.clear();
     res.json({ deleted: result.rows[0]?.id ?? null });
   }),
 );

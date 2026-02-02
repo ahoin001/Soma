@@ -32,13 +32,13 @@ const bootstrapUser = async () => {
   if (bootstrapPromise) return bootstrapPromise;
   bootstrapPromise = (async () => {
     const userId = ensureUserId();
-    await fetch(`${API_BASE}/api/users/bootstrap`, {
+    await fetch(`${API_BASE}/api/users/ensure`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-user-id": userId,
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ userId }),
     });
   })();
   return bootstrapPromise;

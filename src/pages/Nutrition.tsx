@@ -1,11 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  quickAddFoods,
-  streakSummary,
-  weeklyPreview,
-  type FoodItem,
-  type Meal,
-} from "@/data/mock";
+import { streakSummary, weeklyPreview, type FoodItem, type Meal } from "@/data/mock";
 import {
   AppShell,
   DashboardHeader,
@@ -18,17 +12,15 @@ import {
   QuickAdd,
   StepsCard,
   StreakCard,
+  WaterCard,
   WeeklyPreview,
 } from "@/components/aura";
 import { toast } from "sonner";
 import type { LogItem } from "@/types/log";
 import { useAppStore } from "@/state/AppStore";
+import { useStepsSummary, useWaterSummary } from "@/hooks/useTracking";
 
-const tabs = {
-  recent: [],
-  liked: [],
-  history: [],
-} as const;
+type ActiveTab = "recent" | "liked" | "history";
 
 type NutritionDraft = {
   portion: string;
@@ -41,7 +33,7 @@ type NutritionDraft = {
 const Nutrition = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<keyof typeof tabs>("recent");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("recent");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
@@ -71,11 +63,28 @@ const Nutrition = () => {
     removeLogItem,
   } = nutrition;
   const meals = mealTypes.meals;
+  const { favorites, history, refreshLists, setFavorite } = foodCatalog;
+  const stepsSummary = useStepsSummary(selectedDate);
+  const waterSummary = useWaterSummary(selectedDate);
+  const isFavorite = useMemo(
+    () => (selectedFood ? favorites.some((food) => food.id === selectedFood.id) : false),
+    [favorites, selectedFood],
+  );
+
+  useEffect(() => {
+    void refreshLists();
+  }, [refreshLists]);
 
   const filteredFoods = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) {
-      return applyOverrides([]);
+      if (activeTab === "liked") {
+        return applyOverrides(favorites);
+      }
+      if (activeTab === "history") {
+        return applyOverrides(history);
+      }
+      return applyOverrides(history.slice(0, 20));
     }
     const merged = [...apiResults];
     const seen = new Set<string>();
@@ -186,14 +195,20 @@ const Nutrition = () => {
         />
         <DateSwitcher value={selectedDate} onChange={setSelectedDate} />
         <StepsCard
-          steps={0}
+          steps={stepsSummary.steps}
           goal={8000}
-          connected={false}
+          connected={stepsSummary.connected}
           onConnect={() =>
             toast("Apple Watch sync coming soon", {
               description: "Health data will be available when native sync is enabled.",
             })
           }
+          onManualSave={(value) => stepsSummary.setManualSteps(value)}
+        />
+        <WaterCard
+          totalMl={waterSummary.totalMl}
+          goalMl={2000}
+          onAdd={waterSummary.addWater}
         />
         <WeeklyPreview weeklyKcal={weeklyPreview} goal={summary.goal} />
         <StreakCard
@@ -201,7 +216,7 @@ const Nutrition = () => {
           bestWeek={streakSummary.bestWeek}
           message={streakSummary.message}
         />
-        <QuickAdd foods={quickAddFoods} onSelect={openDetail} />
+        <QuickAdd foods={apiResults.slice(0, 3)} onSelect={openDetail} />
       </div>
 
       <FoodSearchSheet
@@ -231,6 +246,11 @@ const Nutrition = () => {
         macros={macros}
         onTrack={handleTrack}
         onUpdateFood={handleUpdateFood}
+        isFavorite={isFavorite}
+        onToggleFavorite={(favorite) => {
+          if (!selectedFood) return;
+          void setFavorite(selectedFood.id, favorite);
+        }}
       />
 
       <EditLogSheet

@@ -1,13 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import { Watch } from "lucide-react";
+import { useState } from "react";
 
 type StepsCardProps = {
   steps: number;
   goal: number;
   connected: boolean;
   onConnect?: () => void;
+  onManualSave?: (steps: number) => void;
 };
 
 export const StepsCard = ({
@@ -15,8 +18,10 @@ export const StepsCard = ({
   goal,
   connected,
   onConnect,
+  onManualSave,
 }: StepsCardProps) => {
   const progress = goal > 0 ? Math.min((steps / goal) * 100, 100) : 0;
+  const [manual, setManual] = useState("");
 
   return (
     <Card className="mt-6 overflow-hidden rounded-[28px] border border-black/5 bg-white px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
@@ -63,6 +68,31 @@ export const StepsCard = ({
             Connect Apple Watch
           </Button>
         </>
+      )}
+
+      {onManualSave && (
+        <div className="mt-4 grid grid-cols-[1fr_120px] gap-2">
+          <Input
+            type="number"
+            min={0}
+            value={manual}
+            onChange={(event) => setManual(event.target.value)}
+            placeholder="Add steps"
+            className="h-10 rounded-full"
+          />
+          <Button
+            type="button"
+            className="h-10 rounded-full bg-aura-primary text-white hover:bg-aura-primary/90"
+            onClick={() => {
+              const numeric = Number(manual);
+              if (!Number.isFinite(numeric) || numeric <= 0) return;
+              onManualSave(numeric);
+              setManual("");
+            }}
+          >
+            Save
+          </Button>
+        </div>
       )}
     </Card>
   );

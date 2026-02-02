@@ -4,49 +4,13 @@ import type {
   MealEntryRecord,
   MealTypeRecord,
 } from "@/types/api";
+import { apiFetch } from "@/lib/apiClient";
 
-const USER_ID_KEY = "aurafit-user-id";
-
-export const getUserId = () => {
-  if (typeof window === "undefined") return null;
-  const existing = window.localStorage.getItem(USER_ID_KEY);
-  if (existing) return existing;
-  const next = crypto.randomUUID();
-  window.localStorage.setItem(USER_ID_KEY, next);
-  return next;
-};
-
-const apiFetch = async <T>(path: string, options?: RequestInit) => {
-  const userId = getUserId();
-  const headers = new Headers(options?.headers);
-  if (userId) {
-    headers.set("x-user-id", userId);
-  }
-  if (!headers.has("Content-Type") && options?.body) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  const response = await fetch(path, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `Request failed: ${response.status}`);
-  }
-
-  return (await response.json()) as T;
-};
-
-export const ensureUser = async (displayName = "You") => {
-  const userId = getUserId();
-  if (!userId) return null;
-  return apiFetch<{ user: { id: string } }>("/api/users/ensure", {
+export const ensureUser = async () =>
+  apiFetch<{ user: { id: string } }>("/api/users/bootstrap", {
     method: "POST",
-    body: JSON.stringify({ userId, displayName }),
+    body: JSON.stringify({}),
   });
-};
 
 export const ensureMealTypes = async () => {
   await apiFetch<{ ok: boolean }>("/api/meal-types/ensure", { method: "POST" });
@@ -56,6 +20,25 @@ export const ensureMealTypes = async () => {
 export const searchFoods = async (query: string, limit = 20) =>
   apiFetch<{ items: FoodRecord[] }>(
     `/api/foods/search?q=${encodeURIComponent(query)}&limit=${limit}`,
+  );
+
+export const fetchFoodByBarcode = async (barcode: string) =>
+  apiFetch<{ item: FoodRecord | null }>(
+    `/api/foods/barcode/${encodeURIComponent(barcode)}`,
+  );
+
+export const fetchFoodFavorites = async () =>
+  apiFetch<{ items: FoodRecord[] }>("/api/foods/favorites");
+
+export const toggleFoodFavorite = async (foodId: string, favorite: boolean) =>
+  apiFetch<{ ok: boolean }>("/api/foods/favorites", {
+    method: "POST",
+    body: JSON.stringify({ foodId, favorite }),
+  });
+
+export const fetchFoodHistory = async (limit = 20) =>
+  apiFetch<{ items: FoodRecord[] }>(
+    `/api/foods/history?limit=${encodeURIComponent(String(limit))}`,
   );
 
 export const createFood = async (payload: {
@@ -94,7 +77,7 @@ export const createMealEntry = async (payload: {
     sortOrder?: number;
   }>;
 }) =>
-  apiFetch<{ entry: MealEntryRecord }>("/api/meal-entries", {
+  apiFetch<{ entry: MealEntryRecord; items: MealEntryItemRecord[] }>("/api/meal-entries", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -107,4 +90,67 @@ export const fetchMealEntries = async (localDate: string) =>
 export const deleteMealEntryItem = async (itemId: string) =>
   apiFetch<{ deleted: string | null }>(`/api/meal-entries/items/${itemId}`, {
     method: "DELETE",
+  });
+
+export const fetchWeightLogs = async (options?: {
+  start?: string;
+  end?: string;
+  limit?: number;
+}) => {
+  const params = new URLSearchParams();
+  if (options?.start) params.set("start", options.start);
+  if (options?.end) params.set("end", options.end);
+  if (options?.limit) params.set("limit", String(options.limit));
+  const query = params.toString();
+  return apiFetch<{ items: Array<{ local_date: string; weight: number; unit: string }> }>(
+    `/api/tracking/weight${query ? `?${query}` : ""}`,
+  );
+};
+
+export const upsertWeightLog = async (payload: {
+  localDate: string;
+  weight: number;
+  unit: string;
+  notes?: string;
+}) =>
+  apiFetch<{ entry: { local_date: string; weight: number; unit: string } }>(
+    "/api/tracking/weight",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+
+export const fetchStepsLogs = async (localDate?: string) => {
+  const query = localDate ? `?localDate=${encodeURIComponent(localDate)}` : "";
+  return apiFetch<{ items: Array<{ local_date: string; steps: number; source: string | null }> }>(
+    `/api/tracking/steps${query}`,
+  );
+};
+
+export const upsertStepsLog = async (payload: {
+  localDate: string;
+  steps: number;
+  source?: string;
+}) =>
+  apiFetch<{ entry: { local_date: string; steps: number } }>("/api/tracking/steps", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+export const fetchWaterLogs = async (localDate?: string) => {
+  const query = localDate ? `?localDate=${encodeURIComponent(localDate)}` : "";
+  return apiFetch<{ items: Array<{ local_date: string; amount_ml: number; source: string | null }> }>(
+    `/api/tracking/water${query}`,
+  );
+};
+
+export const upsertWaterLog = async (payload: {
+  localDate: string;
+  amountMl: number;
+  source?: string;
+}) =>
+  apiFetch<{ entry: { local_date: string; amount_ml: number } }>("/api/tracking/water", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });

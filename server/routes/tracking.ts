@@ -33,6 +33,34 @@ router.post(
   }),
 );
 
+router.get(
+  "/weight",
+  asyncHandler(async (req, res) => {
+    const userId = getUserId(req);
+    const start = typeof req.query.start === "string" ? req.query.start : null;
+    const end = typeof req.query.end === "string" ? req.query.end : null;
+    const limitRaw = typeof req.query.limit === "string" ? req.query.limit : "";
+    const limit = Math.min(Math.max(Number(limitRaw || 120), 1), 365);
+
+    const result = await withTransaction((client) =>
+      client.query(
+        `
+        SELECT local_date, weight, unit, logged_at
+        FROM weight_logs
+        WHERE user_id = $1
+          AND ($2::date IS NULL OR local_date >= $2::date)
+          AND ($3::date IS NULL OR local_date <= $3::date)
+        ORDER BY local_date ASC
+        LIMIT $4;
+        `,
+        [userId, start, end, limit],
+      ),
+    );
+
+    res.json({ items: result.rows });
+  }),
+);
+
 const waterSchema = z.object({
   localDate: z.string().min(1),
   amountMl: z.number().int().positive(),
@@ -55,6 +83,28 @@ router.post(
       ),
     );
     res.status(201).json({ entry: result.rows[0] });
+  }),
+);
+
+router.get(
+  "/water",
+  asyncHandler(async (req, res) => {
+    const userId = getUserId(req);
+    const localDate =
+      typeof req.query.localDate === "string" ? req.query.localDate : null;
+    const result = await withTransaction((client) =>
+      client.query(
+        `
+        SELECT local_date, amount_ml, source, logged_at
+        FROM water_logs
+        WHERE user_id = $1
+          AND ($2::date IS NULL OR local_date = $2::date)
+        ORDER BY logged_at DESC;
+        `,
+        [userId, localDate],
+      ),
+    );
+    res.json({ items: result.rows });
   }),
 );
 
@@ -82,6 +132,28 @@ router.post(
       ),
     );
     res.status(201).json({ entry: result.rows[0] });
+  }),
+);
+
+router.get(
+  "/steps",
+  asyncHandler(async (req, res) => {
+    const userId = getUserId(req);
+    const localDate =
+      typeof req.query.localDate === "string" ? req.query.localDate : null;
+    const result = await withTransaction((client) =>
+      client.query(
+        `
+        SELECT local_date, steps, source, logged_at
+        FROM steps_logs
+        WHERE user_id = $1
+          AND ($2::date IS NULL OR local_date = $2::date)
+        ORDER BY logged_at DESC;
+        `,
+        [userId, localDate],
+      ),
+    );
+    res.json({ items: result.rows });
   }),
 );
 

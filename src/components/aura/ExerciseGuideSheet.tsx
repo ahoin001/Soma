@@ -22,6 +22,7 @@ export const ExerciseGuideSheet = ({
   if (!exercise) return null;
   const stepsValue = (exercise.steps ?? []).join("\n");
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaLabel, setMediaLabel] = useState<string>("Media preview");
 
   useEffect(() => {
     if (!open) return;
@@ -34,10 +35,12 @@ export const ExerciseGuideSheet = ({
         const images = await fetchWgerExerciseImages(first.id);
         if (!cancelled) {
           setMediaUrl(images[0] ?? null);
+          setMediaLabel("wger image");
         }
       } catch {
         if (!cancelled) {
           setMediaUrl(null);
+          setMediaLabel("Media preview");
         }
       }
     };
@@ -70,7 +73,7 @@ export const ExerciseGuideSheet = ({
                 />
               ) : (
                 <span className="text-sm text-white/60">
-                  Media preview (animation/video)
+                  {mediaLabel}
                 </span>
               )}
             </div>

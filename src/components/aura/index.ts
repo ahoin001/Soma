@@ -30,6 +30,7 @@ export { Pressable } from "./Pressable";
 export { QuickAdd } from "./QuickAdd";
 export { StreakCard } from "./StreakCard";
 export { StepsCard } from "./StepsCard";
+export { WaterCard } from "./WaterCard";
 export { SyncStatus } from "./SyncStatus";
 export { Stat } from "./Stat";
 export { WeeklyPreview } from "./WeeklyPreview";

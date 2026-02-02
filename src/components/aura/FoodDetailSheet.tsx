@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import type { FoodItem, MacroTarget } from "@/data/mock";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Heart } from "lucide-react";
 
 type FoodDetailSheetProps = {
   open: boolean;
@@ -14,6 +15,8 @@ type FoodDetailSheetProps = {
   macros: MacroTarget[];
   onTrack: (food: FoodItem) => void;
   onUpdateFood: (food: FoodItem, next: NutritionDraft) => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: (favorite: boolean) => void;
 };
 
 type NutritionDraft = {
@@ -31,6 +34,8 @@ export const FoodDetailSheet = ({
   macros,
   onTrack,
   onUpdateFood,
+  isFavorite = false,
+  onToggleFavorite,
 }: FoodDetailSheetProps) => {
   const [sparkle, setSparkle] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -121,9 +126,21 @@ export const FoodDetailSheet = ({
             </div>
 
             <div className="mt-4 text-center">
-              <h3 className="text-xl font-display font-semibold text-slate-900">
-                {food.name}
-              </h3>
+              <div className="flex items-center justify-center gap-2">
+                <h3 className="text-xl font-display font-semibold text-slate-900">
+                  {food.name}
+                </h3>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                  onClick={() => onToggleFavorite?.(!isFavorite)}
+                  aria-label={isFavorite ? "Remove favorite" : "Add favorite"}
+                >
+                  <Heart className={isFavorite ? "fill-emerald-500" : ""} />
+                </Button>
+              </div>
               <p className="text-sm text-slate-500">
                 {food.portion} • {scaled.kcal} kcal
               </p>

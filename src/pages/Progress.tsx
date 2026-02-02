@@ -3,9 +3,9 @@ import { AppShell } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { weightEntries } from "@/data/mock";
 import { useAppStore } from "@/state/AppStore";
 import { toast } from "sonner";
+import { useWeightLogs } from "@/hooks/useTracking";
 
 type WeightEntry = {
   date: string;
@@ -146,15 +146,15 @@ const WeightChart = ({ entries }: { entries: WeightEntry[] }) => {
 };
 
 const Progress = () => {
-  const [entries, setEntries] = useState<WeightEntry[]>(weightEntries);
+  const { entries, addEntry } = useWeightLogs();
   const [weight, setWeight] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const { userProfile, nutrition } = useAppStore();
 
-  const addEntry = () => {
+  const saveEntry = async () => {
     const numeric = Number(weight);
     if (!Number.isFinite(numeric) || numeric <= 0) return;
-    setEntries((prev) => [...prev, { date, weight: numeric }]);
+    await addEntry({ date, weight: numeric, unit: "lb" });
     setWeight("");
   };
 
@@ -361,7 +361,7 @@ const Progress = () => {
           <Button
             type="button"
             className="mt-4 w-full rounded-full bg-aura-primary py-5 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
-            onClick={addEntry}
+            onClick={saveEntry}
           >
             Save check-in
           </Button>
