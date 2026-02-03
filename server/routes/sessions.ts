@@ -59,9 +59,11 @@ router.post(
 
 const logSetSchema = z.object({
   sessionExerciseId: z.string().uuid(),
-  weight: z.number().optional(),
+  weightDisplay: z.number().optional(),
+  unitUsed: z.enum(["lb", "kg"]).optional(),
   reps: z.number().int().optional(),
-  rir: z.number().optional(),
+  rpe: z.number().optional(),
+  restSeconds: z.number().int().optional(),
   notes: z.string().optional(),
 });
 
@@ -69,18 +71,39 @@ router.post(
   "/:sessionId/sets",
   asyncHandler(async (req, res) => {
     const payload = logSetSchema.parse(req.body);
+    const unitUsed = payload.unitUsed ?? "lb";
+    const weightKg =
+      typeof payload.weightDisplay === "number"
+        ? unitUsed === "lb"
+          ? payload.weightDisplay * 0.45359237
+          : payload.weightDisplay
+        : null;
     const result = await withTransaction((client) =>
       client.query(
         `
-        INSERT INTO session_sets (session_exercise_id, weight, reps, rir, notes)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO session_sets (
+          session_exercise_id,
+          weight,
+          weight_kg,
+          weight_display,
+          unit_used,
+          reps,
+          rpe,
+          rest_seconds,
+          notes
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *;
         `,
         [
           payload.sessionExerciseId,
-          payload.weight ?? null,
+          weightKg,
+          weightKg,
+          payload.weightDisplay ?? null,
+          unitUsed,
           payload.reps ?? null,
-          payload.rir ?? null,
+          payload.rpe ?? null,
+          payload.restSeconds ?? null,
           payload.notes ?? null,
         ],
       ),

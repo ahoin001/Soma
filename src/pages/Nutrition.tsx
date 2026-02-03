@@ -9,11 +9,9 @@ import {
   FoodDetailSheet,
   MealLogPanel,
   QuickActionSheet,
-  QuickAdd,
   StepsCard,
   StreakCard,
   WaterCard,
-  WeeklyPreview,
 } from "@/components/aura";
 import { toast } from "sonner";
 import type { LogItem } from "@/types/log";
@@ -23,13 +21,13 @@ import { useNutritionInsights } from "@/hooks/useNutritionInsights";
 import { Card } from "@/components/ui/card";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
 
 type NutritionDraft = {
   name?: string;
   brand?: string;
+  brandId?: string | null;
   portion: string;
   portionGrams?: number | null;
   kcal: number;
@@ -108,11 +106,20 @@ const Nutrition = () => {
   }, [meals, selectedMeal]);
 
   const openSearch = (meal: Meal) => {
+    setDetailOpen(false);
+    setQuickOpen(false);
+    setEditOpen(false);
+    setAdminOpen(false);
     setSelectedMeal(meal);
-    navigate("/nutrition/add-food", { state: { mealId: meal.id } });
+    navigate("/nutrition/add-food", {
+      state: { mealId: meal.id, returnTo: "/nutrition" },
+    });
   };
 
   const openDetail = (food: FoodItem) => {
+    setQuickOpen(false);
+    setEditOpen(false);
+    setAdminOpen(false);
     setSelectedFood(food);
     setDetailOpen(true);
   };
@@ -155,6 +162,7 @@ const Nutrition = () => {
     const updated = await updateFoodMaster(food.id, {
       name: cleanName ? cleanName : food.name,
       brand: cleanBrand ? cleanBrand : null,
+      brandId: next.brandId ?? null,
       portionLabel: next.portion,
       portionGrams: next.portionGrams ?? null,
       kcal: next.kcal,
@@ -170,6 +178,9 @@ const Nutrition = () => {
   };
 
   const handleEditItem = (item: LogItem) => {
+    setDetailOpen(false);
+    setQuickOpen(false);
+    setAdminOpen(false);
     setEditItem(item);
     setEditOpen(true);
   };
@@ -180,7 +191,15 @@ const Nutrition = () => {
   };
 
   return (
-    <AppShell experience="nutrition" onAddAction={() => setQuickOpen(true)}>
+    <AppShell
+      experience="nutrition"
+      onAddAction={() => {
+        setDetailOpen(false);
+        setEditOpen(false);
+        setAdminOpen(false);
+        setQuickOpen(true);
+      }}
+    >
       <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-4">
         <div className="-mx-4 -mt-[env(safe-area-inset-top)]">
           <DashboardHeader
@@ -190,20 +209,19 @@ const Nutrition = () => {
             goal={summary.goal}
             syncState={syncState}
             macros={macros}
+            onProfileClick={
+              isAdmin
+                ? () => {
+                    setDetailOpen(false);
+                    setEditOpen(false);
+                    setQuickOpen(false);
+                    setAdminQuery("");
+                    setAdminOpen(true);
+                  }
+                : undefined
+            }
           />
         </div>
-        {isAdmin && (
-          <div className="mt-4">
-            <Button
-              type="button"
-              className="w-full rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-              variant="secondary"
-              onClick={() => setAdminOpen(true)}
-            >
-              Admin: Edit food database
-            </Button>
-          </div>
-        )}
 
         <DateSwitcher value={selectedDate} onChange={setSelectedDate} />
 
@@ -232,6 +250,7 @@ const Nutrition = () => {
           totalMl={waterSummary.totalMl}
           goalMl={waterSummary.goalMl}
           onAdd={waterSummary.addWater}
+          onSetTotal={waterSummary.setWaterTotal}
           onGoalSave={(value) => waterSummary.updateGoal(value)}
         />
         <Card className="mt-6 rounded-[24px] border border-black/5 bg-white px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
@@ -253,24 +272,11 @@ const Nutrition = () => {
             />
           </div>
         </Card>
-        <WeeklyPreview weeklyKcal={insights.weekly} goal={summary.goal} />
-        <Card className="mt-6 rounded-[24px] border border-black/5 bg-white px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
-          <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
-            28-day average
-          </p>
-          <p className="mt-2 text-2xl font-display font-semibold text-slate-900">
-            {insights.average} cal
-          </p>
-          <p className="text-xs text-slate-500">
-            Average daily intake over the last 28 days.
-          </p>
-        </Card>
         <StreakCard
           days={insights.streak.days}
           bestWeek={insights.streak.bestWeek}
           message={insights.streak.message}
         />
-        <QuickAdd foods={apiResults.slice(0, 3)} onSelect={openDetail} />
       </div>
 
       <FoodDetailSheet
@@ -297,22 +303,24 @@ const Nutrition = () => {
         onAddFood={() => {
           setQuickOpen(false);
           if (selectedMeal) {
-            navigate("/nutrition/add-food", { state: { mealId: selectedMeal.id } });
+            navigate("/nutrition/add-food", {
+              state: { mealId: selectedMeal.id, returnTo: "/nutrition" },
+            });
           } else {
-            navigate("/nutrition/add-food");
+            navigate("/nutrition/add-food", { state: { returnTo: "/nutrition" } });
           }
         }}
         onCreateFood={() => {
           setQuickOpen(false);
           navigate("/nutrition/add-food/create", {
-            state: { mealId: selectedMeal?.id },
+            state: { mealId: selectedMeal?.id, returnTo: "/nutrition" },
           });
         }}
       />
 
       <Drawer open={adminOpen} onOpenChange={setAdminOpen}>
         <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-          <div className="px-5 pb-6 pt-3">
+          <div className="px-5 pb-6 pt-3" data-vaul-no-drag>
             <p className="text-xs uppercase tracking-[0.3em] text-emerald-400">
               Admin
             </p>
@@ -331,9 +339,10 @@ const Nutrition = () => {
                   key={food.id}
                   type="button"
                   onClick={() => {
-                    setSelectedFood(food);
-                    setDetailOpen(true);
                     setAdminOpen(false);
+                    navigate("/nutrition/food/edit", {
+                      state: { food, returnTo: "/nutrition" },
+                    });
                   }}
                   className="flex w-full items-center justify-between rounded-[24px] border border-black/5 bg-white px-4 py-3 text-left shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
                 >
@@ -371,8 +380,8 @@ const Nutrition = () => {
         open={editOpen}
         onOpenChange={setEditOpen}
         item={editItem}
-        onSave={(item, multiplier) => {
-          void updateLogItem(item, multiplier);
+        onSave={async (item, multiplier) => {
+          await updateLogItem(item, multiplier);
           toast(`Updated ${item.name} to ${Number(multiplier).toFixed(1)}x`);
         }}
         onDelete={(item) => {

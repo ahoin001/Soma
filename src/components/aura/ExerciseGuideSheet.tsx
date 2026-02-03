@@ -38,10 +38,10 @@ type ExerciseGuideSheetProps = {
 type MediaCacheEntry = {
   mediaUrl: string | null;
   mediaLabel: string;
-  mediaKind: "cloudinary" | "youtube" | "external" | null;
+  mediaKind: "cloudinary" | "youtube" | "external" | "thumbnail" | null;
   mediaItems: Array<
     ExerciseMedia & {
-      source_type: ExerciseMedia["source_type"];
+      source_type: ExerciseMedia["source_type"] | "thumbnail";
     }
   >;
   selectedMediaId: string | null;
@@ -90,7 +90,23 @@ export const preloadExerciseGuide = async (exerciseName: string, userId?: string
         fetchExerciseOverride(exerciseName, userId),
         fetchExerciseByName(exerciseName),
       ]);
-      const combined = [...saved];
+      const thumbnailUrl =
+        masterResult.exercise && typeof (masterResult.exercise as { image_url?: unknown }).image_url === "string"
+          ? String((masterResult.exercise as { image_url?: unknown }).image_url)
+          : null;
+      const thumbnailItem = thumbnailUrl
+        ? {
+            id: `thumbnail-${exerciseName}`,
+            exercise_name: exerciseName,
+            user_id: null,
+            source_type: "thumbnail" as const,
+            media_url: thumbnailUrl,
+            thumb_url: thumbnailUrl,
+            is_primary: false,
+            created_at: new Date().toISOString(),
+          }
+        : null;
+      const combined = thumbnailItem ? [...saved, thumbnailItem] : [...saved];
       const primary =
         combined.find((item) => item.is_primary) ??
         combined.find((item) => Boolean(item.user_id)) ??
@@ -103,9 +119,11 @@ export const preloadExerciseGuide = async (exerciseName: string, userId?: string
         mediaLabel:
           primary?.source_type === "youtube"
             ? "YouTube"
-            : primary?.source_type
-              ? "Your media"
-              : "Media preview",
+            : primary?.source_type === "thumbnail"
+              ? "Thumbnail"
+              : primary?.source_type
+                ? "Your media"
+                : "Media preview",
       });
       trimCache(mediaCache);
       if (override) {
@@ -159,12 +177,12 @@ export const ExerciseGuideSheet = ({
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [mediaLabel, setMediaLabel] = useState<string>("Media preview");
   const [mediaKind, setMediaKind] = useState<
-    "cloudinary" | "youtube" | "external" | null
+    "cloudinary" | "youtube" | "external" | "thumbnail" | null
   >(null);
   const [mediaItems, setMediaItems] = useState<
     Array<
       ExerciseMedia & {
-        source_type: ExerciseMedia["source_type"];
+        source_type: ExerciseMedia["source_type"] | "thumbnail";
       }
     >
   >([]);
@@ -187,6 +205,7 @@ export const ExerciseGuideSheet = ({
   const [masterEquipment, setMasterEquipment] = useState("");
   const [masterMuscles, setMasterMuscles] = useState("");
   const [masterImageUrl, setMasterImageUrl] = useState("");
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [thumbnailProgress, setThumbnailProgress] = useState(0);
   const [thumbnailNotice, setThumbnailNotice] = useState<string | null>(null);
@@ -216,8 +235,33 @@ export const ExerciseGuideSheet = ({
           setSelectedMediaId(cached.selectedMediaId);
         }
         const saved = await fetchExerciseMedia(exercise.name, userId);
+        const cachedMaster = masterCache.get(exercise.name);
+        let nextThumbnail = cachedMaster?.imageUrl ?? null;
+        if (!nextThumbnail) {
+          const master = await fetchExerciseByName(exercise.name);
+          nextThumbnail =
+            master.exercise &&
+            typeof (master.exercise as { image_url?: unknown }).image_url === "string"
+              ? String((master.exercise as { image_url?: unknown }).image_url)
+              : null;
+        }
+        setThumbnailUrl(nextThumbnail ?? null);
+        const thumbnailItem = nextThumbnail
+          ? {
+              id: `thumbnail-${exercise.name}`,
+              exercise_name: exercise.name,
+              user_id: null,
+              source_type: "thumbnail" as const,
+              media_url: nextThumbnail,
+              thumb_url: nextThumbnail,
+              is_primary: false,
+              created_at: new Date().toISOString(),
+            }
+          : null;
         if (cancelled) return;
-        const combined = [...saved];
+        const combined = thumbnailItem
+          ? [...saved.filter((item) => item.media_url !== nextThumbnail), thumbnailItem]
+          : [...saved];
         setMediaItems(combined);
         const primary =
           combined.find((item) => item.is_primary) ??
@@ -236,13 +280,19 @@ export const ExerciseGuideSheet = ({
           selectedMediaId: primary.id,
           mediaItems: combined,
           mediaLabel:
-            primary.source_type === "youtube" ? "YouTube" : "Your media",
+            primary.source_type === "youtube"
+              ? "YouTube"
+              : primary.source_type === "thumbnail"
+                ? "Thumbnail"
+                : "Your media",
         };
         setMediaUrl(nextState.mediaUrl);
         setMediaKind(nextState.mediaKind);
         setSelectedMediaId(nextState.selectedMediaId);
         if (primary.source_type === "youtube") {
           setMediaLabel("YouTube");
+        } else if (primary.source_type === "thumbnail") {
+          setMediaLabel("Thumbnail");
         } else {
           setMediaLabel("Your media");
         }
@@ -319,7 +369,8 @@ export const ExerciseGuideSheet = ({
           setMasterCategory(String(cached.category ?? ""));
           setMasterEquipment((cached.equipment ?? []).join(", "));
           setMasterMuscles((cached.muscles ?? []).join(", "));
-          setMasterImageUrl(String(cached.imageUrl ?? ""));
+        setMasterImageUrl(String(cached.imageUrl ?? ""));
+        setThumbnailUrl(cached.imageUrl ?? null);
         }
         const result = await fetchExerciseByName(exercise.name);
         if (!result.exercise || cancelled) return;
@@ -339,6 +390,7 @@ export const ExerciseGuideSheet = ({
         setMasterEquipment((record.equipment ?? []).join(", "));
         setMasterMuscles((record.muscles ?? []).join(", "));
         setMasterImageUrl(String(record.image_url ?? ""));
+        setThumbnailUrl(record.image_url ?? null);
         masterCache.set(exercise.name, {
           id: Number(record.id ?? 0) || null,
           name: String(record.name ?? exercise.name),
@@ -377,6 +429,19 @@ export const ExerciseGuideSheet = ({
     hidden: { opacity: 0, y: 6 },
     show: { opacity: 1, y: 0 },
   };
+  const galleryItems = useMemo(() => {
+    const weight = (item: (typeof mediaItems)[number]) => {
+      if (item.source_type === "thumbnail") return 0;
+      if (item.is_primary) return 1;
+      return 2;
+    };
+    return [...mediaItems].sort((a, b) => {
+      const aWeight = weight(a);
+      const bWeight = weight(b);
+      if (aWeight !== bWeight) return aWeight - bWeight;
+      return b.created_at.localeCompare(a.created_at);
+    });
+  }, [mediaItems]);
 
   const content = (
     <div
@@ -588,7 +653,7 @@ export const ExerciseGuideSheet = ({
                 <span>{mediaItems.length} items</span>
               </div>
               <div className="mt-3 grid grid-cols-4 gap-2">
-                {mediaItems.map((item) => {
+                {galleryItems.map((item) => {
                   const selected = item.id === selectedMediaId;
                   const isYouTube = item.source_type === "youtube";
                   const isImage = [".jpg", ".jpeg", ".png", ".webp", ".gif"].some(
@@ -607,6 +672,8 @@ export const ExerciseGuideSheet = ({
                         setSelectedMediaId(item.id);
                         if (item.source_type === "youtube") {
                           setMediaLabel("YouTube");
+                        } else if (item.source_type === "thumbnail") {
+                          setMediaLabel("Thumbnail");
                         } else {
                           setMediaLabel("Your media");
                         }
@@ -808,7 +875,27 @@ export const ExerciseGuideSheet = ({
                           imageUrl: masterImageUrl.trim() || null,
                         });
                         if (masterImageUrl.trim()) {
-                          setMediaUrl(masterImageUrl.trim());
+                          const url = masterImageUrl.trim();
+                          setMediaUrl(url);
+                          setMediaKind("thumbnail");
+                          setMediaLabel("Thumbnail");
+                          setThumbnailUrl(url);
+                          setMediaItems((prev) => {
+                            const filtered = prev.filter((item) => item.id !== `thumbnail-${exercise.name}`);
+                            return [
+                              ...filtered,
+                              {
+                                id: `thumbnail-${exercise.name}`,
+                                exercise_name: exercise.name,
+                                user_id: null,
+                                source_type: "thumbnail",
+                                media_url: url,
+                                thumb_url: url,
+                                is_primary: false,
+                                created_at: new Date().toISOString(),
+                              },
+                            ];
+                          });
                         }
                         if (masterName.trim() && masterName.trim() !== exercise.name) {
                           onUpdate({ name: masterName.trim() });

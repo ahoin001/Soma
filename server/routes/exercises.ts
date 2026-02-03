@@ -53,7 +53,7 @@ router.get(
             @@ plainto_tsquery('simple', $1)
         AND ${
           scope === "mine"
-            ? "created_by_user_id = $2"
+            ? "created_by_user_id = $2 AND is_custom = true"
             : "(created_by_user_id IS NULL OR created_by_user_id = $2)"
         }
       ORDER BY name ASC
@@ -122,9 +122,10 @@ router.post(
         equipment,
         muscles,
         image_url,
-        created_by_user_id
+        created_by_user_id,
+        is_custom
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, true)
       RETURNING id, name, description, category, equipment, muscles, image_url;
       `,
       [

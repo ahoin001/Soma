@@ -62,7 +62,7 @@ router.get(
         ),
         totals AS (
           SELECT date_trunc('week', ws.ended_at) AS week_start,
-                 COALESCE(SUM(ss.weight * ss.reps), 0) AS volume,
+                 COALESCE(SUM(COALESCE(ss.weight_kg, ss.weight) * ss.reps), 0) AS volume,
                  COUNT(ss.id) AS total_sets
           FROM workout_sessions ws
           LEFT JOIN session_exercises se ON se.session_id = ws.id
@@ -83,6 +83,69 @@ router.get(
     );
 
     res.json({ weeks, items: result.rows });
+  }),
+);
+
+router.get(
+  "/exercise",
+  asyncHandler(async (req, res) => {
+    const userId = getUserId(req);
+    const exerciseId = z.coerce.number().int().parse(req.query.exerciseId);
+    const days = z.coerce.number().int().min(7).max(180).parse(req.query.days ?? 84);
+
+    const result = await withTransaction((client) =>
+      client.query(
+        `
+        WITH days AS (
+          SELECT generate_series(
+            (current_date - ($3::int - 1))::date,
+            current_date,
+            interval '1 day'
+          )::date AS day
+        )
+        SELECT days.day,
+               COALESCE(stats.total_sets, 0) AS total_sets,
+               COALESCE(stats.total_volume_kg, 0) AS total_volume_kg,
+               COALESCE(stats.max_weight_kg, 0) AS max_weight_kg,
+               COALESCE(stats.est_one_rm_kg, 0) AS est_one_rm_kg
+        FROM days
+        LEFT JOIN exercise_stats_daily stats
+          ON stats.day = days.day
+         AND stats.user_id = $1
+         AND stats.exercise_id = $2
+        ORDER BY days.day ASC;
+        `,
+        [userId, exerciseId, days],
+      ),
+    );
+
+    res.json({ days, items: result.rows });
+  }),
+);
+
+router.get(
+  "/muscles",
+  asyncHandler(async (req, res) => {
+    const userId = getUserId(req);
+    const days = z.coerce.number().int().min(7).max(180).parse(req.query.days ?? 84);
+
+    const result = await withTransaction((client) =>
+      client.query(
+        `
+        SELECT day,
+               muscle,
+               total_sets,
+               total_volume_kg
+        FROM muscle_stats_daily
+        WHERE user_id = $1
+          AND day >= (current_date - ($2::int - 1))::date
+        ORDER BY day ASC, muscle ASC;
+        `,
+        [userId, days],
+      ),
+    );
+
+    res.json({ days, items: result.rows });
   }),
 );
 

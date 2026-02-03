@@ -702,15 +702,21 @@ export const startFitnessSession = async (payload: {
 export const logFitnessSet = async (payload: {
   sessionId: string;
   sessionExerciseId: string;
-  weight?: number;
+  weightDisplay?: number;
+  unitUsed?: "lb" | "kg";
   reps?: number;
+  rpe?: number;
+  restSeconds?: number;
 }) =>
   apiFetch<{ set: { id: string } }>(`/api/fitness/sessions/${payload.sessionId}/sets`, {
     method: "POST",
     body: JSON.stringify({
       sessionExerciseId: payload.sessionExerciseId,
-      weight: payload.weight,
+      weightDisplay: payload.weightDisplay,
+      unitUsed: payload.unitUsed,
       reps: payload.reps,
+      rpe: payload.rpe,
+      restSeconds: payload.restSeconds,
     }),
   });
 

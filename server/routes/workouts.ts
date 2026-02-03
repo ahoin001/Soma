@@ -6,6 +6,34 @@ import { asyncHandler, getUserId } from "../utils";
 
 const router = Router();
 
+const getOrCreateExerciseId = async (
+  client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: Array<{ id: number }> }> },
+  userId: string,
+  name: string,
+) => {
+  const normalized = name.trim();
+  const existing = await client.query(
+    `
+    SELECT id
+    FROM exercises
+    WHERE lower(name) = lower($1)
+      AND created_by_user_id = $2
+    LIMIT 1;
+    `,
+    [normalized, userId],
+  );
+  if (existing.rows[0]?.id) return existing.rows[0].id;
+  const created = await client.query(
+    `
+    INSERT INTO exercises (name, category, created_by_user_id, is_custom)
+    VALUES ($1, $2, $3, true)
+    RETURNING id;
+    `,
+    [normalized, "Custom", userId],
+  );
+  return created.rows[0].id;
+};
+
 const createPlanSchema = z.object({
   name: z.string().min(1),
   sortOrder: z.number().int().optional(),
@@ -222,6 +250,7 @@ const exerciseSchema = z.object({
 router.put(
   "/templates/:templateId/exercises",
   asyncHandler(async (req, res) => {
+    const userId = getUserId(req);
     const templateId = req.params.templateId;
     const payload = z.object({ exercises: z.array(exerciseSchema) }).parse(req.body);
 
@@ -238,12 +267,15 @@ router.put(
       let index = 1;
 
       for (const exercise of payload.exercises) {
+        const resolvedId =
+          exercise.exerciseId ??
+          (await getOrCreateExerciseId(client, userId, exercise.exerciseName));
         values.push(
           `($${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++}, $${index++})`,
         );
         params.push(
           templateId,
-          exercise.exerciseId ?? null,
+          resolvedId ?? null,
           exercise.exerciseName,
           exercise.groupId ?? null,
           exercise.groupType ?? "straight_set",

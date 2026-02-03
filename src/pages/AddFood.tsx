@@ -14,6 +14,9 @@ type ActiveTab = "recent" | "liked" | "history";
 type LocationState = {
   mealId?: string;
   createdFood?: FoodItem;
+  returnTo?: string;
+  tab?: ActiveTab;
+  query?: string;
 };
 
 type NutritionDraft = {
@@ -39,10 +42,12 @@ const AddFood = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state ?? {}) as LocationState;
+  const returnTo = state.returnTo ?? "/nutrition";
   const inputRef = useRef<HTMLInputElement | null>(null);
   const { nutrition, foodCatalog, mealTypes } = useAppStore();
-  const [activeTab, setActiveTab] = useState<ActiveTab>("recent");
-  const [searchQuery, setSearchQuery] = useState("");
+  const initialTab = (state.tab as ActiveTab) ?? "recent";
+  const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
+  const [searchQuery, setSearchQuery] = useState(state.query ?? "");
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -73,9 +78,29 @@ const AddFood = () => {
     const query = searchQuery.trim();
     const timer = window.setTimeout(() => {
       searchFoods(query, { external: externalSearchEnabled });
+      navigate(location.pathname, {
+        replace: true,
+        state: {
+          mealId: selectedMeal?.id,
+          returnTo,
+          createdFood: state.createdFood,
+          tab: activeTab,
+          query: searchQuery,
+        },
+      });
     }, query ? 350 : 0);
     return () => window.clearTimeout(timer);
-  }, [searchFoods, searchQuery, externalSearchEnabled]);
+  }, [
+    searchFoods,
+    searchQuery,
+    externalSearchEnabled,
+    activeTab,
+    navigate,
+    location.pathname,
+    returnTo,
+    selectedMeal?.id,
+    state.createdFood,
+  ]);
 
   useEffect(() => {
     const meals = mealTypes.meals;
@@ -94,8 +119,24 @@ const AddFood = () => {
     if (!state.createdFood) return;
     setSelectedFood(state.createdFood);
     setDetailOpen(true);
-    navigate(location.pathname, { replace: true });
-  }, [location.pathname, navigate, state.createdFood]);
+    navigate(location.pathname, {
+      replace: true,
+      state: {
+        mealId: state.mealId,
+        returnTo: state.returnTo,
+        tab: state.tab,
+        query: state.query,
+      },
+    });
+  }, [
+    location.pathname,
+    navigate,
+    state.createdFood,
+    state.mealId,
+    state.returnTo,
+    state.tab,
+    state.query,
+  ]);
 
   const filteredFoods = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -125,6 +166,7 @@ const AddFood = () => {
       description: "Food added to your day.",
     });
     setDetailOpen(false);
+    navigate(returnTo, { replace: true });
   };
 
   const handleQuickAdd = (food: FoodItem) => {
@@ -158,6 +200,7 @@ const AddFood = () => {
     const updated = await updateFoodMaster(food.id, {
       name: cleanName ? cleanName : food.name,
       brand: cleanBrand ? cleanBrand : null,
+      brandId: next.brandId ?? null,
       portionLabel: next.portion,
       portionGrams: next.portionGrams ?? null,
       kcal: next.kcal,
@@ -181,7 +224,7 @@ const AddFood = () => {
             variant="ghost"
             size="icon"
             className="h-10 w-10 rounded-full bg-white/80 text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate(returnTo)}
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
@@ -204,6 +247,11 @@ const AddFood = () => {
             searchError={searchError}
             foods={filteredFoods}
             meal={selectedMeal}
+            meals={mealTypes.meals}
+            onMealChange={(mealId) => {
+              const match = mealTypes.meals.find((meal) => meal.id === mealId) ?? null;
+              setSelectedMeal(match);
+            }}
             onSelectFood={(food) => {
               setSelectedFood(food);
               setDetailOpen(true);
@@ -211,12 +259,22 @@ const AddFood = () => {
             onQuickAddFood={handleQuickAdd}
             onOpenBarcode={() =>
               navigate("/nutrition/add-food/scan", {
-                state: { mealId: selectedMeal?.id },
+                state: {
+                  mealId: selectedMeal?.id,
+                  returnTo: "/nutrition/add-food",
+                  tab: activeTab,
+                  query: searchQuery,
+                },
               })
             }
             onOpenCreate={() =>
               navigate("/nutrition/add-food/create", {
-                state: { mealId: selectedMeal?.id },
+                state: {
+                  mealId: selectedMeal?.id,
+                  returnTo: "/nutrition/add-food",
+                  tab: activeTab,
+                  query: searchQuery,
+                },
               })
             }
             externalSearchEnabled={externalSearchEnabled}

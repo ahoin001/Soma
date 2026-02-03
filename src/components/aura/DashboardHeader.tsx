@@ -14,6 +14,7 @@ type DashboardHeaderProps = {
   goal: number;
   syncState: "idle" | "syncing";
   macros: MacroTarget[];
+  onProfileClick?: () => void;
 };
 
 export const DashboardHeader = ({
@@ -23,8 +24,10 @@ export const DashboardHeader = ({
   goal,
   syncState,
   macros,
+  onProfileClick,
 }: DashboardHeaderProps) => {
-  const consumed = Math.max(goal - kcalLeft, 0);
+  const consumed = Math.max(eaten, 0);
+  const remaining = goal > 0 ? Math.max(goal - consumed, 0) : 0;
   return (
     <header className="relative overflow-visible pb-10">
       <div className="relative overflow-hidden rounded-b-[40px] bg-[radial-gradient(circle_at_15%_10%,_rgba(191,219,254,0.85),_transparent_50%),radial-gradient(circle_at_85%_0%,_rgba(167,243,208,0.92),_transparent_50%),radial-gradient(circle_at_70%_80%,_rgba(253,224,71,0.28),_transparent_60%),linear-gradient(180deg,_rgba(255,255,255,0.96)_0%,_rgba(236,253,245,0.92)_50%,_rgba(209,250,229,0.86)_100%)] pb-20 pt-[calc(3rem+env(safe-area-inset-top))] shadow-[0_22px_55px_rgba(52,211,153,0.28)]">
@@ -37,9 +40,12 @@ export const DashboardHeader = ({
         </div>
         <div className="relative z-10 flex items-center justify-between gap-3 px-5">
           <Button
+            type="button"
             variant="ghost"
             size="icon"
             className="h-10 w-10 rounded-full bg-white/85 text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.12)] hover:bg-white"
+            onClick={onProfileClick}
+            aria-label="Open profile actions"
           >
             <User className="h-5 w-5" />
           </Button>
@@ -98,11 +104,11 @@ export const DashboardHeader = ({
               </span>
               <div className="mt-1 flex items-baseline gap-1 text-emerald-950">
                 <span className="text-6xl font-display font-semibold leading-none">
-                  <AnimatedNumber value={kcalLeft} />
+                  <AnimatedNumber value={remaining} />
                 </span>
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700/80">
+                {/* <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700/80">
                   cal
-                </span>
+                </span> */}
               </div>
               <div className="mt-1 text-[11px] font-semibold text-emerald-700/70">
                 Goal <AnimatedNumber value={goal} /> cal

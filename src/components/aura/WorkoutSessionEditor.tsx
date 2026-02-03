@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type {
   WorkoutExerciseEntry,
@@ -14,8 +16,21 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useNavigationType } from "react-router-dom";
 import { useAppStore } from "@/state/AppStore";
-import { fetchCurrentUser } from "@/lib/api";
+import {
+  ensureUser,
+  fetchActivityGoals,
+  fetchCurrentUser,
+  fetchExerciseByName,
+  upsertActivityGoals,
+} from "@/lib/api";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   DndContext,
   DragOverlay,
@@ -48,6 +63,8 @@ type EditableSet = {
   weight: string;
   reps: string;
   previous: string;
+  rpe?: string;
+  restSeconds?: string;
 };
 
 type EditableExercise = {
@@ -65,8 +82,12 @@ type SortableExerciseProps = {
   disabled: boolean;
   className: string;
   variants: Record<string, unknown>;
+  renderActivator: (props: {
+    setActivatorNodeRef: (node: HTMLElement | null) => void;
+    listeners: Record<string, unknown>;
+    isDragging: boolean;
+  }) => React.ReactNode;
   children: React.ReactNode;
-  handle: React.ReactNode;
 };
 
 const SortableExercise = ({
@@ -74,8 +95,8 @@ const SortableExercise = ({
   disabled,
   className,
   variants,
+  renderActivator,
   children,
-  handle,
 }: SortableExerciseProps) => {
   const {
     attributes,
@@ -100,34 +121,75 @@ const SortableExercise = ({
       whileTap={{ scale: 0.98 }}
       {...attributes}
     >
-      <div
-        ref={setActivatorNodeRef}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/70"
-        {...listeners}
-        aria-label="Drag to reorder"
-      >
-        {handle}
-      </div>
+      {renderActivator({
+        setActivatorNodeRef,
+        listeners,
+        isDragging,
+      })}
       {children}
     </motion.div>
   );
 };
 
+const thumbnailCache = new Map<string, string | null>();
+
 const createId = () => `set_${Math.random().toString(36).slice(2, 9)}`;
 
-const createDefaultSets = () => [
-  { id: createId(), weight: "35", reps: "14", previous: "35 lb × 14" },
-  { id: createId(), weight: "45", reps: "12", previous: "45 lb × 12" },
-  { id: createId(), weight: "55", reps: "10", previous: "55 lb × 10" },
+const createDefaultSets = (unitUsed: "lb" | "kg") => [
+  {
+    id: createId(),
+    weight: "35",
+    reps: "14",
+    previous: `35 ${unitUsed} × 14`,
+    rpe: "",
+    restSeconds: "",
+  },
+  {
+    id: createId(),
+    weight: "45",
+    reps: "12",
+    previous: `45 ${unitUsed} × 12`,
+    rpe: "",
+    restSeconds: "",
+  },
+  {
+    id: createId(),
+    weight: "55",
+    reps: "10",
+    previous: `55 ${unitUsed} × 10`,
+    rpe: "",
+    restSeconds: "",
+  },
 ];
 
-const formatPrevious = (weight: string, reps: string) => {
+const formatPrevious = (weight: string, reps: string, unitUsed: "lb" | "kg") => {
   if (!weight && !reps) return "—";
-  return `${weight || "—"} lb × ${reps || "—"}`;
+  return `${weight || "—"} ${unitUsed} × ${reps || "—"}`;
 };
 
 const isValidNumber = (value: string) =>
   value.trim() === "" || Number(value) > 0;
+
+const isValidOptionalRange = (value: string, min: number, max: number) => {
+  if (value.trim() === "") return true;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric >= min && numeric <= max;
+};
+
+const isValidOptionalMin = (value: string, min: number) => {
+  if (value.trim() === "") return true;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric >= min;
+};
+
+const getInitials = (value: string) =>
+  value
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 3)
+    .join("")
+    .toUpperCase();
 
 type WorkoutSessionEditorProps = {
   mode: "edit" | "session";
@@ -150,6 +212,7 @@ export const WorkoutSessionEditor = ({
   onBack,
   onStartSession,
   onOpenGuide,
+  onEditExercise,
 }: WorkoutSessionEditorProps) => {
   const { workoutDrafts, setWorkoutDraft, clearWorkoutDraft } = useAppStore();
   const [exercises, setExercises] = useState<EditableExercise[]>([]);
@@ -159,6 +222,9 @@ export const WorkoutSessionEditor = ({
   const [noteOpenIds, setNoteOpenIds] = useState<Set<string>>(() => new Set());
   const [savePulse, setSavePulse] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [thumbnailMap, setThumbnailMap] = useState<Record<string, string | null>>({});
+  const [unitUsed, setUnitUsed] = useState<"lb" | "kg">("lb");
+  const [advancedLogging, setAdvancedLogging] = useState(false);
   const draftTimerRef = useRef<number | null>(null);
   const navigationType = useNavigationType();
   const shouldAnimateList = navigationType !== "POP";
@@ -195,9 +261,11 @@ export const WorkoutSessionEditor = ({
               id: createId(),
               weight: set.weight ?? "",
               reps: set.reps ?? "",
-              previous: formatPrevious(set.weight ?? "", set.reps ?? ""),
+              previous: formatPrevious(set.weight ?? "", set.reps ?? "", unitUsed),
+              rpe: "",
+              restSeconds: "",
             }))
-          : createDefaultSets();
+          : createDefaultSets(unitUsed);
         return {
           id: exercise.id,
           name: exercise.name,
@@ -210,6 +278,40 @@ export const WorkoutSessionEditor = ({
       }),
     );
   }, [workout, mode, workoutDrafts]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem("ironflow-advanced-logging");
+    if (stored) {
+      setAdvancedLogging(stored === "true");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      "ironflow-advanced-logging",
+      advancedLogging ? "true" : "false",
+    );
+  }, [advancedLogging]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadUnit = async () => {
+      try {
+        await ensureUser();
+        const response = await fetchActivityGoals();
+        const unit = response.goals?.weight_unit === "kg" ? "kg" : "lb";
+        if (!cancelled) setUnitUsed(unit);
+      } catch {
+        if (!cancelled) setUnitUsed("lb");
+      }
+    };
+    void loadUnit();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -228,6 +330,34 @@ export const WorkoutSessionEditor = ({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const names = Array.from(new Set(exercises.map((exercise) => exercise.name).filter(Boolean)));
+      for (const name of names) {
+        if (cancelled) return;
+        if (thumbnailCache.has(name)) {
+          const cached = thumbnailCache.get(name) ?? null;
+          setThumbnailMap((prev) => (prev[name] === cached ? prev : { ...prev, [name]: cached }));
+          continue;
+        }
+        try {
+          const response = await fetchExerciseByName(name);
+          const record = response.exercise as { image_url?: string | null } | null;
+          const url = record?.image_url ?? null;
+          thumbnailCache.set(name, url);
+          setThumbnailMap((prev) => ({ ...prev, [name]: url }));
+        } catch {
+          thumbnailCache.set(name, null);
+        }
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [exercises]);
 
   const isEditMode = mode === "edit";
   const listVariants = useMemo(
@@ -259,7 +389,7 @@ export const WorkoutSessionEditor = ({
           steps: [],
           guideUrl: "",
           customVideoName: "",
-          sets: createDefaultSets(),
+          sets: createDefaultSets(unitUsed),
         },
       ]);
       return;
@@ -338,10 +468,16 @@ export const WorkoutSessionEditor = ({
     () =>
       exercises.some((exercise) =>
         exercise.sets.some(
-          (set) => !isValidNumber(set.weight) || !isValidNumber(set.reps),
+          (set) =>
+            !isValidNumber(set.weight) ||
+            !isValidNumber(set.reps) ||
+            (mode === "session" &&
+              advancedLogging &&
+              (!isValidOptionalRange(set.rpe ?? "", 1, 10) ||
+                !isValidOptionalMin(set.restSeconds ?? "", 0))),
         ),
       ),
-    [exercises],
+    [advancedLogging, exercises, mode],
   );
 
   const handleDragEnd = (event: { active: { id: string }; over?: { id: string } | null }) => {
@@ -403,6 +539,45 @@ export const WorkoutSessionEditor = ({
             Fix invalid numbers before saving.
           </p>
         ) : null}
+        {mode === "session" ? (
+          <div className="mt-4 flex items-center justify-between rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="advanced-logging"
+                checked={advancedLogging}
+                onCheckedChange={setAdvancedLogging}
+              />
+              <Label htmlFor="advanced-logging" className="text-white/80">
+                Advanced logging
+              </Label>
+            </div>
+            <div className="flex items-center gap-1 rounded-full bg-white/10 p-1">
+              {(["lb", "kg"] as const).map((unit) => (
+                <button
+                  key={unit}
+                  type="button"
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em]",
+                    unitUsed === unit
+                      ? "bg-emerald-400 text-slate-950"
+                      : "text-white/70 hover:text-white",
+                  )}
+                  onClick={async () => {
+                    setUnitUsed(unit);
+                    try {
+                      await ensureUser();
+                      await upsertActivityGoals({ weightUnit: unit });
+                    } catch {
+                      toast("Unable to save unit preference.");
+                    }
+                  }}
+                >
+                  {unit}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-6 space-y-4">
           {isEditMode && onStartSession ? (
@@ -457,366 +632,481 @@ export const WorkoutSessionEditor = ({
                 animate={shouldAnimateList ? "show" : undefined}
                 className="space-y-4"
               >
-                {exercises.map((exercise) => (
+                {exercises.map((exercise) => {
+                  const thumb = thumbnailMap[exercise.name] ?? null;
+                  return (
                     <SortableExercise
-                    key={exercise.id}
-                    id={exercise.id}
-                    disabled={!isEditMode}
-                            className="relative rounded-[22px] border border-white/10 bg-white/5 px-3 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/30 touch-none will-change-transform"
-                    variants={itemVariants}
-                    handle={<svg viewBox="0 0 24 24" className="h-4 w-4">
-                      <circle cx="9" cy="7" r="1.5" fill="currentColor" />
-                      <circle cx="15" cy="7" r="1.5" fill="currentColor" />
-                      <circle cx="9" cy="12" r="1.5" fill="currentColor" />
-                      <circle cx="15" cy="12" r="1.5" fill="currentColor" />
-                      <circle cx="9" cy="17" r="1.5" fill="currentColor" />
-                      <circle cx="15" cy="17" r="1.5" fill="currentColor" />
-                    </svg>}
-                  >
-                <div className="flex items-start gap-2 pl-11">
-                  <div className="min-w-0 flex-1">
-                    <button
-                      type="button"
-                      className="text-left text-lg font-semibold text-white hover:text-emerald-200"
-                      onClick={() =>
-                        onOpenGuide?.({ id: exercise.id, name: exercise.name })
-                      }
-                      onPointerDown={() => {
-                        if (exercise.name) {
-                          preloadExerciseGuide(exercise.name);
-                        }
-                      }}
-                      onMouseEnter={() => {
-                        preloadExerciseGuide(exercise.name);
-                      }}
-                      data-swipe-ignore
+                      key={exercise.id}
+                      id={exercise.id}
+                      disabled={!isEditMode}
+                      className="relative rounded-[22px] border border-white/10 bg-white/5 px-3 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/30 touch-none will-change-transform"
+                      variants={itemVariants}
+                      renderActivator={({ setActivatorNodeRef, listeners, isDragging }) => (
+                        <button
+                          type="button"
+                          ref={setActivatorNodeRef}
+                          className={cn(
+                            "absolute left-3 top-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-400/20 via-slate-950 to-slate-900 text-xs font-semibold uppercase tracking-[0.2em] text-white/70",
+                            isDragging && "opacity-80",
+                          )}
+                          {...listeners}
+                          aria-label="Drag to reorder"
+                          data-swipe-ignore
+                        >
+                          {thumb ? (
+                            <img
+                              src={thumb}
+                              alt={`${exercise.name} thumbnail`}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span>{getInitials(exercise.name || "Move")}</span>
+                          )}
+                        </button>
+                      )}
                     >
-                      {exercise.name}
-                    </button>
-                    {exercise.note || noteOpenIds.has(exercise.id) ? (
-                      <Textarea
-                        value={exercise.note}
-                        onChange={(event) => {
-                          const value = event.target.value;
+                      <div className="flex items-start gap-3 pl-16">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <button
+                                type="button"
+                                className="text-left text-lg font-semibold text-white hover:text-emerald-200"
+                                onClick={() =>
+                                  onOpenGuide?.({ id: exercise.id, name: exercise.name })
+                                }
+                                onPointerDown={() => {
+                                  if (exercise.name) {
+                                    preloadExerciseGuide(exercise.name);
+                                  }
+                                }}
+                                onMouseEnter={() => {
+                                  preloadExerciseGuide(exercise.name);
+                                }}
+                                data-swipe-ignore
+                              >
+                                {exercise.name}
+                              </button>
+                              <p className="mt-1 text-xs text-white/50">
+                                {exercise.sets.length} sets
+                              </p>
+                              {exercise.note || noteOpenIds.has(exercise.id) ? (
+                                <Textarea
+                                  value={exercise.note}
+                                  onChange={(event) => {
+                                    const value = event.target.value;
+                                    setExercises((prev) =>
+                                      prev.map((item) =>
+                                        item.id === exercise.id
+                                          ? { ...item, note: value }
+                                          : item,
+                                      ),
+                                    );
+                                  }}
+                                  onBlur={() => {
+                                    if (!exercise.note.trim()) {
+                                      setNoteOpenIds((prev) => {
+                                        const next = new Set(prev);
+                                        next.delete(exercise.id);
+                                        return next;
+                                      });
+                                    }
+                                  }}
+                                  onPointerDown={(event) => event.stopPropagation()}
+                                  placeholder="Add a quick cue..."
+                                  rows={1}
+                                  className="mt-2 min-h-[40px] resize-none border-white/10 bg-white/5 text-white placeholder:text-white/40 select-text"
+                                  disabled={!isEditMode}
+                                  data-swipe-ignore
+                                />
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="mt-2 rounded-full border border-white/10 px-3 py-1 text-xs text-white/60 hover:border-white/30 hover:text-white"
+                                  onClick={() =>
+                                    setNoteOpenIds((prev) => new Set(prev).add(exercise.id))
+                                  }
+                                  disabled={!isEditMode}
+                                  data-swipe-ignore
+                                >
+                                  Add note
+                                </button>
+                              )}
+                            </div>
+                            {isEditMode ? (
+                              <div className="flex items-center gap-2">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-9 w-9 rounded-full bg-white/10 text-white hover:bg-white/20"
+                                      data-swipe-ignore
+                                    >
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    side="bottom"
+                                    align="end"
+                                    className="border-white/10 bg-slate-950 text-white"
+                                  >
+                                    {isAdmin ? (
+                                      <DropdownMenuItem
+                                        onSelect={() => {
+                                          if (!onEditExercise) {
+                                            toast("Edit exercise unavailable");
+                                            return;
+                                          }
+                                          onEditExercise({
+                                            id: exercise.id,
+                                            name: exercise.name,
+                                          });
+                                        }}
+                                      >
+                                        <PencilLine className="h-4 w-4" />
+                                        Edit exercise
+                                      </DropdownMenuItem>
+                                    ) : null}
+                                    <DropdownMenuItem
+                                      onSelect={() => {
+                                        setReplaceTargetId(exercise.id);
+                                        setReplaceOpen(true);
+                                      }}
+                                    >
+                                      Replace exercise
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <DropdownMenuItem className="text-rose-200 focus:text-rose-100">
+                                          <Trash2 className="h-4 w-4" />
+                                          Delete
+                                        </DropdownMenuItem>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent className="border-white/10 bg-slate-950 text-white">
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Remove this exercise?</AlertDialogTitle>
+                                          <AlertDialogDescription className="text-white/60">
+                                            This deletes it from the workout template.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel className="rounded-full border-white/20 text-white hover:bg-white/10">
+                                            Cancel
+                                          </AlertDialogCancel>
+                                          <AlertDialogAction
+                                            className="rounded-full bg-rose-500 text-white hover:bg-rose-400"
+                                            onClick={() => {
+                                              setExercises((prev) =>
+                                                prev.filter((item) => item.id !== exercise.id),
+                                              );
+                                            }}
+                                          >
+                                            Remove
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-[48px_1fr_72px_72px] items-center gap-3 text-xs uppercase tracking-[0.2em] text-white/40">
+                        <span>Set</span>
+                        <span>Previous</span>
+                        <span>{unitUsed}</span>
+                        <span>Reps</span>
+                      </div>
+
+                      <div className="mt-3 space-y-3">
+                        {exercise.sets.map((set, setIndex) => {
+                          const weightValid = isValidNumber(set.weight);
+                          const repsValid = isValidNumber(set.reps);
+                          const rpeValid = isValidOptionalRange(set.rpe ?? "", 1, 10);
+                          const restValid = isValidOptionalMin(set.restSeconds ?? "", 0);
+                          const restValue = Number(set.restSeconds);
+                          const restSeconds = Number.isFinite(restValue) ? restValue : 120;
+                          const restLabel = `${Math.floor(restSeconds / 60)}:${String(
+                            restSeconds % 60,
+                          ).padStart(2, "0")}`;
+                          return (
+                            <div key={set.id} className="space-y-2">
+                              <div
+                                className="relative overflow-hidden rounded-[18px]"
+                                onPointerDown={(event) => {
+                                  if (event.pointerType === "mouse") return;
+                                  setSwipeState.current = {
+                                    id: set.id,
+                                    startX: event.clientX,
+                                    startY: event.clientY,
+                                    active: true,
+                                  };
+                                }}
+                                onPointerMove={(event) => {
+                                  const state = setSwipeState.current;
+                                  if (!state?.active || state.id !== set.id) return;
+                                  const deltaX = event.clientX - state.startX;
+                                  const deltaY = event.clientY - state.startY;
+                                  if (
+                                    Math.abs(deltaY) > Math.abs(deltaX) &&
+                                    Math.abs(deltaY) > 12
+                                  ) {
+                                    state.active = false;
+                                    return;
+                                  }
+                                  if (deltaX < -24) {
+                                    setSwipedSetId(set.id);
+                                  } else if (deltaX > 12) {
+                                    setSwipedSetId(null);
+                                  }
+                                }}
+                                onPointerUp={() => {
+                                  if (setSwipeState.current?.id === set.id) {
+                                    setSwipeState.current.active = false;
+                                  }
+                                }}
+                                onPointerCancel={() => {
+                                  if (setSwipeState.current?.id === set.id) {
+                                    setSwipeState.current.active = false;
+                                  }
+                                }}
+                              >
+                                <div
+                                  className={cn(
+                                    "absolute inset-y-0 right-0 flex items-center justify-end px-3",
+                                    swipedSetId === set.id ? "opacity-100" : "opacity-0",
+                                  )}
+                                >
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-9 w-9 rounded-full bg-rose-500 text-white hover:bg-rose-400"
+                                    onClick={() => {
+                                      setExercises((prev) =>
+                                        prev.map((item) =>
+                                          item.id === exercise.id
+                                            ? {
+                                                ...item,
+                                                sets: item.sets.filter(
+                                                  (row) => row.id !== set.id,
+                                                ),
+                                              }
+                                            : item,
+                                        ),
+                                      );
+                                      setSwipedSetId(null);
+                                    }}
+                                    data-swipe-ignore
+                                  >
+                                    ✕
+                                  </Button>
+                                </div>
+                                <div
+                                  className={cn(
+                                    "grid grid-cols-[48px_1fr_72px_72px] items-center gap-3 transition-transform duration-200",
+                                    swipedSetId === set.id
+                                      ? "-translate-x-12"
+                                      : "translate-x-0",
+                                  )}
+                                >
+                                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold text-white">
+                                    {setIndex + 1}
+                                  </div>
+                                  <span className="text-sm text-white/50">
+                                    {set.previous}
+                                  </span>
+                                  <Input
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={set.weight}
+                                    onChange={(event) => {
+                                      const value = event.target.value;
+                                      setExercises((prev) =>
+                                        prev.map((item) =>
+                                          item.id === exercise.id
+                                            ? {
+                                                ...item,
+                                                sets: item.sets.map((row) =>
+                                                  row.id === set.id
+                                                    ? { ...row, weight: value }
+                                                    : row,
+                                                ),
+                                              }
+                                            : item,
+                                        ),
+                                      );
+                                    }}
+                                    onPointerDown={(event) => event.stopPropagation()}
+                                    aria-invalid={!weightValid}
+                                    className={cn(
+                                      "h-10 rounded-2xl border-white/10 bg-white/5 text-center text-white select-text",
+                                      !weightValid && "border-rose-400/60",
+                                    )}
+                                    data-swipe-ignore
+                                  />
+                                  <Input
+                                    type="number"
+                                    inputMode="numeric"
+                                    value={set.reps}
+                                    onChange={(event) => {
+                                      const value = event.target.value;
+                                      setExercises((prev) =>
+                                        prev.map((item) =>
+                                          item.id === exercise.id
+                                            ? {
+                                                ...item,
+                                                sets: item.sets.map((row) =>
+                                                  row.id === set.id
+                                                    ? { ...row, reps: value }
+                                                    : row,
+                                                ),
+                                              }
+                                            : item,
+                                        ),
+                                      );
+                                    }}
+                                    onPointerDown={(event) => event.stopPropagation()}
+                                    aria-invalid={!repsValid}
+                                    className={cn(
+                                      "h-10 rounded-2xl border-white/10 bg-white/5 text-center text-white select-text",
+                                      !repsValid && "border-rose-400/60",
+                                    )}
+                                    data-swipe-ignore
+                                  />
+                                </div>
+                              </div>
+                              {!weightValid || !repsValid ? (
+                                <p className="text-xs text-rose-300">
+                                  Use positive numbers for weight and reps.
+                                </p>
+                              ) : null}
+                              {mode === "session" && advancedLogging ? (
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-1">
+                                    <Label className="text-[11px] uppercase tracking-[0.2em] text-white/40">
+                                      RPE
+                                    </Label>
+                                    <Input
+                                      type="number"
+                                      inputMode="decimal"
+                                      value={set.rpe ?? ""}
+                                      onChange={(event) => {
+                                        const value = event.target.value;
+                                        setExercises((prev) =>
+                                          prev.map((item) =>
+                                            item.id === exercise.id
+                                              ? {
+                                                  ...item,
+                                                  sets: item.sets.map((row) =>
+                                                    row.id === set.id
+                                                      ? { ...row, rpe: value }
+                                                      : row,
+                                                  ),
+                                                }
+                                              : item,
+                                          ),
+                                        );
+                                      }}
+                                      onPointerDown={(event) => event.stopPropagation()}
+                                      aria-invalid={!rpeValid}
+                                      className={cn(
+                                        "h-9 rounded-2xl border-white/10 bg-white/5 text-center text-white select-text",
+                                        !rpeValid && "border-rose-400/60",
+                                      )}
+                                      placeholder="8.5"
+                                      data-swipe-ignore
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-[11px] uppercase tracking-[0.2em] text-white/40">
+                                      Rest (sec)
+                                    </Label>
+                                    <Input
+                                      type="number"
+                                      inputMode="numeric"
+                                      value={set.restSeconds ?? ""}
+                                      onChange={(event) => {
+                                        const value = event.target.value;
+                                        setExercises((prev) =>
+                                          prev.map((item) =>
+                                            item.id === exercise.id
+                                              ? {
+                                                  ...item,
+                                                  sets: item.sets.map((row) =>
+                                                    row.id === set.id
+                                                      ? { ...row, restSeconds: value }
+                                                      : row,
+                                                  ),
+                                                }
+                                              : item,
+                                          ),
+                                        );
+                                      }}
+                                      onPointerDown={(event) => event.stopPropagation()}
+                                      aria-invalid={!restValid}
+                                      className={cn(
+                                        "h-9 rounded-2xl border-white/10 bg-white/5 text-center text-white select-text",
+                                        !restValid && "border-rose-400/60",
+                                      )}
+                                      placeholder="120"
+                                      data-swipe-ignore
+                                    />
+                                  </div>
+                                </div>
+                              ) : null}
+                              {mode === "session" ? (
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-white/40">
+                                    <span>Rest</span>
+                                    <span>{restLabel}</span>
+                                  </div>
+                                  <div className="h-1 rounded-full bg-white/10">
+                                    <div className="h-1 origin-left rounded-full bg-emerald-400/70 animate-restBar" />
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        className="mt-3 w-full rounded-full border-white/20 text-white hover:bg-white/10"
+                        onClick={() =>
                           setExercises((prev) =>
                             prev.map((item) =>
                               item.id === exercise.id
-                                ? { ...item, note: value }
+                                ? {
+                                    ...item,
+                                    sets: [
+                                      ...item.sets,
+                                      {
+                                        id: createId(),
+                                        weight: "",
+                                        reps: "",
+                                        previous: "—",
+                                        rpe: "",
+                                        restSeconds: "",
+                                      },
+                                    ],
+                                  }
                                 : item,
                             ),
-                          );
-                        }}
-                        onBlur={() => {
-                          if (!exercise.note.trim()) {
-                            setNoteOpenIds((prev) => {
-                              const next = new Set(prev);
-                              next.delete(exercise.id);
-                              return next;
-                            });
-                          }
-                        }}
-                        onPointerDown={(event) => event.stopPropagation()}
-                        placeholder="Add a quick cue..."
-                        rows={1}
-                        className="mt-2 min-h-[40px] resize-none border-white/10 bg-white/5 text-white placeholder:text-white/40 select-text"
-                        disabled={!isEditMode}
-                        data-swipe-ignore
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        className="mt-2 rounded-full border border-white/10 px-3 py-1 text-xs text-white/60 hover:border-white/30 hover:text-white"
-                        onClick={() =>
-                          setNoteOpenIds((prev) => new Set(prev).add(exercise.id))
+                          )
                         }
-                        disabled={!isEditMode}
-                        data-swipe-ignore
                       >
-                        Add note
-                      </button>
-                    )}
-                  </div>
-                  {isEditMode ? (
-                    <div className="flex items-center gap-2">
-                        {isAdmin ? (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 w-9 rounded-full bg-emerald-400/20 text-emerald-100 hover:bg-emerald-400/30"
-                            onClick={() => {
-                              if (!onEditExercise) {
-                                toast("Edit exercise unavailable");
-                                return;
-                              }
-                              onEditExercise({
-                                id: exercise.id,
-                                name: exercise.name,
-                              });
-                            }}
-                            data-swipe-ignore
-                            aria-label="Edit exercise"
-                          >
-                            <PencilLine className="h-4 w-4" />
-                          </Button>
-                        ) : null}
-                          <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 rounded-full bg-white/10 text-white hover:bg-white/20"
-                        onClick={() => {
-                          setReplaceTargetId(exercise.id);
-                          setReplaceOpen(true);
-                        }}
-                        data-swipe-ignore
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
+                        <Plus className="h-4 w-4" />
+                        Add set
                       </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 w-9 rounded-full bg-rose-500/20 text-rose-100 hover:bg-rose-500/30"
-                            data-swipe-ignore
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="border-white/10 bg-slate-950 text-white">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Remove this exercise?</AlertDialogTitle>
-                            <AlertDialogDescription className="text-white/60">
-                              This deletes it from the workout template.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel className="rounded-full border-white/20 text-white hover:bg-white/10">
-                              Cancel
-                            </AlertDialogCancel>
-                            <AlertDialogAction
-                              className="rounded-full bg-rose-500 text-white hover:bg-rose-400"
-                              onClick={() => {
-                                setExercises((prev) =>
-                                  prev.filter((item) => item.id !== exercise.id),
-                                );
-                              }}
-                            >
-                              Remove
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="mt-3 grid grid-cols-[48px_1fr_72px_72px] items-center gap-3 text-xs uppercase tracking-[0.2em] text-white/40">
-                <span>Set</span>
-                <span>Previous</span>
-                <span>lbs</span>
-                <span>Reps</span>
-              </div>
-
-              <div className="mt-3 space-y-3">
-                {exercise.sets.map((set, setIndex) => {
-                  const weightValid = isValidNumber(set.weight);
-                  const repsValid = isValidNumber(set.reps);
-                  return (
-                    <div key={set.id} className="space-y-2">
-                      <div
-                        className="relative overflow-hidden rounded-[18px]"
-                        onPointerDown={(event) => {
-                          if (event.pointerType === "mouse") return;
-                          setSwipeState.current = {
-                            id: set.id,
-                            startX: event.clientX,
-                            startY: event.clientY,
-                            active: true,
-                          };
-                        }}
-                        onPointerMove={(event) => {
-                          const state = setSwipeState.current;
-                          if (!state?.active || state.id !== set.id) return;
-                          const deltaX = event.clientX - state.startX;
-                          const deltaY = event.clientY - state.startY;
-                          if (
-                            Math.abs(deltaY) > Math.abs(deltaX) &&
-                            Math.abs(deltaY) > 12
-                          ) {
-                            state.active = false;
-                            return;
-                          }
-                          if (deltaX < -24) {
-                            setSwipedSetId(set.id);
-                          } else if (deltaX > 12) {
-                            setSwipedSetId(null);
-                          }
-                        }}
-                        onPointerUp={() => {
-                          if (setSwipeState.current?.id === set.id) {
-                            setSwipeState.current.active = false;
-                          }
-                        }}
-                        onPointerCancel={() => {
-                          if (setSwipeState.current?.id === set.id) {
-                            setSwipeState.current.active = false;
-                          }
-                        }}
-                      >
-                        <div
-                          className={cn(
-                            "absolute inset-y-0 right-0 flex items-center justify-end px-3",
-                            swipedSetId === set.id ? "opacity-100" : "opacity-0",
-                          )}
-                        >
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-9 w-9 rounded-full bg-rose-500 text-white hover:bg-rose-400"
-                            onClick={() => {
-                              setExercises((prev) =>
-                                prev.map((item) =>
-                                  item.id === exercise.id
-                                    ? {
-                                        ...item,
-                                        sets: item.sets.filter(
-                                          (row) => row.id !== set.id,
-                                        ),
-                                      }
-                                    : item,
-                                ),
-                              );
-                              setSwipedSetId(null);
-                            }}
-                            data-swipe-ignore
-                          >
-                            ✕
-                          </Button>
-                        </div>
-                        <div
-                          className={cn(
-                            "grid grid-cols-[48px_1fr_72px_72px] items-center gap-3 transition-transform duration-200",
-                            swipedSetId === set.id
-                              ? "-translate-x-12"
-                              : "translate-x-0",
-                          )}
-                        >
-                          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold text-white">
-                            {setIndex + 1}
-                          </div>
-                          <span className="text-sm text-white/50">
-                            {set.previous}
-                          </span>
-                          <Input
-                            type="number"
-                            inputMode="decimal"
-                            value={set.weight}
-                            onChange={(event) => {
-                              const value = event.target.value;
-                              setExercises((prev) =>
-                                prev.map((item) =>
-                                  item.id === exercise.id
-                                    ? {
-                                        ...item,
-                                        sets: item.sets.map((row) =>
-                                          row.id === set.id
-                                            ? { ...row, weight: value }
-                                            : row,
-                                        ),
-                                      }
-                                    : item,
-                                ),
-                              );
-                            }}
-                            onPointerDown={(event) => event.stopPropagation()}
-                            aria-invalid={!weightValid}
-                            className={cn(
-                              "h-10 rounded-2xl border-white/10 bg-white/5 text-center text-white select-text",
-                              !weightValid && "border-rose-400/60",
-                            )}
-                            data-swipe-ignore
-                          />
-                          <Input
-                            type="number"
-                            inputMode="numeric"
-                            value={set.reps}
-                            onChange={(event) => {
-                              const value = event.target.value;
-                              setExercises((prev) =>
-                                prev.map((item) =>
-                                  item.id === exercise.id
-                                    ? {
-                                        ...item,
-                                        sets: item.sets.map((row) =>
-                                          row.id === set.id
-                                            ? { ...row, reps: value }
-                                            : row,
-                                        ),
-                                      }
-                                    : item,
-                                ),
-                              );
-                            }}
-                            onPointerDown={(event) => event.stopPropagation()}
-                            aria-invalid={!repsValid}
-                            className={cn(
-                              "h-10 rounded-2xl border-white/10 bg-white/5 text-center text-white select-text",
-                              !repsValid && "border-rose-400/60",
-                            )}
-                            data-swipe-ignore
-                          />
-                        </div>
-                      </div>
-                      {!weightValid || !repsValid ? (
-                        <p className="text-xs text-rose-300">
-                          Use positive numbers for weight and reps.
-                        </p>
-                      ) : null}
-                      {mode === "session" ? (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-white/40">
-                            <span>Rest</span>
-                            <span>2:00</span>
-                          </div>
-                          <div className="h-1 rounded-full bg-white/10">
-                            <div className="h-1 origin-left rounded-full bg-emerald-400/70 animate-restBar" />
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
+                    </SortableExercise>
                   );
                 })}
-              </div>
-
-              <Button
-                variant="outline"
-                className="mt-3 w-full rounded-full border-white/20 text-white hover:bg-white/10"
-                onClick={() =>
-                  setExercises((prev) =>
-                    prev.map((item) =>
-                      item.id === exercise.id
-                        ? {
-                            ...item,
-                            sets: [
-                              ...item.sets,
-                              {
-                                id: createId(),
-                                weight: "",
-                                reps: "",
-                                previous: "—",
-                              },
-                            ],
-                          }
-                        : item,
-                    ),
-                  )
-                }
-              >
-                <Plus className="h-4 w-4" />
-                Add set
-              </Button>
-                  </SortableExercise>
-                ))}
               </motion.div>
             </SortableContext>
             <DragOverlay>

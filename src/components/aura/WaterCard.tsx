@@ -8,13 +8,20 @@ type WaterCardProps = {
   totalMl: number;
   goalMl: number;
   onAdd: (amountMl: number) => void;
+  onSetTotal?: (totalMl: number) => void;
   onGoalSave?: (goalMl: number) => void;
 };
 
 const formatMl = (value: number) => `${Math.round(value)} ml`;
 const formatOz = (value: number) => `${Math.round(value / 29.5735)} fl oz`;
 
-export const WaterCard = ({ totalMl, goalMl, onAdd, onGoalSave }: WaterCardProps) => {
+export const WaterCard = ({
+  totalMl,
+  goalMl,
+  onAdd,
+  onSetTotal,
+  onGoalSave,
+}: WaterCardProps) => {
   const [custom, setCustom] = useState("");
   const [goalInput, setGoalInput] = useState(String(goalMl));
   const stepMl = 250;
@@ -30,6 +37,16 @@ export const WaterCard = ({ totalMl, goalMl, onAdd, onGoalSave }: WaterCardProps
       })),
     [filled],
   );
+
+  const handleCupSelect = (index: number) => {
+    const nextTotal = (index + 1) * stepMl;
+    if (onSetTotal) {
+      onSetTotal(nextTotal);
+      return;
+    }
+    const delta = nextTotal - totalMl;
+    if (delta > 0) onAdd(delta);
+  };
 
   const addCustom = () => {
     const numeric = Number(custom);
@@ -65,7 +82,7 @@ export const WaterCard = ({ totalMl, goalMl, onAdd, onGoalSave }: WaterCardProps
       <div className="mt-4 rounded-[20px] border border-emerald-100 bg-emerald-50/60 px-4 py-4">
         <div className="flex items-center justify-between text-xs text-emerald-700/80">
           <span>Goal {formatMl(goalMl)}</span>
-          <span>Tap a cup to add {stepMl} ml</span>
+          <span>Tap a cup to set your count</span>
         </div>
         <div className="mt-4 grid grid-cols-8 gap-2">
           {cups.map((cup) => {
@@ -74,14 +91,16 @@ export const WaterCard = ({ totalMl, goalMl, onAdd, onGoalSave }: WaterCardProps
               <button
                 key={cup.id}
                 type="button"
-                onClick={() => onAdd(stepMl)}
-                className="relative flex h-12 items-end justify-center rounded-[14px] border border-emerald-200 bg-white transition hover:bg-emerald-50"
-                aria-label={`Add ${stepMl} ml`}
+                onClick={() => handleCupSelect(cup.id)}
+                className={`relative flex h-12 items-end justify-center rounded-[14px] border border-emerald-200 bg-white transition hover:bg-emerald-50 ${
+                  cup.active ? "animate-waterPop" : ""
+                }`}
+                aria-label={`Set water to ${formatMl((cup.id + 1) * stepMl)}`}
               >
                 <span
-                  className={`absolute inset-x-1 bottom-1 rounded-[10px] transition ${
+                  className={`absolute inset-x-1 bottom-1 origin-bottom rounded-[10px] transition-[height] duration-500 ease-out ${
                     cup.active
-                      ? "bg-gradient-to-t from-emerald-400 to-sky-300"
+                      ? "bg-gradient-to-t from-emerald-400 via-teal-300 to-sky-200 animate-waterFill"
                       : "bg-emerald-100/60"
                   }`}
                   style={{ height: cup.active ? "70%" : "20%" }}

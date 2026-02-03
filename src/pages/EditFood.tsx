@@ -49,6 +49,7 @@ type NutritionDraft = {
 
 type LocationState = {
   food?: FoodItem;
+  returnTo?: string;
 };
 
 type ServingOption = {
@@ -121,6 +122,7 @@ const EditFood = () => {
   const isAdmin = email?.toLowerCase() === "ahoin001@gmail.com";
   const { upsertOverride, updateFoodMaster } = foodCatalog;
   const state = (location.state ?? {}) as LocationState;
+  const returnTo = state.returnTo ?? "/nutrition";
   const [currentFood, setCurrentFood] = useState<FoodItem | null>(
     state.food ?? null,
   );
@@ -131,6 +133,7 @@ const EditFood = () => {
   const [newServingUnit, setNewServingUnit] = useState("serving");
   const [newServingGrams, setNewServingGrams] = useState("");
   const [customServings, setCustomServings] = useState<ServingOption[]>([]);
+  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const [adminEditing, setAdminEditing] = useState(isAdmin);
@@ -245,7 +248,7 @@ const EditFood = () => {
             variant="ghost"
             size="icon"
             className="h-10 w-10 rounded-full bg-white/80 text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate(returnTo)}
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
@@ -266,7 +269,7 @@ const EditFood = () => {
             variant="ghost"
             size="icon"
             className="h-10 w-10 rounded-full bg-white/80 text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate(returnTo)}
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
@@ -388,8 +391,10 @@ const EditFood = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                    Weight
+                  <SelectLabel>
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
+                      Weight
+                    </span>
                   </SelectLabel>
                   {servingUnits.weight.map((unit) => (
                     <SelectItem key={unit.value} value={unit.value}>
@@ -399,8 +404,10 @@ const EditFood = () => {
                 </SelectGroup>
                 <SelectSeparator />
                 <SelectGroup>
-                  <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                    Volume
+                  <SelectLabel>
+                    <span className="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-600">
+                      Volume
+                    </span>
                   </SelectLabel>
                   {servingUnits.volume.map((unit) => (
                     <SelectItem key={unit.value} value={unit.value}>
@@ -410,8 +417,10 @@ const EditFood = () => {
                 </SelectGroup>
                 <SelectSeparator />
                 <SelectGroup>
-                  <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                    Count
+                  <SelectLabel>
+                    <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-600">
+                      Count
+                    </span>
                   </SelectLabel>
                   {servingUnits.count.map((unit) => (
                     <SelectItem key={unit.value} value={unit.value}>
@@ -476,8 +485,10 @@ const EditFood = () => {
                 </SelectTrigger>
                 <SelectContent>
                 <SelectGroup>
-                  <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                    Weight
+                  <SelectLabel>
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
+                      Weight
+                    </span>
                   </SelectLabel>
                   {servingUnits.weight.map((unit) => (
                     <SelectItem key={unit.value} value={unit.value}>
@@ -487,8 +498,10 @@ const EditFood = () => {
                 </SelectGroup>
                 <SelectSeparator />
                 <SelectGroup>
-                  <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                    Volume
+                  <SelectLabel>
+                    <span className="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-600">
+                      Volume
+                    </span>
                   </SelectLabel>
                   {servingUnits.volume.map((unit) => (
                     <SelectItem key={unit.value} value={unit.value}>
@@ -498,8 +511,10 @@ const EditFood = () => {
                 </SelectGroup>
                 <SelectSeparator />
                 <SelectGroup>
-                  <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                    Count
+                  <SelectLabel>
+                    <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-600">
+                      Count
+                    </span>
                   </SelectLabel>
                   {servingUnits.count.map((unit) => (
                     <SelectItem key={unit.value} value={unit.value}>
@@ -694,7 +709,10 @@ const EditFood = () => {
           className="mt-6 w-full rounded-full bg-aura-primary py-5 text-sm font-semibold text-white"
           onClick={async () => {
             if (!draft || !canSave) return;
-            if (adminEditing && isAdmin) {
+            if (saving) return;
+            setSaving(true);
+            try {
+              if (adminEditing && isAdmin) {
               const nextMicros = { ...(currentFood.micronutrients ?? {}) } as Record<
                 string,
                 number | string
@@ -734,22 +752,26 @@ const EditFood = () => {
                   description: "Food details updated successfully.",
                 });
               }
-            } else {
-              const updated = upsertOverride(currentFood, {
-                kcal: draft.kcal,
-                portion: draft.portion,
-                macros: {
-                  carbs: draft.carbs,
-                  protein: draft.protein,
-                  fat: draft.fat,
-                },
-              });
-              setCurrentFood(updated);
-              toast("Nutrition updated");
+              } else {
+                const updated = upsertOverride(currentFood, {
+                  kcal: draft.kcal,
+                  portion: draft.portion,
+                  macros: {
+                    carbs: draft.carbs,
+                    protein: draft.protein,
+                    fat: draft.fat,
+                  },
+                });
+                setCurrentFood(updated);
+                toast("Nutrition updated");
+              }
+            } finally {
+              setSaving(false);
             }
           }}
+          disabled={saving}
         >
-          {adminEditing ? "Save changes" : "Save nutrition"}
+          {saving ? "Saving..." : adminEditing ? "Save changes" : "Save nutrition"}
         </Button>
       </div>
     </AppShell>

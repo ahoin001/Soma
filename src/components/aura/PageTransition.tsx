@@ -14,15 +14,15 @@ export const PageTransition = ({
   return (
     <motion.div
       className="min-h-screen bg-background"
-      style={{ willChange: "transform, opacity" }}
+      style={{ willChange: "opacity, filter" }}
       initial={{
         opacity: 0,
-        y: direction === "back" ? -8 : 8,
+        filter: "blur(8px)",
       }}
-      animate={{ opacity: 1, y: 0 }}
+      animate={{ opacity: 1, filter: "blur(0px)" }}
       exit={{
         opacity: 0,
-        y: direction === "back" ? 6 : -6,
+        filter: "blur(6px)",
       }}
       transition={{ duration: 0.25, ease: "easeOut" }}
     >

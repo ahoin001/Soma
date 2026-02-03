@@ -15,6 +15,7 @@ import {
   fetchActiveFitnessSession,
   fetchFitnessRoutines,
   fetchFitnessSessionHistory,
+  fetchActivityGoals,
   finishFitnessSession,
   logFitnessSet,
   removeFitnessRoutineExercise,
@@ -31,13 +32,15 @@ export const useFitnessPlanner = () => {
   const [sessionExercises, setSessionExercises] = useState<
     Array<{ id: string; exercise_id: number | null; exercise_name: string; item_order: number }>
   >([]);
+  const [weightUnit, setWeightUnit] = useState<"lb" | "kg">("lb");
 
   const refresh = useCallback(async () => {
     await ensureUser();
-    const [routinesRes, activeRes, historyRes] = await Promise.all([
+    const [routinesRes, activeRes, historyRes, goalsRes] = await Promise.all([
       fetchFitnessRoutines(),
       fetchActiveFitnessSession(),
       fetchFitnessSessionHistory(),
+      fetchActivityGoals(),
     ]);
 
     const routineMap = new Map<string, Routine>();
@@ -99,6 +102,8 @@ export const useFitnessPlanner = () => {
         totalVolume: Number(item.total_volume ?? 0),
       })),
     );
+
+    setWeightUnit(goalsRes.goals?.weight_unit === "kg" ? "kg" : "lb");
   }, []);
 
   useEffect(() => {
@@ -194,12 +199,13 @@ export const useFitnessPlanner = () => {
       await logFitnessSet({
         sessionId: activeSession.id,
         sessionExerciseId: sessionExercise.id,
-        weight,
+        weightDisplay: weight,
+        unitUsed: weightUnit,
         reps,
       });
       await refresh();
     },
-    [activeSession, refresh, sessionExercises],
+    [activeSession, refresh, sessionExercises, weightUnit],
   );
 
   const advanceExercise = useCallback(() => {
@@ -254,6 +260,7 @@ export const useFitnessPlanner = () => {
       logSet,
       advanceExercise,
       finishSession,
+      weightUnit,
     }),
     [
       routines,
@@ -273,6 +280,7 @@ export const useFitnessPlanner = () => {
       logSet,
       advanceExercise,
       finishSession,
+      weightUnit,
     ],
   );
 };

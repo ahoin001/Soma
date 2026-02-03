@@ -99,11 +99,23 @@ export default {
           from: { transform: "scaleX(0)" },
           to: { transform: "scaleX(1)" },
         },
+        waterFill: {
+          "0%": { transform: "scaleY(0.25)", opacity: "0.65" },
+          "65%": { transform: "scaleY(1.08)", opacity: "1" },
+          "100%": { transform: "scaleY(1)", opacity: "1" },
+        },
+        waterPop: {
+          "0%": { transform: "scale(0.96)" },
+          "60%": { transform: "scale(1.05)" },
+          "100%": { transform: "scale(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         restBar: "restBar 12s linear infinite",
+        waterFill: "waterFill 0.55s ease-out",
+        waterPop: "waterPop 0.35s ease-out",
       },
     },
   },

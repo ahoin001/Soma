@@ -3,8 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { FoodItem, Meal } from "@/data/mock";
-import { Barcode, Heart, PlusCircle, Search } from "lucide-react";
+import { Barcode, CheckCircle2, Heart, PlusCircle, Search } from "lucide-react";
 import { FoodList } from "./FoodList";
 import { Pressable } from "./Pressable";
 import type { RefObject } from "react";
@@ -18,6 +25,8 @@ type FoodSearchContentProps = {
   searchError?: string | null;
   foods: FoodItem[];
   meal: Meal | null;
+  meals: Meal[];
+  onMealChange: (mealId: string) => void;
   onSelectFood: (food: FoodItem) => void;
   onQuickAddFood: (food: FoodItem) => void;
   onOpenBarcode: () => void;
@@ -36,6 +45,8 @@ export const FoodSearchContent = ({
   searchError,
   foods,
   meal,
+  meals,
+  onMealChange,
   onSelectFood,
   onQuickAddFood,
   onOpenBarcode,
@@ -52,13 +63,43 @@ export const FoodSearchContent = ({
 
   return (
     <div>
-      <div>
+      <div className="flex items-center justify-between">
         <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
           {meal?.label ?? "Meal"}
         </p>
-        <h2 className="text-xl font-display font-semibold text-slate-900">
-          Add food
-        </h2>
+        {meal ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-600">
+            <CheckCircle2 className="h-3 w-3" />
+            Selected
+          </span>
+        ) : null}
+      </div>
+      <h2 className="text-xl font-display font-semibold text-slate-900">
+        Add food
+      </h2>
+
+      <div className="mt-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+          Log to
+        </p>
+        <Select
+          value={meal?.id ?? ""}
+          onValueChange={(value) => {
+            if (value) onMealChange(value);
+          }}
+        >
+          <SelectTrigger className="mt-2 h-10 rounded-full border border-emerald-100 bg-white text-sm shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
+            <SelectValue placeholder="Select a meal" />
+          </SelectTrigger>
+          <SelectContent>
+            {meals.map((entry) => (
+              <SelectItem key={entry.id} value={entry.id}>
+                <span className="mr-2">{entry.emoji}</span>
+                {entry.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3">
@@ -109,6 +150,11 @@ export const FoodSearchContent = ({
           className="h-7 border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
         />
       </div>
+      {isSearching ? (
+        <div className="mt-3 text-xs font-semibold text-emerald-500">
+          Searching foods...
+        </div>
+      ) : null}
       <div className="mt-3 flex items-center justify-between rounded-[18px] border border-emerald-100 bg-white px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
         <div>
           <Label className="text-sm text-slate-800">Use food databases</Label>
@@ -167,38 +213,50 @@ export const FoodSearchContent = ({
         <TabsContent value="recent" className="mt-4">
           <FoodList foods={foods} onSelect={onSelectFood} onQuickAdd={onQuickAddFood} />
           {showEmpty && (
-            <div className="mt-4 rounded-[24px] border border-dashed border-emerald-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+            <EmptyState onAction={onOpenCreate} actionLabel="Create food">
               No results yet. Create a custom food to build your list.
-              <Button
-                variant="secondary"
-                className="mt-3 w-full rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                onClick={onOpenCreate}
-              >
-                Create food
-              </Button>
-            </div>
+            </EmptyState>
           )}
         </TabsContent>
         <TabsContent value="liked" className="mt-4">
           <FoodList foods={foods} onSelect={onSelectFood} onQuickAdd={onQuickAddFood} />
           {showEmpty && (
-            <div className="mt-4 rounded-[24px] border border-dashed border-emerald-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
-              No results yet. Try a different search.
-            </div>
+            <EmptyState>No results yet. Try a different search.</EmptyState>
           )}
         </TabsContent>
         <TabsContent value="history" className="mt-4">
           <FoodList foods={foods} onSelect={onSelectFood} onQuickAdd={onQuickAddFood} />
           {showEmpty && (
-            <div className="mt-4 rounded-[24px] border border-dashed border-emerald-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
-              No results yet. Try a different search.
-            </div>
+            <EmptyState>No results yet. Try a different search.</EmptyState>
           )}
         </TabsContent>
       </Tabs>
     </div>
   );
 };
+
+const EmptyState = ({
+  children,
+  onAction,
+  actionLabel,
+}: {
+  children: React.ReactNode;
+  onAction?: () => void;
+  actionLabel?: string;
+}) => (
+  <div className="mt-4 rounded-[24px] border border-dashed border-emerald-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+    {children}
+    {onAction && actionLabel ? (
+      <Button
+        variant="secondary"
+        className="mt-3 w-full rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+        onClick={onAction}
+      >
+        {actionLabel}
+      </Button>
+    ) : null}
+  </div>
+);
 
 const ActionTile = ({
   icon,

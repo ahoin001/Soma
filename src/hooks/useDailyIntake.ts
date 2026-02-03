@@ -99,6 +99,8 @@ export const useDailyIntake = (
             id: item.id,
             foodId: item.food_id ?? null,
             mealTypeId: entry.meal_type_id ?? null,
+            mealLabel,
+            mealEmoji,
             name: item.food_name,
             quantity: item.quantity ?? 1,
             portionLabel: item.portion_label ?? null,
@@ -137,15 +139,12 @@ export const useDailyIntake = (
       setLogSections(formatted);
 
       const totals = items.reduce(
-        (acc, item) => {
-          const quantity = item.quantity ?? 1;
-          return {
-            kcal: acc.kcal + Number(item.kcal ?? 0) * quantity,
-            carbs: acc.carbs + Number(item.carbs_g ?? 0) * quantity,
-            protein: acc.protein + Number(item.protein_g ?? 0) * quantity,
-            fat: acc.fat + Number(item.fat_g ?? 0) * quantity,
-          };
-        },
+        (acc, item) => ({
+          kcal: acc.kcal + Number(item.kcal ?? 0),
+          carbs: acc.carbs + Number(item.carbs_g ?? 0),
+          protein: acc.protein + Number(item.protein_g ?? 0),
+          fat: acc.fat + Number(item.fat_g ?? 0),
+        }),
         { kcal: 0, carbs: 0, protein: 0, fat: 0 },
       );
 
@@ -187,7 +186,7 @@ export const useDailyIntake = (
       setSummary((prev) => ({
         ...prev,
         goal,
-        kcalLeft: Math.max(goal - (prev.goal - prev.kcalLeft), 0),
+        kcalLeft: Math.max(goal - prev.eaten, 0),
       }));
     }
     setMacros((prev) =>
@@ -201,6 +200,12 @@ export const useDailyIntake = (
               : Number((target?.fat_g ?? fallback?.fat_g) ?? macro.goal),
       })),
     );
+    const nextGoal = Number.isFinite(kcalGoal ?? undefined) ? Number(kcalGoal) : 0;
+    setSummary((prev) => ({
+      ...prev,
+      goal: nextGoal,
+      kcalLeft: nextGoal > 0 ? Math.max(nextGoal - prev.eaten, 0) : 0,
+    }));
   }, [localDate]);
 
   const setSyncPulse = useCallback(() => {

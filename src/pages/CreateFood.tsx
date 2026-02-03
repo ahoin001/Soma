@@ -7,12 +7,16 @@ import { ChevronLeft } from "lucide-react";
 
 type LocationState = {
   mealId?: string;
+  returnTo?: string;
+  tab?: "recent" | "liked" | "history";
+  query?: string;
 };
 
 const CreateFood = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state ?? {}) as LocationState;
+  const returnTo = state.returnTo ?? "/nutrition/add-food";
   const { foodCatalog } = useAppStore();
 
   return (
@@ -24,7 +28,16 @@ const CreateFood = () => {
             variant="ghost"
             size="icon"
             className="h-10 w-10 rounded-full bg-white/80 text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
-            onClick={() => navigate(-1)}
+            onClick={() =>
+              navigate(returnTo, {
+                state: {
+                  mealId: state.mealId,
+                  returnTo,
+                  tab: state.tab,
+                  query: state.query,
+                },
+              })
+            }
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
@@ -37,7 +50,13 @@ const CreateFood = () => {
           onCreate={async (payload) => foodCatalog.createFood(payload)}
           onComplete={(created) => {
             navigate("/nutrition/add-food", {
-              state: { mealId: state.mealId, createdFood: created },
+              state: {
+                mealId: state.mealId,
+                createdFood: created,
+                returnTo,
+                tab: state.tab,
+                query: state.query,
+              },
             });
           }}
         />

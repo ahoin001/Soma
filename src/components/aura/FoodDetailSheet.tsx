@@ -840,7 +840,9 @@ export const FoodDetailSheet = ({
                   className="h-9 rounded-full px-4 text-xs font-semibold"
                   onClick={() => {
                     handleOpenChange(false);
-                    navigate("/nutrition/food/edit", { state: { food } });
+                    navigate("/nutrition/food/edit", {
+                      state: { food, returnTo: "/nutrition" },
+                    });
                   }}
                 >
                   Open
@@ -956,6 +958,138 @@ export const FoodDetailSheet = ({
                       </div>
                     </div>
                   )}
+                  {adminEditing && brandCreateOpen && (
+                    <div className="rounded-[20px] border border-emerald-100 bg-emerald-50/60 px-4 py-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500">
+                        New brand
+                      </p>
+                      <div className="mt-3 space-y-3">
+                        <Input
+                          value={brandName}
+                          onChange={(event) => setBrandName(event.target.value)}
+                          placeholder="Brand name"
+                          className="h-10 rounded-full"
+                        />
+                        <Input
+                          value={brandWebsite}
+                          onChange={(event) => setBrandWebsite(event.target.value)}
+                          placeholder="Website (optional)"
+                          className="h-10 rounded-full"
+                        />
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-white text-xl shadow-[0_8px_20px_rgba(16,185,129,0.12)]">
+                            {brandLogoUrl ? (
+                              <img
+                                src={brandLogoUrl}
+                                alt="Brand logo"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              "🏷️"
+                            )}
+                          </div>
+                          <label className="flex flex-1 cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-white px-4 py-2 text-xs font-semibold text-emerald-700">
+                            <span>{brandUploading ? "Uploading..." : "Upload logo"}</span>
+                            <span className="text-emerald-500">Browse</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="sr-only"
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                if (!file) return;
+                                setBrandUploading(true);
+                                setBrandNotice(null);
+                                setBrandUploadProgress(0);
+                                fetchBrandLogoSignature()
+                                  .then(async (signature) => {
+                                    const formData = new FormData();
+                                    formData.append("file", file);
+                                    formData.append("api_key", signature.apiKey);
+                                    formData.append("timestamp", String(signature.timestamp));
+                                    formData.append("signature", signature.signature);
+                                    if (signature.uploadPreset) {
+                                      formData.append("upload_preset", signature.uploadPreset);
+                                    }
+                                    const data = await new Promise<{ secure_url?: string }>(
+                                      (resolve, reject) => {
+                                        const xhr = new XMLHttpRequest();
+                                        xhr.open(
+                                          "POST",
+                                          `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
+                                        );
+                                        xhr.upload.onprogress = (evt) => {
+                                          if (!evt.lengthComputable) return;
+                                          const pct = Math.round((evt.loaded / evt.total) * 100);
+                                          setBrandUploadProgress(pct);
+                                        };
+                                        xhr.onload = () => {
+                                          try {
+                                            resolve(JSON.parse(xhr.responseText));
+                                          } catch {
+                                            reject(new Error("Upload failed"));
+                                          }
+                                        };
+                                        xhr.onerror = () => reject(new Error("Upload failed"));
+                                        xhr.send(formData);
+                                      },
+                                    );
+                                    if (!data.secure_url) throw new Error("Upload failed");
+                                    setBrandLogoUrl(data.secure_url);
+                                    setBrandNotice("Logo added.");
+                                  })
+                                  .catch(() => setBrandNotice("Upload failed."))
+                                  .finally(() => setBrandUploading(false));
+                              }}
+                            />
+                          </label>
+                        </div>
+                        {brandUploading && (
+                          <div className="h-2 w-full overflow-hidden rounded-full bg-emerald-100">
+                            <div
+                              className="h-full rounded-full bg-emerald-400 transition-all"
+                              style={{ width: `${brandUploadProgress}%` }}
+                            />
+                          </div>
+                        )}
+                        {brandNotice && (
+                          <p className="text-xs text-emerald-600">{brandNotice}</p>
+                        )}
+                        <Button
+                          type="button"
+                          className="w-full rounded-full bg-aura-primary py-4 text-sm font-semibold text-white"
+                          onClick={async () => {
+                            if (!brandName.trim()) {
+                              setBrandNotice("Enter a brand name.");
+                              return;
+                            }
+                            try {
+                              const response = await createBrand({
+                                name: brandName.trim(),
+                                websiteUrl: brandWebsite.trim() || undefined,
+                                logoUrl: brandLogoUrl ?? undefined,
+                              });
+                              setBrands((prev) => [response.brand, ...prev]);
+                              setDraft({
+                                ...draft,
+                                brandId: response.brand.id,
+                                brand: response.brand.name,
+                              });
+                              setBrandCreateOpen(false);
+                              setBrandName("");
+                              setBrandWebsite("");
+                              setBrandLogoUrl(null);
+                              setBrandNotice(null);
+                            } catch {
+                              setBrandNotice("Unable to create brand.");
+                            }
+                          }}
+                        >
+                          Save brand
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
                       Base serving size
@@ -994,8 +1128,10 @@ export const FoodDetailSheet = ({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectGroup>
-                            <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                              Weight
+                            <SelectLabel>
+                              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
+                                Weight
+                              </span>
                             </SelectLabel>
                             {servingUnits.weight.map((unit) => (
                               <SelectItem key={unit.value} value={unit.value}>
@@ -1005,8 +1141,10 @@ export const FoodDetailSheet = ({
                           </SelectGroup>
                           <SelectSeparator />
                           <SelectGroup>
-                            <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                              Volume
+                            <SelectLabel>
+                              <span className="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-600">
+                                Volume
+                              </span>
                             </SelectLabel>
                             {servingUnits.volume.map((unit) => (
                               <SelectItem key={unit.value} value={unit.value}>
@@ -1016,8 +1154,10 @@ export const FoodDetailSheet = ({
                           </SelectGroup>
                           <SelectSeparator />
                           <SelectGroup>
-                            <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                              Count
+                            <SelectLabel>
+                              <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-600">
+                                Count
+                              </span>
                             </SelectLabel>
                             {servingUnits.count.map((unit) => (
                               <SelectItem key={unit.value} value={unit.value}>
@@ -1086,8 +1226,10 @@ export const FoodDetailSheet = ({
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
-                              <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                                Weight
+                              <SelectLabel>
+                                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
+                                  Weight
+                                </span>
                               </SelectLabel>
                               {servingUnits.weight.map((unit) => (
                                 <SelectItem key={unit.value} value={unit.value}>
@@ -1097,8 +1239,10 @@ export const FoodDetailSheet = ({
                             </SelectGroup>
                             <SelectSeparator />
                             <SelectGroup>
-                              <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                                Volume
+                              <SelectLabel>
+                                <span className="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-600">
+                                  Volume
+                                </span>
                               </SelectLabel>
                               {servingUnits.volume.map((unit) => (
                                 <SelectItem key={unit.value} value={unit.value}>
@@ -1108,8 +1252,10 @@ export const FoodDetailSheet = ({
                             </SelectGroup>
                             <SelectSeparator />
                             <SelectGroup>
-                              <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                                Count
+                              <SelectLabel>
+                                <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-600">
+                                  Count
+                                </span>
                               </SelectLabel>
                               {servingUnits.count.map((unit) => (
                                 <SelectItem key={unit.value} value={unit.value}>
@@ -1371,7 +1517,14 @@ export const FoodDetailSheet = ({
                         setOrDelete("potassium_mg", draft.potassiumMg);
                         setOrDelete("ingredients", draft.ingredients.trim() || null);
                         try {
-                          await onUpdateMaster(food, draft, nextMicros);
+                          await onUpdateMaster(
+                            food,
+                            {
+                              ...draft,
+                              brandId: draft.brandId,
+                            },
+                            nextMicros,
+                          );
                           toast("Saved to database", {
                             description: "Food details updated successfully.",
                           });

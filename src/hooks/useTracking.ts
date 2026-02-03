@@ -148,6 +148,23 @@ export const useWaterSummary = (date: Date) => {
     [localDate, refresh],
   );
 
+  const setWaterTotal = useCallback(
+    async (nextTotal: number) => {
+      if (!Number.isFinite(nextTotal) || nextTotal < 0) return;
+      const rounded = Math.round(nextTotal);
+      const delta = rounded - totalMl;
+      if (delta === 0) return;
+      setTotalMl(rounded);
+      try {
+        await ensureUser();
+        await upsertWaterLog({ localDate, amountMl: delta, source: "manual" });
+      } finally {
+        await refresh();
+      }
+    },
+    [localDate, refresh, totalMl],
+  );
+
   const updateGoal = useCallback(
     async (nextGoal: number) => {
       if (!Number.isFinite(nextGoal) || nextGoal <= 0) return;
@@ -158,5 +175,5 @@ export const useWaterSummary = (date: Date) => {
     [],
   );
 
-  return { totalMl, goalMl, refresh, addWater, updateGoal };
+  return { totalMl, goalMl, refresh, addWater, setWaterTotal, updateGoal };
 };

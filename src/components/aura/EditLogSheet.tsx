@@ -25,6 +25,7 @@ export const EditLogSheet = ({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const draftTimerRef = useRef<number | null>(null);
   const { showFoodImages } = useAppStore();
+  const [saving, setSaving] = useState(false);
   const safeMultiplier = Number.isFinite(multiplier) ? multiplier : 1;
 
   useEffect(() => {
@@ -120,6 +121,12 @@ export const EditLogSheet = ({
             </div>
 
             <div className="mt-4 text-center">
+              {item.mealEmoji || item.mealLabel ? (
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-600">
+                  <span>{item.mealEmoji ?? "🍽️"}</span>
+                  <span>{item.mealLabel ?? "Meal"}</span>
+                </div>
+              ) : null}
               <h3 className="text-xl font-display font-semibold text-slate-900">
                 {item.name}
               </h3>
@@ -202,12 +209,18 @@ export const EditLogSheet = ({
             <div className="mt-6 grid gap-3">
               <Button
                 className="w-full rounded-full bg-aura-primary py-6 text-base font-semibold text-white shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
-                onClick={() => {
-                  onSave(item, safeMultiplier);
-                  onOpenChange(false);
+                onClick={async () => {
+                  setSaving(true);
+                  try {
+                    await onSave(item, safeMultiplier);
+                    onOpenChange(false);
+                  } finally {
+                    setSaving(false);
+                  }
                 }}
+                disabled={saving}
               >
-                Save changes
+                {saving ? "Saving..." : "Save changes"}
               </Button>
               <Button
                 type="button"

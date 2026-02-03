@@ -2,6 +2,8 @@ export type LogItem = {
   id?: string;
   foodId?: string | null;
   mealTypeId?: string | null;
+  mealLabel?: string | null;
+  mealEmoji?: string | null;
   name: string;
   quantity?: number;
   portionLabel?: string | null;

@@ -360,6 +360,7 @@ export const useFoodCatalog = () => {
       payload: {
         name?: string;
         brand?: string | null;
+        brandId?: string | null;
         portionLabel?: string | null;
         portionGrams?: number | null;
         kcal?: number;

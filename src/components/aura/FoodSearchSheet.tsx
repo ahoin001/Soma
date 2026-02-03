@@ -16,6 +16,8 @@ type FoodSearchSheetProps = {
   searchError?: string | null;
   foods: FoodItem[];
   meal: Meal | null;
+  meals: Meal[];
+  onMealChange: (mealId: string) => void;
   onSelectFood: (food: FoodItem) => void;
   onQuickAddFood?: (food: FoodItem) => void;
   onBarcodeDetected: (value: string) => void;
@@ -42,6 +44,8 @@ export const FoodSearchSheet = ({
   searchError,
   foods,
   meal,
+  meals,
+  onMealChange,
   onSelectFood,
   onQuickAddFood,
   onBarcodeDetected,
@@ -60,6 +64,8 @@ export const FoodSearchSheet = ({
     searchError={searchError}
     foods={foods}
     meal={meal}
+    meals={meals}
+    onMealChange={onMealChange}
     onSelectFood={onSelectFood}
     onBarcodeDetected={onBarcodeDetected}
     externalSearchEnabled={externalSearchEnabled}
@@ -79,6 +85,8 @@ const FoodSearchSheetContent = ({
   searchError,
   foods,
   meal,
+  meals,
+  onMealChange,
   onSelectFood,
   onQuickAddFood,
   onBarcodeDetected,
@@ -104,6 +112,8 @@ const FoodSearchSheetContent = ({
               searchError={searchError}
               foods={foods}
               meal={meal}
+              meals={meals}
+              onMealChange={onMealChange}
               onSelectFood={onSelectFood}
               onQuickAddFood={onQuickAddFood ?? onSelectFood}
               externalSearchEnabled={externalSearchEnabled}
