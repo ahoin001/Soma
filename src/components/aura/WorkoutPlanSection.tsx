@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { WorkoutPlan, WorkoutTemplate } from "@/types/fitness";
 import { Clock, Folder, MoreHorizontal } from "lucide-react";
+import { motion } from "framer-motion";
 
 type WorkoutPlanSectionProps = {
   plans: WorkoutPlan[];
@@ -11,6 +12,9 @@ type WorkoutPlanSectionProps = {
   onExpandedChange: (planIds: string[]) => void;
   onOpenPlanMenu: (plan: WorkoutPlan) => void;
   onOpenWorkoutMenu: (workout: WorkoutTemplate, plan: WorkoutPlan) => void;
+  onOpenWorkoutActions: (workout: WorkoutTemplate, plan: WorkoutPlan) => void;
+  onCreatePlan: () => void;
+  onCreateWorkout: (planId: string | null) => void;
 };
 
 export const WorkoutPlanSection = ({
@@ -20,10 +24,29 @@ export const WorkoutPlanSection = ({
   onExpandedChange,
   onOpenPlanMenu,
   onOpenWorkoutMenu,
+  onOpenWorkoutActions,
+  onCreatePlan,
+  onCreateWorkout,
 }: WorkoutPlanSectionProps) => {
+  const listVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05, delayChildren: 0.05 },
+    },
+  };
+  const itemVariants = {
+    hidden: { opacity: 0, y: 6 },
+    show: { opacity: 1, y: 0 },
+  };
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="flex items-center justify-between"
+      >
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-white/40">
             Workout templates
@@ -32,13 +55,22 @@ export const WorkoutPlanSection = ({
             Your plans
           </h2>
         </div>
-        <Button
-          variant="outline"
-          className="rounded-full border-white/20 text-white hover:bg-white/10"
-        >
-          New plan
-        </Button>
-      </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="rounded-full border-white/20 text-white hover:bg-white/10"
+            onClick={onCreatePlan}
+          >
+            New plan
+          </Button>
+          <Button
+            className="rounded-full bg-white/10 text-white hover:bg-white/20"
+            onClick={() => onCreateWorkout(activePlanId)}
+          >
+            New workout
+          </Button>
+        </div>
+      </motion.div>
 
       <Accordion
         type="multiple"
@@ -86,9 +118,14 @@ export const WorkoutPlanSection = ({
               </Button>
             </div>
             <AccordionContent className="px-5 pb-5 pt-0">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <motion.div
+                variants={listVariants}
+                initial="hidden"
+                animate="show"
+                className="grid gap-4 sm:grid-cols-2"
+              >
                 {plan.workouts.map((workout) => (
-                  <div
+                  <motion.div
                     key={workout.id}
                     className={cn(
                       "group relative rounded-[24px] border border-white/10 bg-slate-950/40 px-4 py-4 text-left transition-all",
@@ -97,6 +134,8 @@ export const WorkoutPlanSection = ({
                     )}
                     role="button"
                     tabIndex={0}
+                    variants={itemVariants}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => onOpenWorkoutMenu(workout, plan)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
@@ -125,7 +164,7 @@ export const WorkoutPlanSection = ({
                         className="h-9 w-9 rounded-full bg-white/10 text-white/70 transition hover:bg-white/20"
                         onClick={(event) => {
                           event.stopPropagation();
-                          onOpenWorkoutMenu(workout, plan);
+                          onOpenWorkoutActions(workout, plan);
                         }}
                         aria-label={`Edit ${workout.name}`}
                       >
@@ -136,9 +175,9 @@ export const WorkoutPlanSection = ({
                       <Clock className="h-3 w-3" />
                       <span>{workout.lastPerformed ?? "Not started yet"}</span>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             </AccordionContent>
           </AccordionItem>
         ))}

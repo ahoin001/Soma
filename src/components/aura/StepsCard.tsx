@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Watch } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type StepsCardProps = {
   steps: number;
@@ -11,6 +11,7 @@ type StepsCardProps = {
   connected: boolean;
   onConnect?: () => void;
   onManualSave?: (steps: number) => void;
+  onGoalSave?: (goal: number) => void;
 };
 
 export const StepsCard = ({
@@ -19,9 +20,15 @@ export const StepsCard = ({
   connected,
   onConnect,
   onManualSave,
+  onGoalSave,
 }: StepsCardProps) => {
   const progress = goal > 0 ? Math.min((steps / goal) * 100, 100) : 0;
   const [manual, setManual] = useState("");
+  const [goalInput, setGoalInput] = useState(String(goal));
+
+  useEffect(() => {
+    setGoalInput(String(goal));
+  }, [goal]);
 
   return (
     <Card className="mt-6 overflow-hidden rounded-[28px] border border-black/5 bg-white px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
@@ -71,27 +78,53 @@ export const StepsCard = ({
       )}
 
       {onManualSave && (
-        <div className="mt-4 grid grid-cols-[1fr_120px] gap-2">
-          <Input
-            type="number"
-            min={0}
-            value={manual}
-            onChange={(event) => setManual(event.target.value)}
-            placeholder="Add steps"
-            className="h-10 rounded-full"
-          />
-          <Button
-            type="button"
-            className="h-10 rounded-full bg-aura-primary text-white hover:bg-aura-primary/90"
-            onClick={() => {
-              const numeric = Number(manual);
-              if (!Number.isFinite(numeric) || numeric <= 0) return;
-              onManualSave(numeric);
-              setManual("");
-            }}
-          >
-            Save
-          </Button>
+        <div className="mt-4 space-y-3">
+          <div className="grid grid-cols-[1fr_120px] gap-2">
+            <Input
+              type="number"
+              min={0}
+              value={manual}
+              onChange={(event) => setManual(event.target.value)}
+              placeholder="Add steps"
+              className="h-10 rounded-full"
+            />
+            <Button
+              type="button"
+              className="h-10 rounded-full bg-aura-primary text-white hover:bg-aura-primary/90"
+              onClick={() => {
+                const numeric = Number(manual);
+                if (!Number.isFinite(numeric) || numeric <= 0) return;
+                onManualSave(numeric);
+                setManual("");
+              }}
+            >
+              Save
+            </Button>
+          </div>
+          {onGoalSave && (
+            <div className="grid grid-cols-[1fr_120px] gap-2">
+              <Input
+                type="number"
+                min={0}
+                value={goalInput}
+                onChange={(event) => setGoalInput(event.target.value)}
+                placeholder="Goal"
+                className="h-10 rounded-full"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-10 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                onClick={() => {
+                  const numeric = Number(goalInput);
+                  if (!Number.isFinite(numeric) || numeric <= 0) return;
+                  onGoalSave(numeric);
+                }}
+              >
+                Set goal
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </Card>

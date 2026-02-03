@@ -8,6 +8,7 @@ export type LogItem = {
     fat: number;
   };
   emoji: string;
+  imageUrl?: string | null;
 };
 
 export type LogSection = {

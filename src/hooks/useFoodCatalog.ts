@@ -10,6 +10,7 @@ import {
   fetchFoodByBarcode,
   searchFoods as searchFoodsApi,
   toggleFoodFavorite,
+  updateFoodMaster as updateFoodMasterApi,
 } from "@/lib/api";
 
 type CacheEntry<T> = {
@@ -64,7 +65,46 @@ const persistCache = (cache: FoodCache) => {
 const isFresh = <T,>(entry?: CacheEntry<T>) =>
   !!entry && Date.now() - entry.updatedAt < CACHE_TTL_MS;
 
-const normalizeQuery = (value: string) => value.trim().toLowerCase();
+const normalizeText = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const normalizeQuery = (value: string) => normalizeText(value);
+
+const tokenize = (value: string) => normalizeText(value).split(" ").filter(Boolean);
+
+const scoreFood = (food: FoodItem, tokens: string[]) => {
+  if (!tokens.length) return 0;
+  const haystack = normalizeText(`${food.name} ${food.brand ?? ""}`);
+  if (!haystack) return 0;
+  let score = 0;
+  for (const token of tokens) {
+    if (!token) continue;
+    if (haystack.includes(token)) {
+      score += token.length >= 3 ? 2 : 1;
+      if (haystack.startsWith(token)) {
+        score += 1;
+      }
+    }
+  }
+  return score;
+};
+
+const fuzzyMatchFoods = (foods: FoodItem[], query: string) => {
+  const tokens = tokenize(query);
+  const ranked = foods
+    .map((food) => ({ food, score: scoreFood(food, tokens) }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.food.name.length - b.food.name.length;
+    })
+    .map((item) => item.food);
+  return dedupeFoods(ranked);
+};
 
 const buildOverrideKey = (food: FoodItem) => food.id;
 
@@ -81,10 +121,14 @@ const toFoodItem = (record: FoodRecord): FoodItem => {
     portion:
       record.portion_label ??
       (record.portion_grams ? `${record.portion_grams} g` : "100 g"),
+    portionLabel: record.portion_label ?? undefined,
+    portionGrams: record.portion_grams ?? undefined,
     kcal: Number(record.kcal ?? 0),
     emoji: "🍽️",
     barcode: record.barcode ?? undefined,
     source: record.is_global ? "api" : "local",
+    imageUrl: record.image_url ?? undefined,
+    micronutrients: record.micronutrients ?? undefined,
     macros,
     macroPercent: calculateMacroPercent(macros),
   };
@@ -118,6 +162,12 @@ export const useFoodCatalog = () => {
   const [history, setHistory] = useState<FoodItem[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [lastQuery, setLastQuery] = useState("");
+  const [externalSearchEnabled, setExternalSearchEnabled] = useState(() => {
+    if (!isBrowser) return true;
+    const stored = window.localStorage.getItem("aura-food-external-search");
+    return stored ? stored === "true" : true;
+  });
 
   const persist = useCallback((next: FoodCache) => {
     setCache(next);
@@ -131,8 +181,12 @@ export const useFoodCatalog = () => {
   );
 
   const searchFoods = useCallback(
-    async (query: string) => {
+    async (
+      query: string,
+      options?: { force?: boolean; external?: boolean },
+    ) => {
       const normalized = normalizeQuery(query);
+      setLastQuery(normalized);
       if (!normalized) {
         setResults([]);
         setStatus("idle");
@@ -140,9 +194,18 @@ export const useFoodCatalog = () => {
         return;
       }
       await ensureUser();
-      const cached = cache.searches[normalized];
-      if (isFresh(cached)) {
-        setResults(applyOverrides(cached.value));
+      const cacheKey = `${normalized}|${(options?.external ?? externalSearchEnabled) ? "api" : "local"}`;
+      const cached = cache.searches[cacheKey];
+      const force = options?.force ?? false;
+      const external = options?.external ?? externalSearchEnabled;
+      const localPool = dedupeFoods([
+        ...favorites,
+        ...history,
+        ...Object.values(cache.searches).flatMap((entry) => entry.value),
+      ]);
+      if (!force && isFresh(cached)) {
+        const localMatches = fuzzyMatchFoods(localPool, normalized);
+        setResults(applyOverrides(dedupeFoods([...localMatches, ...cached.value])));
         setStatus("idle");
         setError(null);
         return;
@@ -150,18 +213,32 @@ export const useFoodCatalog = () => {
       setStatus("loading");
       setError(null);
       try {
-        const response = await searchFoodsApi(normalized);
-        const fetched = response.items.map(toFoodItem);
+        const response = await searchFoodsApi(normalized, 20, external);
+        let fetched = response.items.map(toFoodItem);
+        const fallbackQuery =
+          normalized.endsWith("s") && normalized.length > 3
+            ? normalized.slice(0, -1)
+            : null;
+        if (!fetched.length && fallbackQuery && fallbackQuery !== normalized) {
+          const fallbackResponse = await searchFoodsApi(
+            fallbackQuery,
+            20,
+            external,
+          );
+          fetched = [...fetched, ...fallbackResponse.items.map(toFoodItem)];
+        }
         const deduped = dedupeFoods(fetched);
+        const localMatches = fuzzyMatchFoods(localPool, normalized);
+        const mergedResults = dedupeFoods([...localMatches, ...deduped]);
         const nextCache: FoodCache = {
           ...cache,
           searches: {
             ...cache.searches,
-            [normalized]: { value: deduped, updatedAt: Date.now() },
+            [cacheKey]: { value: deduped, updatedAt: Date.now() },
           },
         };
         persist(nextCache);
-        setResults(applyOverrides(deduped));
+        setResults(applyOverrides(mergedResults));
         setStatus("idle");
       } catch (fetchError) {
         const detail =
@@ -170,7 +247,7 @@ export const useFoodCatalog = () => {
         setError(detail);
       }
     },
-    [applyOverrides, cache, persist],
+    [applyOverrides, cache, persist, externalSearchEnabled, favorites, history],
   );
 
   const lookupBarcode = useCallback(
@@ -242,6 +319,8 @@ export const useFoodCatalog = () => {
       carbs: number;
       protein: number;
       fat: number;
+      micronutrients?: Record<string, unknown>;
+      imageUrl?: string;
     }) => {
       await ensureUser();
       const response = await createFoodApi({
@@ -250,6 +329,8 @@ export const useFoodCatalog = () => {
         carbsG: payload.carbs,
         proteinG: payload.protein,
         fatG: payload.fat,
+        micronutrients: payload.micronutrients,
+        imageUrl: payload.imageUrl,
       });
       const created = toFoodItem(response.item);
       setResults((prev) => dedupeFoods([created, ...prev]));
@@ -265,6 +346,49 @@ export const useFoodCatalog = () => {
     await refreshLists();
   }, [refreshLists]);
 
+  const updateFoodMaster = useCallback(
+    async (
+      foodId: string,
+      payload: {
+        name?: string;
+        brand?: string | null;
+        portionLabel?: string | null;
+        portionGrams?: number | null;
+        kcal?: number;
+        carbsG?: number;
+        proteinG?: number;
+        fatG?: number;
+        micronutrients?: Record<string, number | string>;
+      },
+    ) => {
+      await ensureUser();
+      const response = await updateFoodMasterApi(foodId, payload);
+      if (!response.item) return null;
+      const updated = toFoodItem(response.item);
+      const nextOverrides = { ...cache.overrides };
+      delete nextOverrides[foodId];
+      persist({ ...cache, overrides: nextOverrides });
+      setResults((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setFavorites((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setHistory((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      if (lastQuery) {
+        void searchFoods(lastQuery, { force: true, external: externalSearchEnabled });
+      }
+      return updated;
+    },
+    [cache, persist, lastQuery, searchFoods, externalSearchEnabled],
+  );
+
+  const toggleExternalSearch = useCallback((enabled: boolean) => {
+    setExternalSearchEnabled(enabled);
+    if (isBrowser) {
+      window.localStorage.setItem(
+        "aura-food-external-search",
+        enabled ? "true" : "false",
+      );
+    }
+  }, []);
+
   return useMemo(
     () => ({
       results,
@@ -273,12 +397,15 @@ export const useFoodCatalog = () => {
       status,
       error,
       searchFoods,
+      externalSearchEnabled,
+      toggleExternalSearch,
       lookupBarcode,
       applyOverrides,
       upsertOverride,
       createFood,
       refreshLists,
       setFavorite,
+      updateFoodMaster,
     }),
     [
       results,
@@ -287,12 +414,15 @@ export const useFoodCatalog = () => {
       status,
       error,
       searchFoods,
+      externalSearchEnabled,
+      toggleExternalSearch,
       lookupBarcode,
       applyOverrides,
       upsertOverride,
       createFood,
       refreshLists,
       setFavorite,
+      updateFoodMaster,
     ],
   );
 };

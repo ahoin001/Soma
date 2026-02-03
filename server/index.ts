@@ -1,10 +1,19 @@
 import "dotenv/config";
 import express from "express";
+import crypto from "node:crypto";
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import foodsRouter from "./routes/foods";
 import groceriesRouter from "./routes/groceries";
 import mealEntriesRouter from "./routes/meal-entries";
 import mealTypesRouter from "./routes/meal-types";
+import nutritionRouter from "./routes/nutrition";
+import exercisesRouter from "./routes/exercises";
+import fitnessRouter from "./routes/fitness";
+import analyticsRouter from "./routes/analytics";
+import authRouter from "./routes/auth";
+import brandsRouter from "./routes/brands";
+import { queryOne } from "./db";
 import workoutsRouter from "./routes/workouts";
 import sessionsRouter from "./routes/sessions";
 import trackingRouter from "./routes/tracking";
@@ -12,17 +21,53 @@ import usersRouter from "./routes/users";
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  }),
+);
+app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
+
+app.use(async (req, _res, next) => {
+  const token = req.cookies?.aurafit_session as string | undefined;
+  if (!token) {
+    next();
+    return;
+  }
+  const tokenHash = crypto
+    .createHash("sha256")
+    .update(token)
+    .digest("hex");
+  const session = await queryOne<{ user_id: string }>(
+    `
+    SELECT user_id
+    FROM user_sessions
+    WHERE token_hash = $1 AND expires_at > now();
+    `,
+    [tokenHash],
+  );
+  if (session) {
+    (req as typeof req & { userId?: string }).userId = session.user_id;
+  }
+  next();
+});
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "aurafit-api" });
 });
 
+app.use("/api/auth", authRouter);
 app.use("/api/foods", foodsRouter);
+app.use("/api/brands", brandsRouter);
 app.use("/api/groceries", groceriesRouter);
 app.use("/api/meal-types", mealTypesRouter);
 app.use("/api/meal-entries", mealEntriesRouter);
+app.use("/api/nutrition", nutritionRouter);
+app.use("/api/exercises", exercisesRouter);
+app.use("/api/fitness", fitnessRouter);
+app.use("/api/analytics", analyticsRouter);
 app.use("/api/workouts", workoutsRouter);
 app.use("/api/sessions", sessionsRouter);
 app.use("/api/tracking", trackingRouter);

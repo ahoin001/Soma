@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -8,119 +8,263 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAppStore } from "@/state/AppStore";
 import { ChevronDown } from "lucide-react";
+import {
+  ensureUser,
+  upsertNutritionSettings,
+  upsertNutritionTargets,
+  upsertUserProfile,
+  upsertWeightLog,
+} from "@/lib/api";
+import {
+  calculateDynamicTargets,
+  calculateTargets,
+  type ActivityLevel,
+  type Formula,
+  type GoalType,
+  type Sex,
+} from "@/lib/nutritionTargets";
 
-type GoalType = "cut" | "recomp" | "bulk";
-
-const activityOptions = [
+const activityOptions: Array<{
+  value: ActivityLevel;
+  label: string;
+  description: string;
+}> = [
   {
-    value: "1.2",
+    value: "sedentary",
     label: "Sedentary",
-    description: "Mostly seated, minimal intentional exercise.",
+    description: "Office or remote work with little movement; light walks only.",
   },
   {
-    value: "1.375",
+    value: "light",
     label: "Light",
-    description: "Remote worker + a few gym sessions per week.",
+    description: "Mostly desk work but you walk daily or do light workouts 1-3x/week.",
   },
   {
-    value: "1.55",
+    value: "moderate",
     label: "Moderate",
-    description: "Regular training and active daily routine.",
+    description: "Mix of desk work + regular training 3-5x/week or an active job.",
   },
   {
-    value: "1.725",
+    value: "active",
     label: "Active",
-    description: "Physically demanding job or daily training.",
+    description: "Labor-intensive job or training nearly daily; on your feet often.",
   },
   {
-    value: "1.9",
+    value: "athlete",
     label: "Athlete",
-    description: "Intense training, high-volume activity most days.",
+    description: "Very high volume training, double sessions, or demanding work.",
   },
 ];
 
 const Goals = () => {
-  const [goal, setGoal] = useState<GoalType>("recomp");
-  const [sex, setSex] = useState("female");
-  const [age, setAge] = useState("28");
-  const [height, setHeight] = useState("165");
-  const [weight, setWeight] = useState("155");
-  const [activity, setActivity] = useState("1.55");
+  const [goalType, setGoalType] = useState<GoalType>("balance");
+  const [sex, setSex] = useState<Sex>("female");
+  const [age, setAge] = useState("");
+  const [heightUnit, setHeightUnit] = useState<"imperial" | "metric">("imperial");
+  const [heightFt, setHeightFt] = useState("");
+  const [heightIn, setHeightIn] = useState("");
+  const [heightCm, setHeightCm] = useState("");
+  const [weightLb, setWeightLb] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [activity, setActivity] = useState<ActivityLevel>("moderate");
+  const [formula, setFormula] = useState<Formula>("mifflin");
   const [bodyFat, setBodyFat] = useState("");
-  const [steps, setSteps] = useState("");
-  const [sleep, setSleep] = useState("");
-  const [restingHr, setRestingHr] = useState("");
+  const [trainingDays, setTrainingDays] = useState("");
+  const [stepsPerDay, setStepsPerDay] = useState("");
+  const [kcalGoal, setKcalGoal] = useState("");
+  const [carbs, setCarbs] = useState("");
+  const [protein, setProtein] = useState("");
+  const [fat, setFat] = useState("");
+  const [targetsTouched, setTargetsTouched] = useState(false);
+  const [macrosTouched, setMacrosTouched] = useState(false);
   const [optionalOpen, setOptionalOpen] = useState(false);
-  const { nutrition } = useAppStore();
+  const [hydrated, setHydrated] = useState(false);
+  const { nutrition, userProfile, setUserProfile } = useAppStore();
 
-  const calories = useMemo(() => {
+  useEffect(() => {
+    if (hydrated) return;
+    if (userProfile.sex) setSex(userProfile.sex);
+    if (userProfile.age) setAge(String(userProfile.age));
+    if (userProfile.activity) setActivity(userProfile.activity);
+    if (userProfile.goal) setGoalType(userProfile.goal);
+    if (Number.isFinite(userProfile.heightCm)) {
+      setHeightUnit("metric");
+      setHeightCm(String(Math.round(userProfile.heightCm ?? 0)));
+    }
+    if (Number.isFinite(userProfile.weightKg)) {
+      setWeightKg(String(Math.round(userProfile.weightKg ?? 0)));
+    }
+    setHydrated(true);
+  }, [hydrated, userProfile]);
+
+  useEffect(() => {
+    if (targetsTouched) return;
+    if (nutrition.summary.goal > 0) {
+      setKcalGoal(String(Math.round(nutrition.summary.goal)));
+    }
+  }, [nutrition.summary.goal, targetsTouched]);
+
+  useEffect(() => {
+    if (macrosTouched) return;
+    setCarbs(String(nutrition.macros.find((m) => m.key === "carbs")?.goal ?? ""));
+    setProtein(String(nutrition.macros.find((m) => m.key === "protein")?.goal ?? ""));
+    setFat(String(nutrition.macros.find((m) => m.key === "fat")?.goal ?? ""));
+  }, [nutrition.macros, macrosTouched]);
+
+  const calculatedTargets = useMemo(() => {
+    const weightNum =
+      heightUnit === "imperial"
+        ? Number(weightLb) * 0.453592
+        : Number(weightKg);
+    const heightNum =
+      heightUnit === "imperial"
+        ? (Number(heightFt) * 12 + Number(heightIn)) * 2.54
+        : Number(heightCm);
     const ageNum = Number(age);
-    const heightNum = Number(height);
-    const weightLb = Number(weight);
-    const activityNum = Number(activity);
-    const bodyFatNum = Number(bodyFat);
-    const stepsNum = Number(steps);
-    const sleepNum = Number(sleep);
-    const restingHrNum = Number(restingHr);
     if (
-      !Number.isFinite(ageNum) ||
+      !Number.isFinite(weightNum) ||
       !Number.isFinite(heightNum) ||
-      !Number.isFinite(weightLb) ||
-      !Number.isFinite(activityNum)
+      !Number.isFinite(ageNum)
     ) {
       return null;
     }
-    const weightKg = weightLb * 0.453592;
-    const useBodyFat =
-      Number.isFinite(bodyFatNum) && bodyFatNum > 0 && bodyFatNum < 60;
-    const bmr = useBodyFat
-      ? 370 + 21.6 * (weightKg * (1 - bodyFatNum / 100))
-      : sex === "male"
-        ? 10 * weightKg + 6.25 * heightNum - 5 * ageNum + 5
-        : 10 * weightKg + 6.25 * heightNum - 5 * ageNum - 161;
-    let maintenance = Math.round(bmr * activityNum);
+    return calculateTargets({
+      weightKg: weightNum,
+      heightCm: heightNum,
+      age: ageNum,
+      sex,
+      goalType,
+      formula,
+      activity,
+      bodyFat: Number(bodyFat),
+      trainingDays: Number(trainingDays),
+      stepsPerDay: Number(stepsPerDay),
+    });
+  }, [
+    activity,
+    age,
+    bodyFat,
+    formula,
+    goalType,
+    heightCm,
+    heightFt,
+    heightIn,
+    heightUnit,
+    sex,
+    stepsPerDay,
+    trainingDays,
+    weightKg,
+    weightLb,
+  ]);
 
-    // Optional refinements (only applied when provided)
-    if (Number.isFinite(stepsNum) && stepsNum > 0) {
-      const extraSteps = Math.max(stepsNum - 5000, 0);
-      maintenance += Math.round((extraSteps / 1000) * 45);
-    }
-    if (Number.isFinite(sleepNum) && sleepNum > 0) {
-      const sleepAdjustment = Math.max(Math.min(sleepNum - 7, 1.5), -1.5);
-      maintenance += Math.round(sleepAdjustment * 40);
-    }
-    if (Number.isFinite(restingHrNum) && restingHrNum > 0) {
-      const hrAdjustment = Math.max(Math.min(restingHrNum - 60, 15), -15);
-      maintenance += Math.round((hrAdjustment / 10) * 35);
-    }
-    const range =
-      goal === "cut"
-        ? { min: maintenance - 500, max: maintenance - 250 }
-        : goal === "bulk"
-          ? { min: maintenance + 250, max: maintenance + 500 }
-          : { min: maintenance - 100, max: maintenance + 100 };
-    return {
-      maintenance,
-      range,
-    };
-  }, [age, height, weight, activity, sex, goal, bodyFat, steps, sleep, restingHr]);
+  const dynamicTargets = useMemo(
+    () => calculateDynamicTargets(calculatedTargets, kcalGoal),
+    [calculatedTargets, kcalGoal],
+  );
+
+  useEffect(() => {
+    if (targetsTouched || !calculatedTargets) return;
+    setKcalGoal(String(calculatedTargets.calories));
+  }, [calculatedTargets, targetsTouched]);
+
+  useEffect(() => {
+    if (macrosTouched || !dynamicTargets) return;
+    setCarbs(String(dynamicTargets.carbsG));
+    setProtein(String(dynamicTargets.proteinG));
+    setFat(String(dynamicTargets.fatG));
+  }, [dynamicTargets, macrosTouched]);
 
   const selectedActivity = useMemo(
     () => activityOptions.find((option) => option.value === activity),
     [activity],
   );
+
+  const toLocalDate = (date: Date) => date.toISOString().slice(0, 10);
+
+  const saveAllTargets = async (overrideGoal?: number) => {
+    const manualGoal = Number(kcalGoal);
+    const weightNum =
+      heightUnit === "imperial"
+        ? Number(weightLb) * 0.453592
+        : Number(weightKg);
+    const heightNum =
+      heightUnit === "imperial"
+        ? (Number(heightFt) * 12 + Number(heightIn)) * 2.54
+        : Number(heightCm);
+    const ageNum = Number(age);
+    const today = new Date();
+    const dob = Number.isFinite(ageNum)
+      ? new Date(today.getFullYear() - ageNum, today.getMonth(), today.getDate())
+      : null;
+    const goalNum =
+      Number.isFinite(overrideGoal) && overrideGoal
+        ? overrideGoal
+        : Number.isFinite(manualGoal) && manualGoal > 0
+          ? manualGoal
+          : dynamicTargets?.calories;
+    if (!goalNum) {
+      toast("Enter a calorie goal", {
+        description: "Add a daily goal to save your targets.",
+      });
+      return;
+    }
+    const carbsNum = Number(carbs);
+    const proteinNum = Number(protein);
+    const fatNum = Number(fat);
+    const localDate = toLocalDate(today);
+
+    await ensureUser();
+    await upsertUserProfile({
+      displayName: userProfile.displayName ?? "You",
+      sex: sex || null,
+      dob: dob ? toLocalDate(dob) : null,
+      heightCm: Number.isFinite(heightNum) ? heightNum : null,
+      units: "metric",
+    });
+    if (Number.isFinite(weightNum) && weightNum > 0) {
+      await upsertWeightLog({
+        localDate,
+        weight: weightNum,
+        unit: "kg",
+      });
+    }
+    await upsertNutritionTargets({
+      localDate,
+      kcalGoal: goalNum,
+      carbsG: Number.isFinite(carbsNum) ? carbsNum : undefined,
+      proteinG: Number.isFinite(proteinNum) ? proteinNum : undefined,
+      fatG: Number.isFinite(fatNum) ? fatNum : undefined,
+    });
+    await upsertNutritionSettings({
+      kcalGoal: goalNum,
+      carbsG: Number.isFinite(carbsNum) ? carbsNum : undefined,
+      proteinG: Number.isFinite(proteinNum) ? proteinNum : undefined,
+      fatG: Number.isFinite(fatNum) ? fatNum : undefined,
+    });
+    nutrition.setGoal(goalNum);
+    nutrition.setMacroTargets({
+      carbs: Number.isFinite(carbsNum) ? carbsNum : undefined,
+      protein: Number.isFinite(proteinNum) ? proteinNum : undefined,
+      fat: Number.isFinite(fatNum) ? fatNum : undefined,
+    });
+    setUserProfile({
+      displayName: userProfile.displayName ?? "You",
+      goal: goalType,
+      sex,
+      age: Number.isFinite(ageNum) ? ageNum : undefined,
+      heightCm: Number.isFinite(heightNum) ? heightNum : undefined,
+      weightKg: Number.isFinite(weightNum) ? weightNum : undefined,
+      activity,
+    });
+    toast("Goals saved", {
+      description: `Daily goal set to ${Math.round(goalNum)} cal.`,
+    });
+  };
 
   return (
     <AppShell experience="nutrition">
@@ -144,15 +288,15 @@ const Goals = () => {
           <div className="mt-4 grid grid-cols-3 gap-2">
             {([
               { value: "cut", label: "Cut" },
-              { value: "recomp", label: "Recomp" },
+              { value: "balance", label: "Maintain" },
               { value: "bulk", label: "Bulk" },
             ] as { value: GoalType; label: string }[]).map((item) => (
               <button
                 key={item.value}
                 type="button"
-                onClick={() => setGoal(item.value)}
+                onClick={() => setGoalType(item.value)}
                 className={`rounded-[18px] px-3 py-3 text-center text-sm font-semibold transition ${
-                  goal === item.value
+                  goalType === item.value
                     ? "bg-emerald-500 text-white shadow-[0_10px_24px_rgba(16,185,129,0.3)]"
                     : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                 }`}
@@ -175,43 +319,89 @@ const Goals = () => {
                 value={age}
                 onChange={(event) => setAge(event.target.value)}
                 placeholder="Years"
+                inputMode="numeric"
+                type="number"
                 className="h-11 rounded-full"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="goal-weight">Weight (lb)</Label>
+              <Label>{heightUnit === "imperial" ? "Weight (lb)" : "Weight (kg)"}</Label>
               <Input
-                id="goal-weight"
-                value={weight}
-                onChange={(event) => setWeight(event.target.value)}
-                placeholder="lbs"
+                value={heightUnit === "imperial" ? weightLb : weightKg}
+                onChange={(event) =>
+                  heightUnit === "imperial"
+                    ? setWeightLb(event.target.value)
+                    : setWeightKg(event.target.value)
+                }
+                placeholder={heightUnit === "imperial" ? "lbs" : "kg"}
+                inputMode="numeric"
+                type="number"
                 className="h-11 rounded-full"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="goal-height">Height (cm)</Label>
+          </div>
+          {heightUnit === "imperial" ? (
+            <div className="mt-3 grid grid-cols-3 gap-3">
               <Input
-                id="goal-height"
-                value={height}
-                onChange={(event) => setHeight(event.target.value)}
-                placeholder="cm"
+                value={heightFt}
+                onChange={(event) => setHeightFt(event.target.value)}
+                placeholder="Height (ft)"
+                inputMode="numeric"
+                type="number"
                 className="h-11 rounded-full"
               />
+              <Input
+                value={heightIn}
+                onChange={(event) => setHeightIn(event.target.value)}
+                placeholder="Height (in)"
+                inputMode="numeric"
+                type="number"
+                className="h-11 rounded-full"
+              />
+              <button
+                type="button"
+                onClick={() => setHeightUnit("metric")}
+                className="h-11 rounded-full border border-emerald-100 bg-emerald-50 text-xs font-semibold text-emerald-700"
+              >
+                Use cm / kg
+              </button>
             </div>
-            <div className="space-y-2">
-              <Label>Activity</Label>
-              <Select value={activity} onValueChange={setActivity}>
-                <SelectTrigger className="h-11 rounded-full">
-                  <SelectValue placeholder="Activity" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activityOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          ) : (
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <Input
+                value={heightCm}
+                onChange={(event) => setHeightCm(event.target.value)}
+                placeholder="Height (cm)"
+                inputMode="numeric"
+                type="number"
+                className="h-11 rounded-full"
+              />
+              <button
+                type="button"
+                onClick={() => setHeightUnit("imperial")}
+                className="h-11 rounded-full border border-emerald-100 bg-emerald-50 text-xs font-semibold text-emerald-700"
+              >
+                Use ft / lb
+              </button>
+            </div>
+          )}
+          <div className="mt-4 space-y-2">
+            <Label>Activity level</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {activityOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setActivity(option.value)}
+                  className={`rounded-full border px-3 py-2 text-xs font-semibold ${
+                    activity === option.value
+                      ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                      : "border-slate-200 bg-white text-slate-600"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
           </div>
           {selectedActivity && (
@@ -237,7 +427,35 @@ const Goals = () => {
                 <RadioGroupItem value="male" id="male" />
                 <Label htmlFor="male">Male</Label>
               </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="other" id="other" />
+                <Label htmlFor="other">Other</Label>
+              </div>
             </RadioGroup>
+          </div>
+          <div className="mt-4 rounded-[20px] border border-emerald-100 bg-white/90 px-4 py-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+              Formula
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {(["mifflin", "katch"] as Formula[]).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setFormula(value)}
+                  className={`rounded-full border px-3 py-2 text-xs font-semibold ${
+                    formula === value
+                      ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                      : "border-slate-200 bg-white text-slate-600"
+                  }`}
+                >
+                  {value === "mifflin" ? "Mifflin-St Jeor" : "Katch-McArdle"}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              Katch is more accurate when body fat % is provided.
+            </p>
           </div>
           <Collapsible
             open={optionalOpen}
@@ -267,6 +485,8 @@ const Goals = () => {
                     value={bodyFat}
                     onChange={(event) => setBodyFat(event.target.value)}
                     placeholder="e.g. 22"
+                    inputMode="numeric"
+                    type="number"
                     className="h-11 rounded-full"
                   />
                   <p className="text-xs text-slate-500">
@@ -274,44 +494,33 @@ const Goals = () => {
                   </p>
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="goal-training">Training days / week (optional)</Label>
+                  <Input
+                    id="goal-training"
+                    value={trainingDays}
+                    onChange={(event) => setTrainingDays(event.target.value)}
+                    placeholder="e.g. 4"
+                    inputMode="numeric"
+                    type="number"
+                    className="h-11 rounded-full"
+                  />
+                  <p className="text-xs text-slate-500">
+                    Helps fine‑tune activity adjustment.
+                  </p>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="goal-steps">Steps per day (optional)</Label>
                   <Input
                     id="goal-steps"
-                    value={steps}
-                    onChange={(event) => setSteps(event.target.value)}
+                    value={stepsPerDay}
+                    onChange={(event) => setStepsPerDay(event.target.value)}
                     placeholder="e.g. 6500"
+                    inputMode="numeric"
+                    type="number"
                     className="h-11 rounded-full"
                   />
                   <p className="text-xs text-slate-500">
                     Captures daily movement outside workouts.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="goal-sleep">Sleep hours (optional)</Label>
-                  <Input
-                    id="goal-sleep"
-                    value={sleep}
-                    onChange={(event) => setSleep(event.target.value)}
-                    placeholder="e.g. 7.5"
-                    className="h-11 rounded-full"
-                  />
-                  <p className="text-xs text-slate-500">
-                    Useful for future recovery-based adjustments.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="goal-resting-hr">
-                    Resting heart rate (optional)
-                  </Label>
-                  <Input
-                    id="goal-resting-hr"
-                    value={restingHr}
-                    onChange={(event) => setRestingHr(event.target.value)}
-                    placeholder="e.g. 62"
-                    className="h-11 rounded-full"
-                  />
-                  <p className="text-xs text-slate-500">
-                    Helps estimate overall training load.
                   </p>
                 </div>
               </div>
@@ -323,19 +532,37 @@ const Goals = () => {
           <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
             Calories
           </p>
-          {calories ? (
+          {calculatedTargets ? (
             <div className="mt-4 grid gap-3 text-sm">
               <div className="rounded-[18px] bg-emerald-50/80 px-4 py-4">
-                <p className="text-xs text-emerald-500">Maintenance</p>
+                <p className="text-xs text-emerald-500">Recommended range</p>
                 <p className="text-lg font-semibold text-emerald-900">
-                  {calories.maintenance} kcal
+                  {calculatedTargets.caloriesRange.min}–{calculatedTargets.caloriesRange.max} cal
                 </p>
               </div>
               <div className="rounded-[18px] bg-emerald-500/90 px-4 py-4 text-white">
-                <p className="text-xs text-white/80">Target range</p>
+                <p className="text-xs text-white/80">Suggested target</p>
                 <p className="text-lg font-semibold">
-                  {calories.range.min}–{calories.range.max} kcal
+                  {dynamicTargets?.calories ?? calculatedTargets.calories} cal
                 </p>
+                <p className="mt-2 text-xs text-white/80">
+                  Adjust the daily target if you want a faster or gentler pace.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="goal-kcal">Daily goal</Label>
+                <Input
+                  id="goal-kcal"
+                  value={kcalGoal}
+                  onChange={(event) => {
+                    setTargetsTouched(true);
+                    setKcalGoal(event.target.value);
+                  }}
+                  placeholder="e.g. 2100"
+                  inputMode="numeric"
+                  type="number"
+                  className="h-11 rounded-full"
+                />
               </div>
             </div>
           ) : (
@@ -347,18 +574,70 @@ const Goals = () => {
             type="button"
             className="mt-4 w-full rounded-full bg-aura-primary py-5 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
             onClick={() => {
-              if (!calories) return;
-              const target = Math.round(
-                (calories.range.min + calories.range.max) / 2,
-              );
-              nutrition.setGoal?.(target);
-              toast("Goal saved", {
-                description: `Daily goal set to ${target} kcal.`,
-              });
+              if (!dynamicTargets) return;
+              const target = Math.round(dynamicTargets.calories);
+              void saveAllTargets(target);
             }}
-            disabled={!calories}
+            disabled={!dynamicTargets}
           >
             Use as daily goal
+          </Button>
+        </Card>
+
+        <Card className="mt-6 rounded-[28px] border border-black/5 bg-white px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+          <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+            Macro targets
+          </p>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-500">Carbs (g)</Label>
+              <Input
+                value={carbs}
+                onChange={(event) => {
+                  setMacrosTouched(true);
+                  setCarbs(event.target.value);
+                }}
+                placeholder="0"
+                inputMode="numeric"
+                className="h-11 rounded-full"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-500">Protein (g)</Label>
+              <Input
+                value={protein}
+                onChange={(event) => {
+                  setMacrosTouched(true);
+                  setProtein(event.target.value);
+                }}
+                placeholder="0"
+                inputMode="numeric"
+                className="h-11 rounded-full"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-500">Fat (g)</Label>
+              <Input
+                value={fat}
+                onChange={(event) => {
+                  setMacrosTouched(true);
+                  setFat(event.target.value);
+                }}
+                placeholder="0"
+                inputMode="numeric"
+                className="h-11 rounded-full"
+              />
+            </div>
+          </div>
+          <Button
+            type="button"
+            className="mt-4 w-full rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+            onClick={() => {
+              void saveAllTargets();
+            }}
+            disabled={!dynamicTargets}
+          >
+            Save macros
           </Button>
         </Card>
       </div>

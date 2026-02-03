@@ -5,6 +5,7 @@ export type Exercise = {
   category: string;
   equipment: string[];
   muscles: string[];
+  imageUrl?: string;
 };
 
 export type ExerciseSearchStatus = "idle" | "loading" | "error";

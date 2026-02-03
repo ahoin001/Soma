@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppShell, WorkoutSessionEditor } from "@/components/aura";
 import { useAppStore } from "@/state/AppStore";
@@ -48,6 +48,10 @@ const WorkoutDetails = () => {
 
   const editorMode = mode === "session" ? "session" : "edit";
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [workoutId, mode]);
+
   return (
     <AppShell experience="fitness" showNav={false}>
       <WorkoutSessionEditor
@@ -55,9 +59,20 @@ const WorkoutDetails = () => {
         workout={activeWorkout}
         plan={activePlan}
         onBack={() => navigate("/fitness")}
-        onSave={(exercises) => {
-          updateWorkoutTemplate(activePlan.id, activeWorkout.id, { exercises });
+        onOpenGuide={(exercise) => {
+          if (!activePlan || !activeWorkout) return;
+          navigate(
+            `/fitness/workouts/${activePlan.id}/${activeWorkout.id}/exercises/${exercise.id}/guide?name=${encodeURIComponent(
+              exercise.name,
+            )}`,
+          );
+        }}
+        onSave={(nextExercises) => {
+          updateWorkoutTemplate(activePlan.id, activeWorkout.id, {
+            exercises: nextExercises,
+          });
           toast("Workout updated");
+          navigate("/fitness");
         }}
         onStartSession={() => {
           fitnessPlanner.startSessionFromTemplate(

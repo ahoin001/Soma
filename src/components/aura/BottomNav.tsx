@@ -26,7 +26,7 @@ const NavButton = ({
 }) => (
   <NavLink
     to={to}
-    className={`flex flex-col items-center gap-1 text-xs font-medium ${
+    className={`flex w-14 flex-col items-center gap-1 text-xs font-medium ${
       active
         ? tone === "dark"
           ? "text-white"
@@ -43,9 +43,10 @@ const NavButton = ({
 
 type BottomNavProps = {
   experience: "nutrition" | "fitness";
+  onAddAction?: () => void;
 };
 
-export const BottomNav = ({ experience }: BottomNavProps) => {
+export const BottomNav = ({ experience, onAddAction }: BottomNavProps) => {
   const isNutrition = experience === "nutrition";
   const tone = isNutrition ? "light" : "dark";
   const location = useLocation();
@@ -55,9 +56,9 @@ export const BottomNav = ({ experience }: BottomNavProps) => {
     : "border-white/10 bg-slate-950/90 text-white";
 
   return (
-    <div className="fixed bottom-5 left-1/2 w-full max-w-sm -translate-x-1/2 px-5 pb-[env(safe-area-inset-bottom)]">
+    <div className="fixed bottom-5 left-1/2 z-[30] w-full max-w-sm -translate-x-1/2 px-5 pb-[env(safe-area-inset-bottom)]">
       <div
-        className={`flex items-center justify-between rounded-[28px] border px-6 py-3 shadow-[0_18px_36px_rgba(15,23,42,0.12)] ${containerTone}`}
+        className={`flex items-center justify-between rounded-[28px] border px-6 py-3 shadow-[0_18px_36px_rgba(15,23,42,0.12)] backdrop-blur-md ${containerTone}`}
       >
         {isNutrition ? (
           <>
@@ -73,7 +74,11 @@ export const BottomNav = ({ experience }: BottomNavProps) => {
               to="/nutrition/goals"
               active={path.startsWith("/nutrition/goals")}
             />
-            <Button className="h-12 w-12 rounded-full bg-aura-primary shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90">
+            <Button
+              type="button"
+              onClick={onAddAction}
+              className="h-12 w-12 rounded-full bg-aura-primary shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
+            >
               <Plus className="h-5 w-5 text-white" />
             </Button>
             <NavButton

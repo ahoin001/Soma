@@ -12,10 +12,19 @@ const storeUserId = (value: string) => {
 };
 
 const generateUserId = () => {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }
-  return `user-${Math.random().toString(36).slice(2)}`;
+  const hex = Array.from({ length: 16 }, () =>
+    Math.floor(Math.random() * 256)
+      .toString(16)
+      .padStart(2, "0"),
+  );
+  return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-4${hex
+    .slice(6, 8)
+    .join("")}-${((parseInt(hex[8], 16) & 0x3) | 0x8).toString(16)}${hex
+    .slice(9, 11)
+    .join("")}-${hex.slice(11, 16).join("")}`;
 };
 
 const ensureUserId = () => {
@@ -32,13 +41,13 @@ const bootstrapUser = async () => {
   if (bootstrapPromise) return bootstrapPromise;
   bootstrapPromise = (async () => {
     const userId = ensureUserId();
-    await fetch(`${API_BASE}/api/users/ensure`, {
+    await fetch(`${API_BASE}/api/users/bootstrap`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-user-id": userId,
       },
-      body: JSON.stringify({ userId }),
+      body: JSON.stringify({}),
     });
   })();
   return bootstrapPromise;

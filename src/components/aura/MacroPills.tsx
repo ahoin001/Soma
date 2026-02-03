@@ -17,7 +17,7 @@ export const MacroPills = ({ macros, className }: MacroPillsProps) => (
       >
         <p className="text-xs font-semibold text-slate-700">{macro.label}</p>
         <Progress
-          value={(macro.current / macro.goal) * 100}
+          value={macro.goal > 0 ? (macro.current / macro.goal) * 100 : 0}
           className="mt-3 h-2 bg-emerald-100"
         />
         <p className="mt-3 text-xs text-slate-500">

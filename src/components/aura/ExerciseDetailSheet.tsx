@@ -10,6 +10,8 @@ type ExerciseDetailSheetProps = {
   exercise: Exercise | null;
   canAddToRoutine: boolean;
   onAddToRoutine: (exercise: Exercise) => void;
+  onAddToWorkout?: (exercise: Exercise) => void;
+  onEditExercise?: (exercise: Exercise) => void;
   onAddToSession?: (exercise: Exercise) => void;
 };
 
@@ -19,6 +21,8 @@ export const ExerciseDetailSheet = ({
   exercise,
   canAddToRoutine,
   onAddToRoutine,
+  onAddToWorkout,
+  onEditExercise,
   onAddToSession,
 }: ExerciseDetailSheetProps) => {
   const description = useMemo(
@@ -100,6 +104,24 @@ export const ExerciseDetailSheet = ({
               >
                 Add to routine
               </Button>
+              {onAddToWorkout ? (
+                <Button
+                  variant="secondary"
+                  className="w-full rounded-full bg-white/10 text-white hover:bg-white/20"
+                  onClick={() => onAddToWorkout(exercise)}
+                >
+                  Add to workout
+                </Button>
+              ) : null}
+              {onEditExercise ? (
+                <Button
+                  variant="outline"
+                  className="w-full rounded-full border-white/20 text-white hover:bg-white/10"
+                  onClick={() => onEditExercise(exercise)}
+                >
+                  Edit exercise
+                </Button>
+              ) : null}
               {onAddToSession ? (
                 <Button
                   variant="outline"

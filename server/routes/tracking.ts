@@ -61,6 +61,56 @@ router.get(
   }),
 );
 
+router.get(
+  "/goals",
+  asyncHandler(async (req, res) => {
+    const userId = getUserId(req);
+    const result = await withTransaction((client) =>
+      client.query(
+        `
+        SELECT steps_goal, water_goal_ml, weight_unit
+        FROM user_activity_goals
+        WHERE user_id = $1;
+        `,
+        [userId],
+      ),
+    );
+    res.json({ goals: result.rows[0] ?? null });
+  }),
+);
+
+router.post(
+  "/goals",
+  asyncHandler(async (req, res) => {
+    const userId = getUserId(req);
+    const payload = z
+      .object({
+        stepsGoal: z.number().int().positive().optional(),
+        waterGoalMl: z.number().int().positive().optional(),
+        weightUnit: z.string().optional(),
+      })
+      .parse(req.body);
+
+    const result = await withTransaction((client) =>
+      client.query(
+        `
+        INSERT INTO user_activity_goals (user_id, steps_goal, water_goal_ml, weight_unit)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (user_id)
+        DO UPDATE SET
+          steps_goal = COALESCE(EXCLUDED.steps_goal, user_activity_goals.steps_goal),
+          water_goal_ml = COALESCE(EXCLUDED.water_goal_ml, user_activity_goals.water_goal_ml),
+          weight_unit = COALESCE(EXCLUDED.weight_unit, user_activity_goals.weight_unit),
+          updated_at = now()
+        RETURNING *;
+        `,
+        [userId, payload.stepsGoal ?? null, payload.waterGoalMl ?? null, payload.weightUnit ?? null],
+      ),
+    );
+    res.json({ goals: result.rows[0] });
+  }),
+);
+
 const waterSchema = z.object({
   localDate: z.string().min(1),
   amountMl: z.number().int().positive(),

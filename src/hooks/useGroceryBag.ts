@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/apiClient";
+import { addGroceryBagItem, fetchGroceryBag, removeGroceryBagItem } from "@/lib/api";
 
 export type GroceryBagItem = {
   id: string;
@@ -28,8 +28,8 @@ export const useGroceryBag = () => {
     setStatus("loading");
     setError(null);
     try {
-      const data = await apiFetch<{ items: GroceryBagItem[] }>("/api/groceries");
-      setItems(data.items ?? []);
+      const data = await fetchGroceryBag();
+      setItems((data.items ?? []) as GroceryBagItem[]);
       setStatus("idle");
     } catch (fetchError) {
       const detail =
@@ -44,10 +44,7 @@ export const useGroceryBag = () => {
   }, [load]);
 
   const addItem = useCallback(async (payload: GroceryBagPayload) => {
-    const data = await apiFetch<{ item: GroceryBagItem }>("/api/groceries", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    const data = await addGroceryBagItem(payload);
     if (data.item) {
       setItems((prev) => {
         const exists = prev.some((item) => item.id === data.item.id);
@@ -58,7 +55,7 @@ export const useGroceryBag = () => {
   }, []);
 
   const removeItem = useCallback(async (itemId: string) => {
-    await apiFetch(`/api/groceries/${itemId}`, { method: "DELETE" });
+    await removeGroceryBagItem(itemId);
     setItems((prev) => prev.filter((item) => item.id !== itemId));
   }, []);
 

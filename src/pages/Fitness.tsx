@@ -6,10 +6,12 @@ import {
   RoutineBuilderPanel,
   WorkoutPlanSheet,
   WorkoutPlanSection,
+  WorkoutTemplateSheet,
   VirtualizedExerciseList,
 } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
@@ -22,8 +24,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "@/state/AppStore";
 import type { Exercise } from "@/types/fitness";
 import type { WorkoutPlan, WorkoutTemplate } from "@/types/fitness";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 const fitnessBlocks = [
   {
@@ -61,9 +64,14 @@ const Fitness = () => {
     setActivePlanId,
     lastWorkoutByPlan,
     updateWorkoutPlan,
+    updateWorkoutTemplate,
     deleteWorkoutPlan,
+    deleteWorkoutTemplate,
+    createWorkoutPlan,
+    createWorkoutTemplate,
   } = useAppStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const abortRef = useRef<AbortController | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
@@ -72,6 +80,16 @@ const Fitness = () => {
   ]);
   const [planSheetOpen, setPlanSheetOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<WorkoutPlan | null>(null);
+  const [workoutSheetOpen, setWorkoutSheetOpen] = useState(false);
+  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutTemplate | null>(
+    null,
+  );
+  const [creating, setCreating] = useState(false);
+  const [atlasScope, setAtlasScope] = useState<"all" | "mine">(() => {
+    if (typeof window === "undefined") return "all";
+    const stored = window.localStorage.getItem("ironflow-exercise-scope");
+    return stored === "mine" ? "mine" : "all";
+  });
 
   useEffect(() => {
     if (!query.trim()) return;
@@ -79,17 +97,29 @@ const Fitness = () => {
     abortRef.current?.abort();
     abortRef.current = controller;
     const timer = window.setTimeout(() => {
-      searchExercises(query, controller.signal);
+      searchExercises(query, controller.signal, atlasScope);
     }, 350);
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [query, searchExercises]);
+  }, [query, searchExercises, atlasScope]);
+
+  useEffect(() => {
+    const state = location.state as { exerciseQuery?: string } | null;
+    if (!state?.exerciseQuery) return;
+    setQuery(state.exerciseQuery);
+    navigate(location.pathname, { replace: true });
+  }, [location, navigate, setQuery]);
 
   const previewItems = useMemo(() => results.slice(0, 120), [results]);
   const activePlanForHud =
     workoutPlans.find((plan) => plan.id === activePlanId) ?? workoutPlans[0];
+  const totalWorkouts = useMemo(
+    () => workoutPlans.reduce((sum, plan) => sum + plan.workouts.length, 0),
+    [workoutPlans],
+  );
+  const showEmptyState = workoutPlans.length === 0 || totalWorkouts === 0;
   const lastWorkoutId = activePlanForHud
     ? lastWorkoutByPlan[activePlanForHud.id] ?? null
     : null;
@@ -115,6 +145,16 @@ const Fitness = () => {
   const handleSelectExercise = (exercise: Exercise) => {
     setSelectedExercise(exercise);
     setDetailOpen(true);
+  };
+
+  const handleAddToWorkout = (exercise: Exercise) => {
+    setDetailOpen(false);
+    navigate(`/fitness/exercises/add?name=${encodeURIComponent(exercise.name)}`);
+  };
+
+  const handleEditExercise = (exercise: Exercise) => {
+    setDetailOpen(false);
+    navigate(`/fitness/exercises/${exercise.id}/edit`);
   };
 
   const handleAddToRoutine = (exercise: Exercise) => {
@@ -143,131 +183,261 @@ const Fitness = () => {
     navigate(`/fitness/workouts/${plan.id}/${workout.id}`);
   };
 
+  const handleOpenWorkoutActions = (
+    workout: WorkoutTemplate,
+    plan: WorkoutPlan,
+  ) => {
+    setSelectedWorkout(workout);
+    setSelectedPlan(plan);
+    setWorkoutSheetOpen(true);
+  };
+
+  const handleCreatePlan = async () => {
+    try {
+      setCreating(true);
+      const plan = await createWorkoutPlan("Starter plan");
+      setActivePlanId(plan.id);
+      setExpandedPlans((prev) =>
+        prev.includes(plan.id) ? prev : [...prev, plan.id],
+      );
+      toast("Plan created", {
+        description: "Your new folder is ready.",
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to create plan";
+      toast("Plan not created", { description: message });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleCreateWorkout = async (planId: string | null) => {
+    try {
+      setCreating(true);
+      let targetPlanId = planId;
+      if (!targetPlanId) {
+        const plan = await createWorkoutPlan("Starter plan");
+        targetPlanId = plan.id;
+        setActivePlanId(plan.id);
+        setExpandedPlans((prev) =>
+          prev.includes(plan.id) ? prev : [...prev, plan.id],
+        );
+      }
+      const workout = await createWorkoutTemplate(
+        targetPlanId,
+        "New workout",
+      );
+      setExpandedPlans((prev) =>
+        prev.includes(targetPlanId) ? prev : [...prev, targetPlanId],
+      );
+      toast("Workout created", {
+        description: "Add exercises to build it out.",
+      });
+      navigate(`/fitness/workouts/${targetPlanId}/${workout.id}`);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to create workout";
+      toast("Workout not created", { description: message });
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <AppShell experience="fitness">
-      <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6 text-foreground">
-        <FitnessHeader
-          planName={activePlanForHud?.name}
-          lastWorkout={
-            lastWorkout
-              ? `${lastWorkout.name} · ${lastWorkout.lastPerformed ?? "Done"}`
-              : "No sessions yet"
-          }
-          nextSession={nextWorkout ? nextWorkout.name : "Add a workout"}
-          readiness="Readiness 82%"
-        />
+      <div className="w-full text-foreground">
+        <div className="pt-6">
+          <FitnessHeader
+            planName={activePlanForHud?.name}
+            lastWorkout={
+              lastWorkout
+                ? `${lastWorkout.name} · ${lastWorkout.lastPerformed ?? "Done"}`
+                : "No sessions yet"
+            }
+            nextSession={nextWorkout ? nextWorkout.name : "Add a workout"}
+            readiness="Readiness 82%"
+          />
+        </div>
 
-        <section className="mt-8 space-y-6">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-white/40">
-              Today in focus
-            </p>
-            <h2 className="mt-2 text-xl font-display font-semibold text-white">
-              Design your strength
-            </h2>
-            <p className="mt-1 text-sm text-white/60">
-              Plan the routine, then drop into Flow mode when you are ready.
-            </p>
-          </div>
-
-          <Card className="border-white/10 bg-card text-card-foreground">
-            <CardHeader>
-              <CardTitle className="text-lg text-white">Atlas</CardTitle>
-              <CardDescription className="text-white/60">
-                Search the exercise library by name or muscle group.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search exercises (e.g., bench press)"
-                className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
-              />
-              {status === "error" ? (
-                <p className="text-sm text-rose-300">{error}</p>
-              ) : null}
-              {status === "loading" ? (
-                <p className="text-sm text-white/60">Loading exercises...</p>
-              ) : null}
-              {previewItems.length ? (
-                <VirtualizedExerciseList
-                  items={previewItems}
-                  selectedId={selectedExercise?.id ?? null}
-                  onSelect={handleSelectExercise}
-                />
-              ) : (
-                <p className="text-sm text-white/50">
-                  Start typing to explore the Atlas.
+        <div className="mx-auto w-full max-w-sm px-5 pb-10">
+          <section className="mt-8 space-y-6">
+          {showEmptyState ? (
+            <motion.div
+              className="space-y-5"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            >
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                  Ready to build
                 </p>
-              )}
-            </CardContent>
-          </Card>
+                <h2 className="mt-2 text-xl font-display font-semibold text-white">
+                  Create your first workout
+                </h2>
+                <p className="mt-1 text-sm text-white/60">
+                  Start with a workout, then organize it into folders when you are ready.
+                </p>
+              </div>
+              <motion.div
+                className="rounded-[28px] border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent px-5 py-6 text-center shadow-[0_25px_50px_rgba(0,0,0,0.35)]"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.05 }}
+              >
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/70">
+                  <Dumbbell className="h-5 w-5" />
+                </div>
+                <p className="mt-4 text-sm text-white/70">
+                  No workouts yet. Create one and add exercises as you go.
+                </p>
+                <div className="mt-5 grid gap-2">
+                  <Button
+                    className="w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                    onClick={() => handleCreateWorkout(activePlanForHud?.id ?? null)}
+                    disabled={creating}
+                  >
+                    {creating ? "Creating workout..." : "Create workout"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-full border-white/20 text-white hover:bg-white/10"
+                    onClick={handleCreatePlan}
+                    disabled={creating}
+                  >
+                    {creating ? "Creating folder..." : "Create folder"}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="w-full rounded-full bg-white/15 text-white hover:bg-white/25"
+                    onClick={() => navigate("/fitness/exercises/create")}
+                  >
+                    Create exercise
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          ) : (
+            <>
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+              >
+                <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                  Today in focus
+                </p>
+                <h2 className="mt-2 text-xl font-display font-semibold text-white">
+                  Design your strength
+                </h2>
+                <p className="mt-1 text-sm text-white/60">
+                  Plan the routine, then drop into Flow mode when you are ready.
+                </p>
+              </motion.div>
 
-          <WorkoutPlanSection
-            plans={workoutPlans}
-            expandedPlans={expandedPlans}
-            activePlanId={activePlanForHud?.id ?? null}
-            onExpandedChange={setExpandedPlans}
-            onOpenPlanMenu={handleOpenPlanMenu}
-            onOpenWorkoutMenu={handleOpenWorkoutMenu}
-          />
-
-          <RoutineBuilderPanel
-            routines={fitnessPlanner.routines}
-            activeRoutineId={fitnessPlanner.activeRoutineId}
-            activeRoutine={fitnessPlanner.activeRoutine}
-            selectedExercise={selectedExercise}
-            hasActiveSession={hasActiveSession}
-            onSelectRoutine={fitnessPlanner.setActiveRoutineId}
-            onCreateRoutine={fitnessPlanner.createRoutine}
-            onRenameRoutine={fitnessPlanner.renameRoutine}
-            onRemoveRoutine={fitnessPlanner.removeRoutine}
-            onAddExercise={fitnessPlanner.addExerciseToRoutine}
-            onRemoveExercise={fitnessPlanner.removeExerciseFromRoutine}
-            onUpdateExercise={fitnessPlanner.updateRoutineExercise}
-            onStartSession={fitnessPlanner.startSession}
-          />
-
-          <LiveSessionPanel
-            activeSession={fitnessPlanner.activeSession}
-            activeRoutine={fitnessPlanner.activeRoutine}
-            onLogSet={fitnessPlanner.logSet}
-            onAdvanceExercise={handleAdvanceExercise}
-            onFinishSession={fitnessPlanner.finishSession}
-          />
-
-          <div className="grid gap-4">
-            {fitnessBlocks.map((block) => {
-              const Icon = block.icon;
-              return (
-                <Card
-                  key={block.title}
-                  className="border-white/10 bg-card text-card-foreground"
-                >
-                  <CardHeader className="flex-row items-center gap-3 pb-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-400/15 text-emerald-200">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg text-white">
-                        {block.title}
-                      </CardTitle>
-                      <CardDescription className="text-white/60">
-                        {block.description}
-                      </CardDescription>
-                    </div>
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+              >
+                <Card className="border-white/10 bg-card text-card-foreground">
+                  <CardHeader>
+                    <CardTitle className="text-lg text-white">Atlas</CardTitle>
+                    <CardDescription className="text-white/60">
+                      Search the exercise library by name or muscle group.
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="pt-0">
-                    <Button className="w-full rounded-full bg-white/10 text-white hover:bg-white/20">
-                      {block.action}
-                    </Button>
+                  <CardContent className="space-y-4">
+                  <Input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search exercises (e.g., bench press)"
+                    className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                  />
+                  <Tabs
+                    value={atlasScope}
+                    onValueChange={(value) => {
+                      const nextScope = value === "mine" ? "mine" : "all";
+                      setAtlasScope(nextScope);
+                      if (typeof window !== "undefined") {
+                        window.localStorage.setItem(
+                          "ironflow-exercise-scope",
+                          nextScope,
+                        );
+                      }
+                      if (query.trim()) {
+                        searchExercises(query, undefined, nextScope);
+                      }
+                    }}
+                  >
+                    <TabsList className="h-10 w-full rounded-full bg-white/5 p-1">
+                      <TabsTrigger
+                        value="all"
+                        className="w-full rounded-full text-xs data-[state=active]:bg-emerald-400/20 data-[state=active]:text-emerald-200"
+                      >
+                        All exercises
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="mine"
+                        className="w-full rounded-full text-xs data-[state=active]:bg-emerald-400/20 data-[state=active]:text-emerald-200"
+                      >
+                        My exercises
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  <Button
+                    variant="secondary"
+                    className="w-full rounded-full bg-white/10 text-white hover:bg-white/20"
+                    onClick={() => navigate("/fitness/exercises/create")}
+                  >
+                    Create exercise
+                  </Button>
+                  {creating ? (
+                    <p className="text-xs text-white/60">
+                      Preparing your workout...
+                    </p>
+                  ) : null}
+                  {status === "error" ? (
+                    <p className="text-sm text-rose-300">{error}</p>
+                  ) : null}
+                  {status === "loading" ? (
+                    <p className="text-sm text-white/60">
+                      {atlasScope === "mine"
+                        ? "Loading your exercises..."
+                        : "Loading exercises..."}
+                    </p>
+                  ) : null}
+                  {previewItems.length ? (
+                    <VirtualizedExerciseList
+                      items={previewItems}
+                      selectedId={selectedExercise?.id ?? null}
+                      onSelect={handleSelectExercise}
+                    />
+                  ) : (
+                    <p className="text-sm text-white/50">
+                      Start typing to explore the Atlas.
+                    </p>
+                  )}
                   </CardContent>
                 </Card>
-              );
-            })}
-          </div>
-        </section>
+              </motion.div>
+
+              <WorkoutPlanSection
+                plans={workoutPlans}
+                expandedPlans={expandedPlans}
+                activePlanId={activePlanForHud?.id ?? null}
+                onExpandedChange={setExpandedPlans}
+                onOpenPlanMenu={handleOpenPlanMenu}
+                onOpenWorkoutMenu={handleOpenWorkoutMenu}
+                      onOpenWorkoutActions={handleOpenWorkoutActions}
+                onCreatePlan={handleCreatePlan}
+                onCreateWorkout={handleCreateWorkout}
+              />
+            </>
+          )}
+          </section>
+        </div>
       </div>
 
       <ExerciseDetailSheet
@@ -276,6 +446,8 @@ const Fitness = () => {
         exercise={selectedExercise}
         canAddToRoutine={canAddToRoutine}
         onAddToRoutine={handleAddToRoutine}
+        onAddToWorkout={handleAddToWorkout}
+        onEditExercise={handleEditExercise}
       />
 
       <WorkoutPlanSheet
@@ -300,6 +472,35 @@ const Fitness = () => {
           deleteWorkoutPlan(selectedPlan.id);
           setPlanSheetOpen(false);
           toast("Plan deleted");
+        }}
+      />
+
+      <WorkoutTemplateSheet
+        open={workoutSheetOpen}
+        onOpenChange={setWorkoutSheetOpen}
+        plan={selectedPlan}
+        workout={selectedWorkout}
+        onEdit={() => {
+          if (!selectedPlan || !selectedWorkout) return;
+          setWorkoutSheetOpen(false);
+          navigate(`/fitness/workouts/${selectedPlan.id}/${selectedWorkout.id}`);
+        }}
+        onRename={(name) => {
+          if (!selectedPlan || !selectedWorkout) return;
+          updateWorkoutTemplate(selectedPlan.id, selectedWorkout.id, { name });
+          setSelectedWorkout((prev) => (prev ? { ...prev, name } : prev));
+          setWorkoutSheetOpen(false);
+          toast("Workout updated", {
+            description: "Workout name saved.",
+          });
+        }}
+        onDelete={() => {
+          if (!selectedPlan || !selectedWorkout) return;
+          deleteWorkoutTemplate(selectedPlan.id, selectedWorkout.id);
+          setWorkoutSheetOpen(false);
+          toast("Workout deleted", {
+            description: "Removed from your plan.",
+          });
         }}
       />
     </AppShell>

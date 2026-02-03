@@ -291,7 +291,7 @@ export const upsertGlobalFoods = async (items: FoodInsert[]) => {
           $12::numeric[],
           $13::jsonb[]
         )
-        ON CONFLICT (barcode) WHERE is_global DO NOTHING
+        ON CONFLICT DO NOTHING
         RETURNING *;
         `,
         [

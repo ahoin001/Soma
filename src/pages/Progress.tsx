@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/state/AppStore";
 import { toast } from "sonner";
 import { useWeightLogs } from "@/hooks/useTracking";
+import { useTrainingAnalytics } from "@/hooks/useTrainingAnalytics";
 
 type WeightEntry = {
   date: string;
@@ -150,6 +151,15 @@ const Progress = () => {
   const [weight, setWeight] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const { userProfile, nutrition } = useAppStore();
+  const training = useTrainingAnalytics(8);
+  const maxVolume = useMemo(
+    () =>
+      Math.max(
+        ...training.items.map((entry) => Number(entry.volume ?? 0)),
+        1,
+      ),
+    [training.items],
+  );
 
   const saveEntry = async () => {
     const numeric = Number(weight);
@@ -302,7 +312,7 @@ const Progress = () => {
                 {guidance.adjust > 0 ? "increasing" : "decreasing"} your
                 calorie goal by about{" "}
                 <span className="font-semibold">
-                  {Math.abs(guidance.adjust)} kcal
+                  {Math.abs(guidance.adjust)} cal
                 </span>{" "}
                 per day.
               </div>
@@ -322,7 +332,7 @@ const Progress = () => {
                   );
                   nutrition.setGoal?.(nextGoal);
                   toast("Goal updated", {
-                    description: `Daily goal set to ${nextGoal} kcal.`,
+                    description: `Daily goal set to ${nextGoal} cal.`,
                   });
                 }}
               >
@@ -331,6 +341,40 @@ const Progress = () => {
             )}
           </Card>
         )}
+
+        <Card className="mt-6 rounded-[28px] border border-black/5 bg-white px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+          <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+            Training trend
+          </p>
+          <h2 className="mt-2 text-lg font-display font-semibold text-slate-900">
+            Weekly volume
+          </h2>
+          <div className="mt-4 space-y-3">
+            {training.items.map((item) => {
+              const volume = Number(item.volume ?? 0);
+              const width = Math.round((volume / maxVolume) * 100);
+              return (
+                <div key={item.week_start} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span>{formatShortDate(item.week_start)}</span>
+                    <span>{Math.round(volume)} vol • {item.total_sets} sets</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-emerald-100">
+                    <div
+                      className="h-2 rounded-full bg-emerald-400"
+                      style={{ width: `${width}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            {!training.items.length && (
+              <p className="text-sm text-slate-500">
+                Log a workout session to see your trend.
+              </p>
+            )}
+          </div>
+        </Card>
 
         <Card className="mt-6 rounded-[28px] border border-black/5 bg-white px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
           <div className="flex items-center justify-between">

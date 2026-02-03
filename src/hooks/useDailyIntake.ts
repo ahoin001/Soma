@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FoodItem, MacroTarget, Meal } from "@/data/mock";
 import type { MealEntryItemRecord, MealEntryRecord } from "@/types/api";
-import { createMealEntry, deleteMealEntryItem, ensureUser, fetchMealEntries } from "@/lib/api";
+import {
+  createMealEntry,
+  deleteMealEntryItem,
+  ensureUser,
+  fetchMealEntries,
+  fetchNutritionSummary,
+  fetchNutritionSettings,
+  upsertNutritionSettings,
+  upsertNutritionTargets,
+} from "@/lib/api";
 import type { LogSection } from "@/types/log";
 
 type Summary = {
@@ -61,19 +70,31 @@ export const useDailyIntake = (
         mealMap.set(meal.id, meal);
       });
 
-      const sections: LogSection[] = [];
+      const sectionsByMeal = new Map<
+        string,
+        { section: LogSection; latestLoggedAt: number }
+      >();
+
       for (const entry of entries) {
         const meal = entry.meal_type_id ? mealMap.get(entry.meal_type_id) : null;
+        const mealKey = entry.meal_type_id ?? "meal";
         const mealLabel = meal?.label ?? "Meal";
         const mealEmoji = meal?.emoji ?? "🍽️";
         const entryItems = itemsByEntry.get(entry.id) ?? [];
-        sections.push({
-          meal: mealLabel,
-          time: new Date(entry.logged_at).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          items: entryItems.map((item) => ({
+        const loggedAt = new Date(entry.logged_at).getTime();
+
+        if (!sectionsByMeal.has(mealKey)) {
+          sectionsByMeal.set(mealKey, {
+            section: { meal: mealLabel, time: entry.logged_at, items: [] },
+            latestLoggedAt: loggedAt,
+          });
+        }
+
+        const target = sectionsByMeal.get(mealKey);
+        if (!target) continue;
+        target.latestLoggedAt = Math.max(target.latestLoggedAt, loggedAt);
+        target.section.items.push(
+          ...entryItems.map((item) => ({
             id: item.id,
             name: item.food_name,
             kcal: Number(item.kcal ?? 0),
@@ -83,11 +104,31 @@ export const useDailyIntake = (
               fat: Number(item.fat_g ?? 0),
             },
             emoji: mealEmoji,
+            imageUrl: item.image_url ?? null,
           })),
-        });
+        );
       }
 
-      setLogSections(sections);
+      const ordered = meals
+        .map((meal) => sectionsByMeal.get(meal.id))
+        .filter(
+          (entry): entry is { section: LogSection; latestLoggedAt: number } =>
+            Boolean(entry),
+        );
+
+      const otherSections = Array.from(sectionsByMeal.entries())
+        .filter(([key]) => !mealMap.has(key))
+        .map(([, value]) => value);
+
+      const formatted = [...ordered, ...otherSections].map(({ section, latestLoggedAt }) => ({
+        ...section,
+        time: new Date(latestLoggedAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      }));
+
+      setLogSections(formatted);
 
       const totals = items.reduce(
         (acc, item) => ({
@@ -101,7 +142,7 @@ export const useDailyIntake = (
 
       setSummary((prev) => ({
         ...prev,
-        eaten: items.length,
+        eaten: totals.kcal,
         kcalLeft: Math.max(prev.goal - totals.kcal, 0),
       }));
 
@@ -122,6 +163,37 @@ export const useDailyIntake = (
     recomputeFromItems(response.entries, response.items);
   }, [localDate, meals.length, recomputeFromItems]);
 
+  const refreshTargets = useCallback(async () => {
+    await ensureUser();
+    const [daily, settings] = await Promise.all([
+      fetchNutritionSummary(localDate),
+      fetchNutritionSettings(),
+    ]);
+    const target = daily.targets ?? null;
+    const fallback = settings.settings ?? null;
+    if (!target && !fallback) return;
+    const kcalGoal = target?.kcal_goal ?? fallback?.kcal_goal;
+    if (Number.isFinite(kcalGoal ?? undefined)) {
+      const goal = Number(kcalGoal);
+      setSummary((prev) => ({
+        ...prev,
+        goal,
+        kcalLeft: Math.max(goal - (prev.goal - prev.kcalLeft), 0),
+      }));
+    }
+    setMacros((prev) =>
+      prev.map((macro) => ({
+        ...macro,
+        goal:
+          macro.key === "carbs"
+            ? Number((target?.carbs_g ?? fallback?.carbs_g) ?? macro.goal)
+            : macro.key === "protein"
+              ? Number((target?.protein_g ?? fallback?.protein_g) ?? macro.goal)
+              : Number((target?.fat_g ?? fallback?.fat_g) ?? macro.goal),
+      })),
+    );
+  }, [localDate]);
+
   const setSyncPulse = useCallback(() => {
     setSyncState("syncing");
     if (syncTimerRef.current) {
@@ -141,8 +213,40 @@ export const useDailyIntake = (
       goal,
       kcalLeft: Math.max(goal - consumed, 0),
     }));
+    void upsertNutritionTargets({ localDate, kcalGoal: goal });
+    void upsertNutritionSettings({ kcalGoal: goal });
     setSyncPulse();
-  }, [setSyncPulse]);
+  }, [localDate, setSyncPulse]);
+
+  const setMacroTargets = useCallback(
+    (next: { carbs?: number; protein?: number; fat?: number }) => {
+      setMacros((prev) =>
+        prev.map((macro) => ({
+          ...macro,
+          goal:
+            macro.key === "carbs"
+              ? next.carbs ?? macro.goal
+              : macro.key === "protein"
+                ? next.protein ?? macro.goal
+                : next.fat ?? macro.goal,
+        })),
+      );
+      void upsertNutritionTargets({
+        localDate,
+        kcalGoal: summaryRef.current.goal,
+        carbsG: next.carbs,
+        proteinG: next.protein,
+        fatG: next.fat,
+      });
+      void upsertNutritionSettings({
+        carbsG: next.carbs,
+        proteinG: next.protein,
+        fatG: next.fat,
+      });
+      setSyncPulse();
+    },
+    [localDate, setSyncPulse],
+  );
 
   const logFood = useCallback(
     async (food: FoodItem, mealTypeId?: string) => {
@@ -152,7 +256,7 @@ export const useDailyIntake = (
 
       setSummary((prev) => ({
         ...prev,
-        eaten: prev.eaten + 1,
+        eaten: prev.eaten + food.kcal,
         kcalLeft: Math.max(prev.kcalLeft - food.kcal, 0),
       }));
 
@@ -210,7 +314,8 @@ export const useDailyIntake = (
 
   useEffect(() => {
     void refreshEntries();
-  }, [refreshEntries]);
+    void refreshTargets();
+  }, [refreshEntries, refreshTargets]);
 
   useEffect(() => {
     return () => {
@@ -242,6 +347,7 @@ export const useDailyIntake = (
     logFood,
     undoLastLog,
     setGoal,
+    setMacroTargets,
     selectedDate,
     setSelectedDate,
     logSections,

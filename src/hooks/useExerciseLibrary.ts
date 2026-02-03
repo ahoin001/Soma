@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import type { Exercise, ExerciseSearchStatus } from "@/types/fitness";
-import { searchWgerExercises } from "@/data/exerciseApi";
+import { ensureUser, searchExercises } from "@/lib/api";
 
 type CacheEntry<T> = {
   updatedAt: number;
@@ -48,25 +48,53 @@ const normalizeQuery = (value: string) => value.trim().toLowerCase();
 const cleanDescription = (value: string) =>
   value.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 
-const mapExercise = (item: Record<string, unknown>) => ({
-  id: Number(item.id ?? 0),
-  name: String(item.name ?? ""),
-  description: cleanDescription(String(item.description ?? "")),
-  category: String(item.category?.name ?? "General"),
-  equipment: Array.isArray(item.equipment)
-    ? item.equipment.map((equip) => String(equip.name ?? ""))
-    : [],
-  muscles: Array.isArray(item.muscles)
-    ? item.muscles.map((muscle) => String(muscle.name ?? ""))
-    : [],
-});
+const mapExercise = (item: Record<string, unknown>) => {
+  const rawCategory =
+    typeof item.category === "string"
+      ? item.category
+      : (item.category as { name?: string } | undefined)?.name;
+  const equipment = Array.isArray(item.equipment)
+    ? item.equipment.map((equip) =>
+        typeof equip === "string"
+          ? equip
+          : String((equip as { name?: string }).name ?? ""),
+      )
+    : [];
+  const muscles = Array.isArray(item.muscles)
+    ? item.muscles.map((muscle) =>
+        typeof muscle === "string"
+          ? muscle
+          : String((muscle as { name?: string }).name ?? ""),
+      )
+    : [];
+  return {
+    id: Number(item.id ?? 0),
+    name: String(item.name ?? ""),
+    description: cleanDescription(String(item.description ?? "")),
+    category: String(rawCategory ?? "General"),
+    equipment: equipment.filter(Boolean),
+    muscles: muscles.filter(Boolean),
+    imageUrl:
+      typeof item.image_url === "string"
+        ? item.image_url
+        : typeof item.imageUrl === "string"
+          ? item.imageUrl
+          : undefined,
+  };
+};
 
-const fetchExercises = async (query: string, signal?: AbortSignal) => {
+const fetchExercises = async (
+  query: string,
+  scope: "all" | "mine",
+  signal?: AbortSignal,
+) => {
   if (signal?.aborted) {
     throw new DOMException("Aborted", "AbortError");
   }
-  const results = await searchWgerExercises(query);
-  return results.map(mapExercise).filter((exercise) => exercise.id);
+  await ensureUser();
+  const results = await searchExercises(query, true, scope);
+  const mapped = results.items.map(mapExercise).filter((exercise) => exercise.id);
+  return mapped;
 };
 
 export const useExerciseLibrary = () => {
@@ -82,8 +110,13 @@ export const useExerciseLibrary = () => {
   }, []);
 
   const searchExercises = useCallback(
-    async (nextQuery: string, signal?: AbortSignal) => {
+    async (
+      nextQuery: string,
+      signal?: AbortSignal,
+      scope: "all" | "mine" = "all",
+    ) => {
       const normalized = normalizeQuery(nextQuery);
+      const cacheKey = `${normalized}|${scope}`;
       setQuery(nextQuery);
       if (!normalized) {
         setResults([]);
@@ -91,7 +124,7 @@ export const useExerciseLibrary = () => {
         setError(null);
         return;
       }
-      const cached = cache.searches[normalized];
+      const cached = cache.searches[cacheKey];
       if (isFresh(cached)) {
         setResults(cached.value);
         setStatus("idle");
@@ -101,11 +134,11 @@ export const useExerciseLibrary = () => {
       setStatus("loading");
       setError(null);
       try {
-        const fetched = await fetchExercises(normalized, signal);
+        const fetched = await fetchExercises(normalized, scope, signal);
         const nextCache: ExerciseCache = {
           searches: {
             ...cache.searches,
-            [normalized]: { value: fetched, updatedAt: Date.now() },
+            [cacheKey]: { value: fetched, updatedAt: Date.now() },
           },
         };
         persist(nextCache);

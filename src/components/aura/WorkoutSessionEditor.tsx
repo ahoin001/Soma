@@ -7,10 +7,39 @@ import type {
   WorkoutPlan,
   WorkoutTemplate,
 } from "@/types/fitness";
-import { MoreHorizontal, Plus } from "lucide-react";
+import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { ReplaceExerciseSheet } from "./ReplaceExerciseSheet";
-import { ExerciseGuideSheet } from "./ExerciseGuideSheet";
+import { preloadExerciseGuide } from "./ExerciseGuideSheet";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { useNavigationType } from "react-router-dom";
+import { useAppStore } from "@/state/AppStore";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type EditableSet = {
   id: string;
@@ -29,6 +58,59 @@ type EditableExercise = {
   customVideoName?: string;
 };
 
+type SortableExerciseProps = {
+  id: string;
+  disabled: boolean;
+  className: string;
+  variants: Record<string, unknown>;
+  children: React.ReactNode;
+  handle: React.ReactNode;
+};
+
+const SortableExercise = ({
+  id,
+  disabled,
+  className,
+  variants,
+  children,
+  handle,
+}: SortableExerciseProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    touchAction: "none",
+  };
+  return (
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      className={cn(className, isDragging && "opacity-70")}
+      variants={variants}
+      whileTap={{ scale: 0.98 }}
+      {...attributes}
+    >
+      <div
+        ref={setActivatorNodeRef}
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/70"
+        {...listeners}
+        aria-label="Drag to reorder"
+      >
+        {handle}
+      </div>
+      {children}
+    </motion.div>
+  );
+};
+
 const createId = () => `set_${Math.random().toString(36).slice(2, 9)}`;
 
 const createDefaultSets = () => [
@@ -36,6 +118,11 @@ const createDefaultSets = () => [
   { id: createId(), weight: "45", reps: "12", previous: "45 lb × 12" },
   { id: createId(), weight: "55", reps: "10", previous: "55 lb × 10" },
 ];
+
+const formatPrevious = (weight: string, reps: string) => {
+  if (!weight && !reps) return "—";
+  return `${weight || "—"} lb × ${reps || "—"}`;
+};
 
 const isValidNumber = (value: string) =>
   value.trim() === "" || Number(value) > 0;
@@ -48,6 +135,7 @@ type WorkoutSessionEditorProps = {
   onFinish?: () => void;
   onBack: () => void;
   onStartSession?: () => void;
+  onOpenGuide?: (exercise: { id: string; name: string }) => void;
 };
 
 export const WorkoutSessionEditor = ({
@@ -58,52 +146,85 @@ export const WorkoutSessionEditor = ({
   onFinish,
   onBack,
   onStartSession,
+  onOpenGuide,
 }: WorkoutSessionEditorProps) => {
+  const { workoutDrafts, setWorkoutDraft, clearWorkoutDraft } = useAppStore();
   const [exercises, setExercises] = useState<EditableExercise[]>([]);
   const [replaceTargetId, setReplaceTargetId] = useState<string | null>(null);
   const [replaceOpen, setReplaceOpen] = useState(false);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [swipedSetId, setSwipedSetId] = useState<string | null>(null);
-  const [dragTargetIndex, setDragTargetIndex] = useState<number | null>(null);
-  const [ghostY, setGhostY] = useState<number | null>(null);
-  const [ghostName, setGhostName] = useState<string | null>(null);
-  const [guideOpenId, setGuideOpenId] = useState<string | null>(null);
   const [noteOpenIds, setNoteOpenIds] = useState<Set<string>>(() => new Set());
-  const dragItemIndex = useRef<number | null>(null);
-  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const pointerState = useRef<{
-    x: number;
-    y: number;
-    active: boolean;
-    dragReady: boolean;
-    id: string | null;
-  } | null>(null);
-  const dragTimerRef = useRef<number | null>(null);
+  const [savePulse, setSavePulse] = useState(false);
+  const draftTimerRef = useRef<number | null>(null);
+  const navigationType = useNavigationType();
+  const shouldAnimateList = navigationType !== "POP";
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const setSwipeState = useRef<{
     id: string | null;
     startX: number;
     startY: number;
     active: boolean;
   } | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { delay: 180, tolerance: 6 },
+    }),
+  );
 
   useEffect(() => {
     if (!workout) return;
+    const storedRaw =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(`ironflow-workout-last-sets:${workout.id}`)
+        : null;
+    const stored =
+      storedRaw && mode === "session"
+        ? (JSON.parse(storedRaw) as Record<string, Array<{ weight: string; reps: string }>>)
+        : {};
+    const draft = mode === "edit" ? workoutDrafts[workout.id] : null;
+    const base = draft?.length ? draft : workout.exercises;
     setExercises(
-      workout.exercises.map((exercise) => ({
-        id: exercise.id,
-        name: exercise.name,
-        note: exercise.note ?? "",
-        steps: exercise.steps ?? [],
-        guideUrl: exercise.guideUrl ?? "",
-        customVideoName: exercise.customVideoName ?? "",
-        sets: createDefaultSets(),
-      })),
+      base.map((exercise) => {
+        const previousSets = stored?.[exercise.name];
+        const sets = previousSets?.length
+          ? previousSets.map((set) => ({
+              id: createId(),
+              weight: set.weight ?? "",
+              reps: set.reps ?? "",
+              previous: formatPrevious(set.weight ?? "", set.reps ?? ""),
+            }))
+          : createDefaultSets();
+        return {
+          id: exercise.id,
+          name: exercise.name,
+          note: exercise.note ?? "",
+          steps: exercise.steps ?? [],
+          guideUrl: exercise.guideUrl ?? "",
+          customVideoName: exercise.customVideoName ?? "",
+          sets,
+        };
+      }),
     );
-  }, [workout]);
+  }, [workout, mode, workoutDrafts]);
 
   const isEditMode = mode === "edit";
+  const listVariants = useMemo(
+    () => ({
+      hidden: { opacity: 0 },
+      show: {
+        opacity: 1,
+        transition: { staggerChildren: 0.04, delayChildren: 0.05 },
+      },
+    }),
+    [],
+  );
+  const itemVariants = useMemo(
+    () => ({
+      hidden: { opacity: 0, y: 6 },
+      show: { opacity: 1, y: 0 },
+    }),
+    [],
+  );
 
   const handleReplace = (name: string) => {
     if (replaceTargetId === "new") {
@@ -130,6 +251,8 @@ export const WorkoutSessionEditor = ({
 
   const saveExercises = () => {
     if (!onSave) return;
+    setSavePulse(true);
+    window.setTimeout(() => setSavePulse(false), 900);
     onSave(
       exercises.map((exercise) => ({
         id: exercise.id,
@@ -139,6 +262,48 @@ export const WorkoutSessionEditor = ({
         guideUrl: exercise.guideUrl?.trim() || undefined,
         customVideoName: exercise.customVideoName || undefined,
       })),
+    );
+    if (workout?.id) {
+      clearWorkoutDraft(workout.id);
+    }
+  };
+
+  useEffect(() => {
+    if (!workout || mode !== "edit") return;
+    if (draftTimerRef.current) {
+      window.clearTimeout(draftTimerRef.current);
+    }
+    draftTimerRef.current = window.setTimeout(() => {
+      const next = exercises.map((exercise) => ({
+        id: exercise.id,
+        name: exercise.name,
+        note: exercise.note.trim() || undefined,
+        steps: exercise.steps?.length ? exercise.steps : undefined,
+        guideUrl: exercise.guideUrl?.trim() || undefined,
+        customVideoName: exercise.customVideoName || undefined,
+      }));
+      setWorkoutDraft(workout.id, next);
+    }, 300);
+    return () => {
+      if (draftTimerRef.current) {
+        window.clearTimeout(draftTimerRef.current);
+        draftTimerRef.current = null;
+      }
+    };
+  }, [exercises, mode, setWorkoutDraft, workout?.id]);
+
+  const persistSessionSets = () => {
+    if (mode !== "session" || !workout || typeof window === "undefined") return;
+    const payload: Record<string, Array<{ weight: string; reps: string }>> = {};
+    exercises.forEach((exercise) => {
+      payload[exercise.name] = exercise.sets.map((set) => ({
+        weight: set.weight,
+        reps: set.reps,
+      }));
+    });
+    window.localStorage.setItem(
+      `ironflow-workout-last-sets:${workout.id}`,
+      JSON.stringify(payload),
     );
   };
 
@@ -157,116 +322,22 @@ export const WorkoutSessionEditor = ({
     [exercises],
   );
 
-  const reorder = (from: number, to: number) => {
+  const handleDragEnd = (event: { active: { id: string }; over?: { id: string } | null }) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
     setExercises((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return next;
+      const oldIndex = prev.findIndex((item) => item.id === active.id);
+      const newIndex = prev.findIndex((item) => item.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      return arrayMove(prev, oldIndex, newIndex);
     });
-  };
-
-  const handleDragStart = (index: number, id: string) => {
-    dragItemIndex.current = index;
-    setDraggingId(id);
-  };
-
-  const handleDragEnd = () => {
-    if (dragItemIndex.current !== null && dragTargetIndex !== null) {
-      reorder(dragItemIndex.current, dragTargetIndex);
-    }
-    dragItemIndex.current = null;
-    setDraggingId(null);
-    setDragOverId(null);
-    setDragTargetIndex(null);
-    setGhostY(null);
-    setGhostName(null);
-  };
-
-  const getIndexFromPointer = (clientY: number) => {
-    const items = itemRefs.current;
-    for (let index = 0; index < items.length; index += 1) {
-      const element = items[index];
-      if (!element) continue;
-      const rect = element.getBoundingClientRect();
-      if (clientY >= rect.top && clientY <= rect.bottom) {
-        return index;
-      }
-    }
-    return null;
-  };
-
-  const prepareDrag = (index: number, id: string) => {
-    dragItemIndex.current = index;
-    setDraggingId(id);
-    setGhostName(exercises[index]?.name ?? null);
-    if (navigator.vibrate) {
-      navigator.vibrate(8);
-    }
-  };
-
-  const handlePointerStart = (
-    event: React.PointerEvent,
-    index: number,
-    id: string,
-  ) => {
-    if (event.pointerType === "mouse") return;
-    const target = event.target as HTMLElement;
-    if (target.closest("[data-swipe-ignore]")) return;
-    pointerState.current = {
-      x: event.clientX,
-      y: event.clientY,
-      active: true,
-      dragReady: false,
-      id,
-    };
-    if (dragTimerRef.current) {
-      window.clearTimeout(dragTimerRef.current);
-    }
-    dragTimerRef.current = window.setTimeout(() => {
-      if (!pointerState.current?.active) return;
-      pointerState.current.dragReady = true;
-      prepareDrag(index, id);
-    }, 220);
-  };
-
-  const handlePointerMove = (event: React.PointerEvent) => {
-    if (!pointerState.current?.active) return;
-    const deltaY = event.clientY - pointerState.current.y;
-    if (!pointerState.current.dragReady) {
-      if (Math.abs(deltaY) > 12) {
-        pointerState.current.active = false;
-        return;
-      }
-      return;
-    }
-    const nextIndex = getIndexFromPointer(event.clientY);
-    if (nextIndex !== null) {
-      setDragTargetIndex(nextIndex);
-      const nextId = exercises[nextIndex]?.id ?? null;
-      setDragOverId(nextId);
-    }
-    const containerTop = containerRef.current?.getBoundingClientRect().top ?? 0;
-    setGhostY(event.clientY - containerTop);
-  };
-
-  const handlePointerEnd = () => {
-    if (dragTimerRef.current) {
-      window.clearTimeout(dragTimerRef.current);
-      dragTimerRef.current = null;
-    }
-    pointerState.current = null;
-    handleDragEnd();
   };
 
   const headerAction = isEditMode ? "Save" : "Finish";
   const hasExercises = exercises.length > 0;
 
   return (
-    <div
-      className="relative min-h-screen bg-slate-950 text-white select-none touch-pan-y"
-      ref={containerRef}
-    >
+    <div className="relative min-h-screen bg-slate-950 text-white select-none touch-pan-y">
       <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-4">
         <div className="flex items-center justify-between">
           <Button
@@ -288,17 +359,21 @@ export const WorkoutSessionEditor = ({
             </p>
           </div>
           <Button
-            className="h-10 rounded-full bg-emerald-400 px-4 text-slate-950 hover:bg-emerald-300"
+            className={cn(
+              "h-10 rounded-full bg-emerald-400 px-4 text-slate-950 transition hover:bg-emerald-300",
+              savePulse && "shadow-[0_0_24px_rgba(52,211,153,0.5)]",
+            )}
             onClick={() => {
               if (isEditMode) {
                 saveExercises();
               } else {
+                persistSessionSets();
                 onFinish?.();
               }
             }}
             disabled={hasInvalidEntries || (isEditMode && !hasExercises)}
           >
-            {headerAction}
+            {savePulse && isEditMode ? "Saved" : headerAction}
           </Button>
         </div>
         {hasInvalidEntries ? (
@@ -335,48 +410,63 @@ export const WorkoutSessionEditor = ({
             </div>
           ) : null}
 
-          {exercises.map((exercise, index) => (
-            <div
-              key={exercise.id}
-              ref={(node) => {
-                itemRefs.current[index] = node;
-              }}
-              draggable
-              className={cn(
-                "relative rounded-[22px] border border-white/10 bg-white/5 px-3 py-3 transition-transform duration-200",
-                draggingId === exercise.id && "scale-[0.98] opacity-70",
-                dragOverId === exercise.id && "border-emerald-400/60",
-              )}
-              onDragStart={(event) => {
-                const target = event.target as HTMLElement;
-                if (target.closest("input, textarea, button")) {
-                  event.preventDefault();
-                  return;
-                }
-                handleDragStart(index, exercise.id);
-              }}
-              onDragOver={(event) => {
-                event.preventDefault();
-                if (dragOverId !== exercise.id) {
-                  setDragOverId(exercise.id);
-                }
-              }}
-              onDrop={() => {
-                if (dragItemIndex.current === null) return;
-                setDragTargetIndex(index);
-                handleDragEnd();
-              }}
-              onPointerDown={(event) => handlePointerStart(event, index, exercise.id)}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerEnd}
-              onPointerCancel={handlePointerEnd}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={(event) => {
+              setActiveDragId(String(event.active.id));
+              if (navigator.vibrate) {
+                navigator.vibrate(8);
+              }
+            }}
+            onDragEnd={(event) => {
+              handleDragEnd(event);
+              setActiveDragId(null);
+            }}
+            onDragCancel={() => setActiveDragId(null)}
+          >
+            <SortableContext
+              items={exercises.map((exercise) => exercise.id)}
+              strategy={verticalListSortingStrategy}
             >
-                <div className="flex items-start justify-between gap-2">
+              <motion.div
+                variants={listVariants}
+                initial={shouldAnimateList ? "hidden" : false}
+                animate={shouldAnimateList ? "show" : undefined}
+                className="space-y-4"
+              >
+                {exercises.map((exercise) => (
+                    <SortableExercise
+                    key={exercise.id}
+                    id={exercise.id}
+                    disabled={!isEditMode}
+                            className="relative rounded-[22px] border border-white/10 bg-white/5 px-3 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/30 touch-none will-change-transform"
+                    variants={itemVariants}
+                    handle={<svg viewBox="0 0 24 24" className="h-4 w-4">
+                      <circle cx="9" cy="7" r="1.5" fill="currentColor" />
+                      <circle cx="15" cy="7" r="1.5" fill="currentColor" />
+                      <circle cx="9" cy="12" r="1.5" fill="currentColor" />
+                      <circle cx="15" cy="12" r="1.5" fill="currentColor" />
+                      <circle cx="9" cy="17" r="1.5" fill="currentColor" />
+                      <circle cx="15" cy="17" r="1.5" fill="currentColor" />
+                    </svg>}
+                  >
+                <div className="flex items-start gap-2 pl-11">
                   <div className="min-w-0 flex-1">
                     <button
                       type="button"
                       className="text-left text-lg font-semibold text-white hover:text-emerald-200"
-                      onClick={() => setGuideOpenId(exercise.id)}
+                      onClick={() =>
+                        onOpenGuide?.({ id: exercise.id, name: exercise.name })
+                      }
+                      onPointerDown={() => {
+                        if (exercise.name) {
+                          preloadExerciseGuide(exercise.name);
+                        }
+                      }}
+                      onMouseEnter={() => {
+                        preloadExerciseGuide(exercise.name);
+                      }}
                       data-swipe-ignore
                     >
                       {exercise.name}
@@ -403,6 +493,7 @@ export const WorkoutSessionEditor = ({
                             });
                           }
                         }}
+                        onPointerDown={(event) => event.stopPropagation()}
                         placeholder="Add a quick cue..."
                         rows={1}
                         className="mt-2 min-h-[40px] resize-none border-white/10 bg-white/5 text-white placeholder:text-white/40 select-text"
@@ -423,21 +514,60 @@ export const WorkoutSessionEditor = ({
                       </button>
                     )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 rounded-full bg-white/10 text-white hover:bg-white/20"
-                    onClick={() => {
-                      setReplaceTargetId(exercise.id);
-                      setReplaceOpen(true);
-                    }}
-                    data-swipe-ignore
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
+                  {isEditMode ? (
+                    <div className="flex items-center gap-2">
+                          <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 rounded-full bg-white/10 text-white hover:bg-white/20"
+                        onClick={() => {
+                          setReplaceTargetId(exercise.id);
+                          setReplaceOpen(true);
+                        }}
+                        data-swipe-ignore
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 rounded-full bg-rose-500/20 text-rose-100 hover:bg-rose-500/30"
+                            data-swipe-ignore
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="border-white/10 bg-slate-950 text-white">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remove this exercise?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-white/60">
+                              This deletes it from the workout template.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="rounded-full border-white/20 text-white hover:bg-white/10">
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              className="rounded-full bg-rose-500 text-white hover:bg-rose-400"
+                              onClick={() => {
+                                setExercises((prev) =>
+                                  prev.filter((item) => item.id !== exercise.id),
+                                );
+                              }}
+                            >
+                              Remove
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  ) : null}
                 </div>
 
-              <div className="mt-3 grid grid-cols-[48px_1fr_72px_72px] items-center gap-3 text-xs uppercase tracking-[0.2em] text-white/40">
+                <div className="mt-3 grid grid-cols-[48px_1fr_72px_72px] items-center gap-3 text-xs uppercase tracking-[0.2em] text-white/40">
                 <span>Set</span>
                 <span>Previous</span>
                 <span>lbs</span>
@@ -555,6 +685,7 @@ export const WorkoutSessionEditor = ({
                                 ),
                               );
                             }}
+                            onPointerDown={(event) => event.stopPropagation()}
                             aria-invalid={!weightValid}
                             className={cn(
                               "h-10 rounded-2xl border-white/10 bg-white/5 text-center text-white select-text",
@@ -583,6 +714,7 @@ export const WorkoutSessionEditor = ({
                                 ),
                               );
                             }}
+                            onPointerDown={(event) => event.stopPropagation()}
                             aria-invalid={!repsValid}
                             className={cn(
                               "h-10 rounded-2xl border-white/10 bg-white/5 text-center text-white select-text",
@@ -640,8 +772,21 @@ export const WorkoutSessionEditor = ({
                 <Plus className="h-4 w-4" />
                 Add set
               </Button>
-            </div>
-          ))}
+                  </SortableExercise>
+                ))}
+              </motion.div>
+            </SortableContext>
+            <DragOverlay>
+              {activeDragId ? (
+                <div className="rounded-[22px] border border-emerald-400/60 bg-slate-900/90 px-4 py-3 text-white shadow-[0_24px_40px_rgba(0,0,0,0.45)]">
+                  <p className="text-sm font-semibold">
+                    {exercises.find((e) => e.id === activeDragId)?.name}
+                  </p>
+                  <p className="text-xs text-white/60">Reordering</p>
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         </div>
 
         {isEditMode && hasExercises ? (
@@ -659,20 +804,6 @@ export const WorkoutSessionEditor = ({
         ) : null}
       </div>
 
-      {ghostY !== null && ghostName ? (
-        <div
-          className="pointer-events-none absolute left-0 right-0 z-40 flex justify-center"
-          style={{ top: ghostY }}
-        >
-          <div className="w-full max-w-sm px-5">
-            <div className="rounded-[22px] border border-emerald-400/60 bg-slate-900/90 px-4 py-3 text-white shadow-[0_20px_40px_rgba(0,0,0,0.6)]">
-              <p className="text-sm font-semibold">{ghostName}</p>
-              <p className="text-xs text-white/60">Reordering</p>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       <ReplaceExerciseSheet
         open={replaceOpen}
         onOpenChange={setReplaceOpen}
@@ -681,19 +812,6 @@ export const WorkoutSessionEditor = ({
         }}
       />
 
-      <ExerciseGuideSheet
-        open={Boolean(guideOpenId)}
-        onOpenChange={(open) => setGuideOpenId(open ? guideOpenId : null)}
-        exercise={exercises.find((exercise) => exercise.id === guideOpenId) ?? null}
-        onUpdate={(patch) => {
-          if (!guideOpenId) return;
-          setExercises((prev) =>
-            prev.map((item) =>
-              item.id === guideOpenId ? { ...item, ...patch } : item,
-            ),
-          );
-        }}
-      />
     </div>
   );
 };

@@ -13,10 +13,12 @@ export const asyncHandler =
   };
 
 export const getUserId = (req: Request) => {
-  const userId = req.header("x-user-id");
+  const authId = (req as Request & { userId?: string }).userId;
+  const headerId = req.header("x-user-id");
+  const userId = authId ?? headerId;
   if (!userId) {
-    const error = new Error("Missing x-user-id header.");
-    (error as Error & { status?: number }).status = 400;
+    const error = new Error("Unauthorized.");
+    (error as Error & { status?: number }).status = 401;
     throw error;
   }
   return userId;

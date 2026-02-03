@@ -164,8 +164,9 @@ router.get(
 
       const items = await client.query(
         `
-        SELECT *
+        SELECT meal_entry_items.*, foods.image_url
         FROM meal_entry_items
+        LEFT JOIN foods ON foods.id = meal_entry_items.food_id
         WHERE meal_entry_id = ANY($1::uuid[])
         ORDER BY meal_entry_id, sort_order ASC;
         `,

@@ -10,15 +10,21 @@ export const PageTransition = ({
   children,
   direction = "forward",
 }: PageTransitionProps) => {
-  const offset = direction === "back" ? -22 : 28;
-  const exitOffset = direction === "back" ? 24 : -22;
+  void direction;
   return (
     <motion.div
-      className="min-h-screen bg-background will-change-transform"
-      initial={{ opacity: 1, x: offset }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 1, x: exitOffset }}
-      transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+      className="min-h-screen bg-background"
+      style={{ willChange: "transform, opacity" }}
+      initial={{
+        opacity: 0,
+        y: direction === "back" ? -8 : 8,
+      }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{
+        opacity: 0,
+        y: direction === "back" ? 6 : -6,
+      }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
     >
       {children}
     </motion.div>

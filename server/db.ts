@@ -20,6 +20,11 @@ export const query = <T = unknown>(
   params?: unknown[],
 ): Promise<QueryResult<T>> => pool.query(text, params);
 
+export const queryOne = async <T = unknown>(text: string, params?: unknown[]) => {
+  const result = await pool.query<T>(text, params);
+  return result.rows[0] ?? null;
+};
+
 export const withTransaction = async <T>(
   handler: (client: PoolClient) => Promise<T>,
 ): Promise<T> => {

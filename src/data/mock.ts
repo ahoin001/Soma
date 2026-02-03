@@ -22,10 +22,14 @@ export type FoodItem = {
   name: string;
   brand?: string;
   portion: string;
+  portionLabel?: string;
+  portionGrams?: number;
   kcal: number;
   emoji: string;
   barcode?: string;
   source?: "local" | "api";
+  imageUrl?: string;
+  micronutrients?: Record<string, number | string>;
   macros: Record<MacroKey, number>;
   macroPercent: Record<MacroKey, number>;
 };
@@ -44,10 +48,10 @@ export const macroTargets: MacroTarget[] = [
 ];
 
 export const meals: Meal[] = [
-  { id: "breakfast", label: "Breakfast", recommended: "555 — 777 kcal", emoji: "☕" },
-  { id: "lunch", label: "Lunch", recommended: "253 — 776 kcal", emoji: "🥪" },
-  { id: "dinner", label: "Dinner", recommended: "655 — 878 kcal", emoji: "🐟" },
-  { id: "snack", label: "Snack", recommended: "120 — 240 kcal", emoji: "🍓" },
+  { id: "breakfast", label: "Breakfast", recommended: "555 — 777 cal", emoji: "☕" },
+  { id: "lunch", label: "Lunch", recommended: "253 — 776 cal", emoji: "🥪" },
+  { id: "dinner", label: "Dinner", recommended: "655 — 878 cal", emoji: "🐟" },
+  { id: "snack", label: "Snack", recommended: "120 — 240 cal", emoji: "🍓" },
 ];
 
 export const foods: FoodItem[] = [
