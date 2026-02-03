@@ -11,7 +11,7 @@ import { useAppStore } from "@/state/AppStore";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { AnimatePresence, motion } from "framer-motion";
 import { Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { forwardRef, useMemo, useState } from "react";
 
 type MealLogPanelProps = {
   meals: Meal[];
@@ -57,7 +57,10 @@ export const MealLogPanel = ({
           const section = logMap.get(meal.label);
           const itemCount = section?.items.length ?? 0;
           const kcalTotal =
-            section?.items.reduce((sum, item) => sum + item.kcal, 0) ?? 0;
+            section?.items.reduce((sum, item) => {
+              const quantity = item.quantity ?? 1;
+              return sum + item.kcal * quantity;
+            }, 0) ?? 0;
           const isOpen = openMeals[meal.id] ?? itemCount > 0;
 
           return (
@@ -168,19 +171,56 @@ const LogItems = ({
   </AnimatePresence>
 );
 
-const LogRow = ({ item, onEdit }: { item: LogItem; onEdit: () => void }) => {
+const LogRow = forwardRef<
+  HTMLButtonElement,
+  { item: LogItem; onEdit: () => void }
+>(({ item, onEdit }, ref) => {
   const { showFoodImages } = useAppStore();
+  const quantityValue = Number(item.quantity ?? 1);
+  const normalizedQuantity = Number.isFinite(quantityValue) ? quantityValue : 1;
+  const showQuantity = Math.abs(normalizedQuantity - 1) > 1e-6;
+  const quantityLabel = normalizedQuantity.toFixed(1);
+  const totalKcal = Math.round(item.kcal * normalizedQuantity);
 
   return (
     <motion.button
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, height: 0, marginTop: 0 }}
+      ref={ref}
+      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{
+        opacity: 0,
+        y: -6,
+        x: 12,
+        scale: 0.94,
+        rotate: -3,
+        height: 0,
+        marginTop: 0,
+      }}
       transition={{ type: "spring", stiffness: 260, damping: 20 }}
       type="button"
       className="relative w-full overflow-hidden rounded-[16px] bg-white px-3 py-3 text-sm text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.08)] cursor-pointer"
       onClick={onEdit}
     >
+      <motion.span
+        className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl"
+        initial={{ opacity: 0, scale: 0.6 }}
+        animate={{ opacity: 0, scale: 0.6 }}
+        exit={{
+          opacity: [0, 1, 0],
+          scale: [0.6, 1.2, 0.9],
+          y: [0, -8, -18],
+          rotate: [0, -6, 6],
+        }}
+        transition={{ duration: 0.45, ease: "easeOut" }}
+        aria-hidden
+      >
+        💨
+      </motion.span>
+      <motion.span
+        className="pointer-events-none absolute -right-4 -top-4 h-10 w-10 rounded-full bg-emerald-100/70 blur-xl"
+        animate={{ opacity: [0.2, 0.5, 0.2], scale: [1, 1.2, 1] }}
+        transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+      />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {showFoodImages && item.imageUrl ? (
@@ -188,28 +228,39 @@ const LogRow = ({ item, onEdit }: { item: LogItem; onEdit: () => void }) => {
               <img
                 src={item.imageUrl}
                 alt={item.name}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover object-center"
+                loading="lazy"
+                decoding="async"
               />
             </div>
           ) : null}
           <span className="font-medium">{item.name}</span>
+          {showQuantity && (
+            <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">
+              {quantityLabel}x
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-emerald-600">{item.kcal} cal</span>
+          <span className="text-xs text-emerald-600">{totalKcal} cal</span>
         </div>
       </div>
     </motion.button>
   );
-};
+});
+LogRow.displayName = "LogRow";
 
 const MealSummary = ({ items }: { items: LogItem[] }) => {
   const totals = items.reduce(
-    (acc, item) => ({
-      kcal: acc.kcal + item.kcal,
-      carbs: acc.carbs + item.macros.carbs,
-      protein: acc.protein + item.macros.protein,
-      fat: acc.fat + item.macros.fat,
-    }),
+    (acc, item) => {
+      const quantity = item.quantity ?? 1;
+      return {
+        kcal: acc.kcal + item.kcal * quantity,
+        carbs: acc.carbs + item.macros.carbs * quantity,
+        protein: acc.protein + item.macros.protein * quantity,
+        fat: acc.fat + item.macros.fat * quantity,
+      };
+    },
     { kcal: 0, carbs: 0, protein: 0, fat: 0 },
   );
 

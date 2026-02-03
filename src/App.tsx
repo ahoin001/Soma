@@ -33,6 +33,7 @@ const ExerciseGuide = lazy(() => import("./pages/ExerciseGuide"));
 const CreateExercise = lazy(() => import("./pages/CreateExercise"));
 const EditExercise = lazy(() => import("./pages/EditExercise"));
 const AddExerciseToWorkout = lazy(() => import("./pages/AddExerciseToWorkout"));
+const AdminExerciseThumbnails = lazy(() => import("./pages/AdminExerciseThumbnails"));
 
 const queryClient = new QueryClient();
 
@@ -67,8 +68,19 @@ const AnimatedRoutes = () => {
     }
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    root.classList.remove("experience-nutrition", "experience-fitness");
+    root.classList.add(
+      location.pathname.startsWith("/fitness")
+        ? "experience-fitness"
+        : "experience-nutrition",
+    );
+  }, [location.pathname]);
+
   return (
-    <AnimatePresence mode="popLayout" initial={false}>
+    <AnimatePresence mode="wait" initial={false}>
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Navigate to="/nutrition" replace />} />
         <Route
@@ -206,6 +218,16 @@ const AnimatedRoutes = () => {
               withTransition(<AddExerciseToWorkout />)
             ) : (
               <AddExerciseToWorkout />
+            )
+          }
+        />
+        <Route
+          path="/fitness/admin/exercises"
+          element={
+            shouldAnimate(location.pathname) ? (
+              withTransition(<AdminExerciseThumbnails />)
+            ) : (
+              <AdminExerciseThumbnails />
             )
           }
         />

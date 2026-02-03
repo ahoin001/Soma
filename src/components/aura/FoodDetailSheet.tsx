@@ -7,16 +7,23 @@ import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
+  SelectGroup,
+  SelectLabel,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import type { FoodItem, MacroTarget } from "@/data/mock";
+import type { BrandRecord } from "@/types/api";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Heart, PencilLine, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
+  createBrand,
   fetchFoodImageSignature,
+  fetchBrandLogoSignature,
+  fetchBrands,
   createFoodServing,
   fetchFoodServings,
   updateFoodImage,
@@ -43,6 +50,7 @@ type FoodDetailSheetProps = {
 type NutritionDraft = {
   name: string;
   brand: string;
+  brandId: string | null;
   portion: string;
   portionGrams: number | null;
   kcal: number;
@@ -117,6 +125,16 @@ export const FoodDetailSheet = ({
   const [uploading, setUploading] = useState(false);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const [amountPulse, setAmountPulse] = useState(false);
+  const [brands, setBrands] = useState<BrandRecord[]>([]);
+  const [brandQuery, setBrandQuery] = useState("");
+  const [brandLoading, setBrandLoading] = useState(false);
+  const [brandCreateOpen, setBrandCreateOpen] = useState(false);
+  const [brandName, setBrandName] = useState("");
+  const [brandWebsite, setBrandWebsite] = useState("");
+  const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(null);
+  const [brandUploading, setBrandUploading] = useState(false);
+  const [brandUploadProgress, setBrandUploadProgress] = useState(0);
+  const [brandNotice, setBrandNotice] = useState<string | null>(null);
   const [savingMaster, setSavingMaster] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const editSectionRef = useRef<HTMLDivElement | null>(null);
@@ -164,6 +182,7 @@ export const FoodDetailSheet = ({
     setDraft({
       name: food.name,
       brand: food.brand ?? "",
+      brandId: food.brandId ?? null,
       portion: food.portionLabel ?? food.portion,
       portionGrams: food.portionGrams ?? null,
       kcal: food.kcal,
@@ -255,6 +274,19 @@ export const FoodDetailSheet = ({
     if (!open || !scrollRef.current) return;
     scrollRef.current.scrollTop = 0;
   }, [open, food?.id]);
+
+  useEffect(() => {
+    if (!adminEditing) return;
+    const query = brandQuery.trim();
+    setBrandLoading(true);
+    const timer = window.setTimeout(() => {
+      fetchBrands(query, true, 100)
+        .then((response) => setBrands(response.items))
+        .catch(() => setBrands([]))
+        .finally(() => setBrandLoading(false));
+    }, query ? 250 : 0);
+    return () => window.clearTimeout(timer);
+  }, [adminEditing, brandQuery]);
 
   useEffect(() => {
     if (!editing && !adminEditing) return;
@@ -428,28 +460,35 @@ export const FoodDetailSheet = ({
     return `${quantityValue} ${label}`;
   };
 
-  const servingUnits = [
-    { value: "g", label: "g" },
-    { value: "kg", label: "kg" },
-    { value: "ml", label: "ml" },
-    { value: "l", label: "l" },
-    { value: "fl oz", label: "fl oz" },
-    { value: "cup", label: "cup" },
-    { value: "pint", label: "pint" },
-    { value: "quart", label: "quart" },
-    { value: "gallon", label: "gallon" },
-    { value: "tbsp", label: "tbsp" },
-    { value: "tsp", label: "tsp" },
-    { value: "oz", label: "oz" },
-    { value: "lb", label: "lb" },
-    { value: "slice", label: "slice" },
-    { value: "piece", label: "piece" },
-    { value: "packet", label: "packet" },
-    { value: "can", label: "can" },
-    { value: "bottle", label: "bottle" },
-    { value: "bar", label: "bar" },
-    { value: "serving", label: "serving" },
-  ];
+  const servingUnits = {
+    weight: [
+      { value: "g", label: "g" },
+      { value: "kg", label: "kg" },
+      { value: "oz", label: "oz" },
+      { value: "lb", label: "lb" },
+    ],
+    volume: [
+      { value: "ml", label: "ml" },
+      { value: "l", label: "l" },
+      { value: "tsp", label: "tsp" },
+      { value: "tbsp", label: "tbsp" },
+      { value: "fl oz", label: "fl oz" },
+      { value: "cup", label: "cup" },
+      { value: "pint", label: "pint" },
+      { value: "quart", label: "quart" },
+      { value: "gallon", label: "gallon" },
+    ],
+    count: [
+      { value: "bar", label: "bar" },
+      { value: "bottle", label: "bottle" },
+      { value: "can", label: "can" },
+      { value: "packet", label: "packet" },
+      { value: "piece", label: "piece" },
+      { value: "scoop", label: "scoop" },
+      { value: "serving", label: "serving" },
+      { value: "slice", label: "slice" },
+    ],
+  };
 
   const scaled = useMemo(() => {
     if (!food) {
@@ -525,7 +564,9 @@ export const FoodDetailSheet = ({
                   <img
                     src={imageUrl}
                     alt={food.name}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover object-center"
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   food.emoji
@@ -535,6 +576,15 @@ export const FoodDetailSheet = ({
 
             <div className="mt-4 text-center">
               <div className="flex items-center justify-center gap-2">
+                {food.brandLogoUrl && (
+                  <img
+                    src={food.brandLogoUrl}
+                    alt={food.brand ?? "Brand logo"}
+                    className="h-6 w-6 rounded-full object-cover object-center"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                )}
                 <h3 className="text-xl font-display font-semibold text-slate-900">
                   {food.name}
                 </h3>
@@ -569,6 +619,7 @@ export const FoodDetailSheet = ({
                 )}
               </div>
               <p className="text-sm text-slate-500">
+                {food.brand ? `${food.brand} • ` : ""}
                 {formatServingLabel(
                   quantity,
                   selectedServing?.label ?? food.portion,
@@ -841,13 +892,67 @@ export const FoodDetailSheet = ({
                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
                           Brand
                         </p>
-                        <Input
-                          value={draft.brand}
-                          onChange={(event) =>
-                            handleDraftChange("brand", event.target.value)
-                          }
-                          className="mt-1 h-10 rounded-full"
-                        />
+                        <Select
+                          value={draft.brandId ?? "none"}
+                          onValueChange={(value) => {
+                            if (value === "none") {
+                              setDraft({ ...draft, brandId: null, brand: "" });
+                              return;
+                            }
+                            const match = brands.find((brand) => brand.id === value);
+                            setDraft({
+                              ...draft,
+                              brandId: value,
+                              brand: match?.name ?? "",
+                            });
+                          }}
+                        >
+                          <SelectTrigger className="mt-1 h-10 rounded-full">
+                            <SelectValue placeholder="Select brand" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <div className="px-3 py-2">
+                              <Input
+                                value={brandQuery}
+                                onChange={(event) => setBrandQuery(event.target.value)}
+                                placeholder="Search brand"
+                                className="h-9 rounded-full"
+                              />
+                            </div>
+                            <SelectItem value="none">No brand</SelectItem>
+                            {brandLoading && (
+                              <div className="px-3 py-2 text-xs text-slate-500">
+                                Loading...
+                              </div>
+                            )}
+                            {brands.map((brand) => (
+                              <SelectItem key={brand.id} value={brand.id}>
+                                <div className="flex items-center gap-2">
+                                  {brand.logo_url ? (
+                                    <img
+                                      src={brand.logo_url}
+                                      alt={brand.name}
+                                      className="h-5 w-5 rounded-full object-cover"
+                                    />
+                                  ) : null}
+                                  <span>{brand.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                            {!brandLoading && brands.length === 0 && (
+                              <div className="px-3 py-2 text-xs text-slate-500">
+                                No brands found
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <button
+                          type="button"
+                          className="mt-2 text-xs font-semibold text-emerald-600"
+                          onClick={() => setBrandCreateOpen((prev) => !prev)}
+                        >
+                          {brandCreateOpen ? "Cancel new brand" : "Create new brand"}
+                        </button>
                       </div>
                     </div>
                   )}
@@ -888,11 +993,38 @@ export const FoodDetailSheet = ({
                           <SelectValue placeholder="Unit" />
                         </SelectTrigger>
                         <SelectContent>
-                          {servingUnits.map((unit) => (
-                            <SelectItem key={unit.value} value={unit.value}>
-                              {unit.label}
-                            </SelectItem>
-                          ))}
+                          <SelectGroup>
+                            <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                              Weight
+                            </SelectLabel>
+                            {servingUnits.weight.map((unit) => (
+                              <SelectItem key={unit.value} value={unit.value}>
+                                {unit.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                          <SelectSeparator />
+                          <SelectGroup>
+                            <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                              Volume
+                            </SelectLabel>
+                            {servingUnits.volume.map((unit) => (
+                              <SelectItem key={unit.value} value={unit.value}>
+                                {unit.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                          <SelectSeparator />
+                          <SelectGroup>
+                            <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                              Count
+                            </SelectLabel>
+                            {servingUnits.count.map((unit) => (
+                              <SelectItem key={unit.value} value={unit.value}>
+                                {unit.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
                         </SelectContent>
                       </Select>
                     </div>
@@ -953,11 +1085,38 @@ export const FoodDetailSheet = ({
                             <SelectValue placeholder="Unit" />
                           </SelectTrigger>
                           <SelectContent>
-                            {servingUnits.map((unit) => (
-                              <SelectItem key={unit.value} value={unit.value}>
-                                {unit.label}
-                              </SelectItem>
-                            ))}
+                            <SelectGroup>
+                              <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                                Weight
+                              </SelectLabel>
+                              {servingUnits.weight.map((unit) => (
+                                <SelectItem key={unit.value} value={unit.value}>
+                                  {unit.label}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                            <SelectSeparator />
+                            <SelectGroup>
+                              <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                                Volume
+                              </SelectLabel>
+                              {servingUnits.volume.map((unit) => (
+                                <SelectItem key={unit.value} value={unit.value}>
+                                  {unit.label}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                            <SelectSeparator />
+                            <SelectGroup>
+                              <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                                Count
+                              </SelectLabel>
+                              {servingUnits.count.map((unit) => (
+                                <SelectItem key={unit.value} value={unit.value}>
+                                  {unit.label}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
                           </SelectContent>
                         </Select>
                         <Input

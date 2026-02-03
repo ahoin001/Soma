@@ -92,7 +92,7 @@ const fetchExercises = async (
     throw new DOMException("Aborted", "AbortError");
   }
   await ensureUser();
-  const results = await searchExercises(query, true, scope);
+  const results = await searchExercises(query, false, scope);
   const mapped = results.items.map(mapExercise).filter((exercise) => exercise.id);
   return mapped;
 };

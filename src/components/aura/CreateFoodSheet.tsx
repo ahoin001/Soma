@@ -7,6 +7,16 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectLabel,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -19,6 +29,9 @@ type CreateFoodSheetProps = {
   onOpenChange: (open: boolean) => void;
   onCreate?: (payload: {
     name: string;
+    brand?: string;
+    portionLabel?: string;
+    portionGrams?: number;
     kcal: number;
     carbs: number;
     protein: number;
@@ -30,6 +43,9 @@ type CreateFoodSheetProps = {
 type CreateFoodFormProps = {
   onCreate?: (payload: {
     name: string;
+    brand?: string;
+    portionLabel?: string;
+    portionGrams?: number;
     kcal: number;
     carbs: number;
     protein: number;
@@ -41,6 +57,10 @@ type CreateFoodFormProps = {
 
 export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) => {
   const [name, setName] = useState("");
+  const [brand, setBrand] = useState("");
+  const [baseServingAmount, setBaseServingAmount] = useState("1");
+  const [baseServingUnit, setBaseServingUnit] = useState("serving");
+  const [baseServingGrams, setBaseServingGrams] = useState("");
   const [kcal, setKcal] = useState("");
   const [carbs, setCarbs] = useState("");
   const [protein, setProtein] = useState("");
@@ -61,6 +81,36 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
   const { showFoodImages } = useAppStore();
   const draftTimerRef = useRef<number | null>(null);
 
+  const servingUnits = {
+    weight: [
+      { value: "g", label: "g" },
+      { value: "kg", label: "kg" },
+      { value: "oz", label: "oz" },
+      { value: "lb", label: "lb" },
+    ],
+    volume: [
+      { value: "ml", label: "ml" },
+      { value: "l", label: "l" },
+      { value: "tsp", label: "tsp" },
+      { value: "tbsp", label: "tbsp" },
+      { value: "fl oz", label: "fl oz" },
+      { value: "cup", label: "cup" },
+      { value: "pint", label: "pint" },
+      { value: "quart", label: "quart" },
+      { value: "gallon", label: "gallon" },
+    ],
+    count: [
+      { value: "bar", label: "bar" },
+      { value: "bottle", label: "bottle" },
+      { value: "can", label: "can" },
+      { value: "packet", label: "packet" },
+      { value: "piece", label: "piece" },
+      { value: "scoop", label: "scoop" },
+      { value: "serving", label: "serving" },
+      { value: "slice", label: "slice" },
+    ],
+  };
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = window.localStorage.getItem("aurafit-create-food-draft-v1");
@@ -68,6 +118,10 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
     try {
       const draft = JSON.parse(raw) as Partial<Record<string, string>>;
       if (draft.name) setName(draft.name);
+      if (draft.brand) setBrand(draft.brand);
+      if (draft.baseServingAmount) setBaseServingAmount(draft.baseServingAmount);
+      if (draft.baseServingUnit) setBaseServingUnit(draft.baseServingUnit);
+      if (draft.baseServingGrams) setBaseServingGrams(draft.baseServingGrams);
       if (draft.kcal) setKcal(draft.kcal);
       if (draft.carbs) setCarbs(draft.carbs);
       if (draft.protein) setProtein(draft.protein);
@@ -94,6 +148,10 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
     draftTimerRef.current = window.setTimeout(() => {
       const next = {
         name,
+        brand,
+        baseServingAmount,
+        baseServingUnit,
+        baseServingGrams,
         kcal,
         carbs,
         protein,
@@ -121,6 +179,10 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
     };
   }, [
     name,
+    brand,
+    baseServingAmount,
+    baseServingUnit,
+    baseServingGrams,
     kcal,
     carbs,
     protein,
@@ -151,8 +213,19 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
     if (satFat.trim()) micronutrients.saturated_fat_g = Number(satFat);
     if (potassium.trim()) micronutrients.potassium_mg = Number(potassium);
     if (ingredients.trim()) micronutrients.ingredients = ingredients.trim();
+    const safeAmount = baseServingAmount.trim() || "1";
+    const safeUnit = baseServingUnit.trim() || "serving";
+    const portionLabel = `${safeAmount} ${safeUnit}`.trim();
+    const portionGrams = baseServingGrams.trim()
+      ? Number(baseServingGrams)
+      : undefined;
     const payload = {
       name: safeName,
+      brand: brand.trim() || undefined,
+      portionLabel,
+      portionGrams: Number.isFinite(portionGrams ?? undefined)
+        ? portionGrams
+        : undefined,
       kcal: Number(kcal) || 0,
       carbs: Number(carbs) || 0,
       protein: Number(protein) || 0,
@@ -167,6 +240,10 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
       description: `${payload.name} is ready to log.`,
     });
     setName("");
+    setBrand("");
+    setBaseServingAmount("1");
+    setBaseServingUnit("serving");
+    setBaseServingGrams("");
     setKcal("");
     setCarbs("");
     setProtein("");
@@ -203,10 +280,89 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
       </div>
 
       <div className="mt-6 space-y-3 rounded-[24px] border border-black/5 bg-white p-4 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
+        <Input
+          value={brand}
+          onChange={(event) => setBrand(event.target.value)}
+          placeholder="Brand (optional)"
+          className="h-11 rounded-full"
+        />
+        <div className="grid grid-cols-[1fr_130px] gap-2">
+          <Input
+            type="number"
+            min={0}
+            inputMode="decimal"
+            value={baseServingAmount}
+            onChange={(event) => setBaseServingAmount(event.target.value)}
+            placeholder="Serving size"
+            className="h-11 rounded-full"
+          />
+          <Select
+            value={baseServingUnit}
+            onValueChange={setBaseServingUnit}
+          >
+            <SelectTrigger className="h-11 rounded-full">
+              <SelectValue placeholder="Unit" />
+            </SelectTrigger>
+            <SelectContent>
+            <SelectGroup>
+              <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                Weight
+              </SelectLabel>
+              {servingUnits.weight.map((unit) => (
+                <SelectItem key={unit.value} value={unit.value}>
+                  {unit.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+            <SelectSeparator />
+            <SelectGroup>
+              <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                Volume
+              </SelectLabel>
+              {servingUnits.volume.map((unit) => (
+                <SelectItem key={unit.value} value={unit.value}>
+                  {unit.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+            <SelectSeparator />
+            <SelectGroup>
+              <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                Count
+              </SelectLabel>
+              {servingUnits.count.map((unit) => (
+                <SelectItem key={unit.value} value={unit.value}>
+                  {unit.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="relative">
+          <Input
+            type="number"
+            min={0}
+            inputMode="numeric"
+            value={baseServingGrams}
+            onChange={(event) => setBaseServingGrams(event.target.value)}
+            placeholder="Serving grams (optional)"
+            className="h-11 rounded-full pr-10"
+          />
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
+            g
+          </span>
+        </div>
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-emerald-50 text-xl">
             {showFoodImages && imageUrl ? (
-              <img src={imageUrl} alt={name || "Food"} className="h-full w-full object-cover" />
+              <img
+                src={imageUrl}
+                alt={name || "Food"}
+                className="h-full w-full object-cover object-center"
+                loading="lazy"
+                decoding="async"
+              />
             ) : (
               "🍽️"
             )}
@@ -333,55 +489,97 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-3 space-y-3 rounded-[24px] border border-black/5 bg-white p-4 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
           <div className="grid grid-cols-2 gap-2">
-            <Input
-              value={sodium}
-              onChange={(event) => setSodium(event.target.value)}
-              placeholder="Sodium (mg)"
-              className="rounded-full"
-              inputMode="numeric"
-            />
-            <Input
-              value={potassium}
-              onChange={(event) => setPotassium(event.target.value)}
-              placeholder="Potassium (mg)"
-              className="rounded-full"
-              inputMode="numeric"
-            />
-            <Input
-              value={fiber}
-              onChange={(event) => setFiber(event.target.value)}
-              placeholder="Fiber (g)"
-              className="rounded-full"
-              inputMode="numeric"
-            />
-            <Input
-              value={satFat}
-              onChange={(event) => setSatFat(event.target.value)}
-              placeholder="Saturated fat (g)"
-              className="rounded-full"
-              inputMode="numeric"
-            />
-            <Input
-              value={sugar}
-              onChange={(event) => setSugar(event.target.value)}
-              placeholder="Sugar (g)"
-              className="rounded-full"
-              inputMode="numeric"
-            />
-            <Input
-              value={transFat}
-              onChange={(event) => setTransFat(event.target.value)}
-              placeholder="Trans fat (g)"
-              className="rounded-full"
-              inputMode="numeric"
-            />
-            <Input
-              value={cholesterol}
-              onChange={(event) => setCholesterol(event.target.value)}
-              placeholder="Cholesterol (mg)"
-              className="rounded-full"
-              inputMode="numeric"
-            />
+            <div className="relative">
+              <Input
+                value={sodium}
+                onChange={(event) => setSodium(event.target.value)}
+                placeholder="Sodium"
+                className="rounded-full pr-10"
+                inputMode="numeric"
+                type="number"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
+                mg
+              </span>
+            </div>
+            <div className="relative">
+              <Input
+                value={potassium}
+                onChange={(event) => setPotassium(event.target.value)}
+                placeholder="Potassium"
+                className="rounded-full pr-10"
+                inputMode="numeric"
+                type="number"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
+                mg
+              </span>
+            </div>
+            <div className="relative">
+              <Input
+                value={fiber}
+                onChange={(event) => setFiber(event.target.value)}
+                placeholder="Fiber"
+                className="rounded-full pr-8"
+                inputMode="numeric"
+                type="number"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
+                g
+              </span>
+            </div>
+            <div className="relative">
+              <Input
+                value={satFat}
+                onChange={(event) => setSatFat(event.target.value)}
+                placeholder="Saturated fat"
+                className="rounded-full pr-8"
+                inputMode="numeric"
+                type="number"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
+                g
+              </span>
+            </div>
+            <div className="relative">
+              <Input
+                value={sugar}
+                onChange={(event) => setSugar(event.target.value)}
+                placeholder="Sugar"
+                className="rounded-full pr-8"
+                inputMode="numeric"
+                type="number"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
+                g
+              </span>
+            </div>
+            <div className="relative">
+              <Input
+                value={transFat}
+                onChange={(event) => setTransFat(event.target.value)}
+                placeholder="Trans fat"
+                className="rounded-full pr-8"
+                inputMode="numeric"
+                type="number"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
+                g
+              </span>
+            </div>
+            <div className="relative">
+              <Input
+                value={cholesterol}
+                onChange={(event) => setCholesterol(event.target.value)}
+                placeholder="Cholesterol"
+                className="rounded-full pr-10"
+                inputMode="numeric"
+                type="number"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
+                mg
+              </span>
+            </div>
           </div>
           <Textarea
             value={ingredients}

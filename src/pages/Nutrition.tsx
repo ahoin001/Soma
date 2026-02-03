@@ -77,6 +77,7 @@ const Nutrition = () => {
     selectedDate,
     setSelectedDate,
     removeLogItem,
+    updateLogItem,
   } = nutrition;
   const meals = mealTypes.meals;
   const { favorites, history, refreshLists, setFavorite } = foodCatalog;
@@ -204,7 +205,7 @@ const Nutrition = () => {
           </div>
         )}
 
-<DateSwitcher value={selectedDate} onChange={setSelectedDate} />
+        <DateSwitcher value={selectedDate} onChange={setSelectedDate} />
 
         <MealLogPanel
           meals={meals}
@@ -214,7 +215,7 @@ const Nutrition = () => {
           onEditItem={handleEditItem}
           onRemoveItem={handleRemoveItem}
         />
-        <DateSwitcher value={selectedDate} onChange={setSelectedDate} />
+        
         <StepsCard
           steps={stepsSummary.steps}
           goal={stepsSummary.goal}
@@ -370,9 +371,10 @@ const Nutrition = () => {
         open={editOpen}
         onOpenChange={setEditOpen}
         item={editItem}
-        onSave={(item, multiplier) =>
-          toast(`Updated ${item.name} to ${multiplier.toFixed(1)}x`)
-        }
+        onSave={(item, multiplier) => {
+          void updateLogItem(item, multiplier);
+          toast(`Updated ${item.name} to ${Number(multiplier).toFixed(1)}x`);
+        }}
         onDelete={(item) => {
           handleRemoveItem(item);
         }}

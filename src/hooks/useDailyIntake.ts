@@ -8,6 +8,7 @@ import {
   fetchMealEntries,
   fetchNutritionSummary,
   fetchNutritionSettings,
+  updateMealEntryItem,
   upsertNutritionSettings,
   upsertNutritionTargets,
 } from "@/lib/api";
@@ -96,7 +97,12 @@ export const useDailyIntake = (
         target.section.items.push(
           ...entryItems.map((item) => ({
             id: item.id,
+            foodId: item.food_id ?? null,
+            mealTypeId: entry.meal_type_id ?? null,
             name: item.food_name,
+            quantity: item.quantity ?? 1,
+            portionLabel: item.portion_label ?? null,
+            portionGrams: item.portion_grams ?? null,
             kcal: Number(item.kcal ?? 0),
             macros: {
               carbs: Number(item.carbs_g ?? 0),
@@ -131,12 +137,15 @@ export const useDailyIntake = (
       setLogSections(formatted);
 
       const totals = items.reduce(
-        (acc, item) => ({
-          kcal: acc.kcal + Number(item.kcal ?? 0),
-          carbs: acc.carbs + Number(item.carbs_g ?? 0),
-          protein: acc.protein + Number(item.protein_g ?? 0),
-          fat: acc.fat + Number(item.fat_g ?? 0),
-        }),
+        (acc, item) => {
+          const quantity = item.quantity ?? 1;
+          return {
+            kcal: acc.kcal + Number(item.kcal ?? 0) * quantity,
+            carbs: acc.carbs + Number(item.carbs_g ?? 0) * quantity,
+            protein: acc.protein + Number(item.protein_g ?? 0) * quantity,
+            fat: acc.fat + Number(item.fat_g ?? 0) * quantity,
+          };
+        },
         { kcal: 0, carbs: 0, protein: 0, fat: 0 },
       );
 
@@ -340,6 +349,50 @@ export const useDailyIntake = (
     [refreshEntries],
   );
 
+  const updateLogItem = useCallback(
+    async (item: LogItem, multiplier: number) => {
+      if (!item.id) return;
+      await ensureUser();
+      try {
+        await updateMealEntryItem(item.id, {
+          quantity: multiplier,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "";
+        const isNotFound =
+          message.includes("Cannot PATCH") || message.includes("404");
+        if (isNotFound) {
+          if (!item.mealTypeId) {
+            throw error;
+          }
+          await createMealEntry({
+            localDate,
+            mealTypeId: item.mealTypeId ?? undefined,
+            items: [
+              {
+                foodId: item.foodId ?? undefined,
+                foodName: item.name,
+                portionLabel: item.portionLabel ?? undefined,
+                portionGrams: item.portionGrams ?? undefined,
+                quantity: multiplier,
+                kcal: item.kcal,
+                carbsG: item.macros.carbs,
+                proteinG: item.macros.protein,
+                fatG: item.macros.fat,
+              },
+            ],
+          });
+          await deleteMealEntryItem(item.id);
+        } else {
+          throw error;
+        }
+      }
+      await refreshEntries();
+      setSyncPulse();
+    },
+    [localDate, refreshEntries, setSyncPulse],
+  );
+
   return {
     summary,
     macros,
@@ -354,5 +407,6 @@ export const useDailyIntake = (
     completion,
     refreshEntries,
     removeLogItem,
+    updateLogItem,
   };
 };

@@ -25,6 +25,7 @@ export const EditLogSheet = ({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const draftTimerRef = useRef<number | null>(null);
   const { showFoodImages } = useAppStore();
+  const safeMultiplier = Number.isFinite(multiplier) ? multiplier : 1;
 
   useEffect(() => {
     if (!open) return;
@@ -37,6 +38,13 @@ export const EditLogSheet = ({
           setMultiplier(next);
           return;
         }
+      }
+    }
+    if (item?.quantity !== undefined) {
+      const next = Number(item.quantity);
+      if (Number.isFinite(next) && next > 0) {
+        setMultiplier(next);
+        return;
       }
     }
     setMultiplier(1);
@@ -71,10 +79,17 @@ export const EditLogSheet = ({
     scrollRef.current.scrollTop = 0;
   }, [open]);
 
-  const scaledKcal = useMemo(() => {
-    if (!item) return 0;
-    return Math.round(item.kcal * multiplier);
-  }, [item, multiplier]);
+  const scaled = useMemo(() => {
+    if (!item) {
+      return { kcal: 0, carbs: 0, protein: 0, fat: 0 };
+    }
+    return {
+      kcal: Math.round(item.kcal * safeMultiplier),
+      carbs: Math.round(item.macros.carbs * safeMultiplier),
+      protein: Math.round(item.macros.protein * safeMultiplier),
+      fat: Math.round(item.macros.fat * safeMultiplier),
+    };
+  }, [item, safeMultiplier]);
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -94,7 +109,9 @@ export const EditLogSheet = ({
                   <img
                     src={item.imageUrl}
                     alt={item.name}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover object-center"
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   item.emoji
@@ -119,7 +136,7 @@ export const EditLogSheet = ({
                     pulse ? "scale-110" : "scale-100"
                   }`}
                 >
-                  {multiplier.toFixed(1)}x
+                  {safeMultiplier.toFixed(1)}x
                 </span>
               </div>
               <div className="mt-4 grid grid-cols-[44px_1fr_44px] items-center gap-3">
@@ -128,22 +145,22 @@ export const EditLogSheet = ({
                   variant="secondary"
                   className="h-11 w-11 rounded-full text-lg font-semibold active:scale-95"
                   onClick={() =>
-                    setMultiplier((prev) => Math.max(0.25, Number((prev - 0.25).toFixed(2))))
+                    setMultiplier((prev) => Math.max(1, Math.round(prev - 1)))
                   }
                 >
                   −
                 </Button>
                 <Input
                   type="number"
-                  min={0.25}
-                  max={4}
-                  step={0.05}
+                  min={1}
+                  max={10}
+                  step={1}
                   inputMode="decimal"
-                  value={multiplier}
+                  value={safeMultiplier}
                   onChange={(event) => {
                     const next = Number(event.target.value);
                     if (!Number.isFinite(next)) return;
-                    setMultiplier(Math.min(4, Math.max(0.25, next)));
+                    setMultiplier(Math.min(10, Math.max(1, Math.round(next))));
                   }}
                   className="h-11 rounded-full text-center text-sm font-semibold"
                 />
@@ -152,22 +169,22 @@ export const EditLogSheet = ({
                   variant="secondary"
                   className="h-11 w-11 rounded-full text-lg font-semibold active:scale-95"
                   onClick={() =>
-                    setMultiplier((prev) => Math.min(4, Number((prev + 0.25).toFixed(2))))
+                    setMultiplier((prev) => Math.min(10, Math.round(prev + 1)))
                   }
                 >
                   +
                 </Button>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                {[0.5, 1, 1.25, 1.5, 2].map((value) => (
+                {[1, 2, 3, 4, 5].map((value) => (
                   <Button
                     key={value}
                     type="button"
-                    variant={multiplier === value ? "default" : "secondary"}
+                    variant={safeMultiplier === value ? "default" : "secondary"}
                     className="h-9 rounded-full px-4 text-xs font-semibold transition-transform active:scale-95"
                     onClick={() => setMultiplier(value)}
                   >
-                    {value}x
+                    {value.toFixed(1)}x
                   </Button>
                 ))}
               </div>
@@ -178,7 +195,7 @@ export const EditLogSheet = ({
                 Calories
               </span>
               <span className="text-lg font-display font-semibold text-slate-900">
-                {scaledKcal} cal
+                {scaled.kcal} cal
               </span>
             </div>
 
@@ -186,7 +203,7 @@ export const EditLogSheet = ({
               <Button
                 className="w-full rounded-full bg-aura-primary py-6 text-base font-semibold text-white shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
                 onClick={() => {
-                  onSave(item, multiplier);
+                  onSave(item, safeMultiplier);
                   onOpenChange(false);
                 }}
               >

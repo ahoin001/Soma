@@ -1,6 +1,11 @@
 export type LogItem = {
   id?: string;
+  foodId?: string | null;
+  mealTypeId?: string | null;
   name: string;
+  quantity?: number;
+  portionLabel?: string | null;
+  portionGrams?: number | null;
   kcal: number;
   macros: {
     carbs: number;

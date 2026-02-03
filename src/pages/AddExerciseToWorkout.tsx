@@ -1,9 +1,12 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell } from "@/components/aura";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/state/AppStore";
 import { toast } from "sonner";
+import { fetchCurrentUser, fetchExerciseByName, updateExerciseMaster } from "@/lib/api";
+import { uploadImageFile } from "@/lib/uploadImage";
 
 const createId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -14,9 +17,48 @@ const AddExerciseToWorkout = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const exerciseName = params.get("name") ?? "";
+  const adminEdit = params.get("adminEdit") === "true";
   const { workoutPlans, updateWorkoutTemplate, createWorkoutTemplate } = useAppStore();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loadingAdmin, setLoadingAdmin] = useState(false);
+  const [masterId, setMasterId] = useState<number | null>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [thumbnailUploading, setThumbnailUploading] = useState(false);
+  const [thumbnailProgress, setThumbnailProgress] = useState(0);
+  const [thumbnailNotice, setThumbnailNotice] = useState<string | null>(null);
 
   const plans = useMemo(() => workoutPlans, [workoutPlans]);
+
+  useEffect(() => {
+    if (!adminEdit) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setLoadingAdmin(true);
+        const user = await fetchCurrentUser();
+        if (cancelled) return;
+        const admin = user.user?.email === "ahoin001@gmail.com";
+        setIsAdmin(admin);
+        if (!admin) return;
+        if (exerciseName.trim()) {
+          const response = await fetchExerciseByName(exerciseName);
+          const record = response.exercise as { id?: number; image_url?: string | null } | null;
+          setMasterId(record?.id ? Number(record.id) : null);
+          setThumbnailUrl(record?.image_url ?? "");
+        }
+      } catch {
+        if (!cancelled) {
+          setIsAdmin(false);
+        }
+      } finally {
+        if (!cancelled) setLoadingAdmin(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [adminEdit, exerciseName]);
 
   if (!exerciseName.trim()) {
     return (
@@ -67,7 +109,7 @@ const AddExerciseToWorkout = () => {
           </Button>
           <div className="text-center">
             <p className="text-xs uppercase tracking-[0.2em] text-white/50">
-              Add to workout
+              {adminEdit ? "Admin edit" : "Add to workout"}
             </p>
             <p className="text-sm text-white/80">{exerciseName}</p>
           </div>
@@ -75,6 +117,78 @@ const AddExerciseToWorkout = () => {
         </div>
 
         <div className="mt-6 space-y-4">
+          {adminEdit && isAdmin ? (
+            <div className="rounded-[24px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-emerald-200/80">
+                Thumbnail manager
+              </p>
+              <p className="mt-2 text-sm text-white/70">
+                Update the thumbnail for this exercise.
+              </p>
+              <Input
+                value={thumbnailUrl}
+                onChange={(event) => setThumbnailUrl(event.target.value)}
+                placeholder="Thumbnail image URL"
+                className="mt-3 border-emerald-400/30 bg-white/10 text-white placeholder:text-white/50"
+              />
+              <label className="mt-3 flex cursor-pointer items-center justify-between rounded-2xl border border-emerald-400/30 bg-white/10 px-4 py-3 text-xs font-semibold text-emerald-100">
+                <span>{thumbnailUploading ? "Uploading..." : "Upload thumbnail"}</span>
+                <span className="text-emerald-200">Browse</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    setThumbnailUploading(true);
+                    setThumbnailProgress(0);
+                    setThumbnailNotice(null);
+                    uploadImageFile(file, setThumbnailProgress)
+                      .then((url) => {
+                        setThumbnailUrl(url);
+                        setThumbnailNotice("Thumbnail uploaded.");
+                      })
+                      .catch(() => {
+                        setThumbnailNotice("Upload failed.");
+                      })
+                      .finally(() => setThumbnailUploading(false));
+                  }}
+                />
+              </label>
+              {thumbnailUploading ? (
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-emerald-400/15">
+                  <div
+                    className="h-full rounded-full bg-emerald-300 transition-all"
+                    style={{ width: `${thumbnailProgress}%` }}
+                  />
+                </div>
+              ) : null}
+              {thumbnailNotice ? (
+                <p className="mt-2 text-xs text-emerald-200">{thumbnailNotice}</p>
+              ) : null}
+              <Button
+                className="mt-3 w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                onClick={async () => {
+                  if (!masterId) {
+                    toast("Master exercise not found");
+                    return;
+                  }
+                  try {
+                    await updateExerciseMaster(masterId, {
+                      imageUrl: thumbnailUrl.trim() || null,
+                    });
+                    toast("Thumbnail saved");
+                  } catch {
+                    toast("Unable to update thumbnail");
+                  }
+                }}
+                disabled={loadingAdmin}
+              >
+                Save thumbnail
+              </Button>
+            </div>
+          ) : null}
           {plans.length === 0 ? (
             <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-6 text-center">
               <p className="text-sm text-white/70">

@@ -9,7 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
+  SelectGroup,
+  SelectLabel,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -80,28 +83,35 @@ const normalizeUnit = (raw: string) => {
   return "serving";
 };
 
-const servingUnits = [
-  { value: "g", label: "g" },
-  { value: "kg", label: "kg" },
-  { value: "ml", label: "ml" },
-  { value: "l", label: "l" },
-  { value: "fl oz", label: "fl oz" },
-  { value: "cup", label: "cup" },
-  { value: "pint", label: "pint" },
-  { value: "quart", label: "quart" },
-  { value: "gallon", label: "gallon" },
-  { value: "tbsp", label: "tbsp" },
-  { value: "tsp", label: "tsp" },
-  { value: "oz", label: "oz" },
-  { value: "lb", label: "lb" },
-  { value: "slice", label: "slice" },
-  { value: "piece", label: "piece" },
-  { value: "packet", label: "packet" },
-  { value: "can", label: "can" },
-  { value: "bottle", label: "bottle" },
-  { value: "bar", label: "bar" },
-  { value: "serving", label: "serving" },
-];
+const servingUnits = {
+  weight: [
+    { value: "g", label: "g" },
+    { value: "kg", label: "kg" },
+    { value: "oz", label: "oz" },
+    { value: "lb", label: "lb" },
+  ],
+  volume: [
+    { value: "ml", label: "ml" },
+    { value: "l", label: "l" },
+    { value: "tsp", label: "tsp" },
+    { value: "tbsp", label: "tbsp" },
+    { value: "fl oz", label: "fl oz" },
+    { value: "cup", label: "cup" },
+    { value: "pint", label: "pint" },
+    { value: "quart", label: "quart" },
+    { value: "gallon", label: "gallon" },
+  ],
+  count: [
+    { value: "bar", label: "bar" },
+    { value: "bottle", label: "bottle" },
+    { value: "can", label: "can" },
+    { value: "packet", label: "packet" },
+    { value: "piece", label: "piece" },
+    { value: "scoop", label: "scoop" },
+    { value: "serving", label: "serving" },
+    { value: "slice", label: "slice" },
+  ],
+};
 
 const EditFood = () => {
   const navigate = useNavigate();
@@ -377,11 +387,38 @@ const EditFood = () => {
                 <SelectValue placeholder="Unit" />
               </SelectTrigger>
               <SelectContent>
-                {servingUnits.map((unit) => (
-                  <SelectItem key={unit.value} value={unit.value}>
-                    {unit.label}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                    Weight
+                  </SelectLabel>
+                  {servingUnits.weight.map((unit) => (
+                    <SelectItem key={unit.value} value={unit.value}>
+                      {unit.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+                <SelectSeparator />
+                <SelectGroup>
+                  <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                    Volume
+                  </SelectLabel>
+                  {servingUnits.volume.map((unit) => (
+                    <SelectItem key={unit.value} value={unit.value}>
+                      {unit.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+                <SelectSeparator />
+                <SelectGroup>
+                  <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                    Count
+                  </SelectLabel>
+                  {servingUnits.count.map((unit) => (
+                    <SelectItem key={unit.value} value={unit.value}>
+                      {unit.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -438,11 +475,38 @@ const EditFood = () => {
                   <SelectValue placeholder="Unit" />
                 </SelectTrigger>
                 <SelectContent>
-                  {servingUnits.map((unit) => (
+                <SelectGroup>
+                  <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                    Weight
+                  </SelectLabel>
+                  {servingUnits.weight.map((unit) => (
                     <SelectItem key={unit.value} value={unit.value}>
                       {unit.label}
                     </SelectItem>
                   ))}
+                </SelectGroup>
+                <SelectSeparator />
+                <SelectGroup>
+                  <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                    Volume
+                  </SelectLabel>
+                  {servingUnits.volume.map((unit) => (
+                    <SelectItem key={unit.value} value={unit.value}>
+                      {unit.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+                <SelectSeparator />
+                <SelectGroup>
+                  <SelectLabel className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                    Count
+                  </SelectLabel>
+                  {servingUnits.count.map((unit) => (
+                    <SelectItem key={unit.value} value={unit.value}>
+                      {unit.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
                 </SelectContent>
               </Select>
               <Input

@@ -115,19 +115,12 @@ export const verifyEmail = async (payload: { token: string }) =>
 
 export const searchExercises = async (
   query: string,
-  seed = true,
+  _seed = false,
   scope: "all" | "mine" = "all",
 ) =>
   apiFetch<{ items: Record<string, unknown>[] }>(
-    `/api/exercises/search?query=${encodeURIComponent(query)}&seed=${seed ? "true" : "false"}&scope=${scope}`,
+    `/api/exercises/search?query=${encodeURIComponent(query)}&seed=false&scope=${scope}`,
   );
-
-export const fetchExerciseImages = async (ids: number[]) => {
-  const params = new URLSearchParams({ ids: ids.join(",") });
-  return apiFetch<{ images: Record<string, string> }>(
-    `/api/exercises/images?${params.toString()}`,
-  );
-};
 
 export const fetchExerciseByName = async (name: string) =>
   apiFetch<{ exercise: Record<string, unknown> | null }>(
@@ -137,6 +130,11 @@ export const fetchExerciseByName = async (name: string) =>
 export const fetchExerciseById = async (exerciseId: number) =>
   apiFetch<{ exercise: Record<string, unknown> | null }>(
     `/api/exercises/${exerciseId}`,
+  );
+
+export const fetchAdminExercises = async (query = "", limit = 120) =>
+  apiFetch<{ items: Record<string, unknown>[] }>(
+    `/api/exercises/admin?query=${encodeURIComponent(query)}&limit=${limit}`,
   );
 
 export const createExercise = async (payload: {
@@ -247,6 +245,7 @@ export const fetchFoodHistory = async (limit = 20) =>
 export const createFood = async (payload: {
   name: string;
   brand?: string;
+  brandId?: string;
   barcode?: string;
   source?: string;
   portionLabel?: string;
@@ -283,6 +282,7 @@ export const updateFoodMaster = async (
   payload: {
     name?: string;
     brand?: string | null;
+    brandId?: string | null;
     portionLabel?: string | null;
     portionGrams?: number | null;
     kcal?: number;
@@ -296,6 +296,44 @@ export const updateFoodMaster = async (
     method: "PATCH",
     body: JSON.stringify(payload),
   });
+
+export const fetchBrands = async (query = "", verified = true, limit = 50) =>
+  apiFetch<{ items: BrandRecord[] }>(
+    `/api/brands?q=${encodeURIComponent(query)}&verified=${verified ? "true" : "false"}&limit=${limit}`,
+  );
+
+export const createBrand = async (payload: {
+  name: string;
+  websiteUrl?: string;
+  logoUrl?: string;
+}) =>
+  apiFetch<{ brand: BrandRecord }>("/api/brands", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+export const updateBrand = async (
+  brandId: string,
+  payload: {
+    name?: string;
+    websiteUrl?: string | null;
+    logoUrl?: string | null;
+    isVerified?: boolean;
+  },
+) =>
+  apiFetch<{ brand: BrandRecord | null }>(`/api/brands/${brandId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+
+export const fetchBrandLogoSignature = async () =>
+  apiFetch<{
+    timestamp: number;
+    signature: string;
+    apiKey: string;
+    cloudName: string;
+    uploadPreset: string | null;
+  }>("/api/brands/logo/signature");
 
 export const createMealEntry = async (payload: {
   localDate: string;
@@ -328,6 +366,21 @@ export const fetchMealEntries = async (localDate: string) =>
 export const deleteMealEntryItem = async (itemId: string) =>
   apiFetch<{ deleted: string | null }>(`/api/meal-entries/items/${itemId}`, {
     method: "DELETE",
+  });
+
+export const updateMealEntryItem = async (
+  itemId: string,
+  payload: {
+    quantity?: number;
+    kcal?: number;
+    carbsG?: number;
+    proteinG?: number;
+    fatG?: number;
+  },
+) =>
+  apiFetch<{ item: MealEntryItemRecord | null }>(`/api/meal-entries/items/${itemId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
   });
 
 export const fetchNutritionSummary = async (localDate: string) =>

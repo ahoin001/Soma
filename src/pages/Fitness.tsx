@@ -11,7 +11,6 @@ import {
 } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
@@ -19,13 +18,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Dumbbell, Layers, LineChart, Timer } from "lucide-react";
+import { Dumbbell, Layers, LineChart, Timer, Wrench } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "@/state/AppStore";
 import type { Exercise } from "@/types/fitness";
 import type { WorkoutPlan, WorkoutTemplate } from "@/types/fitness";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { fetchCurrentUser } from "@/lib/api";
 import { motion } from "framer-motion";
 
 const fitnessBlocks = [
@@ -85,11 +85,7 @@ const Fitness = () => {
     null,
   );
   const [creating, setCreating] = useState(false);
-  const [atlasScope, setAtlasScope] = useState<"all" | "mine">(() => {
-    if (typeof window === "undefined") return "all";
-    const stored = window.localStorage.getItem("ironflow-exercise-scope");
-    return stored === "mine" ? "mine" : "all";
-  });
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!query.trim()) return;
@@ -97,13 +93,13 @@ const Fitness = () => {
     abortRef.current?.abort();
     abortRef.current = controller;
     const timer = window.setTimeout(() => {
-      searchExercises(query, controller.signal, atlasScope);
+      searchExercises(query, controller.signal, "mine");
     }, 350);
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [query, searchExercises, atlasScope]);
+  }, [query, searchExercises]);
 
   useEffect(() => {
     const state = location.state as { exerciseQuery?: string } | null;
@@ -111,6 +107,24 @@ const Fitness = () => {
     setQuery(state.exerciseQuery);
     navigate(location.pathname, { replace: true });
   }, [location, navigate, setQuery]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadAdmin = async () => {
+      try {
+        const user = await fetchCurrentUser();
+        if (!cancelled) {
+          setIsAdmin(user.user?.email === "ahoin001@gmail.com");
+        }
+      } catch {
+        if (!cancelled) setIsAdmin(false);
+      }
+    };
+    void loadAdmin();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const previewItems = useMemo(() => results.slice(0, 120), [results]);
   const activePlanForHud =
@@ -308,6 +322,16 @@ const Fitness = () => {
                   >
                     {creating ? "Creating folder..." : "Create folder"}
                   </Button>
+                  {isAdmin ? (
+                    <Button
+                      variant="secondary"
+                      className="w-full rounded-full bg-white/15 text-white hover:bg-white/25"
+                      onClick={() => navigate("/fitness/admin/exercises")}
+                    >
+                      <Wrench className="h-4 w-4" />
+                      Manage thumbnails
+                    </Button>
+                  ) : null}
                   <Button
                     variant="secondary"
                     className="w-full rounded-full bg-white/15 text-white hover:bg-white/25"
@@ -355,37 +379,6 @@ const Fitness = () => {
                     placeholder="Search exercises (e.g., bench press)"
                     className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
                   />
-                  <Tabs
-                    value={atlasScope}
-                    onValueChange={(value) => {
-                      const nextScope = value === "mine" ? "mine" : "all";
-                      setAtlasScope(nextScope);
-                      if (typeof window !== "undefined") {
-                        window.localStorage.setItem(
-                          "ironflow-exercise-scope",
-                          nextScope,
-                        );
-                      }
-                      if (query.trim()) {
-                        searchExercises(query, undefined, nextScope);
-                      }
-                    }}
-                  >
-                    <TabsList className="h-10 w-full rounded-full bg-white/5 p-1">
-                      <TabsTrigger
-                        value="all"
-                        className="w-full rounded-full text-xs data-[state=active]:bg-emerald-400/20 data-[state=active]:text-emerald-200"
-                      >
-                        All exercises
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="mine"
-                        className="w-full rounded-full text-xs data-[state=active]:bg-emerald-400/20 data-[state=active]:text-emerald-200"
-                      >
-                        My exercises
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
                   <Button
                     variant="secondary"
                     className="w-full rounded-full bg-white/10 text-white hover:bg-white/20"
@@ -402,11 +395,7 @@ const Fitness = () => {
                     <p className="text-sm text-rose-300">{error}</p>
                   ) : null}
                   {status === "loading" ? (
-                    <p className="text-sm text-white/60">
-                      {atlasScope === "mine"
-                        ? "Loading your exercises..."
-                        : "Loading exercises..."}
-                    </p>
+                    <p className="text-sm text-white/60">Loading exercises...</p>
                   ) : null}
                   {previewItems.length ? (
                     <VirtualizedExerciseList

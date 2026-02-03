@@ -117,7 +117,9 @@ const toFoodItem = (record: FoodRecord): FoodItem => {
   return {
     id: record.id,
     name: record.name,
-    brand: record.brand ?? undefined,
+    brand: record.brand_name ?? record.brand ?? undefined,
+    brandId: record.brand_id ?? undefined,
+    brandLogoUrl: record.brand_logo_url ?? undefined,
     portion:
       record.portion_label ??
       (record.portion_grams ? `${record.portion_grams} g` : "100 g"),
@@ -315,6 +317,9 @@ export const useFoodCatalog = () => {
   const createFood = useCallback(
     async (payload: {
       name: string;
+      brand?: string;
+      portionLabel?: string;
+      portionGrams?: number;
       kcal: number;
       carbs: number;
       protein: number;
@@ -325,6 +330,9 @@ export const useFoodCatalog = () => {
       await ensureUser();
       const response = await createFoodApi({
         name: payload.name,
+        brand: payload.brand,
+        portionLabel: payload.portionLabel,
+        portionGrams: payload.portionGrams,
         kcal: payload.kcal,
         carbsG: payload.carbs,
         proteinG: payload.protein,

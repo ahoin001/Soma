@@ -67,6 +67,10 @@ const WorkoutDetails = () => {
             )}`,
           );
         }}
+        onEditExercise={(exercise) => {
+          if (!exercise.name) return;
+          navigate(`/fitness/exercises/add?name=${encodeURIComponent(exercise.name)}&adminEdit=true`);
+        }}
         onSave={(nextExercises) => {
           updateWorkoutTemplate(activePlan.id, activeWorkout.id, {
             exercises: nextExercises,

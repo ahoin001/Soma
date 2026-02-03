@@ -5,125 +5,6 @@ import { asyncHandler, getUserId } from "../utils";
 
 const router = Router();
 
-const WGER_BASE_URL = "https://wger.de/api/v2";
-
-type WgerExerciseTranslation = {
-  language?: number;
-  name?: string;
-  description?: string;
-};
-
-type WgerExerciseInfo = {
-  id: number;
-  category?: { name?: string } | null;
-  muscles?: Array<{ name?: string; name_en?: string }>;
-  muscles_secondary?: Array<{ name?: string; name_en?: string }>;
-  equipment?: Array<{ name?: string }>;
-  translations?: WgerExerciseTranslation[];
-  images?: Array<{ image?: string; is_main?: boolean }>;
-};
-
-const fetchWger = async (queryValue: string) => {
-  const params = new URLSearchParams({
-    language: "2",
-    limit: "10",
-    offset: "0",
-    search: queryValue,
-  });
-  const response = await fetch(
-    `${WGER_BASE_URL}/exerciseinfo/?${params.toString()}`,
-  );
-  if (!response.ok) {
-    throw new Error("Exercise API request failed.");
-  }
-  const data = (await response.json()) as { results?: WgerExerciseInfo[] };
-  const normalized = queryValue.trim().toLowerCase();
-  return (data.results ?? []).filter((item) => {
-    const translation = getPrimaryTranslation(item.translations);
-    if (!translation?.name) return false;
-    const nameMatch = translation.name.toLowerCase().includes(normalized);
-    const descriptionMatch = translation.description
-      ? translation.description.toLowerCase().includes(normalized)
-      : false;
-    return nameMatch || descriptionMatch;
-  });
-};
-
-const fetchWgerPage = async (page: number, limit: number) => {
-  const params = new URLSearchParams({
-    language: "2",
-    limit: String(limit),
-    offset: String(page * limit),
-  });
-  const response = await fetch(
-    `${WGER_BASE_URL}/exerciseinfo/?${params.toString()}`,
-  );
-  if (!response.ok) {
-    throw new Error("Exercise API request failed.");
-  }
-  const data = (await response.json()) as { results?: WgerExerciseInfo[] };
-  return data.results ?? [];
-};
-
-const getPrimaryTranslation = (translations?: WgerExerciseTranslation[]) => {
-  if (!translations?.length) return null;
-  return (
-    translations.find((translation) => translation.language === 2) ??
-    translations[0]
-  );
-};
-
-const getMuscleNames = (
-  muscles?: Array<{ name?: string; name_en?: string }>,
-) =>
-  (muscles ?? [])
-    .map((muscle) => muscle.name_en || muscle.name)
-    .filter((value): value is string => Boolean(value));
-
-const getImageUrl = (images?: Array<{ image?: string; is_main?: boolean }>) => {
-  const main = images?.find((image) => image.is_main && image.image)?.image;
-  return main ?? images?.find((image) => image.image)?.image ?? null;
-};
-
-const seedExercises = async (pages: number, limit: number) => {
-  let total = 0;
-  await withTransaction(async (client) => {
-    for (let page = 0; page < pages; page += 1) {
-      const results = await fetchWgerPage(page, limit);
-      if (!results.length) break;
-      for (const item of results) {
-        const translation = getPrimaryTranslation(item.translations);
-        if (!translation?.name?.trim()) continue;
-        await client.query(
-          `
-          INSERT INTO exercises (id, name, description, category, equipment, muscles, image_url)
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
-          ON CONFLICT (id) DO UPDATE SET
-            name = EXCLUDED.name,
-            description = EXCLUDED.description,
-            category = EXCLUDED.category,
-            equipment = EXCLUDED.equipment,
-            muscles = EXCLUDED.muscles,
-            image_url = EXCLUDED.image_url,
-            updated_at = now();
-          `,
-          [
-            item.id,
-            translation.name.trim(),
-            cleanDescription(translation.description ?? ""),
-            item.category?.name ?? "General",
-            item.equipment?.map((equip) => equip.name ?? "").filter(Boolean) ?? [],
-            getMuscleNames(item.muscles),
-            getImageUrl(item.images),
-          ],
-        );
-      }
-      total += results.length;
-    }
-  });
-  return total;
-};
-
 const cleanDescription = (value: string) =>
   value.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 
@@ -133,6 +14,11 @@ const getUserEmail = async (userId: string) => {
     [userId],
   );
   return result.rows[0]?.email ?? null;
+};
+
+const isAdminUser = async (userId: string) => {
+  const email = await getUserEmail(userId);
+  return email === "ahoin001@gmail.com";
 };
 
 const ensureAdmin = async (userId: string) => {
@@ -152,26 +38,10 @@ const getExerciseOwner = async (exerciseId: number) => {
   return result.rows[0]?.created_by_user_id ?? null;
 };
 
-const fetchWgerImage = async (exerciseId: number) => {
-  const params = new URLSearchParams({
-    limit: "1",
-    offset: "0",
-    exercise: String(exerciseId),
-  });
-  const response = await fetch(`${WGER_BASE_URL}/exerciseimage/?${params.toString()}`);
-  if (!response.ok) return null;
-  const data = (await response.json()) as { results?: Array<{ image?: string }> };
-  return data.results?.[0]?.image ?? null;
-};
-
-const imageCache = new Map<number, { url: string | null; updatedAt: number }>();
-const IMAGE_TTL_MS = 1000 * 60 * 60 * 24;
-
 router.get(
   "/search",
   asyncHandler(async (req, res) => {
     const queryValue = z.string().min(1).parse(req.query.query);
-    const seed = req.query.seed === "true";
     const scope = req.query.scope === "mine" ? "mine" : "all";
     const userId = scope === "mine" ? getUserId(req) : req.header("x-user-id") ?? null;
 
@@ -197,103 +67,33 @@ router.get(
       return;
     }
 
-    if (local.rows.length > 0 || !seed) {
-      res.json({ items: local.rows });
-      return;
-    }
-
-    const fetched = await fetchWger(queryValue);
-    if (!fetched.length) {
-      res.json({ items: [] });
-      return;
-    }
-
-    await withTransaction(async (client) => {
-      for (const item of fetched) {
-        const translation = getPrimaryTranslation(item.translations);
-        if (!translation?.name?.trim()) continue;
-        await client.query(
-          `
-          INSERT INTO exercises (id, name, description, category, equipment, muscles, image_url)
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
-          ON CONFLICT (id) DO UPDATE SET
-            name = EXCLUDED.name,
-            description = EXCLUDED.description,
-            category = EXCLUDED.category,
-            equipment = EXCLUDED.equipment,
-            muscles = EXCLUDED.muscles,
-            image_url = EXCLUDED.image_url,
-            updated_at = now();
-          `,
-          [
-            item.id,
-            translation.name.trim(),
-            cleanDescription(translation.description ?? ""),
-            item.category?.name ?? "General",
-            item.equipment?.map((equip) => equip.name ?? "").filter(Boolean) ?? [],
-            getMuscleNames(item.muscles),
-            getImageUrl(item.images),
-          ],
-        );
-      }
-    });
-
-    const seeded = await query(
-      `
-      SELECT id, name, description, category, equipment, muscles, image_url
-      FROM exercises
-      WHERE id = ANY($1::bigint[])
-      ORDER BY name ASC;
-      `,
-      [fetched.map((item) => item.id)],
-    );
-
-    res.json({ items: seeded.rows });
+    res.json({ items: local.rows });
   }),
 );
 
-router.get(
-  "/images",
-  asyncHandler(async (req, res) => {
-    const idsRaw = z.string().min(1).parse(req.query.ids);
-    const ids = Array.from(
-      new Set(
-        idsRaw
-          .split(",")
-          .map((value) => Number(value))
-          .filter((value) => Number.isFinite(value)),
-      ),
-    ).slice(0, 24);
-    const images: Record<string, string> = {};
-    const now = Date.now();
-    for (const id of ids) {
-      const cached = imageCache.get(id);
-      if (cached && now - cached.updatedAt < IMAGE_TTL_MS) {
-        if (cached.url) images[String(id)] = cached.url;
-        continue;
-      }
-      const url = await fetchWgerImage(id);
-      imageCache.set(id, { url, updatedAt: now });
-      if (url) images[String(id)] = url;
-    }
-    res.json({ images });
-  }),
-);
 
 router.get(
   "/by-name",
   asyncHandler(async (req, res) => {
     const name = z.string().min(1).parse(req.query.name);
     const userId = req.header("x-user-id") ?? null;
+    const admin = userId ? await isAdminUser(userId) : false;
     const result = await query(
+      admin
+        ? `
+      SELECT id, name, description, category, equipment, muscles, image_url
+      FROM exercises
+      WHERE lower(name) = lower($1)
+      LIMIT 1;
       `
+        : `
       SELECT id, name, description, category, equipment, muscles, image_url
       FROM exercises
       WHERE lower(name) = lower($1)
         AND (created_by_user_id IS NULL OR created_by_user_id = $2)
       LIMIT 1;
       `,
-      [name, userId],
+      admin ? [name] : [name, userId],
     );
     res.json({ exercise: result.rows[0] ?? null });
   }),
@@ -342,18 +142,59 @@ router.post(
 );
 
 router.get(
+  "/admin",
+  asyncHandler(async (req, res) => {
+    const userId = getUserId(req);
+    const admin = await isAdminUser(userId);
+    if (!admin) {
+      res.status(403).json({ error: "Not authorized." });
+      return;
+    }
+    const queryValue =
+      typeof req.query.query === "string" ? req.query.query.trim() : "";
+    const limit = z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(200)
+      .parse(req.query.limit ?? 120);
+    const result = await query(
+      `
+      SELECT id, name, category, image_url
+      FROM exercises
+      WHERE $1 = ''
+         OR to_tsvector('simple', coalesce(name, '') || ' ' || coalesce(category, ''))
+            @@ plainto_tsquery('simple', $1)
+         OR lower(name) LIKE '%' || lower($1) || '%'
+      ORDER BY name ASC
+      LIMIT $2;
+      `,
+      [queryValue, limit],
+    );
+    res.json({ items: result.rows });
+  }),
+);
+
+router.get(
   "/:exerciseId",
   asyncHandler(async (req, res) => {
     const exerciseId = z.coerce.number().int().parse(req.params.exerciseId);
     const userId = req.header("x-user-id") ?? null;
+    const admin = userId ? await isAdminUser(userId) : false;
     const result = await query(
+      admin
+        ? `
+      SELECT id, name, description, category, equipment, muscles, image_url, created_by_user_id
+      FROM exercises
+      WHERE id = $1;
       `
+        : `
       SELECT id, name, description, category, equipment, muscles, image_url, created_by_user_id
       FROM exercises
       WHERE id = $1
         AND (created_by_user_id IS NULL OR created_by_user_id = $2);
       `,
-      [exerciseId, userId],
+      admin ? [exerciseId] : [exerciseId, userId],
     );
     res.json({ exercise: result.rows[0] ?? null });
   }),
@@ -364,13 +205,14 @@ router.patch(
   asyncHandler(async (req, res) => {
     const userId = getUserId(req);
     const exerciseId = z.coerce.number().int().parse(req.params.exerciseId);
+    const admin = await isAdminUser(userId);
     const ownerId = await getExerciseOwner(exerciseId);
-    if (!ownerId) {
-      await ensureAdmin(userId);
-    } else if (ownerId !== userId) {
-      const error = new Error("Not authorized.");
-      (error as Error & { status?: number }).status = 403;
-      throw error;
+    if (!admin) {
+      if (!ownerId || ownerId !== userId) {
+        const error = new Error("Not authorized.");
+        (error as Error & { status?: number }).status = 403;
+        throw error;
+      }
     }
     const payload = z
       .object({
@@ -407,25 +249,6 @@ router.patch(
       ],
     );
     res.json({ exercise: result.rows[0] });
-  }),
-);
-
-router.post(
-  "/sync",
-  asyncHandler(async (req, res) => {
-    const authKey = process.env.EXERCISE_SYNC_KEY ?? null;
-    if (authKey) {
-      const provided = req.header("x-sync-key");
-      if (!provided || provided !== authKey) {
-        res.status(403).json({ error: "Unauthorized." });
-        return;
-      }
-    }
-
-    const pages = z.coerce.number().int().min(1).max(20).parse(req.query.pages ?? 4);
-    const limit = z.coerce.number().int().min(10).max(200).parse(req.query.limit ?? 50);
-    const total = await seedExercises(pages, limit);
-    res.json({ seeded: total, pages, limit });
   }),
 );
 

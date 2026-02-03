@@ -67,7 +67,9 @@ export const VirtualizedExerciseList = ({
                   <img
                     src={item.imageUrl}
                     alt={`${item.name} preview`}
-                    className="h-12 w-12 rounded-2xl border border-white/10 object-cover"
+                    className="h-12 w-12 rounded-2xl border border-white/10 object-cover object-center"
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-400/20 via-slate-950 to-slate-900 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">

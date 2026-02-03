@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { WorkoutExerciseEntry } from "@/types/fitness";
 import { toast } from "sonner";
-import { fetchWgerExerciseImages, searchWgerExercises } from "@/data/exerciseApi";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   createExerciseMedia,
@@ -24,6 +23,7 @@ import {
   updateExerciseMaster,
 } from "@/lib/api";
 import { getUserId } from "@/lib/api";
+import { uploadImageFile } from "@/lib/uploadImage";
 import { ChevronLeft } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -38,10 +38,10 @@ type ExerciseGuideSheetProps = {
 type MediaCacheEntry = {
   mediaUrl: string | null;
   mediaLabel: string;
-  mediaKind: "cloudinary" | "youtube" | "external" | "wger" | null;
+  mediaKind: "cloudinary" | "youtube" | "external" | null;
   mediaItems: Array<
     ExerciseMedia & {
-      source_type: ExerciseMedia["source_type"] | "wger";
+      source_type: ExerciseMedia["source_type"];
     }
   >;
   selectedMediaId: string | null;
@@ -60,6 +60,7 @@ type MasterCacheEntry = {
   category?: string;
   equipment?: string[];
   muscles?: string[];
+  imageUrl?: string;
 };
 
 const mediaCache = new Map<string, MediaCacheEntry>();
@@ -89,20 +90,7 @@ export const preloadExerciseGuide = async (exerciseName: string, userId?: string
         fetchExerciseOverride(exerciseName, userId),
         fetchExerciseByName(exerciseName),
       ]);
-      const results = await searchWgerExercises(exerciseName);
-      const first = results[0];
-      const images = first ? await fetchWgerExerciseImages(first.id) : [];
-      const wgerItems = images.map((url, index) => ({
-        id: `wger-${index}`,
-        exercise_name: exerciseName,
-        user_id: null,
-        source_type: "wger" as const,
-        media_url: url,
-        thumb_url: url,
-        is_primary: false,
-        created_at: new Date().toISOString(),
-      }));
-      const combined = [...saved, ...wgerItems];
+      const combined = [...saved];
       const primary =
         combined.find((item) => item.is_primary) ??
         combined.find((item) => Boolean(item.user_id)) ??
@@ -115,11 +103,9 @@ export const preloadExerciseGuide = async (exerciseName: string, userId?: string
         mediaLabel:
           primary?.source_type === "youtube"
             ? "YouTube"
-            : primary?.source_type === "wger"
-              ? "wger image"
-              : primary?.source_type
-                ? "Your media"
-                : "Media preview",
+            : primary?.source_type
+              ? "Your media"
+              : "Media preview",
       });
       trimCache(mediaCache);
       if (override) {
@@ -138,6 +124,7 @@ export const preloadExerciseGuide = async (exerciseName: string, userId?: string
           category?: string;
           equipment?: string[];
           muscles?: string[];
+          image_url?: string | null;
         };
         masterCache.set(exerciseName, {
           id: Number(record.id ?? 0) || null,
@@ -146,6 +133,7 @@ export const preloadExerciseGuide = async (exerciseName: string, userId?: string
           category: String(record.category ?? ""),
           equipment: record.equipment ?? [],
           muscles: record.muscles ?? [],
+          imageUrl: record.image_url ?? undefined,
         });
         trimCache(masterCache);
       }
@@ -171,12 +159,12 @@ export const ExerciseGuideSheet = ({
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [mediaLabel, setMediaLabel] = useState<string>("Media preview");
   const [mediaKind, setMediaKind] = useState<
-    "cloudinary" | "youtube" | "external" | "wger" | null
+    "cloudinary" | "youtube" | "external" | null
   >(null);
   const [mediaItems, setMediaItems] = useState<
     Array<
       ExerciseMedia & {
-        source_type: ExerciseMedia["source_type"] | "wger";
+        source_type: ExerciseMedia["source_type"];
       }
     >
   >([]);
@@ -198,13 +186,15 @@ export const ExerciseGuideSheet = ({
   const [masterCategory, setMasterCategory] = useState("");
   const [masterEquipment, setMasterEquipment] = useState("");
   const [masterMuscles, setMasterMuscles] = useState("");
-  const isImage =
-    mediaKind === "wger" ||
-    (mediaUrl
-      ? [".jpg", ".jpeg", ".png", ".webp", ".gif"].some((ext) =>
-          mediaUrl.toLowerCase().includes(ext),
-        )
-      : false);
+  const [masterImageUrl, setMasterImageUrl] = useState("");
+  const [thumbnailUploading, setThumbnailUploading] = useState(false);
+  const [thumbnailProgress, setThumbnailProgress] = useState(0);
+  const [thumbnailNotice, setThumbnailNotice] = useState<string | null>(null);
+  const isImage = mediaUrl
+    ? [".jpg", ".jpeg", ".png", ".webp", ".gif"].some((ext) =>
+        mediaUrl.toLowerCase().includes(ext),
+      )
+    : false;
 
   useEffect(() => {
     if (!isVisible) return;
@@ -226,21 +216,8 @@ export const ExerciseGuideSheet = ({
           setSelectedMediaId(cached.selectedMediaId);
         }
         const saved = await fetchExerciseMedia(exercise.name, userId);
-        const results = await searchWgerExercises(exercise.name);
-        const first = results[0];
-        const images = first ? await fetchWgerExerciseImages(first.id) : [];
         if (cancelled) return;
-        const wgerItems = images.map((url, index) => ({
-          id: `wger-${index}`,
-          exercise_name: exercise.name,
-          user_id: null,
-          source_type: "wger" as const,
-          media_url: url,
-          thumb_url: url,
-          is_primary: false,
-          created_at: new Date().toISOString(),
-        }));
-        const combined = [...saved, ...wgerItems];
+        const combined = [...saved];
         setMediaItems(combined);
         const primary =
           combined.find((item) => item.is_primary) ??
@@ -259,19 +236,13 @@ export const ExerciseGuideSheet = ({
           selectedMediaId: primary.id,
           mediaItems: combined,
           mediaLabel:
-            primary.source_type === "youtube"
-              ? "YouTube"
-              : primary.source_type === "wger"
-                ? "wger image"
-                : "Your media",
+            primary.source_type === "youtube" ? "YouTube" : "Your media",
         };
         setMediaUrl(nextState.mediaUrl);
         setMediaKind(nextState.mediaKind);
         setSelectedMediaId(nextState.selectedMediaId);
         if (primary.source_type === "youtube") {
           setMediaLabel("YouTube");
-        } else if (primary.source_type === "wger") {
-          setMediaLabel("wger image");
         } else {
           setMediaLabel("Your media");
         }
@@ -348,6 +319,7 @@ export const ExerciseGuideSheet = ({
           setMasterCategory(String(cached.category ?? ""));
           setMasterEquipment((cached.equipment ?? []).join(", "));
           setMasterMuscles((cached.muscles ?? []).join(", "));
+          setMasterImageUrl(String(cached.imageUrl ?? ""));
         }
         const result = await fetchExerciseByName(exercise.name);
         if (!result.exercise || cancelled) return;
@@ -358,6 +330,7 @@ export const ExerciseGuideSheet = ({
           category?: string;
           equipment?: string[];
           muscles?: string[];
+          image_url?: string | null;
         };
         setMasterId(Number(record.id ?? 0) || null);
         setMasterName(String(record.name ?? exercise.name));
@@ -365,6 +338,7 @@ export const ExerciseGuideSheet = ({
         setMasterCategory(String(record.category ?? ""));
         setMasterEquipment((record.equipment ?? []).join(", "));
         setMasterMuscles((record.muscles ?? []).join(", "));
+        setMasterImageUrl(String(record.image_url ?? ""));
         masterCache.set(exercise.name, {
           id: Number(record.id ?? 0) || null,
           name: String(record.name ?? exercise.name),
@@ -372,6 +346,7 @@ export const ExerciseGuideSheet = ({
           category: String(record.category ?? ""),
           equipment: record.equipment ?? [],
           muscles: record.muscles ?? [],
+          imageUrl: record.image_url ?? undefined,
         });
         trimCache(masterCache);
       } catch {
@@ -467,7 +442,9 @@ export const ExerciseGuideSheet = ({
                 <img
                   src={mediaUrl}
                   alt={`${exercise.name} demo`}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover object-center"
+                  loading="lazy"
+                  decoding="async"
                 />
               ) : mediaUrl ? (
                 <video
@@ -557,9 +534,7 @@ export const ExerciseGuideSheet = ({
                         setMediaLabel(
                           nextSelected.source_type === "youtube"
                             ? "YouTube"
-                            : nextSelected.source_type === "wger"
-                              ? "wger image"
-                              : "Your media",
+                            : "Your media",
                         );
                       } else {
                         setSelectedMediaId(null);
@@ -616,11 +591,9 @@ export const ExerciseGuideSheet = ({
                 {mediaItems.map((item) => {
                   const selected = item.id === selectedMediaId;
                   const isYouTube = item.source_type === "youtube";
-                  const isImage =
-                    item.source_type === "wger" ||
-                    [".jpg", ".jpeg", ".png", ".webp", ".gif"].some((ext) =>
-                      item.media_url.toLowerCase().includes(ext),
-                    );
+                  const isImage = [".jpg", ".jpeg", ".png", ".webp", ".gif"].some(
+                    (ext) => item.media_url.toLowerCase().includes(ext),
+                  );
                   return (
                     <button
                       key={item.id}
@@ -634,8 +607,6 @@ export const ExerciseGuideSheet = ({
                         setSelectedMediaId(item.id);
                         if (item.source_type === "youtube") {
                           setMediaLabel("YouTube");
-                        } else if (item.source_type === "wger") {
-                          setMediaLabel("wger image");
                         } else {
                           setMediaLabel("Your media");
                         }
@@ -649,7 +620,9 @@ export const ExerciseGuideSheet = ({
                         <img
                           src={item.thumb_url ?? item.media_url}
                           alt={`${exercise.name} thumbnail`}
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-cover object-center"
+                          loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <span className="text-[10px] uppercase tracking-[0.2em]">
@@ -758,6 +731,48 @@ export const ExerciseGuideSheet = ({
                     className="border-emerald-400/30 bg-white/10 text-white placeholder:text-white/50"
                   />
                   <Input
+                    value={masterImageUrl}
+                    onChange={(event) => setMasterImageUrl(event.target.value)}
+                    placeholder="Thumbnail image URL"
+                    className="border-emerald-400/30 bg-white/10 text-white placeholder:text-white/50"
+                  />
+                  <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-emerald-400/30 bg-white/10 px-4 py-3 text-xs font-semibold text-emerald-100">
+                    <span>{thumbnailUploading ? "Uploading..." : "Upload thumbnail"}</span>
+                    <span className="text-emerald-200">Browse</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        setThumbnailUploading(true);
+                        setThumbnailProgress(0);
+                        setThumbnailNotice(null);
+                        uploadImageFile(file, setThumbnailProgress)
+                          .then((url) => {
+                            setMasterImageUrl(url);
+                            setThumbnailNotice("Thumbnail uploaded.");
+                          })
+                          .catch(() => {
+                            setThumbnailNotice("Upload failed.");
+                          })
+                          .finally(() => setThumbnailUploading(false));
+                      }}
+                    />
+                  </label>
+                  {thumbnailUploading ? (
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-emerald-400/15">
+                      <div
+                        className="h-full rounded-full bg-emerald-300 transition-all"
+                        style={{ width: `${thumbnailProgress}%` }}
+                      />
+                    </div>
+                  ) : null}
+                  {thumbnailNotice ? (
+                    <p className="text-xs text-emerald-200">{thumbnailNotice}</p>
+                  ) : null}
+                  <Input
                     value={masterEquipment}
                     onChange={(event) => setMasterEquipment(event.target.value)}
                     placeholder="Equipment (comma separated)"
@@ -790,7 +805,11 @@ export const ExerciseGuideSheet = ({
                             .split(",")
                             .map((value) => value.trim())
                             .filter(Boolean),
+                          imageUrl: masterImageUrl.trim() || null,
                         });
+                        if (masterImageUrl.trim()) {
+                          setMediaUrl(masterImageUrl.trim());
+                        }
                         if (masterName.trim() && masterName.trim() !== exercise.name) {
                           onUpdate({ name: masterName.trim() });
                         }
@@ -1012,7 +1031,9 @@ export const ExerciseGuideSheet = ({
             <img
               src={mediaUrl}
               alt={`${exercise.name} full view`}
-              className="h-full w-full object-contain"
+              className="h-full w-full object-contain object-center"
+              loading="lazy"
+              decoding="async"
             />
           ) : mediaUrl ? (
             <video

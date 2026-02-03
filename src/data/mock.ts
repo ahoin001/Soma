@@ -21,6 +21,8 @@ export type FoodItem = {
   id: string;
   name: string;
   brand?: string;
+  brandId?: string;
+  brandLogoUrl?: string;
   portion: string;
   portionLabel?: string;
   portionGrams?: number;

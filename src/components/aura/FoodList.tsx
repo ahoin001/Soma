@@ -33,7 +33,9 @@ export const FoodList = ({ foods, onSelect, onQuickAdd }: FoodListProps) => {
                   <img
                     src={food.imageUrl}
                     alt={food.name}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover object-center"
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   food.emoji
@@ -42,6 +44,7 @@ export const FoodList = ({ foods, onSelect, onQuickAdd }: FoodListProps) => {
               <div>
                 <p className="text-sm font-semibold text-slate-800">{food.name}</p>
                 <p className="text-xs text-slate-500">
+                  {food.brand ? `${food.brand} • ` : ""}
                   {food.portion} • {food.kcal} cal
                 </p>
               </div>

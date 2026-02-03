@@ -7,13 +7,15 @@ import type {
   WorkoutPlan,
   WorkoutTemplate,
 } from "@/types/fitness";
-import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { MoreHorizontal, PencilLine, Plus, Trash2 } from "lucide-react";
 import { ReplaceExerciseSheet } from "./ReplaceExerciseSheet";
 import { preloadExerciseGuide } from "./ExerciseGuideSheet";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useNavigationType } from "react-router-dom";
 import { useAppStore } from "@/state/AppStore";
+import { fetchCurrentUser } from "@/lib/api";
+import { toast } from "sonner";
 import {
   DndContext,
   DragOverlay,
@@ -136,6 +138,7 @@ type WorkoutSessionEditorProps = {
   onBack: () => void;
   onStartSession?: () => void;
   onOpenGuide?: (exercise: { id: string; name: string }) => void;
+  onEditExercise?: (exercise: { id: string; name: string }) => void;
 };
 
 export const WorkoutSessionEditor = ({
@@ -155,6 +158,7 @@ export const WorkoutSessionEditor = ({
   const [swipedSetId, setSwipedSetId] = useState<string | null>(null);
   const [noteOpenIds, setNoteOpenIds] = useState<Set<string>>(() => new Set());
   const [savePulse, setSavePulse] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const draftTimerRef = useRef<number | null>(null);
   const navigationType = useNavigationType();
   const shouldAnimateList = navigationType !== "POP";
@@ -206,6 +210,24 @@ export const WorkoutSessionEditor = ({
       }),
     );
   }, [workout, mode, workoutDrafts]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadAdmin = async () => {
+      try {
+        const user = await fetchCurrentUser();
+        if (!cancelled) {
+          setIsAdmin(user.user?.email === "ahoin001@gmail.com");
+        }
+      } catch {
+        if (!cancelled) setIsAdmin(false);
+      }
+    };
+    void loadAdmin();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const isEditMode = mode === "edit";
   const listVariants = useMemo(
@@ -516,6 +538,27 @@ export const WorkoutSessionEditor = ({
                   </div>
                   {isEditMode ? (
                     <div className="flex items-center gap-2">
+                        {isAdmin ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 rounded-full bg-emerald-400/20 text-emerald-100 hover:bg-emerald-400/30"
+                            onClick={() => {
+                              if (!onEditExercise) {
+                                toast("Edit exercise unavailable");
+                                return;
+                              }
+                              onEditExercise({
+                                id: exercise.id,
+                                name: exercise.name,
+                              });
+                            }}
+                            data-swipe-ignore
+                            aria-label="Edit exercise"
+                          >
+                            <PencilLine className="h-4 w-4" />
+                          </Button>
+                        ) : null}
                           <Button
                         variant="ghost"
                         size="icon"

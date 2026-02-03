@@ -31,6 +31,17 @@ const createEntrySchema = z.object({
   items: z.array(itemSchema).min(1),
 });
 
+const updateItemSchema = z.object({
+  quantity: z.number().positive().optional(),
+  kcal: z.number().nonnegative().optional(),
+  carbsG: z.number().nonnegative().optional(),
+  proteinG: z.number().nonnegative().optional(),
+  fatG: z.number().nonnegative().optional(),
+  portionLabel: z.string().optional(),
+  portionGrams: z.number().optional(),
+  micronutrients: z.record(z.any()).optional(),
+});
+
 router.post(
   "/",
   asyncHandler(async (req, res) => {
@@ -179,6 +190,52 @@ router.get(
     dayCache.set(cacheKey, entriesResult);
     res.setHeader("Cache-Control", "private, max-age=30");
     res.json(entriesResult);
+  }),
+);
+
+router.patch(
+  "/items/:itemId",
+  asyncHandler(async (req, res) => {
+    const userId = getUserId(req);
+    const itemId = req.params.itemId;
+    const payload = updateItemSchema.parse(req.body);
+
+    const result = await withTransaction((client) =>
+      client.query(
+        `
+        UPDATE meal_entry_items
+        SET
+          quantity = COALESCE($1, quantity),
+          kcal = COALESCE($2, kcal),
+          carbs_g = COALESCE($3, carbs_g),
+          protein_g = COALESCE($4, protein_g),
+          fat_g = COALESCE($5, fat_g),
+          portion_label = COALESCE($6, portion_label),
+          portion_grams = COALESCE($7, portion_grams),
+          micronutrients = COALESCE($8, micronutrients)
+        FROM meal_entries
+        WHERE meal_entry_items.id = $9
+          AND meal_entry_items.meal_entry_id = meal_entries.id
+          AND meal_entries.user_id = $10
+        RETURNING meal_entry_items.*;
+        `,
+        [
+          payload.quantity ?? null,
+          payload.kcal ?? null,
+          payload.carbsG ?? null,
+          payload.proteinG ?? null,
+          payload.fatG ?? null,
+          payload.portionLabel ?? null,
+          payload.portionGrams ?? null,
+          payload.micronutrients ?? null,
+          itemId,
+          userId,
+        ],
+      ),
+    );
+
+    dayCache.clear();
+    res.json({ item: result.rows[0] ?? null });
   }),
 );
 
