@@ -8,6 +8,13 @@ import type {
 } from "@/types/api";
 
 const USER_ID_KEY = "aurafit-user-id";
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+
+const buildApiUrl = (path: string) => {
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  if (!API_BASE) return path;
+  return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+};
 
 export const getUserId = () => {
   if (typeof window === "undefined") return null;
@@ -36,7 +43,7 @@ const apiFetch = async <T>(path: string, options?: RequestInit) => {
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(path, {
+  const response = await fetch(buildApiUrl(path), {
     ...options,
     credentials: "include",
     headers,

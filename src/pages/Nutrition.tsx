@@ -95,7 +95,7 @@ const Nutrition = () => {
     if (!adminOpen) return;
     const query = adminQuery.trim();
     const timer = window.setTimeout(() => {
-      searchFoods(query, { force: true, external: true });
+      searchFoods(query, { force: true });
     }, query ? 300 : 0);
     return () => window.clearTimeout(timer);
   }, [adminOpen, adminQuery, searchFoods]);

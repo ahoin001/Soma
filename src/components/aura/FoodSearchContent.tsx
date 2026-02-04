@@ -1,7 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -31,8 +30,6 @@ type FoodSearchContentProps = {
   onQuickAddFood: (food: FoodItem) => void;
   onOpenBarcode: () => void;
   onOpenCreate: () => void;
-  externalSearchEnabled: boolean;
-  onExternalSearchChange: (enabled: boolean) => void;
   inputRef?: RefObject<HTMLInputElement>;
 };
 
@@ -51,8 +48,6 @@ export const FoodSearchContent = ({
   onQuickAddFood,
   onOpenBarcode,
   onOpenCreate,
-  externalSearchEnabled,
-  onExternalSearchChange,
   inputRef,
 }: FoodSearchContentProps) => {
   const isSearching = searchStatus === "loading" && searchQuery.trim().length > 0;
@@ -157,26 +152,12 @@ export const FoodSearchContent = ({
       ) : null}
       <div className="mt-3 flex items-center justify-between rounded-[18px] border border-emerald-100 bg-white px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
         <div>
-          <Label className="text-sm text-slate-800">Use food databases</Label>
+          <Label className="text-sm text-slate-800">Your food library</Label>
           <p className="text-xs text-slate-500">
-            Toggle off to skip external databases.
+            Search saved foods, favorites, and your history.
           </p>
         </div>
-        <Switch
-          checked={externalSearchEnabled}
-          onCheckedChange={onExternalSearchChange}
-        />
       </div>
-      {!externalSearchEnabled ? (
-        <div className="mt-3 rounded-[18px] border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-xs text-emerald-700">
-          External search is off. Create foods to build your personal catalog.
-        </div>
-      ) : null}
-      {isSearching && (
-        <p className="mt-3 text-xs font-semibold text-emerald-500">
-          Searching the food database...
-        </p>
-      )}
       {searchStatus === "error" && searchError && (
         <p className="mt-3 text-xs font-semibold text-rose-500">
           {searchError}

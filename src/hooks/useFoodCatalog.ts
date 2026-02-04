@@ -30,7 +30,7 @@ type FoodCache = {
   overrides: Record<string, FoodOverride>;
 };
 
-const CACHE_KEY = "aura-food-cache-v1";
+const CACHE_KEY = "aura-food-cache-v2";
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 
 const emptyCache: FoodCache = {
@@ -165,11 +165,6 @@ export const useFoodCatalog = () => {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [lastQuery, setLastQuery] = useState("");
-  const [externalSearchEnabled, setExternalSearchEnabled] = useState(() => {
-    if (!isBrowser) return true;
-    const stored = window.localStorage.getItem("aura-food-external-search");
-    return stored ? stored === "true" : true;
-  });
 
   const persist = useCallback((next: FoodCache) => {
     setCache(next);
@@ -183,10 +178,7 @@ export const useFoodCatalog = () => {
   );
 
   const searchFoods = useCallback(
-    async (
-      query: string,
-      options?: { force?: boolean; external?: boolean },
-    ) => {
+    async (query: string, options?: { force?: boolean }) => {
       const normalized = normalizeQuery(query);
       setLastQuery(normalized);
       if (!normalized) {
@@ -196,10 +188,9 @@ export const useFoodCatalog = () => {
         return;
       }
       await ensureUser();
-      const cacheKey = `${normalized}|${(options?.external ?? externalSearchEnabled) ? "api" : "local"}`;
+      const cacheKey = normalized;
       const cached = cache.searches[cacheKey];
       const force = options?.force ?? false;
-      const external = options?.external ?? externalSearchEnabled;
       const localPool = dedupeFoods([
         ...favorites,
         ...history,
@@ -215,18 +206,14 @@ export const useFoodCatalog = () => {
       setStatus("loading");
       setError(null);
       try {
-        const response = await searchFoodsApi(normalized, 20, external);
+        const response = await searchFoodsApi(normalized, 20, false);
         let fetched = response.items.map(toFoodItem);
         const fallbackQuery =
           normalized.endsWith("s") && normalized.length > 3
             ? normalized.slice(0, -1)
             : null;
         if (!fetched.length && fallbackQuery && fallbackQuery !== normalized) {
-          const fallbackResponse = await searchFoodsApi(
-            fallbackQuery,
-            20,
-            external,
-          );
+          const fallbackResponse = await searchFoodsApi(fallbackQuery, 20, false);
           fetched = [...fetched, ...fallbackResponse.items.map(toFoodItem)];
         }
         const deduped = dedupeFoods(fetched);
@@ -249,7 +236,7 @@ export const useFoodCatalog = () => {
         setError(detail);
       }
     },
-    [applyOverrides, cache, persist, externalSearchEnabled, favorites, history],
+    [applyOverrides, cache, persist, favorites, history],
   );
 
   const lookupBarcode = useCallback(
@@ -381,22 +368,12 @@ export const useFoodCatalog = () => {
       setFavorites((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       setHistory((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       if (lastQuery) {
-        void searchFoods(lastQuery, { force: true, external: externalSearchEnabled });
+        void searchFoods(lastQuery, { force: true });
       }
       return updated;
     },
-    [cache, persist, lastQuery, searchFoods, externalSearchEnabled],
+    [cache, persist, lastQuery, searchFoods],
   );
-
-  const toggleExternalSearch = useCallback((enabled: boolean) => {
-    setExternalSearchEnabled(enabled);
-    if (isBrowser) {
-      window.localStorage.setItem(
-        "aura-food-external-search",
-        enabled ? "true" : "false",
-      );
-    }
-  }, []);
 
   return useMemo(
     () => ({
@@ -406,8 +383,6 @@ export const useFoodCatalog = () => {
       status,
       error,
       searchFoods,
-      externalSearchEnabled,
-      toggleExternalSearch,
       lookupBarcode,
       applyOverrides,
       upsertOverride,
@@ -423,8 +398,6 @@ export const useFoodCatalog = () => {
       status,
       error,
       searchFoods,
-      externalSearchEnabled,
-      toggleExternalSearch,
       lookupBarcode,
       applyOverrides,
       upsertOverride,

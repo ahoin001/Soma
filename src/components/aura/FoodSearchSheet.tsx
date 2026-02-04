@@ -21,8 +21,6 @@ type FoodSearchSheetProps = {
   onSelectFood: (food: FoodItem) => void;
   onQuickAddFood?: (food: FoodItem) => void;
   onBarcodeDetected: (value: string) => void;
-  externalSearchEnabled: boolean;
-  onExternalSearchChange: (enabled: boolean) => void;
   onCreateFood?: (payload: {
     name: string;
     kcal: number;
@@ -49,8 +47,6 @@ export const FoodSearchSheet = ({
   onSelectFood,
   onQuickAddFood,
   onBarcodeDetected,
-  externalSearchEnabled,
-  onExternalSearchChange,
   onCreateFood,
 }: FoodSearchSheetProps) => (
   <FoodSearchSheetContent
@@ -68,8 +64,6 @@ export const FoodSearchSheet = ({
     onMealChange={onMealChange}
     onSelectFood={onSelectFood}
     onBarcodeDetected={onBarcodeDetected}
-    externalSearchEnabled={externalSearchEnabled}
-    onExternalSearchChange={onExternalSearchChange}
     onCreateFood={onCreateFood}
   />
 );
@@ -90,8 +84,6 @@ const FoodSearchSheetContent = ({
   onSelectFood,
   onQuickAddFood,
   onBarcodeDetected,
-  externalSearchEnabled,
-  onExternalSearchChange,
   onCreateFood,
 }: FoodSearchSheetProps) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -116,8 +108,6 @@ const FoodSearchSheetContent = ({
               onMealChange={onMealChange}
               onSelectFood={onSelectFood}
               onQuickAddFood={onQuickAddFood ?? onSelectFood}
-              externalSearchEnabled={externalSearchEnabled}
-              onExternalSearchChange={onExternalSearchChange}
               onOpenBarcode={() => {
                 onOpenChange(false);
                 setBarcodeOpen(true);

@@ -4,14 +4,6 @@ import crypto from "node:crypto";
 import { query } from "../db";
 import { asyncHandler, getUserId } from "../utils";
 import { createCache } from "../cache";
-import {
-  dedupeFoodInserts,
-  fetchOffBarcode,
-  fetchOffSearch,
-  fetchUsdaFoods,
-  filterOffLowQuality,
-  upsertGlobalFoods,
-} from "../services/foodProviders";
 
 const router = Router();
 const searchCache = createCache<{ items?: unknown[]; item?: unknown | null }>({
@@ -29,13 +21,9 @@ router.get(
     const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
     const limitRaw = typeof req.query.limit === "string" ? req.query.limit : "";
     const limit = Math.min(Math.max(Number(limitRaw || 20), 1), 50);
-    const external =
-      typeof req.query.external === "string"
-        ? req.query.external !== "false"
-        : true;
     const userId = req.header("x-user-id") ?? null;
 
-    const cacheKey = `foods:search:${userId ?? "anon"}:${q}:${limit}:${external ? "api" : "local"}`;
+    const cacheKey = `foods:search:${userId ?? "anon"}:${q}:${limit}:local`;
     const cached = searchCache.get(cacheKey);
     if (cached) {
       res.setHeader("Cache-Control", "private, max-age=30");
@@ -68,25 +56,7 @@ router.get(
       res.json(payload);
       return;
     }
-
-    if (!external) {
-      const payload = { items: [] };
-      searchCache.set(cacheKey, payload);
-      res.setHeader("Cache-Control", "private, max-age=30");
-      res.json(payload);
-      return;
-    }
-
-    const usdaResults = await fetchUsdaFoods(q, limit);
-    const offResults = await fetchOffSearch(q, limit);
-    const cleanedOff = filterOffLowQuality(offResults);
-    const externalResults = dedupeFoodInserts([
-      ...usdaResults,
-      ...cleanedOff,
-    ]);
-
-    const saved = await upsertGlobalFoods(externalResults);
-    const payload = { items: saved };
+    const payload = { items: [] };
     searchCache.set(cacheKey, payload);
     res.setHeader("Cache-Control", "private, max-age=30");
     res.json(payload);
@@ -129,17 +99,7 @@ router.get(
       return;
     }
 
-    const offItem = await fetchOffBarcode(code);
-    if (!offItem) {
-      const payload = { item: null };
-      searchCache.set(cacheKey, payload);
-      res.setHeader("Cache-Control", "private, max-age=30");
-      res.json(payload);
-      return;
-    }
-
-    const saved = await upsertGlobalFoods([offItem]);
-    const payload = { item: saved[0] ?? null };
+    const payload = { item: null };
     searchCache.set(cacheKey, payload);
     res.setHeader("Cache-Control", "private, max-age=30");
     res.json(payload);

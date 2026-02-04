@@ -14,6 +14,8 @@ const RESET_TOKEN_HOURS = 2;
 const VERIFY_TOKEN_DAYS = 7;
 const shouldReturnToken =
   process.env.AUTH_DEV_TOKENS === "true" || process.env.NODE_ENV !== "production";
+const cookieSameSite = (process.env.COOKIE_SAMESITE ?? "lax") as "lax" | "none" | "strict";
+const cookieSecure = process.env.NODE_ENV === "production" || cookieSameSite === "none";
 
 const hashToken = (token: string) =>
   crypto.createHash("sha256").update(token).digest("hex");
@@ -60,8 +62,8 @@ const createSession = async (userId: string, req: Request, res: Response) => {
 
   res.cookie(SESSION_COOKIE, token, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite: cookieSameSite,
+    secure: cookieSecure,
     expires: expiresAt,
     path: "/",
   });

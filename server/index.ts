@@ -20,10 +20,26 @@ import trackingRouter from "./routes/tracking";
 import usersRouter from "./routes/users";
 
 const app = express();
+const isProduction = process.env.NODE_ENV === "production";
+
+if (process.env.TRUST_PROXY === "true" || isProduction) {
+  app.set("trust proxy", 1);
+}
+
+const allowedOrigins = (process.env.CORS_ORIGIN ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 app.use(
   cors({
-    origin: true,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error("Not allowed by CORS."));
+    },
     credentials: true,
   }),
 );

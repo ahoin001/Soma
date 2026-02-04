@@ -61,8 +61,6 @@ const AddFood = () => {
     applyOverrides,
     upsertOverride,
     createFood,
-    externalSearchEnabled,
-    toggleExternalSearch,
     favorites,
     history,
     refreshLists,
@@ -77,7 +75,7 @@ const AddFood = () => {
   useEffect(() => {
     const query = searchQuery.trim();
     const timer = window.setTimeout(() => {
-      searchFoods(query, { external: externalSearchEnabled });
+      searchFoods(query);
       navigate(location.pathname, {
         replace: true,
         state: {
@@ -93,7 +91,6 @@ const AddFood = () => {
   }, [
     searchFoods,
     searchQuery,
-    externalSearchEnabled,
     activeTab,
     navigate,
     location.pathname,
@@ -277,13 +274,6 @@ const AddFood = () => {
                 },
               })
             }
-            externalSearchEnabled={externalSearchEnabled}
-            onExternalSearchChange={(enabled) => {
-              toggleExternalSearch(enabled);
-              if (searchQuery.trim()) {
-                searchFoods(searchQuery, { force: true, external: enabled });
-              }
-            }}
             inputRef={inputRef}
           />
         </div>
