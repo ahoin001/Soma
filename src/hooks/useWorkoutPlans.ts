@@ -36,8 +36,11 @@ export const useWorkoutPlans = () => {
     if (loaded) return;
     await ensureUser();
     const data = await fetchWorkoutPlans();
+    const plans = data.plans ?? [];
+    const templates = data.templates ?? [];
+    const exercises = data.exercises ?? [];
     const templatesByPlan = new Map<string, WorkoutTemplate[]>();
-    for (const template of data.templates) {
+    for (const template of templates) {
       const list = templatesByPlan.get(template.plan_id) ?? [];
       list.push({
         id: template.id,
@@ -48,13 +51,13 @@ export const useWorkoutPlans = () => {
       templatesByPlan.set(template.plan_id, list);
     }
     const exercisesByTemplate = new Map<string, { id: string; name: string; item_order: number }[]>();
-    for (const exercise of data.exercises) {
+    for (const exercise of exercises) {
       const list = exercisesByTemplate.get(exercise.template_id) ?? [];
       list.push(exercise);
       exercisesByTemplate.set(exercise.template_id, list);
     }
 
-    const plans = data.plans.map((plan) => {
+    const workoutPlansData = plans.map((plan) => {
       const workouts = (templatesByPlan.get(plan.id) ?? []).map((template) => ({
         ...template,
         exercises: (exercisesByTemplate.get(template.id) ?? []).map((exercise) => ({
@@ -65,8 +68,8 @@ export const useWorkoutPlans = () => {
       return { id: plan.id, name: plan.name, workouts };
     });
 
-    setWorkoutPlans(plans);
-    setActivePlanId((prev) => prev ?? plans[0]?.id ?? null);
+    setWorkoutPlans(workoutPlansData);
+    setActivePlanId((prev) => prev ?? workoutPlansData[0]?.id ?? null);
     setLoaded(true);
   }, [loaded]);
 

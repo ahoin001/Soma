@@ -222,6 +222,8 @@ const EditFood = () => {
       potassiumMg: readMicro("potassium_mg"),
       ingredients: readText("ingredients"),
     });
+    // Initialize brand logo URL from the food's existing brand logo
+    setBrandLogoUrl(currentFood.brandLogoUrl ?? null);
     if (currentFood.portionLabel ?? currentFood.portion) {
       const portionText = (currentFood.portionLabel ?? currentFood.portion).trim();
       const match = portionText.match(/^\s*([\d./]+)\s*(.+)$/);

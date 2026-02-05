@@ -148,6 +148,24 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
   // Watch specific fields for the image display (not all fields to avoid re-render loops)
   const imageUrl = watch("imageUrl");
   const foodName = watch("name");
+  const currentBrandId = watch("brandId");
+
+  // Load brands on mount if there's a draft with a brandId (to restore selected brand logo)
+  useEffect(() => {
+    if (!existingDraft.brandId) return;
+    setBrandLoading(true);
+    fetchBrands("", true, 100)
+      .then((response) => {
+        setBrands(response.items);
+        // Find and set the logo for the saved brand
+        const savedBrand = response.items.find((b) => b.id === existingDraft.brandId);
+        if (savedBrand) {
+          setSelectedBrandLogoUrl(savedBrand.logo_url ?? null);
+        }
+      })
+      .finally(() => setBrandLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-save draft on form changes - use subscription to avoid re-render loops
   useEffect(() => {
@@ -462,97 +480,106 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
           className="rounded-full"
         />
         <div>
-          <Controller
-            name="brandId"
-            control={control}
-            render={({ field }) => (
-              <Select
-                value={field.value ?? "none"}
-                onValueChange={(value) => {
-                  if (value === "none") {
-                    field.onChange(null);
-                    setValue("brandName", "");
-                    setSelectedBrandLogoUrl(null);
-                    return;
-                  }
-                  const match = brands.find((item) => item.id === value);
-                  field.onChange(value);
-                  setValue("brandName", match?.name ?? "");
-                  setSelectedBrandLogoUrl(match?.logo_url ?? null);
-                }}
-              >
-            <SelectTrigger className="h-10 rounded-full">
-              <div className="flex items-center gap-2">
-                {selectedBrandLogoUrl && (
-                  <img
-                    src={selectedBrandLogoUrl}
-                    alt="Brand"
-                    className="h-5 w-5 rounded-full object-cover"
-                  />
-                )}
-                <SelectValue placeholder="Select brand (optional)" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <div className="px-3 py-2">
-                <Input
-                  value={brandQuery}
-                  onChange={(event) => setBrandQuery(event.target.value)}
-                  placeholder="Search brand"
-                  className="h-9 rounded-full"
-                  onFocus={() => {
-                    setBrandLoading(true);
-                    fetchBrands("", true, 100)
-                      .then((response) => setBrands(response.items))
-                      .finally(() => setBrandLoading(false));
-                  }}
+          <div className="flex items-center gap-3">
+            {/* Brand logo preview */}
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-xl">
+              {selectedBrandLogoUrl ? (
+                <img
+                  src={selectedBrandLogoUrl}
+                  alt="Brand"
+                  className="h-full w-full object-cover"
                 />
-              </div>
-              <SelectItem value="none">No brand</SelectItem>
-              {brandLoading && (
-                <div className="px-3 py-2 text-xs text-slate-500">Loading...</div>
+              ) : (
+                <span className="text-slate-400">🏷️</span>
               )}
-              {brands
-                .filter((brand) =>
-                  brand.name.toLowerCase().includes(brandQuery.trim().toLowerCase()),
-                )
-                .reduce<BrandRecord[]>((unique, brand) => {
-                  const normalized = brand.name.trim().toLowerCase();
-                  if (!normalized) return unique;
-                  if (unique.some((item) => item.name.trim().toLowerCase() === normalized)) {
-                    return unique;
-                  }
-                  unique.push(brand);
-                  return unique;
-                }, [])
-                .map((brand) => (
-                  <SelectItem key={brand.id} value={brand.id}>
-                    <div className="flex items-center gap-2">
-                      {brand.logo_url ? (
-                        <img
-                          src={brand.logo_url}
-                          alt={brand.name}
-                          className="h-5 w-5 rounded-full object-cover"
-                        />
-                      ) : null}
-                      <span>{brand.name}</span>
+            </div>
+            {/* Brand select */}
+            <Controller
+              name="brandId"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  value={field.value ?? "none"}
+                  onValueChange={(value) => {
+                    if (value === "none") {
+                      field.onChange(null);
+                      setValue("brandName", "");
+                      setSelectedBrandLogoUrl(null);
+                      return;
+                    }
+                    if (value === "__create__") {
+                      setBrandCreateOpen(true);
+                      return;
+                    }
+                    const match = brands.find((item) => item.id === value);
+                    field.onChange(value);
+                    setValue("brandName", match?.name ?? "");
+                    setSelectedBrandLogoUrl(match?.logo_url ?? null);
+                    setBrandCreateOpen(false);
+                  }}
+                >
+                  <SelectTrigger className="h-10 flex-1 rounded-full">
+                    <SelectValue placeholder="Select brand (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <div className="px-3 py-2">
+                      <Input
+                        value={brandQuery}
+                        onChange={(event) => setBrandQuery(event.target.value)}
+                        placeholder="Search brand"
+                        className="h-9 rounded-full"
+                        onFocus={() => {
+                          setBrandLoading(true);
+                          fetchBrands("", true, 100)
+                            .then((response) => setBrands(response.items))
+                            .finally(() => setBrandLoading(false));
+                        }}
+                      />
                     </div>
-                  </SelectItem>
-                ))}
-              {!brandLoading && brands.length === 0 && (
-                <div className="px-3 py-2 text-xs text-slate-500">No brands found</div>
+                    <SelectItem value="none">No brand</SelectItem>
+                    <SelectItem value="__create__">
+                      <span className="font-semibold text-emerald-600">+ Create new brand</span>
+                    </SelectItem>
+                    {brandLoading && (
+                      <div className="px-3 py-2 text-xs text-slate-500">Loading...</div>
+                    )}
+                    {brands
+                      .filter((brand) =>
+                        brand.name.toLowerCase().includes(brandQuery.trim().toLowerCase()),
+                      )
+                      .reduce<BrandRecord[]>((unique, brand) => {
+                        const normalized = brand.name.trim().toLowerCase();
+                        if (!normalized) return unique;
+                        if (unique.some((item) => item.name.trim().toLowerCase() === normalized)) {
+                          return unique;
+                        }
+                        unique.push(brand);
+                        return unique;
+                      }, [])
+                      .map((brand) => (
+                        <SelectItem key={brand.id} value={brand.id}>
+                          <div className="flex items-center gap-2">
+                            {brand.logo_url ? (
+                              <img
+                                src={brand.logo_url}
+                                alt={brand.name}
+                                className="h-5 w-5 rounded-full object-cover"
+                              />
+                            ) : (
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[10px]">🏷️</span>
+                            )}
+                            <span>{brand.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    {!brandLoading && brands.length === 0 && (
+                      <div className="px-3 py-2 text-xs text-slate-500">No brands found</div>
+                    )}
+                  </SelectContent>
+                </Select>
               )}
-            </SelectContent>
-              </Select>
-            )}
-          />
-          <button
-            type="button"
-            className="mt-2 text-xs font-semibold text-emerald-600"
-            onClick={() => setBrandCreateOpen((prev) => !prev)}
-          >
-            {brandCreateOpen ? "Cancel new brand" : "Create new brand"}
-          </button>
+            />
+          </div>
         </div>
         <Input
           {...register("kcal")}
@@ -584,9 +611,24 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
 
       {brandCreateOpen && (
         <div className="mt-4 rounded-[24px] border border-emerald-100 bg-emerald-50/60 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500">
-            New brand
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500">
+              New brand
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setBrandCreateOpen(false);
+                setNewBrandName("");
+                setNewBrandWebsite("");
+                setNewBrandLogoUrl(null);
+                setBrandNotice(null);
+              }}
+              className="text-xs font-semibold text-slate-400 hover:text-slate-600"
+            >
+              Cancel
+            </button>
+          </div>
           <div className="mt-3 space-y-3">
             <Input
               value={newBrandName}
