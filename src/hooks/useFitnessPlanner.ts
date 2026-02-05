@@ -7,6 +7,7 @@ import type {
   SessionHistory,
   SessionSet,
 } from "@/types/fitness";
+import { toast } from "sonner";
 import {
   addFitnessRoutineExercise,
   createFitnessRoutine,
@@ -33,6 +34,10 @@ export const useFitnessPlanner = () => {
     Array<{ id: string; exercise_id: number | null; exercise_name: string; item_order: number }>
   >([]);
   const [weightUnit, setWeightUnit] = useState<"lb" | "kg">("lb");
+  const createTempId = () =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `session_${Math.random().toString(36).slice(2, 9)}`;
 
   const refresh = useCallback(async () => {
     await ensureUser();
@@ -112,81 +117,365 @@ export const useFitnessPlanner = () => {
 
   const createRoutine = useCallback(
     async (name: string) => {
-      const result = await createFitnessRoutine(name.trim());
-      await refresh();
-      setActiveRoutineId(result.routine.id);
-      return {
-        id: result.routine.id,
-        name,
+      const trimmed = name.trim();
+      const optimisticId = `routine_${Math.random().toString(36).slice(2, 8)}`;
+      const previousActive = activeRoutineId;
+      const optimistic: Routine = {
+        id: optimisticId,
+        name: trimmed,
         exercises: [],
         updatedAt: Date.now(),
       };
+      setRoutines((prev) => [optimistic, ...prev]);
+      setActiveRoutineId(optimisticId);
+      try {
+        const result = await createFitnessRoutine(name.trim());
+        setRoutines((prev) =>
+          prev.map((item) =>
+            item.id === optimisticId
+              ? {
+                  id: result.routine.id,
+                  name: result.routine.name,
+                  exercises: [],
+                  updatedAt: Date.now(),
+                }
+              : item,
+          ),
+        );
+        setActiveRoutineId(result.routine.id);
+        void refresh();
+        return {
+          id: result.routine.id,
+          name: result.routine.name,
+          exercises: [],
+          updatedAt: Date.now(),
+        };
+      } catch (error) {
+        setRoutines((prev) => prev.filter((item) => item.id !== optimisticId));
+        setActiveRoutineId(previousActive ?? null);
+        toast("Unable to create routine", {
+          action: {
+            label: "Retry",
+            onClick: () => void createRoutine(name),
+          },
+        });
+        void refresh();
+        throw error;
+      }
     },
-    [refresh],
+    [activeRoutineId, refresh],
   );
 
   const renameRoutine = useCallback(
     async (routineId: string, name: string) => {
-      await renameFitnessRoutine(routineId, name.trim());
-      await refresh();
+      const trimmed = name.trim();
+      let previousName = "";
+      setRoutines((prev) =>
+        prev.map((routine) => {
+          if (routine.id !== routineId) return routine;
+          previousName = routine.name;
+          return { ...routine, name: trimmed, updatedAt: Date.now() };
+        }),
+      );
+      try {
+        await renameFitnessRoutine(routineId, trimmed);
+        void refresh();
+      } catch (error) {
+        if (previousName) {
+          setRoutines((prev) =>
+            prev.map((routine) =>
+              routine.id === routineId
+                ? { ...routine, name: previousName, updatedAt: Date.now() }
+                : routine,
+            ),
+          );
+        }
+        toast("Unable to rename routine", {
+          action: {
+            label: "Retry",
+            onClick: () => void renameRoutine(routineId, name),
+          },
+        });
+        void refresh();
+        throw error;
+      }
     },
     [refresh],
   );
 
   const removeRoutine = useCallback(
     async (routineId: string) => {
-      await deleteFitnessRoutine(routineId);
-      await refresh();
+      let removed: Routine | null = null;
+      const wasActive = activeRoutineId === routineId;
+      setRoutines((prev) => prev.filter((routine) => routine.id !== routineId));
+      setActiveRoutineId((prev) => (prev === routineId ? null : prev));
+      setRoutines((prev) => {
+        const existing = prev.find((routine) => routine.id === routineId) ?? null;
+        if (existing) removed = existing;
+        return prev.filter((routine) => routine.id !== routineId);
+      });
+      try {
+        await deleteFitnessRoutine(routineId);
+        void refresh();
+      } catch (error) {
+        if (removed) {
+          setRoutines((prev) => [removed as Routine, ...prev]);
+        }
+        if (wasActive && removed) {
+          setActiveRoutineId(removed.id);
+        }
+        toast("Unable to delete routine", {
+          action: {
+            label: "Retry",
+            onClick: () => void removeRoutine(routineId),
+          },
+        });
+        void refresh();
+        throw error;
+      }
     },
-    [refresh],
+    [activeRoutineId, refresh],
   );
 
   const addExerciseToRoutine = useCallback(
     async (routineId: string, exercise: Exercise) => {
-      await addFitnessRoutineExercise(routineId, {
+      const optimistic: RoutineExercise = {
+        id: `routine_ex_${Math.random().toString(36).slice(2, 8)}`,
         exerciseId: exercise.id,
         name: exercise.name,
-      });
-      await refresh();
+        targetSets: 3,
+      };
+      setRoutines((prev) =>
+        prev.map((routine) =>
+          routine.id === routineId
+            ? {
+                ...routine,
+                exercises: [...routine.exercises, optimistic],
+                updatedAt: Date.now(),
+              }
+            : routine,
+        ),
+      );
+      try {
+        await addFitnessRoutineExercise(routineId, {
+          exerciseId: exercise.id,
+          name: exercise.name,
+        });
+        void refresh();
+      } catch (error) {
+        setRoutines((prev) =>
+          prev.map((routine) =>
+            routine.id === routineId
+              ? {
+                  ...routine,
+                  exercises: routine.exercises.filter(
+                    (entry) => entry.id !== optimistic.id,
+                  ),
+                  updatedAt: Date.now(),
+                }
+              : routine,
+          ),
+        );
+        toast("Unable to add exercise", {
+          action: {
+            label: "Retry",
+            onClick: () => void addExerciseToRoutine(routineId, exercise),
+          },
+        });
+        void refresh();
+        throw error;
+      }
     },
     [refresh],
   );
 
   const removeExerciseFromRoutine = useCallback(
     async (routineId: string, routineExerciseId: string) => {
-      await removeFitnessRoutineExercise(routineId, routineExerciseId);
-      await refresh();
+      let removed: RoutineExercise | null = null;
+      setRoutines((prev) =>
+        prev.map((routine) =>
+          routine.id === routineId
+            ? {
+                ...routine,
+                exercises: routine.exercises.filter((exercise) => {
+                  if (exercise.id === routineExerciseId) {
+                    removed = exercise;
+                    return false;
+                  }
+                  return true;
+                }),
+                updatedAt: Date.now(),
+              }
+            : routine,
+        ),
+      );
+      try {
+        await removeFitnessRoutineExercise(routineId, routineExerciseId);
+        void refresh();
+      } catch (error) {
+        if (removed) {
+          setRoutines((prev) =>
+            prev.map((routine) =>
+              routine.id === routineId
+                ? {
+                    ...routine,
+                    exercises: [...routine.exercises, removed as RoutineExercise],
+                    updatedAt: Date.now(),
+                  }
+                : routine,
+            ),
+          );
+        }
+        toast("Unable to remove exercise", {
+          action: {
+            label: "Retry",
+            onClick: () => void removeExerciseFromRoutine(routineId, routineExerciseId),
+          },
+        });
+        void refresh();
+        throw error;
+      }
     },
     [refresh],
   );
 
   const updateRoutineExercise = useCallback(
     async (routineId: string, routineExerciseId: string, patch: Partial<RoutineExercise>) => {
-      await updateFitnessRoutineExercise(routineId, routineExerciseId, {
-        targetSets: patch.targetSets,
-        notes: patch.notes,
-      });
-      await refresh();
+      let previous: RoutineExercise | null = null;
+      setRoutines((prev) =>
+        prev.map((routine) =>
+          routine.id === routineId
+            ? {
+                ...routine,
+                exercises: routine.exercises.map((exercise) =>
+                  exercise.id === routineExerciseId
+                    ? (() => {
+                        previous = exercise;
+                        return { ...exercise, ...patch };
+                      })()
+                    : exercise,
+                ),
+                updatedAt: Date.now(),
+              }
+            : routine,
+        ),
+      );
+      try {
+        await updateFitnessRoutineExercise(routineId, routineExerciseId, {
+          targetSets: patch.targetSets,
+          notes: patch.notes,
+        });
+        void refresh();
+      } catch (error) {
+        if (previous) {
+          setRoutines((prev) =>
+            prev.map((routine) =>
+              routine.id === routineId
+                ? {
+                    ...routine,
+                    exercises: routine.exercises.map((exercise) =>
+                      exercise.id === routineExerciseId ? previous : exercise,
+                    ),
+                    updatedAt: Date.now(),
+                  }
+                : routine,
+            ),
+          );
+        }
+        toast("Unable to update exercise", {
+          action: {
+            label: "Retry",
+            onClick: () => void updateRoutineExercise(routineId, routineExerciseId, patch),
+          },
+        });
+        void refresh();
+        throw error;
+      }
     },
     [refresh],
   );
 
   const startSession = useCallback(
     async (routineId: string) => {
-      const response = await startFitnessSession({ routineId });
-      await refresh();
-      return response.session;
+      const previousSession = activeSession;
+      const previousExercises = sessionExercises;
+      const routine = routines.find((item) => item.id === routineId);
+      const tempId = createTempId();
+      if (routine) {
+        setSessionExercises(
+          routine.exercises.map((exercise, index) => ({
+            id: `session_ex_${tempId}_${index}`,
+            exercise_id: exercise.exerciseId ?? null,
+            exercise_name: exercise.name,
+            item_order: index,
+          })),
+        );
+      }
+      setActiveSession({
+        id: tempId,
+        routineId,
+        startedAt: Date.now(),
+        currentExerciseIndex: 0,
+        sets: [],
+      });
+      try {
+        const response = await startFitnessSession({ routineId });
+        void refresh();
+        return response.session;
+      } catch (error) {
+        setActiveSession(previousSession);
+        setSessionExercises(previousExercises);
+        toast("Unable to start session", {
+          action: {
+            label: "Retry",
+            onClick: () => void startSession(routineId),
+          },
+        });
+        void refresh();
+        throw error;
+      }
     },
-    [refresh],
+    [activeSession, refresh, routines, sessionExercises],
   );
 
   const startSessionFromTemplate = useCallback(
     async (name: string, exercises: string[]) => {
-      const response = await startFitnessSession({ exercises });
-      await refresh();
-      return response.session;
+      const previousSession = activeSession;
+      const previousExercises = sessionExercises;
+      const tempId = createTempId();
+      setSessionExercises(
+        exercises.map((exercise, index) => ({
+          id: `session_ex_${tempId}_${index}`,
+          exercise_id: null,
+          exercise_name: exercise,
+          item_order: index,
+        })),
+      );
+      setActiveSession({
+        id: tempId,
+        routineId: tempId,
+        startedAt: Date.now(),
+        currentExerciseIndex: 0,
+        sets: [],
+      });
+      try {
+        const response = await startFitnessSession({ exercises });
+        void refresh();
+        return response.session;
+      } catch (error) {
+        setActiveSession(previousSession);
+        setSessionExercises(previousExercises);
+        toast("Unable to start session", {
+          action: {
+            label: "Retry",
+            onClick: () => void startSessionFromTemplate(name, exercises),
+          },
+        });
+        void refresh();
+        throw error;
+      }
     },
-    [refresh],
+    [activeSession, refresh, sessionExercises],
   );
 
   const logSet = useCallback(
@@ -196,14 +485,52 @@ export const useFitnessPlanner = () => {
         (exercise) => exercise.exercise_id === exerciseId,
       );
       if (!sessionExercise) return;
-      await logFitnessSet({
-        sessionId: activeSession.id,
-        sessionExerciseId: sessionExercise.id,
-        weightDisplay: weight,
-        unitUsed: weightUnit,
-        reps,
+      const localId =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `set_${Math.random().toString(36).slice(2, 9)}`;
+      setActiveSession((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          sets: [
+            ...prev.sets,
+            {
+              id: localId,
+              exerciseId,
+              weight,
+              reps,
+              completedAt: Date.now(),
+            },
+          ],
+        };
       });
-      await refresh();
+      try {
+        await logFitnessSet({
+          sessionId: activeSession.id,
+          sessionExerciseId: sessionExercise.id,
+          weightDisplay: weight,
+          unitUsed: weightUnit,
+          reps,
+        });
+        void refresh();
+      } catch (error) {
+        setActiveSession((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            sets: prev.sets.filter((entry) => entry.id !== localId),
+          };
+        });
+        toast("Unable to log set", {
+          action: {
+            label: "Retry",
+            onClick: () => void logSet(exerciseId, weight, reps),
+          },
+        });
+        void refresh();
+        throw error;
+      }
     },
     [activeSession, refresh, sessionExercises, weightUnit],
   );
@@ -217,9 +544,22 @@ export const useFitnessPlanner = () => {
 
   const finishSession = useCallback(async () => {
     if (!activeSession) return;
-    await finishFitnessSession(activeSession.id);
-    await refresh();
+    const previousSession = activeSession;
     setActiveSession(null);
+    try {
+      await finishFitnessSession(activeSession.id);
+      void refresh();
+    } catch (error) {
+      setActiveSession(previousSession);
+      toast("Unable to finish session", {
+        action: {
+          label: "Retry",
+          onClick: () => void finishSession(),
+        },
+      });
+      void refresh();
+      throw error;
+    }
   }, [activeSession, refresh]);
 
   const activeRoutine = useMemo(() => {

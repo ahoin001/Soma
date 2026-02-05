@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "./BottomNav";
+import { OfflineBanner } from "./OfflineBanner";
 
 type AppShellProps = {
   experience: "nutrition" | "fitness";
@@ -19,24 +20,28 @@ export const AppShell = ({
   onAddAction,
 }: AppShellProps) => {
   const [scrollProgress, setScrollProgress] = useState(0);
-
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const root = document.documentElement;
-    root.classList.remove("experience-nutrition", "experience-fitness");
-    root.classList.add(
-      experience === "nutrition" ? "experience-nutrition" : "experience-fitness",
-    );
-  }, [experience]);
+  const rafRef = useRef<number | null>(null);
+  const lastValue = useRef(0);
 
   useEffect(() => {
     const update = () => {
-      const next = Math.min(window.scrollY / 120, 1);
-      setScrollProgress(next);
+      if (rafRef.current) return;
+      rafRef.current = window.requestAnimationFrame(() => {
+        rafRef.current = null;
+        const next = Math.min(window.scrollY / 120, 1);
+        if (Math.abs(next - lastValue.current) < 0.01) return;
+        lastValue.current = next;
+        setScrollProgress(next);
+      });
     };
     update();
     window.addEventListener("scroll", update, { passive: true });
-    return () => window.removeEventListener("scroll", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      if (rafRef.current) {
+        window.cancelAnimationFrame(rafRef.current);
+      }
+    };
   }, []);
 
   const scrimOpacity = 1 - scrollProgress;
@@ -61,6 +66,7 @@ export const AppShell = ({
         className,
       )}
     >
+      <OfflineBanner />
       {experience === "nutrition" ? (
         <>
           <div

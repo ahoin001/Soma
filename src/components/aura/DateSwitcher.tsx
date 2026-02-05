@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { useSheetManager } from "@/hooks/useSheetManager";
 
 const isSameDay = (left: Date, right: Date) =>
   left.getFullYear() === right.getFullYear() &&
@@ -34,7 +35,10 @@ type DateSwitcherProps = {
 };
 
 export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
-  const [open, setOpen] = useState(false);
+  const { activeSheet, openSheet, closeSheets } = useSheetManager<"calendar">(
+    null,
+    { storageKey: "aurafit-sheet:calendar", persist: true },
+  );
   const [selectedDate, setSelectedDate] = useState(value ?? new Date());
   const label = useMemo(() => {
     const today = new Date();
@@ -57,7 +61,10 @@ export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
   }, [value]);
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Drawer
+      open={activeSheet === "calendar"}
+      onOpenChange={(open) => (open ? openSheet("calendar") : closeSheets())}
+    >
       <section className="mt-8 flex items-center justify-between rounded-[24px] border border-black/5 bg-white px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
         <Button
           variant="ghost"
@@ -67,7 +74,7 @@ export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <SheetTrigger asChild>
+        <DrawerTrigger asChild>
           <Button
             variant="ghost"
             className="flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold text-slate-800"
@@ -75,7 +82,7 @@ export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
             <CalendarDays className="h-4 w-4 text-emerald-500" />
             {label}
           </Button>
-        </SheetTrigger>
+        </DrawerTrigger>
         <Button
           variant="ghost"
           size="icon"
@@ -85,18 +92,15 @@ export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
           <ChevronRight className="h-4 w-4" />
         </Button>
       </section>
-      <SheetContent
-        side="bottom"
-        className="rounded-t-[28px] border-t border-emerald-100 bg-gradient-to-b from-white via-emerald-50/60 to-white px-5 pb-8 pt-6"
-      >
-        <SheetHeader className="text-left">
-          <SheetTitle className="text-xl font-display text-emerald-950">
+      <DrawerContent className="rounded-t-[28px] border-t border-emerald-100 bg-gradient-to-b from-white via-emerald-50/60 to-white px-5 pb-8 pt-6">
+        <DrawerHeader className="text-left">
+          <DrawerTitle className="text-xl font-display text-emerald-950">
             Calendar
-          </SheetTitle>
+          </DrawerTitle>
           <p className="text-sm text-emerald-700/70">
             Jump to a day to review your nutrition flow.
           </p>
-        </SheetHeader>
+        </DrawerHeader>
         <div className="mt-4 rounded-[24px] border border-emerald-100 bg-white/90 p-2 shadow-[0_12px_28px_rgba(16,185,129,0.12)]">
           <Calendar
             mode="single"
@@ -105,7 +109,7 @@ export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
               if (!date) return;
               setSelectedDate(date);
               onChange?.(date);
-              setOpen(false);
+              closeSheets();
             }}
             className="w-full"
           />
@@ -113,7 +117,7 @@ export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
         <div className="mt-4 rounded-[18px] border border-emerald-100/80 bg-white/80 px-4 py-3 text-sm text-emerald-700/80">
           {formatFull(selectedDate)}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DrawerContent>
+    </Drawer>
   );
 };

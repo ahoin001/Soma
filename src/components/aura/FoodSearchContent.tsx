@@ -2,22 +2,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import type { FoodItem, Meal } from "@/data/mock";
-import { Barcode, CheckCircle2, Heart, PlusCircle, Search } from "lucide-react";
-import { FoodList } from "./FoodList";
+import { Barcode, CheckCircle2, Heart, PlusCircle, Search, X } from "lucide-react";
+import { FoodList } from "./FoodList.tsx";
 import { Pressable } from "./Pressable";
 import type { RefObject } from "react";
+import { cn } from "@/lib/utils";
 
 type FoodSearchContentProps = {
-  activeTab: "recent" | "liked" | "history";
-  onTabChange: (value: "recent" | "liked" | "history") => void;
+  activeTab: "search" | "recent" | "liked" | "history";
+  libraryTab: "recent" | "liked" | "history";
+  onTabChange: (value: "search" | "recent" | "liked" | "history") => void;
   searchQuery: string;
   onSearchChange: (value: string) => void;
   searchStatus: "idle" | "loading" | "error";
@@ -25,9 +21,14 @@ type FoodSearchContentProps = {
   foods: FoodItem[];
   meal: Meal | null;
   meals: Meal[];
+  loggedFoodIds?: Set<string>;
+  loggedFoodNames?: Set<string>;
+  pendingFoodKeys?: Set<string>;
+  successFoodKeys?: Set<string>;
   onMealChange: (mealId: string) => void;
   onSelectFood: (food: FoodItem) => void;
   onQuickAddFood: (food: FoodItem) => void;
+  onQuickRemoveFood?: (food: FoodItem) => void;
   onOpenBarcode: () => void;
   onOpenCreate: () => void;
   inputRef?: RefObject<HTMLInputElement>;
@@ -35,6 +36,7 @@ type FoodSearchContentProps = {
 
 export const FoodSearchContent = ({
   activeTab,
+  libraryTab,
   onTabChange,
   searchQuery,
   onSearchChange,
@@ -43,18 +45,26 @@ export const FoodSearchContent = ({
   foods,
   meal,
   meals,
+  loggedFoodIds,
+  loggedFoodNames,
+  pendingFoodKeys,
+  successFoodKeys,
   onMealChange,
   onSelectFood,
   onQuickAddFood,
+  onQuickRemoveFood,
   onOpenBarcode,
   onOpenCreate,
   inputRef,
 }: FoodSearchContentProps) => {
-  const isSearching = searchStatus === "loading" && searchQuery.trim().length > 0;
+  const hasQuery = searchQuery.trim().length > 0;
+  const isSearching = searchStatus === "loading" && hasQuery;
   const showEmpty =
-    searchQuery.trim().length > 0 &&
+    hasQuery &&
     searchStatus !== "loading" &&
     foods.length === 0;
+  const mode = activeTab === "search" ? "search" : "library";
+  const tabsValue = mode === "search" ? libraryTab : activeTab;
 
   return (
     <div>
@@ -77,24 +87,21 @@ export const FoodSearchContent = ({
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
           Log to
         </p>
-        <Select
+        <SegmentedControl
           value={meal?.id ?? ""}
-          onValueChange={(value) => {
-            if (value) onMealChange(value);
-          }}
-        >
-          <SelectTrigger className="mt-2 h-10 rounded-full border border-emerald-100 bg-white text-sm shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-            <SelectValue placeholder="Select a meal" />
-          </SelectTrigger>
-          <SelectContent>
-            {meals.map((entry) => (
-              <SelectItem key={entry.id} value={entry.id}>
-                <span className="mr-2">{entry.emoji}</span>
+          onValueChange={onMealChange}
+          options={meals.map((entry) => ({
+            value: entry.id,
+            label: (
+              <>
+                <span>{entry.emoji}</span>
                 {entry.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              </>
+            ),
+          }))}
+          className="mt-2 rounded-[18px] border border-emerald-100 bg-white p-2 shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
+          inactiveClassName="bg-emerald-50 hover:bg-emerald-100"
+        />
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3">
@@ -135,6 +142,38 @@ export const FoodSearchContent = ({
         </Button>
       </div>
 
+      <div className="mt-4 flex rounded-full bg-white/80 p-1 shadow-[0_10px_24px_rgba(15,23,42,0.06)] backdrop-blur">
+        <button
+          type="button"
+          onClick={() => {
+            onTabChange("search");
+            inputRef?.current?.focus();
+          }}
+          className={cn(
+            "flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition",
+            mode === "search"
+              ? "bg-emerald-500 text-white shadow-[0_10px_20px_rgba(16,185,129,0.35)]"
+              : "text-slate-600 hover:text-slate-800",
+          )}
+        >
+          <Search className="h-3.5 w-3.5" />
+          Search
+        </button>
+        <button
+          type="button"
+          onClick={() => onTabChange(libraryTab)}
+          className={cn(
+            "flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition",
+            mode === "library"
+              ? "bg-emerald-500 text-white shadow-[0_10px_20px_rgba(16,185,129,0.35)]"
+              : "text-slate-600 hover:text-slate-800",
+          )}
+        >
+          <Heart className="h-3.5 w-3.5" />
+          Library
+        </button>
+      </div>
+
       <div className="mt-4 flex items-center gap-2 rounded-full border border-emerald-100 bg-white px-4 py-2 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
         <Search className="h-4 w-4 text-emerald-400" />
         <Input
@@ -144,34 +183,59 @@ export const FoodSearchContent = ({
           placeholder="Food, meal, or brand"
           className="h-7 border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
         />
+        {hasQuery ? (
+          <button
+            type="button"
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100"
+            onClick={() => onSearchChange("")}
+            aria-label="Clear search"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
       </div>
       {isSearching ? (
         <div className="mt-3 text-xs font-semibold text-emerald-500">
           Searching foods...
         </div>
       ) : null}
-      <div className="mt-3 flex items-center justify-between rounded-[18px] border border-emerald-100 bg-white px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-        <div>
-          <Label className="text-sm text-slate-800">Your food library</Label>
-          <p className="text-xs text-slate-500">
-            Search saved foods, favorites, and your history.
-          </p>
-        </div>
-      </div>
+      
       {searchStatus === "error" && searchError && (
         <p className="mt-3 text-xs font-semibold text-rose-500">
           {searchError}
         </p>
       )}
 
+      {mode === "search" ? (
+        <div className="mt-4">
+          <FoodList
+            foods={foods}
+            onSelect={onSelectFood}
+            onQuickAdd={onQuickAddFood}
+            onQuickRemove={onQuickRemoveFood}
+            loggedFoodIds={loggedFoodIds}
+            loggedFoodNames={loggedFoodNames}
+            pendingFoodKeys={pendingFoodKeys}
+            successFoodKeys={successFoodKeys}
+            mealLabel={meal?.label ?? "meal"}
+          />
+          {showEmpty && (
+            <EmptyState>No matches yet. Try a different search.</EmptyState>
+          )}
+        </div>
+      ) : null}
+
       <Tabs
-        value={activeTab}
-        onValueChange={(value) =>
-          onTabChange(value as "recent" | "liked" | "history")
-        }
+        value={tabsValue}
+        onValueChange={(value) => onTabChange(value as "recent" | "liked" | "history")}
         className="mt-4"
       >
-        <TabsList className="h-10 w-full rounded-full bg-white p-1 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
+        <TabsList
+          className={cn(
+            "h-10 w-full rounded-full bg-white p-1 shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition-all duration-300",
+            mode === "search" && "pointer-events-none opacity-50 blur-[1px]",
+          )}
+        >
           <TabsTrigger
             value="recent"
             className="w-full rounded-full data-[state=active]:bg-aura-primary data-[state=active]:text-white"
@@ -188,29 +252,52 @@ export const FoodSearchContent = ({
             value="history"
             className="w-full rounded-full data-[state=active]:bg-aura-primary data-[state=active]:text-white"
           >
-            History
+            Added
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="recent" className="mt-4">
-          <FoodList foods={foods} onSelect={onSelectFood} onQuickAdd={onQuickAddFood} />
-          {showEmpty && (
-            <EmptyState onAction={onOpenCreate} actionLabel="Create food">
-              No results yet. Create a custom food to build your list.
-            </EmptyState>
-          )}
-        </TabsContent>
-        <TabsContent value="liked" className="mt-4">
-          <FoodList foods={foods} onSelect={onSelectFood} onQuickAdd={onQuickAddFood} />
-          {showEmpty && (
-            <EmptyState>No results yet. Try a different search.</EmptyState>
-          )}
-        </TabsContent>
-        <TabsContent value="history" className="mt-4">
-          <FoodList foods={foods} onSelect={onSelectFood} onQuickAdd={onQuickAddFood} />
-          {showEmpty && (
-            <EmptyState>No results yet. Try a different search.</EmptyState>
-          )}
-        </TabsContent>
+        {mode === "library" ? (
+          <>
+            <TabsContent value="recent" className="mt-4">
+              <FoodList
+                foods={foods}
+                onSelect={onSelectFood}
+                onQuickAdd={onQuickAddFood}
+                onQuickRemove={onQuickRemoveFood}
+                loggedFoodIds={loggedFoodIds}
+                loggedFoodNames={loggedFoodNames}
+                pendingFoodKeys={pendingFoodKeys}
+                successFoodKeys={successFoodKeys}
+                mealLabel={meal?.label ?? "meal"}
+              />
+            </TabsContent>
+            <TabsContent value="liked" className="mt-4">
+              <FoodList
+                foods={foods}
+                onSelect={onSelectFood}
+                onQuickAdd={onQuickAddFood}
+                onQuickRemove={onQuickRemoveFood}
+                loggedFoodIds={loggedFoodIds}
+                loggedFoodNames={loggedFoodNames}
+                pendingFoodKeys={pendingFoodKeys}
+                successFoodKeys={successFoodKeys}
+                mealLabel={meal?.label ?? "meal"}
+              />
+            </TabsContent>
+            <TabsContent value="history" className="mt-4">
+              <FoodList
+                foods={foods}
+                onSelect={onSelectFood}
+                onQuickAdd={onQuickAddFood}
+                onQuickRemove={onQuickRemoveFood}
+                loggedFoodIds={loggedFoodIds}
+                loggedFoodNames={loggedFoodNames}
+                pendingFoodKeys={pendingFoodKeys}
+                successFoodKeys={successFoodKeys}
+                mealLabel={meal?.label ?? "meal"}
+              />
+            </TabsContent>
+          </>
+        ) : null}
       </Tabs>
     </div>
   );

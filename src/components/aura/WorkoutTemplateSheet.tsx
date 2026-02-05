@@ -47,7 +47,7 @@ export const WorkoutTemplateSheet = ({
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="rounded-t-[36px] border-none bg-slate-950 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-white">
         {workout && (
-          <div className="px-5 pb-6 pt-2">
+        <div className="aura-sheet-body">
             <div className="mt-2 text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
                 <Dumbbell className="h-6 w-6 text-white/70" />

@@ -1,0 +1,57 @@
+import { useNavigate } from "react-router-dom";
+import { AppShell, LiveSessionPanel } from "@/components/aura";
+import { Button } from "@/components/ui/button";
+import { useAppStore } from "@/state/AppStore";
+
+const FitnessLog = () => {
+  const navigate = useNavigate();
+  const { fitnessPlanner } = useAppStore();
+
+  return (
+    <AppShell experience="fitness" onAddAction={() => navigate("/fitness")}>
+      <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+              Flow
+            </p>
+            <h1 className="mt-2 text-2xl font-display font-semibold">
+              Session log
+            </h1>
+            <p className="mt-1 text-sm text-white/60">
+              Keep your log open while you train.
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            className="h-10 rounded-full bg-white/10 text-white hover:bg-white/20"
+            onClick={() => navigate("/fitness")}
+          >
+            Back
+          </Button>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <LiveSessionPanel
+            activeSession={fitnessPlanner.activeSession}
+            activeRoutine={fitnessPlanner.activeRoutine}
+            onLogSet={fitnessPlanner.logSet}
+            onAdvanceExercise={fitnessPlanner.advanceExercise}
+            onFinishSession={fitnessPlanner.finishSession}
+            unitUsed={fitnessPlanner.weightUnit}
+          />
+          {!fitnessPlanner.activeSession ? (
+            <Button
+              className="w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+              onClick={() => navigate("/fitness")}
+            >
+              Start a session
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </AppShell>
+  );
+};
+
+export default FitnessLog;

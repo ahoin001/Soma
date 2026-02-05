@@ -10,6 +10,7 @@ type LiveSessionPanelProps = {
   onLogSet: (exerciseId: number, weight: number, reps: number) => void;
   onAdvanceExercise: () => void;
   onFinishSession: () => void;
+  unitUsed?: "lb" | "kg";
 };
 
 export const LiveSessionPanel = ({
@@ -18,6 +19,7 @@ export const LiveSessionPanel = ({
   onLogSet,
   onAdvanceExercise,
   onFinishSession,
+  unitUsed = "lb",
 }: LiveSessionPanelProps) => {
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
@@ -62,7 +64,7 @@ export const LiveSessionPanel = ({
                   min={0}
                   value={weight}
                   onChange={(event) => setWeight(event.target.value)}
-                  placeholder="lbs"
+                  placeholder={unitUsed}
                   className="mt-1 border-white/10 bg-white/5 text-white placeholder:text-white/40"
                 />
               </div>
@@ -85,6 +87,9 @@ export const LiveSessionPanel = ({
               className="w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
               onClick={() => {
                 if (!currentExercise || !canLog) return;
+                if (navigator.vibrate) {
+                  navigator.vibrate(10);
+                }
                 onLogSet(currentExercise.exerciseId, Number(weight), Number(reps));
                 setWeight("");
                 setReps("");

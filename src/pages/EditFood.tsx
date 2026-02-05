@@ -22,15 +22,21 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { ChevronLeft } from "lucide-react";
 import {
+  createBrand,
   createFoodServing,
+  fetchBrandLogoSignature,
+  fetchBrands,
   fetchFoodImageSignature,
   fetchFoodServings,
+  updateBrand,
   updateFoodImage,
 } from "@/lib/api";
+import type { BrandRecord } from "@/types/api";
 
 type NutritionDraft = {
   name: string;
   brand: string;
+  brandId?: string | null;
   portion: string;
   portionGrams: number | null;
   kcal: number;
@@ -57,6 +63,38 @@ type ServingOption = {
   label: string;
   grams: number;
 };
+
+const servingCache = new Map<string, ServingOption[]>();
+const servingCacheKey = "aurafit-serving-cache-v1";
+const isBrowser = typeof window !== "undefined";
+
+const loadServingCache = () => {
+  if (!isBrowser) return;
+  try {
+    const raw = window.localStorage.getItem(servingCacheKey);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as Record<string, ServingOption[]>;
+    Object.entries(parsed).forEach(([foodId, options]) => {
+      if (Array.isArray(options)) {
+        servingCache.set(foodId, options);
+      }
+    });
+  } catch {
+    // ignore cache errors
+  }
+};
+
+const persistServingCache = () => {
+  if (!isBrowser) return;
+  try {
+    const payload = Object.fromEntries(servingCache.entries());
+    window.localStorage.setItem(servingCacheKey, JSON.stringify(payload));
+  } catch {
+    // ignore cache errors
+  }
+};
+
+loadServingCache();
 
 const normalizeUnit = (raw: string) => {
   const unit = raw.trim().toLowerCase();
@@ -136,6 +174,17 @@ const EditFood = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
+  const [brands, setBrands] = useState<BrandRecord[]>([]);
+  const [brandQuery, setBrandQuery] = useState("");
+  const [brandLoading, setBrandLoading] = useState(false);
+  const [brandCreateOpen, setBrandCreateOpen] = useState(false);
+  const [brandName, setBrandName] = useState("");
+  const [brandWebsite, setBrandWebsite] = useState("");
+  const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(null);
+  const [brandUploading, setBrandUploading] = useState(false);
+  const [brandUploadProgress, setBrandUploadProgress] = useState(0);
+  const [brandNotice, setBrandNotice] = useState<string | null>(null);
+  const [brandEditNotice, setBrandEditNotice] = useState<string | null>(null);
   const [adminEditing, setAdminEditing] = useState(isAdmin);
 
   useEffect(() => {
@@ -157,6 +206,7 @@ const EditFood = () => {
     setDraft({
       name: currentFood.name,
       brand: currentFood.brand ?? "",
+      brandId: currentFood.brandId ?? null,
       portion: currentFood.portionLabel ?? currentFood.portion,
       portionGrams: currentFood.portionGrams ?? null,
       kcal: currentFood.kcal,
@@ -186,7 +236,32 @@ const EditFood = () => {
   }, [currentFood]);
 
   useEffect(() => {
+    if (!adminEditing) return;
+    const query = brandQuery.trim();
+    const timer = window.setTimeout(() => {
+      setBrandLoading(true);
+      fetchBrands(query, true, 100)
+        .then((response) => setBrands(response.items))
+        .finally(() => setBrandLoading(false));
+    }, query ? 300 : 0);
+    return () => window.clearTimeout(timer);
+  }, [adminEditing, brandQuery]);
+
+  useEffect(() => {
+    if (!adminEditing || !draft?.brandId) return;
+    const match = brands.find((brand) => brand.id === draft.brandId);
+    if (!match) return;
+    setBrandName(match.name ?? "");
+    setBrandWebsite(match.website_url ?? "");
+    setBrandLogoUrl(match.logo_url ?? null);
+  }, [adminEditing, brands, draft?.brandId]);
+
+  useEffect(() => {
     if (!currentFood) return;
+    const cached = servingCache.get(currentFood.id);
+    if (cached?.length) {
+      setCustomServings(cached);
+    }
     fetchFoodServings(currentFood.id)
       .then((response) => {
         const extra = response.servings
@@ -197,6 +272,10 @@ const EditFood = () => {
             grams: serving.grams,
           }));
         setCustomServings(extra);
+        if (extra.length) {
+          servingCache.set(currentFood.id, extra);
+          persistServingCache();
+        }
       })
       .catch(() => {});
   }, [currentFood?.id]);
@@ -355,6 +434,369 @@ const EditFood = () => {
             </label>
             {uploadNotice && (
               <p className="mt-2 text-[11px] text-emerald-600">{uploadNotice}</p>
+            )}
+          </Card>
+        )}
+
+        {adminEditing && draft && (
+          <Card className="mt-4 rounded-[24px] border border-emerald-100 bg-white px-4 py-4 shadow-[0_12px_28px_rgba(16,185,129,0.12)]">
+            <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+              Brand
+            </p>
+            <div className="mt-3 space-y-3">
+              <Select
+                value={draft.brandId ?? "none"}
+                onValueChange={(value) => {
+                  if (value === "none") {
+                    setDraft({ ...draft, brandId: null, brand: "" });
+                    setBrandLogoUrl(null);
+                    return;
+                  }
+                  const match = brands.find((brand) => brand.id === value);
+                  setDraft({
+                    ...draft,
+                    brandId: value,
+                    brand: match?.name ?? "",
+                  });
+                  setBrandLogoUrl(match?.logo_url ?? null);
+                }}
+              >
+                <SelectTrigger className="h-10 rounded-full">
+                  <div className="flex items-center gap-2">
+                    {brandLogoUrl && (
+                      <img
+                        src={brandLogoUrl}
+                        alt="Brand"
+                        className="h-5 w-5 rounded-full object-cover"
+                      />
+                    )}
+                    <SelectValue placeholder="Select brand" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <div className="px-3 py-2">
+                    <Input
+                      value={brandQuery}
+                      onChange={(event) => setBrandQuery(event.target.value)}
+                      placeholder="Search brand"
+                      className="h-9 rounded-full"
+                    />
+                  </div>
+                  <SelectItem value="none">No brand</SelectItem>
+                  {brandLoading && (
+                    <div className="px-3 py-2 text-xs text-slate-500">Loading...</div>
+                  )}
+                  {brands
+                    .filter((brand) =>
+                      brand.name.toLowerCase().includes(brandQuery.trim().toLowerCase()),
+                    )
+                    .reduce<BrandRecord[]>((unique, brand) => {
+                      const normalized = brand.name.trim().toLowerCase();
+                      if (!normalized) return unique;
+                      if (
+                        unique.some(
+                          (item) => item.name.trim().toLowerCase() === normalized,
+                        )
+                      ) {
+                        return unique;
+                      }
+                      unique.push(brand);
+                      return unique;
+                    }, [])
+                    .map((brand) => (
+                      <SelectItem key={brand.id} value={brand.id}>
+                        <div className="flex items-center gap-2">
+                          {brand.logo_url ? (
+                            <img
+                              src={brand.logo_url}
+                              alt={brand.name}
+                              className="h-5 w-5 rounded-full object-cover"
+                            />
+                          ) : null}
+                          <span>{brand.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  {!brandLoading && brands.length === 0 && (
+                    <div className="px-3 py-2 text-xs text-slate-500">
+                      No brands found
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+              <button
+                type="button"
+                className="text-xs font-semibold text-emerald-600"
+                onClick={() => setBrandCreateOpen((prev) => !prev)}
+              >
+                {brandCreateOpen ? "Cancel new brand" : "Create new brand"}
+              </button>
+            </div>
+
+            {brandCreateOpen && (
+              <div className="mt-4 rounded-[20px] border border-emerald-100 bg-emerald-50/60 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500">
+                  New brand
+                </p>
+                <div className="mt-3 space-y-3">
+                  <Input
+                    value={brandName}
+                    onChange={(event) => setBrandName(event.target.value)}
+                    placeholder="Brand name"
+                    className="h-10 rounded-full"
+                  />
+                  <Input
+                    value={brandWebsite}
+                    onChange={(event) => setBrandWebsite(event.target.value)}
+                    placeholder="Website (optional)"
+                    className="h-10 rounded-full"
+                  />
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-white text-xl shadow-[0_8px_20px_rgba(16,185,129,0.12)]">
+                      {brandLogoUrl ? (
+                        <img
+                          src={brandLogoUrl}
+                          alt="Brand logo"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        "🏷️"
+                      )}
+                    </div>
+                    <label className="flex flex-1 cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-white px-4 py-2 text-xs font-semibold text-emerald-700">
+                      <span>{brandUploading ? "Uploading..." : "Upload logo"}</span>
+                      <span className="text-emerald-500">Browse</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (!file) return;
+                          setBrandUploading(true);
+                          setBrandNotice(null);
+                          setBrandUploadProgress(0);
+                          fetchBrandLogoSignature()
+                            .then(async (signature) => {
+                              const formData = new FormData();
+                              formData.append("file", file);
+                              formData.append("api_key", signature.apiKey);
+                              formData.append("timestamp", String(signature.timestamp));
+                              formData.append("signature", signature.signature);
+                              if (signature.uploadPreset) {
+                                formData.append("upload_preset", signature.uploadPreset);
+                              }
+                              const data = await new Promise<{ secure_url?: string }>(
+                                (resolve, reject) => {
+                                  const xhr = new XMLHttpRequest();
+                                  xhr.open(
+                                    "POST",
+                                    `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
+                                  );
+                                  xhr.upload.onprogress = (evt) => {
+                                    if (!evt.lengthComputable) return;
+                                    const pct = Math.round((evt.loaded / evt.total) * 100);
+                                    setBrandUploadProgress(pct);
+                                  };
+                                  xhr.onload = () => {
+                                    try {
+                                      resolve(JSON.parse(xhr.responseText));
+                                    } catch {
+                                      reject(new Error("Upload failed"));
+                                    }
+                                  };
+                                  xhr.onerror = () => reject(new Error("Upload failed"));
+                                  xhr.send(formData);
+                                },
+                              );
+                              if (!data.secure_url) throw new Error("Upload failed");
+                              setBrandLogoUrl(data.secure_url);
+                              setBrandNotice("Logo added.");
+                            })
+                            .catch(() => setBrandNotice("Upload failed."))
+                            .finally(() => setBrandUploading(false));
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {brandUploading && (
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-emerald-100">
+                      <div
+                        className="h-full rounded-full bg-emerald-400 transition-all"
+                        style={{ width: `${brandUploadProgress}%` }}
+                      />
+                    </div>
+                  )}
+                  {brandNotice && <p className="text-xs text-emerald-600">{brandNotice}</p>}
+                  <Button
+                    type="button"
+                    className="w-full rounded-full bg-aura-primary py-4 text-sm font-semibold text-white"
+                    onClick={async () => {
+                      if (!brandName.trim()) {
+                        setBrandNotice("Enter a brand name.");
+                        return;
+                      }
+                      try {
+                        const response = await createBrand({
+                          name: brandName.trim(),
+                          websiteUrl: brandWebsite.trim() || undefined,
+                          logoUrl: brandLogoUrl ?? undefined,
+                        });
+                        setBrands((prev) => [response.brand, ...prev]);
+                        setDraft({
+                          ...draft,
+                          brandId: response.brand.id,
+                          brand: response.brand.name,
+                        });
+                        setBrandCreateOpen(false);
+                        setBrandName("");
+                        setBrandWebsite("");
+                        setBrandLogoUrl(null);
+                        setBrandNotice(null);
+                      } catch {
+                        setBrandNotice("Unable to create brand.");
+                      }
+                    }}
+                  >
+                    Save brand
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {draft.brandId && !brandCreateOpen && (
+              <div className="mt-4 rounded-[20px] border border-emerald-100 bg-emerald-50/60 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500">
+                  Edit brand details
+                </p>
+                <div className="mt-3 space-y-3">
+                  <Input
+                    value={brandName}
+                    onChange={(event) => setBrandName(event.target.value)}
+                    placeholder="Brand name"
+                    className="h-10 rounded-full"
+                  />
+                  <Input
+                    value={brandWebsite}
+                    onChange={(event) => setBrandWebsite(event.target.value)}
+                    placeholder="Website (optional)"
+                    className="h-10 rounded-full"
+                  />
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-white text-xl shadow-[0_8px_20px_rgba(16,185,129,0.12)]">
+                      {brandLogoUrl ? (
+                        <img
+                          src={brandLogoUrl}
+                          alt="Brand logo"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        "🏷️"
+                      )}
+                    </div>
+                    <label className="flex flex-1 cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-white px-4 py-2 text-xs font-semibold text-emerald-700">
+                      <span>{brandUploading ? "Uploading..." : "Upload logo"}</span>
+                      <span className="text-emerald-500">Browse</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (!file) return;
+                          setBrandUploading(true);
+                          setBrandEditNotice(null);
+                          setBrandUploadProgress(0);
+                          fetchBrandLogoSignature()
+                            .then(async (signature) => {
+                              const formData = new FormData();
+                              formData.append("file", file);
+                              formData.append("api_key", signature.apiKey);
+                              formData.append("timestamp", String(signature.timestamp));
+                              formData.append("signature", signature.signature);
+                              if (signature.uploadPreset) {
+                                formData.append("upload_preset", signature.uploadPreset);
+                              }
+                              const data = await new Promise<{ secure_url?: string }>(
+                                (resolve, reject) => {
+                                  const xhr = new XMLHttpRequest();
+                                  xhr.open(
+                                    "POST",
+                                    `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
+                                  );
+                                  xhr.upload.onprogress = (evt) => {
+                                    if (!evt.lengthComputable) return;
+                                    const pct = Math.round((evt.loaded / evt.total) * 100);
+                                    setBrandUploadProgress(pct);
+                                  };
+                                  xhr.onload = () => {
+                                    try {
+                                      resolve(JSON.parse(xhr.responseText));
+                                    } catch {
+                                      reject(new Error("Upload failed"));
+                                    }
+                                  };
+                                  xhr.onerror = () => reject(new Error("Upload failed"));
+                                  xhr.send(formData);
+                                },
+                              );
+                              if (!data.secure_url) throw new Error("Upload failed");
+                              setBrandLogoUrl(data.secure_url);
+                              setBrandEditNotice("Logo uploaded.");
+                            })
+                            .catch(() => setBrandEditNotice("Upload failed."))
+                            .finally(() => setBrandUploading(false));
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {brandUploading && (
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-emerald-100">
+                      <div
+                        className="h-full rounded-full bg-emerald-400 transition-all"
+                        style={{ width: `${brandUploadProgress}%` }}
+                      />
+                    </div>
+                  )}
+                  {brandEditNotice && (
+                    <p className="text-xs text-emerald-600">{brandEditNotice}</p>
+                  )}
+                  <Button
+                    type="button"
+                    className="w-full rounded-full bg-emerald-400 py-4 text-sm font-semibold text-slate-950 hover:bg-emerald-300"
+                    onClick={async () => {
+                      if (!draft.brandId) return;
+                      if (!brandName.trim()) {
+                        setBrandEditNotice("Enter a brand name.");
+                        return;
+                      }
+                      try {
+                        const response = await updateBrand(draft.brandId, {
+                          name: brandName.trim(),
+                          websiteUrl: brandWebsite.trim() || null,
+                          logoUrl: brandLogoUrl ?? null,
+                        });
+                        if (response.brand) {
+                          setBrands((prev) =>
+                            prev.map((item) =>
+                              item.id === response.brand.id ? response.brand : item,
+                            ),
+                          );
+                          setDraft({
+                            ...draft,
+                            brand: response.brand.name,
+                          });
+                          setBrandEditNotice("Brand updated.");
+                        }
+                      } catch {
+                        setBrandEditNotice("Unable to update brand.");
+                      }
+                    }}
+                  >
+                    Save brand details
+                  </Button>
+                </div>
+              </div>
             )}
           </Card>
         )}
@@ -738,6 +1180,7 @@ const EditFood = () => {
               const updated = await updateFoodMaster(currentFood.id, {
                 name: draft.name.trim() || currentFood.name,
                 brand: draft.brand.trim() || null,
+                brandId: draft.brandId ?? null,
                 portionLabel: draft.portion,
                 portionGrams: draft.portionGrams ?? null,
                 kcal: draft.kcal,

@@ -147,6 +147,13 @@
     scroll-padding-bottom: env(safe-area-inset-bottom);
   }
 
+  html.scroll-locked,
+  html.scroll-locked body {
+    overflow: hidden;
+    height: 100%;
+    overscroll-behavior: none;
+  }
+
   input,
   textarea,
   select {
@@ -178,6 +185,23 @@
 }
 
 @layer utilities {
+  .aura-sheet-body {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+    padding-top: 0.5rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .aura-sheet-scroll {
+    max-height: calc(100svh - 56px);
+    overflow-y: auto;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+    padding-top: 0.5rem;
+    padding-bottom: 1.5rem;
+  }
+
+  /* Safe area utilities for PWA (notch, gesture bar) */
   .safe-pt {
     padding-top: env(safe-area-inset-top);
   }
@@ -202,5 +226,90 @@
   .safe-py {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-inset {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Min safe bottom for fixed bottom elements (nav bars, etc.) */
+  .min-safe-pb {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  /* Touch feedback utilities for premium PWA feel */
+  .touch-feedback {
+    @apply transition-all duration-100 ease-out;
+  }
+
+  .touch-feedback:active {
+    @apply scale-[0.97] opacity-80;
+  }
+
+  /* Subtler touch feedback for smaller elements */
+  .touch-feedback-subtle {
+    @apply transition-all duration-75 ease-out;
+  }
+
+  .touch-feedback-subtle:active {
+    @apply scale-[0.98] opacity-90;
+  }
+
+  /* Touch highlight for list items */
+  .touch-highlight {
+    @apply transition-colors duration-100;
+  }
+
+  .touch-highlight:active {
+    @apply bg-accent/50;
+  }
+
+  /* Prevent text selection on interactive elements */
+  .no-select {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Hardware-accelerated transforms for smooth animations */
+  .gpu {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* Hide scrollbar but allow scrolling */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* PWA install prompt styles */
+@layer components {
+  .pwa-install-banner {
+    @apply fixed bottom-0 left-0 right-0 z-50 safe-pb;
+    @apply bg-card border-t border-border shadow-lg;
+    @apply transform transition-transform duration-300 ease-out;
+  }
+
+  .pwa-install-banner[data-hidden="true"] {
+    @apply translate-y-full;
+  }
+}
+
+/* Accessibility: Focus visible only for keyboard navigation */
+@layer base {
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  :focus-visible {
+    @apply ring-2 ring-ring ring-offset-2 ring-offset-background outline-none;
   }
 }

@@ -1,5 +1,6 @@
 export { AppShell } from "./AppShell";
 export { BottomNav } from "./BottomNav";
+export { OfflineBanner } from "./OfflineBanner";
 export { BarcodeScanSheet } from "./BarcodeScanSheet";
 export { CalorieGauge } from "./CalorieGauge";
 export { CreateExerciseSheet } from "./CreateExerciseSheet";

@@ -7,6 +7,8 @@ type FitnessHeaderProps = {
   nextSession: string;
   readiness: string;
   planName?: string;
+  onStartWorkout?: () => void;
+  starting?: boolean;
 };
 
 export const FitnessHeader = ({
@@ -14,6 +16,8 @@ export const FitnessHeader = ({
   nextSession,
   readiness,
   planName,
+  onStartWorkout,
+  starting = false,
 }: FitnessHeaderProps) => (
   <header className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 pb-10 pt-6 text-white shadow-[0_20px_45px_rgba(15,23,42,0.5)]">
     <div className="pointer-events-none absolute inset-0">
@@ -67,8 +71,12 @@ export const FitnessHeader = ({
         </div>
       </div>
 
-      <Button className="mx-auto mt-5 rounded-full bg-emerald-400 px-6 text-slate-950 shadow-[0_12px_24px_rgba(45,212,191,0.35)] hover:bg-emerald-300">
-        Start workout
+      <Button
+        className="mx-auto mt-5 rounded-full bg-emerald-400 px-6 text-slate-950 shadow-[0_12px_24px_rgba(45,212,191,0.35)] hover:bg-emerald-300"
+        onClick={onStartWorkout}
+        disabled={starting}
+      >
+        {starting ? "Starting..." : "Start workout"}
         <ChevronRight className="h-4 w-4" />
       </Button>
     </div>

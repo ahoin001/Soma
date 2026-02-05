@@ -55,6 +55,29 @@ router.get(
   }),
 );
 
+router.get(
+  "/profile",
+  asyncHandler(async (req, res) => {
+    const userId = getUserId(req);
+    const result = await query(
+      `
+      SELECT
+        display_name,
+        sex,
+        dob,
+        height_cm,
+        units,
+        timezone,
+        updated_at
+      FROM user_profiles
+      WHERE user_id = $1;
+      `,
+      [userId],
+    );
+    res.json({ profile: result.rows[0] ?? null });
+  }),
+);
+
 router.post(
   "/profile",
   asyncHandler(async (req, res) => {

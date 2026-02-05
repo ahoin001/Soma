@@ -26,17 +26,17 @@ import {
   fetchBrands,
   createFoodServing,
   fetchFoodServings,
-  updateFoodImage,
 } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppStore } from "@/state/AppStore";
+import { useUserSettings } from "@/state";
 
 type FoodDetailSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   food: FoodItem | null;
   macros: MacroTarget[];
-  onTrack: (food: FoodItem) => void;
+  onTrack: (food: FoodItem) => Promise<void>;
   onUpdateFood: (food: FoodItem, next: NutritionDraft) => void;
   onUpdateMaster?: (
     food: FoodItem,
@@ -75,6 +75,36 @@ type ServingOption = {
 };
 
 const servingCache = new Map<string, ServingOption[]>();
+const servingCacheKey = "aurafit-serving-cache-v1";
+const isBrowser = typeof window !== "undefined";
+
+const loadServingCache = () => {
+  if (!isBrowser) return;
+  try {
+    const raw = window.localStorage.getItem(servingCacheKey);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as Record<string, ServingOption[]>;
+    Object.entries(parsed).forEach(([foodId, options]) => {
+      if (Array.isArray(options)) {
+        servingCache.set(foodId, options);
+      }
+    });
+  } catch {
+    // ignore cache errors
+  }
+};
+
+const persistServingCache = () => {
+  if (!isBrowser) return;
+  try {
+    const payload = Object.fromEntries(servingCache.entries());
+    window.localStorage.setItem(servingCacheKey, JSON.stringify(payload));
+  } catch {
+    // ignore cache errors
+  }
+};
+
+loadServingCache();
 
 export const preloadFoodDetail = async (foodId: string) => {
   if (!foodId) return;
@@ -91,6 +121,7 @@ export const preloadFoodDetail = async (foodId: string) => {
       }));
     if (extra.length) {
       servingCache.set(foodId, extra);
+      persistServingCache();
     }
   } catch {
     // ignore preload failures
@@ -110,6 +141,7 @@ export const FoodDetailSheet = ({
 }: FoodDetailSheetProps) => {
   const navigate = useNavigate();
   const [sparkle, setSparkle] = useState(false);
+  const [tracking, setTracking] = useState(false);
   const [editing, setEditing] = useState(false);
   const [adminEditing, setAdminEditing] = useState(false);
   const [draft, setDraft] = useState<NutritionDraft | null>(null);
@@ -139,7 +171,9 @@ export const FoodDetailSheet = ({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const editSectionRef = useRef<HTMLDivElement | null>(null);
   const { email } = useAuth();
-  const { showFoodImages } = useAppStore();
+  const { foodCatalog } = useAppStore();
+  const { showFoodImages } = useUserSettings();
+  const { updateFoodImage } = foodCatalog;
   const isAdmin = email?.toLowerCase() === "ahoin001@gmail.com";
 
   useEffect(() => {
@@ -163,9 +197,21 @@ export const FoodDetailSheet = ({
       setNewServingGrams("");
       setImageUrl(null);
       setUploadNotice(null);
+      setBrandLogoUrl(null);
+      setBrandCreateOpen(false);
+      setBrandName("");
+      setBrandWebsite("");
+      setBrandNotice(null);
       return;
     }
     const micros = food.micronutrients ?? {};
+    // Debug: Log micronutrients data
+    console.log("[FoodDetailSheet] Food micronutrients:", {
+      foodId: food.id,
+      foodName: food.name,
+      rawMicronutrients: food.micronutrients,
+      parsedMicros: micros,
+    });
     const readMicro = (key: string) => {
       const value = micros[key];
       if (typeof value === "number") return value;
@@ -218,6 +264,11 @@ export const FoodDetailSheet = ({
     setServingOptions(options);
     setSelectedServingId(options[0]?.id ?? "grams");
     setImageUrl(food.imageUrl ?? null);
+    setBrandLogoUrl(food.brandLogoUrl ?? null);
+    setBrandCreateOpen(false);
+    setBrandName("");
+    setBrandWebsite("");
+    setBrandNotice(null);
     if (food.portionLabel ?? food.portion) {
       const portionText = (food.portionLabel ?? food.portion).trim();
       const match = portionText.match(/^\s*([\d./]+)\s*(.+)$/);
@@ -255,6 +306,7 @@ export const FoodDetailSheet = ({
           }));
         if (extra.length) {
           servingCache.set(food.id, extra);
+          persistServingCache();
           setServingOptions((prev) => {
             const merged = [...prev, ...extra];
             const seen = new Set<string>();
@@ -525,6 +577,7 @@ export const FoodDetailSheet = ({
   }, [food, quantity, selectedServing, selectedServingId, basePortionGrams]);
 
   const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && tracking) return;
     if (!nextOpen) {
       setEditing(false);
       setAdminEditing(false);
@@ -534,14 +587,19 @@ export const FoodDetailSheet = ({
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
-      <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-[calc(1.5rem+env(safe-area-inset-bottom))] overflow-hidden">
+      <DrawerContent className="relative rounded-t-[36px] border-none bg-aura-surface pb-[env(safe-area-inset-bottom)] overflow-hidden">
+        {tracking && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 text-sm font-semibold text-emerald-700 backdrop-blur">
+            Logging food...
+          </div>
+        )}
         <DrawerHeader className="sr-only">
           <DrawerTitle>Food details</DrawerTitle>
         </DrawerHeader>
         {food && (
           <div
             ref={scrollRef}
-            className="max-h-[85vh] overflow-y-auto px-5 pb-6 pt-2"
+            className="aura-sheet-scroll"
           >
             <div className="flex items-center justify-between pt-2">
               <span className="text-xs uppercase tracking-[0.3em] text-emerald-400">
@@ -633,56 +691,78 @@ export const FoodDetailSheet = ({
                 <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
                   Food image
                 </p>
-                <label className="mt-3 flex cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-emerald-50/60 px-4 py-2 text-xs font-semibold text-emerald-700">
-                  <span>{uploading ? "Uploading..." : "Upload new image"}</span>
-                  <span className="text-emerald-500">Browse</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (!file || !food) return;
-                      setUploading(true);
-                      setUploadNotice(null);
-                      fetchFoodImageSignature()
-                        .then(async (signature) => {
-                          const formData = new FormData();
-                          formData.append("file", file);
-                          formData.append("api_key", signature.apiKey);
-                          formData.append("timestamp", String(signature.timestamp));
-                          formData.append("signature", signature.signature);
-                          if (signature.uploadPreset) {
-                            formData.append("upload_preset", signature.uploadPreset);
-                          }
-                          const response = await fetch(
-                            `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
-                            {
-                              method: "POST",
-                              body: formData,
-                            },
-                          );
-                          if (!response.ok) {
-                            throw new Error("Upload failed");
-                          }
-                          const data = await response.json();
-                          if (!data.secure_url) {
-                            throw new Error("Upload failed");
-                          }
-                          await updateFoodImage(food.id, data.secure_url);
-                          setImageUrl(data.secure_url);
-                          setUploadNotice("Image updated.");
-                        })
-                        .catch(() => {
-                          setUploadNotice("Upload failed.");
-                        })
-                        .finally(() => setUploading(false));
-                    }}
-                  />
-                </label>
-                {uploadNotice && (
-                  <p className="mt-2 text-[11px] text-emerald-600">{uploadNotice}</p>
-                )}
+                <div className="mt-3 flex items-center gap-4">
+                  {/* Image preview */}
+                  <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-[12px] border border-emerald-100 bg-emerald-50/40">
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={food?.name ?? "Food image"}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center border-dashed">
+                        <span className="text-2xl">🍽️</span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Upload button */}
+                  <div className="flex-1">
+                    <label className="flex cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-emerald-50/60 px-4 py-2 text-xs font-semibold text-emerald-700">
+                      <span>{uploading ? "Uploading..." : imageUrl ? "Change image" : "Upload image"}</span>
+                      <span className="text-emerald-500">Browse</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (!file || !food) return;
+                          setUploading(true);
+                          setUploadNotice(null);
+                          fetchFoodImageSignature()
+                            .then(async (signature) => {
+                              const formData = new FormData();
+                              formData.append("file", file);
+                              formData.append("api_key", signature.apiKey);
+                              formData.append("timestamp", String(signature.timestamp));
+                              formData.append("signature", signature.signature);
+                              if (signature.uploadPreset) {
+                                formData.append("upload_preset", signature.uploadPreset);
+                              }
+                              const response = await fetch(
+                                `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
+                                {
+                                  method: "POST",
+                                  body: formData,
+                                },
+                              );
+                              if (!response.ok) {
+                                throw new Error("Upload failed");
+                              }
+                              const data = await response.json();
+                              if (!data.secure_url) {
+                                throw new Error("Upload failed");
+                              }
+                              await updateFoodImage(food.id, data.secure_url);
+                              setImageUrl(data.secure_url);
+                              setUploadNotice("Image updated.");
+                            })
+                            .catch(() => {
+                              setUploadNotice("Upload failed.");
+                            })
+                            .finally(() => setUploading(false));
+                        }}
+                      />
+                    </label>
+                    {uploadNotice && (
+                      <p className="mt-1 text-[11px] text-emerald-600">{uploadNotice}</p>
+                    )}
+                    {!imageUrl && (
+                      <p className="mt-1 text-[10px] text-slate-400">No image set</p>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -877,7 +957,8 @@ export const FoodDetailSheet = ({
               {(adminEditing || editing) && draft && (
                 <div className="mt-4 space-y-3">
                   {adminEditing && (
-                    <div className="grid grid-cols-2 gap-3">
+                    <>
+                      {/* Food name input */}
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
                           Name
@@ -890,94 +971,15 @@ export const FoodDetailSheet = ({
                           className="mt-1 h-10 rounded-full"
                         />
                       </div>
-                      <div>
+
+                      {/* Brand section - consolidated */}
+                      <div className="rounded-[16px] border border-slate-100 bg-slate-50/50 p-3">
                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
                           Brand
                         </p>
-                        <Select
-                          value={draft.brandId ?? "none"}
-                          onValueChange={(value) => {
-                            if (value === "none") {
-                              setDraft({ ...draft, brandId: null, brand: "" });
-                              return;
-                            }
-                            const match = brands.find((brand) => brand.id === value);
-                            setDraft({
-                              ...draft,
-                              brandId: value,
-                              brand: match?.name ?? "",
-                            });
-                          }}
-                        >
-                          <SelectTrigger className="mt-1 h-10 rounded-full">
-                            <SelectValue placeholder="Select brand" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <div className="px-3 py-2">
-                              <Input
-                                value={brandQuery}
-                                onChange={(event) => setBrandQuery(event.target.value)}
-                                placeholder="Search brand"
-                                className="h-9 rounded-full"
-                              />
-                            </div>
-                            <SelectItem value="none">No brand</SelectItem>
-                            {brandLoading && (
-                              <div className="px-3 py-2 text-xs text-slate-500">
-                                Loading...
-                              </div>
-                            )}
-                            {brands.map((brand) => (
-                              <SelectItem key={brand.id} value={brand.id}>
-                                <div className="flex items-center gap-2">
-                                  {brand.logo_url ? (
-                                    <img
-                                      src={brand.logo_url}
-                                      alt={brand.name}
-                                      className="h-5 w-5 rounded-full object-cover"
-                                    />
-                                  ) : null}
-                                  <span>{brand.name}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                            {!brandLoading && brands.length === 0 && (
-                              <div className="px-3 py-2 text-xs text-slate-500">
-                                No brands found
-                              </div>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <button
-                          type="button"
-                          className="mt-2 text-xs font-semibold text-emerald-600"
-                          onClick={() => setBrandCreateOpen((prev) => !prev)}
-                        >
-                          {brandCreateOpen ? "Cancel new brand" : "Create new brand"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  {adminEditing && brandCreateOpen && (
-                    <div className="rounded-[20px] border border-emerald-100 bg-emerald-50/60 px-4 py-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500">
-                        New brand
-                      </p>
-                      <div className="mt-3 space-y-3">
-                        <Input
-                          value={brandName}
-                          onChange={(event) => setBrandName(event.target.value)}
-                          placeholder="Brand name"
-                          className="h-10 rounded-full"
-                        />
-                        <Input
-                          value={brandWebsite}
-                          onChange={(event) => setBrandWebsite(event.target.value)}
-                          placeholder="Website (optional)"
-                          className="h-10 rounded-full"
-                        />
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-white text-xl shadow-[0_8px_20px_rgba(16,185,129,0.12)]">
+                        <div className="mt-2 flex items-center gap-3">
+                          {/* Brand logo preview */}
+                          <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm">
                             {brandLogoUrl ? (
                               <img
                                 src={brandLogoUrl}
@@ -985,110 +987,220 @@ export const FoodDetailSheet = ({
                                 className="h-full w-full object-cover"
                               />
                             ) : (
-                              "🏷️"
+                              <div className="flex h-full w-full items-center justify-center text-lg">
+                                🏷️
+                              </div>
                             )}
                           </div>
-                          <label className="flex flex-1 cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-white px-4 py-2 text-xs font-semibold text-emerald-700">
-                            <span>{brandUploading ? "Uploading..." : "Upload logo"}</span>
-                            <span className="text-emerald-500">Browse</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="sr-only"
-                              onChange={(event) => {
-                                const file = event.target.files?.[0];
-                                if (!file) return;
-                                setBrandUploading(true);
-                                setBrandNotice(null);
-                                setBrandUploadProgress(0);
-                                fetchBrandLogoSignature()
-                                  .then(async (signature) => {
-                                    const formData = new FormData();
-                                    formData.append("file", file);
-                                    formData.append("api_key", signature.apiKey);
-                                    formData.append("timestamp", String(signature.timestamp));
-                                    formData.append("signature", signature.signature);
-                                    if (signature.uploadPreset) {
-                                      formData.append("upload_preset", signature.uploadPreset);
-                                    }
-                                    const data = await new Promise<{ secure_url?: string }>(
-                                      (resolve, reject) => {
-                                        const xhr = new XMLHttpRequest();
-                                        xhr.open(
-                                          "POST",
-                                          `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
-                                        );
-                                        xhr.upload.onprogress = (evt) => {
-                                          if (!evt.lengthComputable) return;
-                                          const pct = Math.round((evt.loaded / evt.total) * 100);
-                                          setBrandUploadProgress(pct);
-                                        };
-                                        xhr.onload = () => {
-                                          try {
-                                            resolve(JSON.parse(xhr.responseText));
-                                          } catch {
-                                            reject(new Error("Upload failed"));
-                                          }
-                                        };
-                                        xhr.onerror = () => reject(new Error("Upload failed"));
-                                        xhr.send(formData);
-                                      },
-                                    );
-                                    if (!data.secure_url) throw new Error("Upload failed");
-                                    setBrandLogoUrl(data.secure_url);
-                                    setBrandNotice("Logo added.");
-                                  })
-                                  .catch(() => setBrandNotice("Upload failed."))
-                                  .finally(() => setBrandUploading(false));
+                          {/* Brand selector */}
+                          <div className="flex-1">
+                            <Select
+                              value={draft.brandId ?? "none"}
+                              onValueChange={(value) => {
+                                if (value === "none") {
+                                  setDraft({ ...draft, brandId: null, brand: "" });
+                                  setBrandLogoUrl(null);
+                                  setBrandCreateOpen(false);
+                                  return;
+                                }
+                                if (value === "__create__") {
+                                  setBrandCreateOpen(true);
+                                  return;
+                                }
+                                const match = brands.find((brand) => brand.id === value);
+                                setDraft({
+                                  ...draft,
+                                  brandId: value,
+                                  brand: match?.name ?? "",
+                                });
+                                setBrandLogoUrl(match?.logo_url ?? null);
+                                setBrandCreateOpen(false);
                               }}
-                            />
-                          </label>
+                            >
+                              <SelectTrigger className="h-10 rounded-full">
+                                <SelectValue placeholder="Select brand" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <div className="px-3 py-2">
+                                  <Input
+                                    value={brandQuery}
+                                    onChange={(event) => setBrandQuery(event.target.value)}
+                                    placeholder="Search brand"
+                                    className="h-9 rounded-full"
+                                  />
+                                </div>
+                                <SelectItem value="none">No brand</SelectItem>
+                                <SelectItem value="__create__">
+                                  <span className="text-emerald-600">+ Create new brand</span>
+                                </SelectItem>
+                                {brandLoading && (
+                                  <div className="px-3 py-2 text-xs text-slate-500">
+                                    Loading...
+                                  </div>
+                                )}
+                                {brands.map((brand) => (
+                                  <SelectItem key={brand.id} value={brand.id}>
+                                    <div className="flex items-center gap-2">
+                                      {brand.logo_url ? (
+                                        <img
+                                          src={brand.logo_url}
+                                          alt={brand.name}
+                                          className="h-5 w-5 rounded-full object-cover"
+                                        />
+                                      ) : (
+                                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[10px]">
+                                          🏷️
+                                        </span>
+                                      )}
+                                      <span>{brand.name}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                                {!brandLoading && brands.length === 0 && (
+                                  <div className="px-3 py-2 text-xs text-slate-500">
+                                    No brands found
+                                  </div>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                        {brandUploading && (
-                          <div className="h-2 w-full overflow-hidden rounded-full bg-emerald-100">
-                            <div
-                              className="h-full rounded-full bg-emerald-400 transition-all"
-                              style={{ width: `${brandUploadProgress}%` }}
+
+                        {/* Create new brand - inline expandable */}
+                        {brandCreateOpen && (
+                          <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-emerald-500">
+                                New brand details
+                              </p>
+                              <button
+                                type="button"
+                                className="text-[11px] font-medium text-slate-400 hover:text-slate-600"
+                                onClick={() => {
+                                  setBrandCreateOpen(false);
+                                  setBrandName("");
+                                  setBrandWebsite("");
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                            <Input
+                              value={brandName}
+                              onChange={(event) => setBrandName(event.target.value)}
+                              placeholder="Brand name"
+                              className="h-9 rounded-full text-sm"
                             />
+                            <Input
+                              value={brandWebsite}
+                              onChange={(event) => setBrandWebsite(event.target.value)}
+                              placeholder="Website (optional)"
+                              className="h-9 rounded-full text-sm"
+                            />
+                            <div className="flex items-center gap-2">
+                              <label className="flex flex-1 cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-emerald-50/60 px-3 py-1.5 text-[11px] font-semibold text-emerald-700">
+                                <span>{brandUploading ? "Uploading..." : "Upload logo"}</span>
+                                <span className="text-emerald-500">Browse</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="sr-only"
+                                  onChange={(event) => {
+                                    const file = event.target.files?.[0];
+                                    if (!file) return;
+                                    setBrandUploading(true);
+                                    setBrandNotice(null);
+                                    setBrandUploadProgress(0);
+                                    fetchBrandLogoSignature()
+                                      .then(async (signature) => {
+                                        const formData = new FormData();
+                                        formData.append("file", file);
+                                        formData.append("api_key", signature.apiKey);
+                                        formData.append("timestamp", String(signature.timestamp));
+                                        formData.append("signature", signature.signature);
+                                        if (signature.uploadPreset) {
+                                          formData.append("upload_preset", signature.uploadPreset);
+                                        }
+                                        const data = await new Promise<{ secure_url?: string }>(
+                                          (resolve, reject) => {
+                                            const xhr = new XMLHttpRequest();
+                                            xhr.open(
+                                              "POST",
+                                              `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
+                                            );
+                                            xhr.upload.onprogress = (evt) => {
+                                              if (!evt.lengthComputable) return;
+                                              const pct = Math.round((evt.loaded / evt.total) * 100);
+                                              setBrandUploadProgress(pct);
+                                            };
+                                            xhr.onload = () => {
+                                              try {
+                                                resolve(JSON.parse(xhr.responseText));
+                                              } catch {
+                                                reject(new Error("Upload failed"));
+                                              }
+                                            };
+                                            xhr.onerror = () => reject(new Error("Upload failed"));
+                                            xhr.send(formData);
+                                          },
+                                        );
+                                        if (!data.secure_url) throw new Error("Upload failed");
+                                        setBrandLogoUrl(data.secure_url);
+                                        setBrandNotice("Logo added.");
+                                      })
+                                      .catch(() => setBrandNotice("Upload failed."))
+                                      .finally(() => setBrandUploading(false));
+                                  }}
+                                />
+                              </label>
+                            </div>
+                            {brandUploading && (
+                              <div className="h-1.5 w-full overflow-hidden rounded-full bg-emerald-100">
+                                <div
+                                  className="h-full rounded-full bg-emerald-400 transition-all"
+                                  style={{ width: `${brandUploadProgress}%` }}
+                                />
+                              </div>
+                            )}
+                            {brandNotice && (
+                              <p className="text-[11px] text-emerald-600">{brandNotice}</p>
+                            )}
+                            <Button
+                              type="button"
+                              className="w-full rounded-full bg-emerald-500 py-2 text-xs font-semibold text-white hover:bg-emerald-600"
+                              onClick={async () => {
+                                if (!brandName.trim()) {
+                                  setBrandNotice("Enter a brand name.");
+                                  return;
+                                }
+                                try {
+                                  const response = await createBrand({
+                                    name: brandName.trim(),
+                                    websiteUrl: brandWebsite.trim() || undefined,
+                                    logoUrl: brandLogoUrl ?? undefined,
+                                  });
+                                  setBrands((prev) => [response.brand, ...prev]);
+                                  setDraft({
+                                    ...draft,
+                                    brandId: response.brand.id,
+                                    brand: response.brand.name,
+                                  });
+                                  setBrandLogoUrl(response.brand.logo_url ?? null);
+                                  setBrandCreateOpen(false);
+                                  setBrandName("");
+                                  setBrandWebsite("");
+                                  setBrandNotice(null);
+                                } catch {
+                                  setBrandNotice("Unable to create brand.");
+                                }
+                              }}
+                            >
+                              Save brand
+                            </Button>
                           </div>
                         )}
-                        {brandNotice && (
-                          <p className="text-xs text-emerald-600">{brandNotice}</p>
-                        )}
-                        <Button
-                          type="button"
-                          className="w-full rounded-full bg-aura-primary py-4 text-sm font-semibold text-white"
-                          onClick={async () => {
-                            if (!brandName.trim()) {
-                              setBrandNotice("Enter a brand name.");
-                              return;
-                            }
-                            try {
-                              const response = await createBrand({
-                                name: brandName.trim(),
-                                websiteUrl: brandWebsite.trim() || undefined,
-                                logoUrl: brandLogoUrl ?? undefined,
-                              });
-                              setBrands((prev) => [response.brand, ...prev]);
-                              setDraft({
-                                ...draft,
-                                brandId: response.brand.id,
-                                brand: response.brand.name,
-                              });
-                              setBrandCreateOpen(false);
-                              setBrandName("");
-                              setBrandWebsite("");
-                              setBrandLogoUrl(null);
-                              setBrandNotice(null);
-                            } catch {
-                              setBrandNotice("Unable to create brand.");
-                            }
-                          }}
-                        >
-                          Save brand
-                        </Button>
                       </div>
-                    </div>
+                    </>
                   )}
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
@@ -1172,18 +1284,23 @@ export const FoodDetailSheet = ({
                   {adminEditing && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                        Base serving grams
+                        Base serving size
                       </p>
-                      <Input
-                        type="number"
-                        min={0}
-                        inputMode="numeric"
-                        value={draft.portionGrams ?? ""}
-                        onChange={(event) =>
-                          handleDraftChange("portionGrams", event.target.value)
-                        }
-                        className="mt-1 h-10 rounded-full"
-                      />
+                      <div className="relative mt-1">
+                        <Input
+                          type="number"
+                          min={0}
+                          inputMode="numeric"
+                          value={draft.portionGrams ?? ""}
+                          onChange={(event) =>
+                            handleDraftChange("portionGrams", event.target.value)
+                          }
+                          className="h-10 rounded-full pr-8"
+                        />
+                        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                          g
+                        </span>
+                      </div>
                     </div>
                   )}
                   {adminEditing && (
@@ -1311,61 +1428,81 @@ export const FoodDetailSheet = ({
                       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
                         Calories
                       </p>
-                      <Input
-                        type="number"
-                        min={0}
-                        inputMode="numeric"
-                        value={draft.kcal}
-                        onChange={(event) =>
-                          handleDraftChange("kcal", event.target.value)
-                        }
-                        className="mt-1 h-10 rounded-full"
-                      />
+                      <div className="relative mt-1">
+                        <Input
+                          type="number"
+                          min={0}
+                          inputMode="numeric"
+                          value={draft.kcal}
+                          onChange={(event) =>
+                            handleDraftChange("kcal", event.target.value)
+                          }
+                          className="h-10 rounded-full pr-12"
+                        />
+                        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                          cal
+                        </span>
+                      </div>
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                        Carbs (g)
+                        Carbs
                       </p>
-                      <Input
-                        type="number"
-                        min={0}
-                        inputMode="numeric"
-                        value={draft.carbs}
-                        onChange={(event) =>
-                          handleDraftChange("carbs", event.target.value)
-                        }
-                        className="mt-1 h-10 rounded-full"
-                      />
+                      <div className="relative mt-1">
+                        <Input
+                          type="number"
+                          min={0}
+                          inputMode="numeric"
+                          value={draft.carbs}
+                          onChange={(event) =>
+                            handleDraftChange("carbs", event.target.value)
+                          }
+                          className="h-10 rounded-full pr-8"
+                        />
+                        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                          g
+                        </span>
+                      </div>
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                        Protein (g)
+                        Protein
                       </p>
-                      <Input
-                        type="number"
-                        min={0}
-                        inputMode="numeric"
-                        value={draft.protein}
-                        onChange={(event) =>
-                          handleDraftChange("protein", event.target.value)
-                        }
-                        className="mt-1 h-10 rounded-full"
-                      />
+                      <div className="relative mt-1">
+                        <Input
+                          type="number"
+                          min={0}
+                          inputMode="numeric"
+                          value={draft.protein}
+                          onChange={(event) =>
+                            handleDraftChange("protein", event.target.value)
+                          }
+                          className="h-10 rounded-full pr-8"
+                        />
+                        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                          g
+                        </span>
+                      </div>
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                        Fat (g)
+                        Fat
                       </p>
-                      <Input
-                        type="number"
-                        min={0}
-                        inputMode="numeric"
-                        value={draft.fat}
-                        onChange={(event) =>
-                          handleDraftChange("fat", event.target.value)
-                        }
-                        className="mt-1 h-10 rounded-full"
-                      />
+                      <div className="relative mt-1">
+                        <Input
+                          type="number"
+                          min={0}
+                          inputMode="numeric"
+                          value={draft.fat}
+                          onChange={(event) =>
+                            handleDraftChange("fat", event.target.value)
+                          }
+                          className="h-10 rounded-full pr-8"
+                        />
+                        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                          g
+                        </span>
+                      </div>
                     </div>
                   </div>
                   {adminEditing && (
@@ -1376,101 +1513,136 @@ export const FoodDetailSheet = ({
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                            Sodium (mg)
+                            Sodium
                           </p>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={draft.sodiumMg ?? ""}
-                            onChange={(event) =>
-                              handleDraftChange("sodiumMg", event.target.value)
-                            }
-                            className="mt-1 h-10 rounded-full"
-                          />
+                          <div className="relative mt-1">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={draft.sodiumMg ?? ""}
+                              onChange={(event) =>
+                                handleDraftChange("sodiumMg", event.target.value)
+                              }
+                              className="h-10 rounded-full pr-10"
+                            />
+                            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                              mg
+                            </span>
+                          </div>
                         </div>
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                            Fiber (g)
+                            Fiber
                           </p>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={draft.fiberG ?? ""}
-                            onChange={(event) =>
-                              handleDraftChange("fiberG", event.target.value)
-                            }
-                            className="mt-1 h-10 rounded-full"
-                          />
+                          <div className="relative mt-1">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={draft.fiberG ?? ""}
+                              onChange={(event) =>
+                                handleDraftChange("fiberG", event.target.value)
+                              }
+                              className="h-10 rounded-full pr-8"
+                            />
+                            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                              g
+                            </span>
+                          </div>
                         </div>
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                            Sugar (g)
+                            Sugar
                           </p>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={draft.sugarG ?? ""}
-                            onChange={(event) =>
-                              handleDraftChange("sugarG", event.target.value)
-                            }
-                            className="mt-1 h-10 rounded-full"
-                          />
+                          <div className="relative mt-1">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={draft.sugarG ?? ""}
+                              onChange={(event) =>
+                                handleDraftChange("sugarG", event.target.value)
+                              }
+                              className="h-10 rounded-full pr-8"
+                            />
+                            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                              g
+                            </span>
+                          </div>
                         </div>
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                            Saturated fat (g)
+                            Saturated fat
                           </p>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={draft.saturatedFatG ?? ""}
-                            onChange={(event) =>
-                              handleDraftChange("saturatedFatG", event.target.value)
-                            }
-                            className="mt-1 h-10 rounded-full"
-                          />
+                          <div className="relative mt-1">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={draft.saturatedFatG ?? ""}
+                              onChange={(event) =>
+                                handleDraftChange("saturatedFatG", event.target.value)
+                              }
+                              className="h-10 rounded-full pr-8"
+                            />
+                            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                              g
+                            </span>
+                          </div>
                         </div>
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                            Trans fat (g)
+                            Trans fat
                           </p>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={draft.transFatG ?? ""}
-                            onChange={(event) =>
-                              handleDraftChange("transFatG", event.target.value)
-                            }
-                            className="mt-1 h-10 rounded-full"
-                          />
+                          <div className="relative mt-1">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={draft.transFatG ?? ""}
+                              onChange={(event) =>
+                                handleDraftChange("transFatG", event.target.value)
+                              }
+                              className="h-10 rounded-full pr-8"
+                            />
+                            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                              g
+                            </span>
+                          </div>
                         </div>
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                            Cholesterol (mg)
+                            Cholesterol
                           </p>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={draft.cholesterolMg ?? ""}
-                            onChange={(event) =>
-                              handleDraftChange("cholesterolMg", event.target.value)
-                            }
-                            className="mt-1 h-10 rounded-full"
-                          />
+                          <div className="relative mt-1">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={draft.cholesterolMg ?? ""}
+                              onChange={(event) =>
+                                handleDraftChange("cholesterolMg", event.target.value)
+                              }
+                              className="h-10 rounded-full pr-10"
+                            />
+                            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                              mg
+                            </span>
+                          </div>
                         </div>
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                            Potassium (mg)
+                            Potassium
                           </p>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={draft.potassiumMg ?? ""}
-                            onChange={(event) =>
-                              handleDraftChange("potassiumMg", event.target.value)
-                            }
-                            className="mt-1 h-10 rounded-full"
-                          />
+                          <div className="relative mt-1">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={draft.potassiumMg ?? ""}
+                              onChange={(event) =>
+                                handleDraftChange("potassiumMg", event.target.value)
+                              }
+                              className="h-10 rounded-full pr-10"
+                            />
+                            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                              mg
+                            </span>
+                          </div>
                         </div>
                       </div>
                       <div>
@@ -1559,8 +1731,10 @@ export const FoodDetailSheet = ({
 
             <Button
               className="relative mt-6 w-full overflow-hidden rounded-full bg-aura-primary py-6 text-base font-semibold text-white shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
-              onClick={() => {
+              onClick={async () => {
+                if (!food || tracking) return;
                 setSparkle(true);
+                setTracking(true);
                 const servingLabel = selectedServing?.label ?? food.portion;
                 const adjustedFood = {
                   ...food,
@@ -1574,16 +1748,21 @@ export const FoodDetailSheet = ({
                   portionLabel: servingLabel,
                   portionGrams: scaled.grams > 0 ? scaled.grams : undefined,
                 };
-                onTrack(adjustedFood);
-                onOpenChange(false);
+                try {
+                  await onTrack(adjustedFood);
+                  onOpenChange(false);
+                } finally {
+                  setTracking(false);
+                }
               }}
+              disabled={tracking}
             >
               {sparkle && (
                 <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <span className="h-16 w-16 rounded-full bg-white/50 blur-sm animate-ping" />
                 </span>
               )}
-              Track
+              {tracking ? "Tracking..." : "Track"}
             </Button>
           </div>
         )}

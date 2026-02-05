@@ -7,19 +7,21 @@ import {
 } from "@/components/ui/collapsible";
 import type { Meal } from "@/data/mock";
 import type { LogItem, LogSection } from "@/types/log";
-import { useAppStore } from "@/state/AppStore";
+import { useUserSettings } from "@/state";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { AnimatePresence, motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { forwardRef, useMemo, useState } from "react";
 
-type MealLogPanelProps = {
+export type MealLogPanelProps = {
   meals: Meal[];
   logSections: LogSection[];
   completion: number;
   onAddMeal: (meal: Meal) => void;
   onEditItem?: (item: LogItem) => void;
   onRemoveItem?: (item: LogItem) => void;
+  animateTrigger?: number;
+  pulseMealId?: string;
 };
 
 export const MealLogPanel = ({
@@ -28,6 +30,8 @@ export const MealLogPanel = ({
   completion,
   onAddMeal,
   onEditItem,
+  animateTrigger,
+  pulseMealId,
 }: MealLogPanelProps) => {
   const [openMeals, setOpenMeals] = useState<Record<string, boolean>>({});
   const logMap = useMemo(() => {
@@ -62,9 +66,26 @@ export const MealLogPanel = ({
               return sum + item.kcal * quantity;
             }, 0) ?? 0;
           const isOpen = openMeals[meal.id] ?? itemCount > 0;
+          const shouldGlow = Boolean(animateTrigger) && pulseMealId === meal.id;
 
           return (
-            <Collapsible
+            <motion.div
+              key={`meal-wrap-${meal.id}`}
+              animate={
+                shouldGlow
+                  ? {
+                      boxShadow: [
+                        "0 0 0 rgba(16,185,129,0)",
+                        "0 18px 36px rgba(16,185,129,0.25)",
+                        "0 0 0 rgba(16,185,129,0)",
+                      ],
+                    }
+                  : undefined
+              }
+              transition={{ duration: 0.9, ease: "easeOut" }}
+              className="rounded-[22px]"
+            >
+              <Collapsible
               key={meal.id}
               open={isOpen}
               onOpenChange={(open) =>
@@ -89,16 +110,28 @@ export const MealLogPanel = ({
                         <p className="text-sm font-semibold text-slate-800">
                           {meal.label}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <motion.p
+                          className="text-xs text-slate-500"
+                          animate={shouldGlow ? { scale: [1, 1.04, 1] } : undefined}
+                          transition={{ duration: 0.4, ease: "easeOut" }}
+                        >
                           {itemCount > 0 ? (
                             <>
-                              <AnimatedNumber value={itemCount} /> items •{" "}
-                              <AnimatedNumber value={kcalTotal} /> cal
+                              <AnimatedNumber
+                                value={itemCount}
+                                animateTrigger={animateTrigger}
+                              />{" "}
+                              items •{" "}
+                              <AnimatedNumber
+                                value={kcalTotal}
+                                animateTrigger={animateTrigger}
+                              />{" "}
+                              cal
                             </>
                           ) : (
                             "No items logged yet"
                           )}
-                        </p>
+                        </motion.p>
                       </div>
                     </div>
                     <div className="h-4 w-4" />
@@ -126,11 +159,13 @@ export const MealLogPanel = ({
                   transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <div className="space-y-2 pb-1">
-                    <MealSummary items={section?.items ?? []} />
+                    <MealSummary items={section?.items ?? []} pulse={shouldGlow} />
                     <LogItems
+                      key={`log-items-${animateTrigger ?? 0}-${meal.id}`}
                       meal={meal.label}
                       items={section?.items ?? []}
                       onEditItem={onEditItem}
+                      animateOnMount={Boolean(animateTrigger)}
                     />
                     {!itemCount && (
                       <div className="rounded-[16px] border border-dashed border-emerald-200 bg-white/80 px-4 py-4 text-xs text-slate-500">
@@ -141,6 +176,7 @@ export const MealLogPanel = ({
                 </motion.div>
               </CollapsibleContent>
             </Collapsible>
+            </motion.div>
           );
         })}
       </div>
@@ -152,12 +188,14 @@ const LogItems = ({
   meal,
   items,
   onEditItem,
+  animateOnMount,
 }: {
   meal: string;
   items: LogItem[];
   onEditItem?: (item: LogItem) => void;
+  animateOnMount?: boolean;
 }) => (
-  <AnimatePresence initial={false} mode="popLayout">
+  <AnimatePresence initial={animateOnMount} mode="popLayout">
     {items.map((item, index) => {
       const key = item.id ?? `${meal}-${item.name}-${index}`;
       return (
@@ -175,7 +213,7 @@ const LogRow = forwardRef<
   HTMLButtonElement,
   { item: LogItem; onEdit: () => void }
 >(({ item, onEdit }, ref) => {
-  const { showFoodImages } = useAppStore();
+  const { showFoodImages } = useUserSettings();
   const quantityValue = Number(item.quantity ?? 1);
   const normalizedQuantity = Number.isFinite(quantityValue) ? quantityValue : 1;
   const showQuantity = Math.abs(normalizedQuantity - 1) > 1e-6;
@@ -250,7 +288,7 @@ const LogRow = forwardRef<
 });
 LogRow.displayName = "LogRow";
 
-const MealSummary = ({ items }: { items: LogItem[] }) => {
+const MealSummary = ({ items, pulse }: { items: LogItem[]; pulse?: boolean }) => {
   const totals = items.reduce(
     (acc, item) => {
       const quantity = item.quantity ?? 1;
@@ -268,34 +306,49 @@ const MealSummary = ({ items }: { items: LogItem[] }) => {
     <div className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-emerald-100/60 px-4 py-4 shadow-[0_14px_30px_rgba(16,185,129,0.12)]">
       <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
         <span>Meal summary</span>
-        <span>
+        <motion.span
+          animate={pulse ? { scale: [1, 1.08, 1] } : undefined}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+        >
           <AnimatedNumber value={totals.kcal} /> cal
-        </span>
+        </motion.span>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-3 text-xs text-emerald-700/80">
         <div className="rounded-[16px] bg-white/90 px-3 py-3 text-center">
           <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-400">
             Carbs
           </p>
-          <p className="mt-1 text-sm font-semibold text-emerald-800">
+          <motion.p
+            className="mt-1 text-sm font-semibold text-emerald-800"
+            animate={pulse ? { scale: [1, 1.06, 1] } : undefined}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          >
             <AnimatedNumber value={totals.carbs} />g
-          </p>
+          </motion.p>
         </div>
         <div className="rounded-[16px] bg-white/90 px-3 py-3 text-center">
           <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-400">
             Protein
           </p>
-          <p className="mt-1 text-sm font-semibold text-emerald-800">
+          <motion.p
+            className="mt-1 text-sm font-semibold text-emerald-800"
+            animate={pulse ? { scale: [1, 1.06, 1] } : undefined}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          >
             <AnimatedNumber value={totals.protein} />g
-          </p>
+          </motion.p>
         </div>
         <div className="rounded-[16px] bg-white/90 px-3 py-3 text-center">
           <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-400">
             Fat
           </p>
-          <p className="mt-1 text-sm font-semibold text-emerald-800">
+          <motion.p
+            className="mt-1 text-sm font-semibold text-emerald-800"
+            animate={pulse ? { scale: [1, 1.06, 1] } : undefined}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          >
             <AnimatedNumber value={totals.fat} />g
-          </p>
+          </motion.p>
         </div>
       </div>
     </div>

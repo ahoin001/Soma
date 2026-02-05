@@ -1,4 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+/**
+ * Food Catalog Hook - now powered by React Query
+ *
+ * Provides automatic caching, background refetch,
+ * optimistic updates, and offline support.
+ *
+ * @see useFoodCatalogQuery.ts for implementation details
+ */
+export { useFoodCatalogQuery as useFoodCatalog } from "./useFoodCatalogQuery";
+
+// Legacy implementation below (kept for reference, no longer used)
+// ============================================================================
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import type { FoodItem, MacroKey } from "@/data/mock";
 import { calculateMacroPercent } from "@/data/foodApi";
 import type { FoodRecord } from "@/types/api";
@@ -10,6 +24,7 @@ import {
   fetchFoodByBarcode,
   searchFoods as searchFoodsApi,
   toggleFoodFavorite,
+  updateFoodImage as updateFoodImageApi,
   updateFoodMaster as updateFoodMasterApi,
 } from "@/lib/api";
 
@@ -157,7 +172,7 @@ const dedupeFoods = (foods: FoodItem[]) => {
   });
 };
 
-export const useFoodCatalog = () => {
+export const useFoodCatalogLegacy = () => {
   const [cache, setCache] = useState<FoodCache>(() => loadCache());
   const [results, setResults] = useState<FoodItem[]>([]);
   const [favorites, setFavorites] = useState<FoodItem[]>([]);
@@ -165,6 +180,7 @@ export const useFoodCatalog = () => {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [lastQuery, setLastQuery] = useState("");
+  const inFlightRef = useRef<Map<string, Promise<FoodItem[]>>>(new Map());
 
   const persist = useCallback((next: FoodCache) => {
     setCache(next);
@@ -205,28 +221,38 @@ export const useFoodCatalog = () => {
       }
       setStatus("loading");
       setError(null);
+      const localMatches = fuzzyMatchFoods(localPool, normalized);
+      const existing = inFlightRef.current.get(cacheKey);
+      const fetchPromise =
+        existing ??
+        (async () => {
+          const response = await searchFoodsApi(normalized, 20, false);
+          let fetched = response.items.map(toFoodItem);
+          const fallbackQuery =
+            normalized.endsWith("s") && normalized.length > 3
+              ? normalized.slice(0, -1)
+              : null;
+          if (!fetched.length && fallbackQuery && fallbackQuery !== normalized) {
+            const fallbackResponse = await searchFoodsApi(fallbackQuery, 20, false);
+            fetched = [...fetched, ...fallbackResponse.items.map(toFoodItem)];
+          }
+          const deduped = dedupeFoods(fetched);
+          const nextCache: FoodCache = {
+            ...cache,
+            searches: {
+              ...cache.searches,
+              [cacheKey]: { value: deduped, updatedAt: Date.now() },
+            },
+          };
+          persist(nextCache);
+          return deduped;
+        })();
+      if (!existing) {
+        inFlightRef.current.set(cacheKey, fetchPromise);
+      }
       try {
-        const response = await searchFoodsApi(normalized, 20, false);
-        let fetched = response.items.map(toFoodItem);
-        const fallbackQuery =
-          normalized.endsWith("s") && normalized.length > 3
-            ? normalized.slice(0, -1)
-            : null;
-        if (!fetched.length && fallbackQuery && fallbackQuery !== normalized) {
-          const fallbackResponse = await searchFoodsApi(fallbackQuery, 20, false);
-          fetched = [...fetched, ...fallbackResponse.items.map(toFoodItem)];
-        }
-        const deduped = dedupeFoods(fetched);
-        const localMatches = fuzzyMatchFoods(localPool, normalized);
+        const deduped = await fetchPromise;
         const mergedResults = dedupeFoods([...localMatches, ...deduped]);
-        const nextCache: FoodCache = {
-          ...cache,
-          searches: {
-            ...cache.searches,
-            [cacheKey]: { value: deduped, updatedAt: Date.now() },
-          },
-        };
-        persist(nextCache);
         setResults(applyOverrides(mergedResults));
         setStatus("idle");
       } catch (fetchError) {
@@ -234,6 +260,10 @@ export const useFoodCatalog = () => {
           fetchError instanceof Error ? fetchError.message : "Search failed.";
         setStatus("error");
         setError(detail);
+      } finally {
+        if (inFlightRef.current.get(cacheKey) === fetchPromise) {
+          inFlightRef.current.delete(cacheKey);
+        }
       }
     },
     [applyOverrides, cache, persist, favorites, history],
@@ -282,19 +312,45 @@ export const useFoodCatalog = () => {
       setResults((prev) =>
         prev.map((item) => (item.id === updated.id ? updated : item)),
       );
+      setFavorites((prev) =>
+        prev.map((item) =>
+          item.id === updated.id ? applyOverride(item, override) : item,
+        ),
+      );
+      setHistory((prev) =>
+        prev.map((item) =>
+          item.id === updated.id ? applyOverride(item, override) : item,
+        ),
+      );
       return updated;
     },
     [cache, persist],
   );
 
   const refreshLists = useCallback(async () => {
-    await ensureUser();
-    const [favoriteRes, historyRes] = await Promise.all([
-      fetchFoodFavorites(),
-      fetchFoodHistory(50),
-    ]);
-    setFavorites(favoriteRes.items.map(toFoodItem));
-    setHistory(historyRes.items.map(toFoodItem));
+    setStatus("loading");
+    setError(null);
+    try {
+      await ensureUser();
+      const [favoriteRes, historyRes] = await Promise.all([
+        fetchFoodFavorites(),
+        fetchFoodHistory(50),
+      ]);
+      setFavorites(favoriteRes.items.map(toFoodItem));
+      setHistory(historyRes.items.map(toFoodItem));
+      setStatus("idle");
+      setCache((prev) => {
+        if (!Object.keys(prev.searches).length) return prev;
+        const nextCache: FoodCache = { ...prev, searches: {} };
+        persistCache(nextCache);
+        return nextCache;
+      });
+    } catch (fetchError) {
+      const detail =
+        fetchError instanceof Error ? fetchError.message : "Failed to refresh foods.";
+      setStatus("error");
+      setError(detail);
+    }
   }, []);
 
   useEffect(() => {
@@ -314,32 +370,69 @@ export const useFoodCatalog = () => {
       micronutrients?: Record<string, unknown>;
       imageUrl?: string;
     }) => {
-      await ensureUser();
-      const response = await createFoodApi({
-        name: payload.name,
-        brand: payload.brand,
-        portionLabel: payload.portionLabel,
-        portionGrams: payload.portionGrams,
-        kcal: payload.kcal,
-        carbsG: payload.carbs,
-        proteinG: payload.protein,
-        fatG: payload.fat,
-        micronutrients: payload.micronutrients,
-        imageUrl: payload.imageUrl,
-      });
-      const created = toFoodItem(response.item);
-      setResults((prev) => dedupeFoods([created, ...prev]));
-      await refreshLists();
-      return created;
+      try {
+        await ensureUser();
+        const response = await createFoodApi({
+          name: payload.name,
+          brand: payload.brand,
+          portionLabel: payload.portionLabel,
+          portionGrams: payload.portionGrams,
+          kcal: payload.kcal,
+          carbsG: payload.carbs,
+          proteinG: payload.protein,
+          fatG: payload.fat,
+          micronutrients: payload.micronutrients,
+          imageUrl: payload.imageUrl,
+        });
+        const created = toFoodItem(response.item);
+        const nextCache: FoodCache = { ...cache, searches: {} };
+        persist(nextCache);
+        setResults((prev) => dedupeFoods([created, ...prev]));
+        void refreshLists();
+        return created;
+      } catch {
+        toast("Unable to create food", {
+          action: {
+            label: "Retry",
+            onClick: () => void createFood(payload),
+          },
+        });
+        throw new Error("Food creation failed");
+      }
     },
-    [refreshLists],
+    [cache, persist, refreshLists],
   );
 
-  const setFavorite = useCallback(async (foodId: string, favorite: boolean) => {
-    await ensureUser();
-    await toggleFoodFavorite(foodId, favorite);
-    await refreshLists();
-  }, [refreshLists]);
+  const setFavorite = useCallback(
+    async (foodId: string, favorite: boolean) => {
+      const source =
+        results.find((item) => item.id === foodId) ??
+        history.find((item) => item.id === foodId);
+      const previousFavorites = [...favorites];
+      if (favorite && source) {
+        setFavorites((prev) =>
+          prev.some((item) => item.id === foodId) ? prev : [source, ...prev],
+        );
+      } else if (!favorite) {
+        setFavorites((prev) => prev.filter((item) => item.id !== foodId));
+      }
+      try {
+        await ensureUser();
+        await toggleFoodFavorite(foodId, favorite);
+        void refreshLists();
+      } catch {
+        setFavorites(previousFavorites);
+        toast(favorite ? "Unable to add favorite" : "Unable to remove favorite", {
+          action: {
+            label: "Retry",
+            onClick: () => void setFavorite(foodId, favorite),
+          },
+        });
+        void refreshLists();
+      }
+    },
+    [favorites, history, refreshLists, results],
+  );
 
   const updateFoodMaster = useCallback(
     async (
@@ -363,16 +456,48 @@ export const useFoodCatalog = () => {
       const updated = toFoodItem(response.item);
       const nextOverrides = { ...cache.overrides };
       delete nextOverrides[foodId];
-      persist({ ...cache, overrides: nextOverrides });
+      const nextBarcodes = { ...cache.barcodes };
+      Object.keys(nextBarcodes).forEach((key) => {
+        if (nextBarcodes[key].value?.id === foodId) {
+          delete nextBarcodes[key];
+        }
+      });
+      persist({ ...cache, overrides: nextOverrides, searches: {}, barcodes: nextBarcodes });
       setResults((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       setFavorites((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       setHistory((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      void refreshLists();
       if (lastQuery) {
         void searchFoods(lastQuery, { force: true });
       }
       return updated;
     },
-    [cache, persist, lastQuery, searchFoods],
+    [cache, persist, lastQuery, searchFoods, refreshLists],
+  );
+
+  const updateFoodImage = useCallback(
+    async (foodId: string, imageUrl: string) => {
+      await ensureUser();
+      const response = await updateFoodImageApi(foodId, imageUrl);
+      if (!response.item) return null;
+      const updated = toFoodItem(response.item);
+      const nextBarcodes = { ...cache.barcodes };
+      Object.keys(nextBarcodes).forEach((key) => {
+        if (nextBarcodes[key].value?.id === foodId) {
+          delete nextBarcodes[key];
+        }
+      });
+      persist({ ...cache, searches: {}, barcodes: nextBarcodes });
+      setResults((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setFavorites((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setHistory((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      void refreshLists();
+      if (lastQuery) {
+        void searchFoods(lastQuery, { force: true });
+      }
+      return updated;
+    },
+    [cache, persist, lastQuery, searchFoods, refreshLists],
   );
 
   return useMemo(
@@ -390,6 +515,7 @@ export const useFoodCatalog = () => {
       refreshLists,
       setFavorite,
       updateFoodMaster,
+      updateFoodImage,
     }),
     [
       results,
@@ -405,6 +531,7 @@ export const useFoodCatalog = () => {
       refreshLists,
       setFavorite,
       updateFoodMaster,
+      updateFoodImage,
     ],
   );
 };

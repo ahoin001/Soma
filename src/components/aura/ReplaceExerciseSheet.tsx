@@ -44,7 +44,7 @@ export const ReplaceExerciseSheet = ({
         <DrawerHeader className="sr-only">
           <DrawerTitle>Replace exercise</DrawerTitle>
         </DrawerHeader>
-        <div className="px-5 pb-6 pt-2">
+        <div className="aura-sheet-body">
           <div className="mt-2 text-center">
             <p className="text-xs uppercase tracking-[0.2em] text-white/50">
               Replace exercise

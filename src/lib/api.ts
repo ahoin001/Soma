@@ -71,9 +71,39 @@ export const ensureUser = async (displayName = "You") => {
 };
 
 export const fetchCurrentUser = async () =>
+  {
+    const userId = getUserId();
+    const headers = new Headers();
+    if (userId) {
+      headers.set("x-user-id", userId);
+    }
+    const response = await fetch(buildApiUrl("/api/auth/me"), {
+      credentials: "include",
+      headers,
+    });
+    if (response.status === 401) {
+      return { user: null };
+    }
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || `Request failed: ${response.status}`);
+    }
+    return (await response.json()) as {
+      user: { id: string; email: string | null; emailVerified?: boolean } | null;
+    };
+  };
+
+export const fetchUserProfile = async () =>
   apiFetch<{
-    user: { id: string; email: string | null; emailVerified?: boolean } | null;
-  }>("/api/auth/me");
+    profile: {
+      display_name: string;
+      sex: string | null;
+      dob: string | null;
+      height_cm: number | null;
+      units: string | null;
+      timezone: string | null;
+    } | null;
+  }>("/api/users/profile");
 
 export const registerUser = async (payload: {
   email: string;
@@ -474,6 +504,11 @@ export const fetchWeightLogs = async (options?: {
     `/api/tracking/weight${query ? `?${query}` : ""}`,
   );
 };
+
+export const fetchLatestWeightLog = async () =>
+  apiFetch<{
+    entry: { local_date: string; weight: number; unit: string; logged_at: string } | null;
+  }>("/api/tracking/weight/latest");
 
 export const upsertWeightLog = async (payload: {
   localDate: string;

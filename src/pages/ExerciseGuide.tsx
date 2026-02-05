@@ -85,16 +85,28 @@ const ExerciseGuide = () => {
     );
   }
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (exercise) {
       const nextExercises = activeWorkout.exercises.map((item) =>
         item.id === draft.id ? { ...item, ...draft } : item,
       );
-      updateWorkoutTemplate(activePlan.id, activeWorkout.id, {
-        exercises: nextExercises,
-      });
+      try {
+        await updateWorkoutTemplate(activePlan.id, activeWorkout.id, {
+          exercises: nextExercises,
+        });
+      } catch {
+        // handled in hook
+      }
     }
-    navigate(-1);
+    if (activePlan && activeWorkout) {
+      navigate(`/fitness/workouts/${activePlan.id}/${activeWorkout.id}`);
+      return;
+    }
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate("/fitness");
   };
 
   return (
@@ -104,7 +116,9 @@ const ExerciseGuide = () => {
         variant="page"
         exercise={draft}
         onOpenChange={(open) => {
-          if (!open) handleClose();
+          if (!open) {
+            void handleClose();
+          }
         }}
         onUpdate={(patch) => {
           setDraft((prev) => (prev ? { ...prev, ...patch } : prev));

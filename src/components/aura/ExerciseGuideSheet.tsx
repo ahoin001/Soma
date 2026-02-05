@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { WorkoutExerciseEntry } from "@/types/fitness";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAppStore } from "@/state/AppStore";
 import {
   createExerciseMedia,
   fetchExerciseMedia,
@@ -171,6 +172,8 @@ export const ExerciseGuideSheet = ({
   onUpdate,
   variant = "sheet",
 }: ExerciseGuideSheetProps) => {
+  const { fitnessLibrary } = useAppStore();
+  const { upsertExerciseRecord } = fitnessLibrary;
   if (!exercise) return null;
   const isVisible = variant === "page" ? true : open;
   const stepsValue = (exercise.steps ?? []).join("\n");
@@ -448,7 +451,7 @@ export const ExerciseGuideSheet = ({
       className={
         variant === "page"
           ? "mx-auto w-full max-w-[420px] px-4 pb-10 pt-4"
-          : "px-5 pb-6 pt-2"
+          : "aura-sheet-body"
       }
     >
       {variant === "page" ? (
@@ -860,7 +863,7 @@ export const ExerciseGuideSheet = ({
                       }
                       try {
                         setSaving(true);
-                        await updateExerciseMaster(masterId, {
+                        const response = await updateExerciseMaster(masterId, {
                           name: masterName.trim() || exercise.name,
                           description: masterDescription.trim() || null,
                           category: masterCategory.trim() || null,
@@ -874,6 +877,9 @@ export const ExerciseGuideSheet = ({
                             .filter(Boolean),
                           imageUrl: masterImageUrl.trim() || null,
                         });
+                        if (response.exercise) {
+                          upsertExerciseRecord(response.exercise);
+                        }
                         if (masterImageUrl.trim()) {
                           const url = masterImageUrl.trim();
                           setMediaUrl(url);

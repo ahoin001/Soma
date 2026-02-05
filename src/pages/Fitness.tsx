@@ -23,7 +23,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "@/state/AppStore";
 import type { Exercise } from "@/types/fitness";
 import type { WorkoutPlan, WorkoutTemplate } from "@/types/fitness";
-import { useLocation, useNavigate } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  useNavigationType,
+  useSearchParams,
+} from "react-router-dom";
 import { toast } from "sonner";
 import { fetchCurrentUser } from "@/lib/api";
 import { motion } from "framer-motion";
@@ -71,20 +76,15 @@ const Fitness = () => {
     createWorkoutTemplate,
   } = useAppStore();
   const navigate = useNavigate();
+  const navigationType = useNavigationType();
   const location = useLocation();
   const abortRef = useRef<AbortController | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [expandedPlans, setExpandedPlans] = useState<string[]>([
     workoutPlans[0]?.id ?? "",
   ]);
-  const [planSheetOpen, setPlanSheetOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<WorkoutPlan | null>(null);
-  const [workoutSheetOpen, setWorkoutSheetOpen] = useState(false);
-  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutTemplate | null>(
-    null,
-  );
+  const [params, setParams] = useSearchParams();
   const [creating, setCreating] = useState(false);
+  const [startingSession, setStartingSession] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -134,6 +134,7 @@ const Fitness = () => {
     [workoutPlans],
   );
   const showEmptyState = workoutPlans.length === 0 || totalWorkouts === 0;
+  const shouldAnimate = navigationType !== "POP";
   const lastWorkoutId = activePlanForHud
     ? lastWorkoutByPlan[activePlanForHud.id] ?? null
     : null;
@@ -156,18 +157,86 @@ const Fitness = () => {
   const hasActiveSession = Boolean(fitnessPlanner.activeSession);
   const canAddToRoutine = Boolean(fitnessPlanner.activeRoutineId);
 
+  const sheet = params.get("sheet");
+  const sheetExerciseId = params.get("exerciseId");
+  const sheetExerciseName = params.get("exerciseName");
+  const sheetPlanId = params.get("planId");
+  const sheetWorkoutId = params.get("workoutId");
+
+  const selectedExercise = useMemo(() => {
+    if (!sheetExerciseId && !sheetExerciseName) return null;
+    return (
+      results.find((item) => item.id === sheetExerciseId) ??
+      results.find((item) => item.name === sheetExerciseName) ??
+      null
+    );
+  }, [results, sheetExerciseId, sheetExerciseName]);
+
+  const selectedPlan = useMemo(
+    () => workoutPlans.find((plan) => plan.id === sheetPlanId) ?? null,
+    [sheetPlanId, workoutPlans],
+  );
+
+  const selectedWorkout = useMemo(
+    () =>
+      selectedPlan?.workouts.find((workout) => workout.id === sheetWorkoutId) ??
+      null,
+    [selectedPlan, sheetWorkoutId],
+  );
+
+  const detailOpen = sheet === "exercise" && Boolean(selectedExercise);
+  const planSheetOpen = sheet === "plan" && Boolean(selectedPlan);
+  const workoutSheetOpen =
+    sheet === "workout" && Boolean(selectedPlan) && Boolean(selectedWorkout);
+
+  const openSheet = (next: Record<string, string>) => {
+    setParams(next);
+  };
+
+  const closeSheet = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      navigate(-1);
+    } else {
+      setParams({}, { replace: true });
+    }
+  };
+
+  useEffect(() => {
+    if (sheet !== "exercise") return;
+    if (!selectedExercise && sheetExerciseName) {
+      setParams({}, { replace: true });
+    }
+  }, [sheet, sheetExerciseName, selectedExercise, setParams]);
+
+  useEffect(() => {
+    if (sheet !== "plan") return;
+    if (!selectedPlan) {
+      setParams({}, { replace: true });
+    }
+  }, [sheet, selectedPlan, setParams]);
+
+  useEffect(() => {
+    if (sheet !== "workout") return;
+    if (!selectedPlan || !selectedWorkout) {
+      setParams({}, { replace: true });
+    }
+  }, [sheet, selectedPlan, selectedWorkout, setParams]);
+
   const handleSelectExercise = (exercise: Exercise) => {
-    setSelectedExercise(exercise);
-    setDetailOpen(true);
+    openSheet({
+      sheet: "exercise",
+      exerciseId: exercise.id,
+      exerciseName: exercise.name,
+    });
   };
 
   const handleAddToWorkout = (exercise: Exercise) => {
-    setDetailOpen(false);
+    setParams({}, { replace: true });
     navigate(`/fitness/exercises/add?name=${encodeURIComponent(exercise.name)}`);
   };
 
   const handleEditExercise = (exercise: Exercise) => {
-    setDetailOpen(false);
+    setParams({}, { replace: true });
     navigate(`/fitness/exercises/${exercise.id}/edit`);
   };
 
@@ -189,8 +258,7 @@ const Fitness = () => {
   };
 
   const handleOpenPlanMenu = (plan: WorkoutPlan) => {
-    setSelectedPlan(plan);
-    setPlanSheetOpen(true);
+    openSheet({ sheet: "plan", planId: plan.id });
   };
 
   const handleOpenWorkoutMenu = (workout: WorkoutTemplate, plan: WorkoutPlan) => {
@@ -201,9 +269,28 @@ const Fitness = () => {
     workout: WorkoutTemplate,
     plan: WorkoutPlan,
   ) => {
-    setSelectedWorkout(workout);
-    setSelectedPlan(plan);
-    setWorkoutSheetOpen(true);
+    openSheet({ sheet: "workout", planId: plan.id, workoutId: workout.id });
+  };
+  
+  const handleStartNextWorkout = async () => {
+    if (startingSession) return;
+    setStartingSession(true);
+    if (!nextWorkout || !activePlanForHud) {
+      await handleCreateWorkout(activePlanForHud?.id ?? null);
+      setStartingSession(false);
+      return;
+    }
+    try {
+      await fitnessPlanner.startSessionFromTemplate(
+        nextWorkout.name,
+        nextWorkout.exercises.map((exercise) => exercise.name),
+      );
+      navigate(`/fitness/workouts/${activePlanForHud.id}/${nextWorkout.id}/session`);
+    } catch {
+      // handled in hook
+    } finally {
+      setStartingSession(false);
+    }
   };
 
   const handleCreatePlan = async () => {
@@ -259,7 +346,7 @@ const Fitness = () => {
   };
 
   return (
-    <AppShell experience="fitness">
+    <AppShell experience="fitness" onAddAction={handleStartNextWorkout}>
       <div className="w-full text-foreground">
         <div className="pt-6">
           <FitnessHeader
@@ -271,6 +358,8 @@ const Fitness = () => {
             }
             nextSession={nextWorkout ? nextWorkout.name : "Add a workout"}
             readiness="Readiness 82%"
+            onStartWorkout={handleStartNextWorkout}
+            starting={startingSession}
           />
         </div>
 
@@ -279,9 +368,9 @@ const Fitness = () => {
           {showEmptyState ? (
             <motion.div
               className="space-y-5"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
+              initial={shouldAnimate ? { opacity: 0, y: 12 } : false}
+              animate={shouldAnimate ? { opacity: 1, y: 0 } : undefined}
+              transition={shouldAnimate ? { duration: 0.4, ease: "easeOut" } : undefined}
             >
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-white/40">
@@ -296,9 +385,11 @@ const Fitness = () => {
               </div>
               <motion.div
                 className="rounded-[28px] border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent px-5 py-6 text-center shadow-[0_25px_50px_rgba(0,0,0,0.35)]"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.05 }}
+                initial={shouldAnimate ? { opacity: 0, y: 8 } : false}
+                animate={shouldAnimate ? { opacity: 1, y: 0 } : undefined}
+                transition={
+                  shouldAnimate ? { duration: 0.4, delay: 0.05 } : undefined
+                }
               >
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/70">
                   <Dumbbell className="h-5 w-5" />
@@ -345,9 +436,11 @@ const Fitness = () => {
           ) : (
             <>
               <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
+                initial={shouldAnimate ? { opacity: 0, y: 6 } : false}
+                animate={shouldAnimate ? { opacity: 1, y: 0 } : undefined}
+                transition={
+                  shouldAnimate ? { duration: 0.3, ease: "easeOut" } : undefined
+                }
               >
                 <p className="text-xs uppercase tracking-[0.2em] text-white/40">
                   Today in focus
@@ -361,9 +454,11 @@ const Fitness = () => {
               </motion.div>
 
               <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, ease: "easeOut" }}
+                initial={shouldAnimate ? { opacity: 0, y: 8 } : false}
+                animate={shouldAnimate ? { opacity: 1, y: 0 } : undefined}
+                transition={
+                  shouldAnimate ? { duration: 0.35, ease: "easeOut" } : undefined
+                }
               >
                 <Card className="border-white/10 bg-card text-card-foreground">
                   <CardHeader>
@@ -431,7 +526,9 @@ const Fitness = () => {
 
       <ExerciseDetailSheet
         open={detailOpen}
-        onOpenChange={setDetailOpen}
+        onOpenChange={(open) => {
+          if (!open) closeSheet();
+        }}
         exercise={selectedExercise}
         canAddToRoutine={canAddToRoutine}
         onAddToRoutine={handleAddToRoutine}
@@ -441,55 +538,74 @@ const Fitness = () => {
 
       <WorkoutPlanSheet
         open={planSheetOpen}
-        onOpenChange={setPlanSheetOpen}
+        onOpenChange={(open) => {
+          if (!open) closeSheet();
+        }}
         plan={selectedPlan}
         isActive={selectedPlan?.id === activePlanId}
-        onEditPlan={(name) => {
+        onEditPlan={async (name) => {
           if (!selectedPlan) return;
-          updateWorkoutPlan(selectedPlan.id, { name });
-          toast("Plan updated");
+          try {
+            await updateWorkoutPlan(selectedPlan.id, { name });
+            toast("Plan updated");
+          } catch {
+            // handled in hook
+          }
         }}
-        onManageWorkouts={() => setPlanSheetOpen(false)}
+        onManageWorkouts={closeSheet}
         onSetActive={() => {
           if (!selectedPlan) return;
           setActivePlanId(selectedPlan.id);
-          setPlanSheetOpen(false);
+          closeSheet();
           toast("Active plan set");
         }}
-        onDeletePlan={() => {
+        onDeletePlan={async () => {
           if (!selectedPlan) return;
-          deleteWorkoutPlan(selectedPlan.id);
-          setPlanSheetOpen(false);
-          toast("Plan deleted");
+          try {
+            await deleteWorkoutPlan(selectedPlan.id);
+            closeSheet();
+            toast("Plan deleted");
+          } catch {
+            // handled in hook
+          }
         }}
       />
 
       <WorkoutTemplateSheet
         open={workoutSheetOpen}
-        onOpenChange={setWorkoutSheetOpen}
+        onOpenChange={(open) => {
+          if (!open) closeSheet();
+        }}
         plan={selectedPlan}
         workout={selectedWorkout}
         onEdit={() => {
           if (!selectedPlan || !selectedWorkout) return;
-          setWorkoutSheetOpen(false);
+          closeSheet();
           navigate(`/fitness/workouts/${selectedPlan.id}/${selectedWorkout.id}`);
         }}
-        onRename={(name) => {
+        onRename={async (name) => {
           if (!selectedPlan || !selectedWorkout) return;
-          updateWorkoutTemplate(selectedPlan.id, selectedWorkout.id, { name });
-          setSelectedWorkout((prev) => (prev ? { ...prev, name } : prev));
-          setWorkoutSheetOpen(false);
-          toast("Workout updated", {
-            description: "Workout name saved.",
-          });
+          try {
+            await updateWorkoutTemplate(selectedPlan.id, selectedWorkout.id, { name });
+            closeSheet();
+            toast("Workout updated", {
+              description: "Workout name saved.",
+            });
+          } catch {
+            // handled in hook
+          }
         }}
-        onDelete={() => {
+        onDelete={async () => {
           if (!selectedPlan || !selectedWorkout) return;
-          deleteWorkoutTemplate(selectedPlan.id, selectedWorkout.id);
-          setWorkoutSheetOpen(false);
-          toast("Workout deleted", {
-            description: "Removed from your plan.",
-          });
+          try {
+            await deleteWorkoutTemplate(selectedPlan.id, selectedWorkout.id);
+            closeSheet();
+            toast("Workout deleted", {
+              description: "Removed from your plan.",
+            });
+          } catch {
+            // handled in hook
+          }
         }}
       />
     </AppShell>

@@ -1,35 +1,25 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { BarcodeScanSheet } from "@/components/aura/BarcodeScanSheet";
 import { AppShell } from "@/components/aura";
 import { useAppStore } from "@/state/AppStore";
 import { toast } from "sonner";
 
-type LocationState = {
-  mealId?: string;
-  returnTo?: string;
-  tab?: "recent" | "liked" | "history";
-  query?: string;
-};
-
 const ScanBarcode = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const state = (location.state ?? {}) as LocationState;
-  const returnTo = state.returnTo ?? "/nutrition/add-food";
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get("returnTo") ?? "/nutrition/add-food";
   const { foodCatalog } = useAppStore();
 
   const handleDetected = async (value: string) => {
     const fetched = await foodCatalog.lookupBarcode(value);
     if (fetched) {
-      navigate("/nutrition/add-food", {
-        state: {
-          mealId: state.mealId,
-          createdFood: fetched,
-          returnTo,
-          tab: state.tab,
-          query: state.query,
-        },
-      });
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          "aurafit-created-food",
+          JSON.stringify({ food: fetched }),
+        );
+      }
+      navigate(`/nutrition/add-food?${searchParams.toString()}`);
       return;
     }
     toast("No match found", {
@@ -42,14 +32,7 @@ const ScanBarcode = () => {
       <BarcodeScanSheet
         open
         onOpenChange={() =>
-          navigate(returnTo, {
-            state: {
-              mealId: state.mealId,
-              returnTo,
-              tab: state.tab,
-              query: state.query,
-            },
-          })
+          navigate(`${returnTo}?${searchParams.toString()}`)
         }
         onDetected={handleDetected}
       />

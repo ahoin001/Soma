@@ -6,6 +6,7 @@ import { CreateExerciseForm } from "@/components/aura/CreateExerciseSheet";
 import { fetchExerciseById, updateExerciseMaster } from "@/lib/api";
 import { toast } from "sonner";
 import { createExerciseMedia } from "@/data/exerciseMediaApi";
+import { useAppStore } from "@/state/AppStore";
 
 type ExerciseRecord = {
   id: number;
@@ -22,6 +23,8 @@ const EditExercise = () => {
   const { exerciseId } = useParams();
   const [loading, setLoading] = useState(true);
   const [exercise, setExercise] = useState<ExerciseRecord | null>(null);
+  const { fitnessLibrary } = useAppStore();
+  const { upsertExerciseRecord, clearSearchCache } = fitnessLibrary;
 
   useEffect(() => {
     const id = Number(exerciseId);
@@ -103,7 +106,7 @@ const EditExercise = () => {
             }}
             submitLabel="Save changes"
             onSubmit={async (payload) => {
-              await updateExerciseMaster(exercise.id, {
+              const response = await updateExerciseMaster(exercise.id, {
                 name: payload.name,
                 category: payload.category,
                 description: payload.description || null,
@@ -111,6 +114,10 @@ const EditExercise = () => {
                 equipment: payload.equipment,
                 imageUrl: payload.imageUrl || null,
               });
+              if (response.exercise) {
+                upsertExerciseRecord(response.exercise);
+                clearSearchCache();
+              }
               if (payload.videoUrl) {
                 await createExerciseMedia({
                   exerciseName: payload.name,

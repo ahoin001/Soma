@@ -15,6 +15,7 @@ type DashboardHeaderProps = {
   syncState: "idle" | "syncing";
   macros: MacroTarget[];
   onProfileClick?: () => void;
+  animateTrigger?: number;
 };
 
 export const DashboardHeader = ({
@@ -25,6 +26,7 @@ export const DashboardHeader = ({
   syncState,
   macros,
   onProfileClick,
+  animateTrigger,
 }: DashboardHeaderProps) => {
   const consumed = Math.max(eaten, 0);
   const remaining = goal > 0 ? Math.max(goal - consumed, 0) : 0;
@@ -87,7 +89,7 @@ export const DashboardHeader = ({
               Eaten
             </p>
             <p className="text-3xl font-display font-semibold text-emerald-950">
-              <AnimatedNumber value={consumed} />
+              <AnimatedNumber value={consumed} animateTrigger={animateTrigger} />
             </p>
           </motion.div>
           <motion.div
@@ -104,14 +106,14 @@ export const DashboardHeader = ({
               </span>
               <div className="mt-1 flex items-baseline gap-1 text-emerald-950">
                 <span className="text-6xl font-display font-semibold leading-none">
-                  <AnimatedNumber value={remaining} />
+                  <AnimatedNumber value={remaining} animateTrigger={animateTrigger} />
                 </span>
                 {/* <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700/80">
                   cal
                 </span> */}
               </div>
               <div className="mt-1 text-[11px] font-semibold text-emerald-700/70">
-                Goal <AnimatedNumber value={goal} /> cal
+                Goal <AnimatedNumber value={goal} animateTrigger={animateTrigger} /> cal
               </div>
             </motion.div>
           </motion.div>
@@ -123,7 +125,7 @@ export const DashboardHeader = ({
               Steps
             </p>
             <p className="text-3xl font-display font-semibold text-emerald-950">
-              <AnimatedNumber value={steps} />
+              <AnimatedNumber value={steps} animateTrigger={animateTrigger} />
             </p>
           </motion.div>
         </motion.div>
@@ -148,8 +150,8 @@ export const DashboardHeader = ({
                   />
                 </div>
                 <p className="mt-2 text-[11px] text-slate-500">
-                  <AnimatedNumber value={macro.current} />/
-                  <AnimatedNumber value={macro.goal} /> {macro.unit}
+                  <AnimatedNumber value={macro.current} animateTrigger={animateTrigger} />/
+                  <AnimatedNumber value={macro.goal} animateTrigger={animateTrigger} /> {macro.unit}
                 </p>
               </div>
             );

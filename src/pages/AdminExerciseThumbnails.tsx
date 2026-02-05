@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { fetchAdminExercises, updateExerciseMaster } from "@/lib/api";
 import { uploadImageFile } from "@/lib/uploadImage";
+import { useAppStore } from "@/state/AppStore";
 
 type AdminExercise = {
   id: number;
@@ -16,6 +17,8 @@ type AdminExercise = {
 
 const AdminExerciseThumbnails = () => {
   const navigate = useNavigate();
+  const { fitnessLibrary } = useAppStore();
+  const { upsertExerciseRecord } = fitnessLibrary;
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<AdminExercise[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "saving">("idle");
@@ -67,7 +70,10 @@ const AdminExerciseThumbnails = () => {
     const nextUrl = (dirty[exerciseId] ?? "").trim();
     try {
       setStatus("saving");
-      await updateExerciseMaster(exerciseId, { imageUrl: nextUrl || null });
+      const response = await updateExerciseMaster(exerciseId, { imageUrl: nextUrl || null });
+      if (response.exercise) {
+        upsertExerciseRecord(response.exercise);
+      }
       setItems((prev) =>
         prev.map((item) =>
           item.id === exerciseId ? { ...item, image_url: nextUrl || null } : item,

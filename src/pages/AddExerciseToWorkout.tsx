@@ -18,7 +18,9 @@ const AddExerciseToWorkout = () => {
   const [params] = useSearchParams();
   const exerciseName = params.get("name") ?? "";
   const adminEdit = params.get("adminEdit") === "true";
-  const { workoutPlans, updateWorkoutTemplate, createWorkoutTemplate } = useAppStore();
+  const { workoutPlans, updateWorkoutTemplate, createWorkoutTemplate, fitnessLibrary } =
+    useAppStore();
+  const { upsertExerciseRecord } = fitnessLibrary;
   const [isAdmin, setIsAdmin] = useState(false);
   const [loadingAdmin, setLoadingAdmin] = useState(false);
   const [masterId, setMasterId] = useState<number | null>(null);
@@ -60,6 +62,14 @@ const AddExerciseToWorkout = () => {
     };
   }, [adminEdit, exerciseName]);
 
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate("/fitness");
+  };
+
   if (!exerciseName.trim()) {
     return (
       <AppShell experience="fitness" showNav={false}>
@@ -71,7 +81,7 @@ const AddExerciseToWorkout = () => {
             <Button
               variant="outline"
               className="mt-4 rounded-full border-white/20 text-white hover:bg-white/10"
-              onClick={() => navigate(-1)}
+              onClick={handleBack}
             >
               Back
             </Button>
@@ -81,7 +91,7 @@ const AddExerciseToWorkout = () => {
     );
   }
 
-  const handleAdd = (planId: string, workoutId: string) => {
+  const handleAdd = async (planId: string, workoutId: string) => {
     const plan = plans.find((item) => item.id === planId);
     const workout = plan?.workouts.find((item) => item.id === workoutId);
     if (!plan || !workout) return;
@@ -89,11 +99,18 @@ const AddExerciseToWorkout = () => {
       ...workout.exercises,
       { id: createId(), name: exerciseName },
     ];
-    updateWorkoutTemplate(plan.id, workout.id, { exercises: nextExercises });
-    toast("Added to workout", {
-      description: `${exerciseName} added to ${workout.name}.`,
-    });
-    navigate(`/fitness/workouts/${plan.id}/${workout.id}`);
+    try {
+      await updateWorkoutTemplate(plan.id, workout.id, { exercises: nextExercises });
+      if (navigator.vibrate) {
+        navigator.vibrate(8);
+      }
+      toast("Added to workout", {
+        description: `${exerciseName} added to ${workout.name}.`,
+      });
+      navigate(`/fitness/workouts/${plan.id}/${workout.id}`);
+    } catch {
+      // handled in hook
+    }
   };
 
   return (
@@ -103,7 +120,7 @@ const AddExerciseToWorkout = () => {
           <Button
             variant="ghost"
             className="h-10 w-10 rounded-full bg-white/10 text-white hover:bg-white/20"
-            onClick={() => navigate(-1)}
+            onClick={handleBack}
           >
             ✕
           </Button>
@@ -175,9 +192,12 @@ const AddExerciseToWorkout = () => {
                     return;
                   }
                   try {
-                    await updateExerciseMaster(masterId, {
+                    const response = await updateExerciseMaster(masterId, {
                       imageUrl: thumbnailUrl.trim() || null,
                     });
+                    if (response.exercise) {
+                      upsertExerciseRecord(response.exercise);
+                    }
                     toast("Thumbnail saved");
                   } catch {
                     toast("Unable to update thumbnail");
@@ -214,7 +234,7 @@ const AddExerciseToWorkout = () => {
                       key={workout.id}
                       type="button"
                       className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left text-sm text-white/80 hover:border-white/30"
-                      onClick={() => handleAdd(plan.id, workout.id)}
+                      onClick={() => void handleAdd(plan.id, workout.id)}
                     >
                       <span>{workout.name}</span>
                       <span className="text-xs text-white/50">
@@ -230,7 +250,7 @@ const AddExerciseToWorkout = () => {
                         plan.id,
                         "New workout",
                       );
-                      handleAdd(plan.id, workout.id);
+                      await handleAdd(plan.id, workout.id);
                     }}
                   >
                     Create workout in {plan.name}

@@ -118,7 +118,6 @@ const SortableExercise = ({
       style={style}
       className={cn(className, isDragging && "opacity-70")}
       variants={variants}
-      whileTap={{ scale: 0.98 }}
       {...attributes}
     >
       {renderActivator({
@@ -223,6 +222,7 @@ export const WorkoutSessionEditor = ({
   const [savePulse, setSavePulse] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [thumbnailMap, setThumbnailMap] = useState<Record<string, string | null>>({});
+  const [highlightId, setHighlightId] = useState<string | null>(null);
   const [unitUsed, setUnitUsed] = useState<"lb" | "kg">("lb");
   const [advancedLogging, setAdvancedLogging] = useState(false);
   const draftTimerRef = useRef<number | null>(null);
@@ -314,6 +314,18 @@ export const WorkoutSessionEditor = ({
   }, []);
 
   useEffect(() => {
+    setExercises((prev) =>
+      prev.map((exercise) => ({
+        ...exercise,
+        sets: exercise.sets.map((set) => ({
+          ...set,
+          previous: formatPrevious(set.weight ?? "", set.reps ?? "", unitUsed),
+        })),
+      })),
+    );
+  }, [unitUsed]);
+
+  useEffect(() => {
     let cancelled = false;
     const loadAdmin = async () => {
       try {
@@ -335,29 +347,48 @@ export const WorkoutSessionEditor = ({
     let cancelled = false;
     const load = async () => {
       const names = Array.from(new Set(exercises.map((exercise) => exercise.name).filter(Boolean)));
-      for (const name of names) {
-        if (cancelled) return;
-        if (thumbnailCache.has(name)) {
-          const cached = thumbnailCache.get(name) ?? null;
-          setThumbnailMap((prev) => (prev[name] === cached ? prev : { ...prev, [name]: cached }));
-          continue;
-        }
-        try {
-          const response = await fetchExerciseByName(name);
-          const record = response.exercise as { image_url?: string | null } | null;
-          const url = record?.image_url ?? null;
-          thumbnailCache.set(name, url);
-          setThumbnailMap((prev) => ({ ...prev, [name]: url }));
-        } catch {
-          thumbnailCache.set(name, null);
-        }
-      }
+      await Promise.all(
+        names.map(async (name) => {
+          if (cancelled) return;
+          if (thumbnailCache.has(name)) {
+            const cached = thumbnailCache.get(name) ?? null;
+            if (!cancelled) {
+              setThumbnailMap((prev) =>
+                prev[name] === cached ? prev : { ...prev, [name]: cached },
+              );
+            }
+            return;
+          }
+          try {
+            const response = await fetchExerciseByName(name);
+            const record = response.exercise as { image_url?: string | null } | null;
+            const url = record?.image_url ?? null;
+            thumbnailCache.set(name, url);
+            if (!cancelled) {
+              setThumbnailMap((prev) => ({ ...prev, [name]: url }));
+            }
+          } catch {
+            thumbnailCache.set(name, null);
+            if (!cancelled) {
+              setThumbnailMap((prev) =>
+                prev[name] === null ? prev : { ...prev, [name]: null },
+              );
+            }
+          }
+        }),
+      );
     };
     void load();
     return () => {
       cancelled = true;
     };
   }, [exercises]);
+
+  useEffect(() => {
+    if (!highlightId) return;
+    const timer = window.setTimeout(() => setHighlightId(null), 900);
+    return () => window.clearTimeout(timer);
+  }, [highlightId]);
 
   const isEditMode = mode === "edit";
   const listVariants = useMemo(
@@ -380,10 +411,11 @@ export const WorkoutSessionEditor = ({
 
   const handleReplace = (name: string) => {
     if (replaceTargetId === "new") {
+      const newId = createId();
       setExercises((prev) => [
         ...prev,
         {
-          id: createId(),
+          id: newId,
           name,
           note: "",
           steps: [],
@@ -392,6 +424,7 @@ export const WorkoutSessionEditor = ({
           sets: createDefaultSets(unitUsed),
         },
       ]);
+      setHighlightId(newId);
       return;
     }
     setExercises((prev) =>
@@ -399,6 +432,7 @@ export const WorkoutSessionEditor = ({
         exercise.id === replaceTargetId ? { ...exercise, name } : exercise,
       ),
     );
+    setHighlightId(replaceTargetId);
   };
 
   const saveExercises = () => {
@@ -639,7 +673,11 @@ export const WorkoutSessionEditor = ({
                       key={exercise.id}
                       id={exercise.id}
                       disabled={!isEditMode}
-                      className="relative rounded-[22px] border border-white/10 bg-white/5 px-3 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/30 touch-none will-change-transform"
+                      className={cn(
+                        "relative rounded-[22px] border border-white/10 bg-white/5 px-3 py-3 touch-none will-change-transform",
+                        exercise.id === highlightId &&
+                          "ring-1 ring-emerald-400/60 shadow-[0_0_22px_rgba(52,211,153,0.28)]",
+                      )}
                       variants={itemVariants}
                       renderActivator={({ setActivatorNodeRef, listeners, isDragging }) => (
                         <button

@@ -34,6 +34,26 @@ router.post(
 );
 
 router.get(
+  "/weight/latest",
+  asyncHandler(async (req, res) => {
+    const userId = getUserId(req);
+    const result = await withTransaction((client) =>
+      client.query(
+        `
+        SELECT local_date, weight, unit, logged_at
+        FROM weight_logs
+        WHERE user_id = $1
+        ORDER BY local_date DESC, logged_at DESC
+        LIMIT 1;
+        `,
+        [userId],
+      ),
+    );
+    res.json({ entry: result.rows[0] ?? null });
+  }),
+);
+
+router.get(
   "/weight",
   asyncHandler(async (req, res) => {
     const userId = getUserId(req);

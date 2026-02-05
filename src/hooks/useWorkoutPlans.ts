@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkoutPlan, WorkoutTemplate } from "@/types/fitness";
 import {
   completeWorkoutTemplate,
@@ -12,6 +12,14 @@ import {
   updateWorkoutTemplate as updateWorkoutTemplateApi,
   updateWorkoutTemplateExercises,
 } from "@/lib/api";
+import { toast } from "sonner";
+
+const createTempId = (prefix: string) => {
+  if (typeof globalThis.crypto !== "undefined" && "randomUUID" in globalThis.crypto) {
+    return `${prefix}_${globalThis.crypto.randomUUID()}`;
+  }
+  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+};
 
 export const useWorkoutPlans = () => {
   const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
@@ -20,6 +28,9 @@ export const useWorkoutPlans = () => {
     Record<string, string | null>
   >({});
   const [loaded, setLoaded] = useState(false);
+  const plansRef = useRef<WorkoutPlan[]>([]);
+  const activePlanRef = useRef<string | null>(null);
+  const lastWorkoutRef = useRef<Record<string, string | null>>({});
 
   const load = useCallback(async () => {
     if (loaded) return;
@@ -65,20 +76,55 @@ export const useWorkoutPlans = () => {
     }
   }, [load, loaded]);
 
-  const updateWorkoutPlan = useCallback(
-    (planId: string, patch: Partial<WorkoutPlan>) => {
-      if (patch.name) {
-        void updateWorkoutPlanApi(planId, { name: patch.name });
-      }
-      setWorkoutPlans((prev) =>
-        prev.map((plan) => (plan.id === planId ? { ...plan, ...patch } : plan)),
-      );
-    },
-    [],
-  );
+  useEffect(() => {
+    plansRef.current = workoutPlans;
+  }, [workoutPlans]);
 
-  const deleteWorkoutPlan = useCallback((planId: string) => {
-    void deleteWorkoutPlanApi(planId);
+  useEffect(() => {
+    activePlanRef.current = activePlanId;
+  }, [activePlanId]);
+
+  useEffect(() => {
+    lastWorkoutRef.current = lastWorkoutByPlan;
+  }, [lastWorkoutByPlan]);
+
+  const rollback = (
+    previousPlans: WorkoutPlan[],
+    previousActive: string | null,
+    previousLast: Record<string, string | null>,
+  ) => {
+    setWorkoutPlans(previousPlans);
+    setActivePlanId(previousActive);
+    setLastWorkoutByPlan(previousLast);
+  };
+
+  const updateWorkoutPlan = useCallback(async (planId: string, patch: Partial<WorkoutPlan>) => {
+    const previousPlans = plansRef.current;
+    const previousActive = activePlanRef.current;
+    const previousLast = lastWorkoutRef.current;
+    setWorkoutPlans((prev) =>
+      prev.map((plan) => (plan.id === planId ? { ...plan, ...patch } : plan)),
+    );
+    try {
+      if (patch.name) {
+        await updateWorkoutPlanApi(planId, { name: patch.name });
+      }
+    } catch (error) {
+      rollback(previousPlans, previousActive, previousLast);
+      toast("Unable to update plan", {
+        action: {
+          label: "Retry",
+          onClick: () => void updateWorkoutPlan(planId, patch),
+        },
+      });
+      throw error;
+    }
+  }, []);
+
+  const deleteWorkoutPlan = useCallback(async (planId: string) => {
+    const previousPlans = plansRef.current;
+    const previousActive = activePlanRef.current;
+    const previousLast = lastWorkoutRef.current;
     setWorkoutPlans((prev) => {
       const remaining = prev.filter((plan) => plan.id !== planId);
       setActivePlanId((active) => {
@@ -92,20 +138,71 @@ export const useWorkoutPlans = () => {
       delete next[planId];
       return next;
     });
+    try {
+      await deleteWorkoutPlanApi(planId);
+    } catch (error) {
+      rollback(previousPlans, previousActive, previousLast);
+      toast("Unable to delete plan", {
+        action: {
+          label: "Retry",
+          onClick: () => void deleteWorkoutPlan(planId),
+        },
+      });
+      throw error;
+    }
   }, []);
 
   const createWorkoutPlan = useCallback(async (name: string) => {
-    await ensureUser();
-    const response = await createWorkoutPlanApi({ name });
-    const plan = { id: response.plan.id, name: response.plan.name, workouts: [] };
-    setWorkoutPlans((prev) => [...prev, plan]);
-    setActivePlanId((prev) => prev ?? plan.id);
-    return plan;
+    const trimmed = name.trim() || "New plan";
+    const optimisticId = createTempId("plan");
+    const previousActive = activePlanRef.current;
+    const optimistic: WorkoutPlan = {
+      id: optimisticId,
+      name: trimmed,
+      workouts: [],
+    };
+    setWorkoutPlans((prev) => [...prev, optimistic]);
+    setActivePlanId((prev) => prev ?? optimisticId);
+    try {
+      await ensureUser();
+      const response = await createWorkoutPlanApi({ name: trimmed });
+      const plan = { id: response.plan.id, name: response.plan.name, workouts: [] };
+      setWorkoutPlans((prev) =>
+        prev.map((item) => (item.id === optimisticId ? plan : item)),
+      );
+      setActivePlanId((prev) => (prev === optimisticId ? plan.id : prev));
+      return plan;
+    } catch (error) {
+      setWorkoutPlans((prev) => prev.filter((plan) => plan.id !== optimisticId));
+      setActivePlanId(previousActive ?? null);
+      toast("Unable to create plan", {
+        action: {
+          label: "Retry",
+          onClick: () => void createWorkoutPlan(name),
+        },
+      });
+      throw error;
+    }
   }, []);
 
-  const createWorkoutTemplate = useCallback(
-    async (planId: string, name: string) => {
-      const response = await createWorkoutTemplateApi({ planId, name });
+  const createWorkoutTemplate = useCallback(async (planId: string, name: string) => {
+    const trimmed = name.trim() || "New workout";
+    const optimisticId = createTempId("workout");
+    const optimistic: WorkoutTemplate = {
+      id: optimisticId,
+      name: trimmed,
+      exercises: [],
+      lastPerformed: undefined,
+    };
+    setWorkoutPlans((prev) =>
+      prev.map((plan) =>
+        plan.id === planId
+          ? { ...plan, workouts: [...plan.workouts, optimistic] }
+          : plan,
+      ),
+    );
+    try {
+      const response = await createWorkoutTemplateApi({ planId, name: trimmed });
       const workout = {
         id: response.template.id,
         name: response.template.name,
@@ -115,76 +212,135 @@ export const useWorkoutPlans = () => {
       setWorkoutPlans((prev) =>
         prev.map((plan) =>
           plan.id === planId
-            ? { ...plan, workouts: [...plan.workouts, workout] }
-            : plan,
-        ),
-      );
-      return workout;
-    },
-    [],
-  );
-
-  const updateWorkoutTemplate = useCallback(
-    (
-      planId: string,
-      workoutId: string,
-      patch: Partial<WorkoutTemplate>,
-    ) => {
-      if (patch.name) {
-        void updateWorkoutTemplateApi(workoutId, { name: patch.name });
-      }
-      if (patch.exercises) {
-        void updateWorkoutTemplateExercises(
-          workoutId,
-          patch.exercises.map((exercise, index) => ({
-            name: exercise.name,
-            itemOrder: index,
-          })),
-        );
-      }
-      setWorkoutPlans((prev) =>
-        prev.map((plan) =>
-          plan.id === planId
             ? {
                 ...plan,
-                workouts: plan.workouts.map((workout) =>
-                  workout.id === workoutId ? { ...workout, ...patch } : workout,
+                workouts: plan.workouts.map((item) =>
+                  item.id === optimisticId ? workout : item,
                 ),
               }
             : plan,
         ),
       );
-    },
-    [],
-  );
-
-  const deleteWorkoutTemplate = useCallback(
-    (planId: string, workoutId: string) => {
-      void deleteWorkoutTemplateApi(workoutId);
+      return workout;
+    } catch (error) {
       setWorkoutPlans((prev) =>
         prev.map((plan) =>
           plan.id === planId
             ? {
                 ...plan,
-                workouts: plan.workouts.filter((workout) => workout.id !== workoutId),
+                workouts: plan.workouts.filter((item) => item.id !== optimisticId),
               }
             : plan,
         ),
       );
-    },
-    [],
-  );
+      toast("Unable to create workout", {
+        action: {
+          label: "Retry",
+          onClick: () => void createWorkoutTemplate(planId, name),
+        },
+      });
+      throw error;
+    }
+  }, []);
 
-  const recordWorkoutCompleted = useCallback(
-    (planId: string, workoutId: string) => {
-      void completeWorkoutTemplate(workoutId);
-      setLastWorkoutByPlan((prev) => ({
-        ...prev,
-        [planId]: workoutId,
-      }));
-    },
-    [],
-  );
+  const updateWorkoutTemplate = useCallback(async (
+    planId: string,
+    workoutId: string,
+    patch: Partial<WorkoutTemplate>,
+  ) => {
+    const previousPlans = plansRef.current;
+    const previousActive = activePlanRef.current;
+    const previousLast = lastWorkoutRef.current;
+    setWorkoutPlans((prev) =>
+      prev.map((plan) =>
+        plan.id === planId
+          ? {
+              ...plan,
+              workouts: plan.workouts.map((workout) =>
+                workout.id === workoutId ? { ...workout, ...patch } : workout,
+              ),
+            }
+          : plan,
+      ),
+    );
+    try {
+      const tasks: Promise<unknown>[] = [];
+      if (patch.name) {
+        tasks.push(updateWorkoutTemplateApi(workoutId, { name: patch.name }));
+      }
+      if (patch.exercises) {
+        tasks.push(
+          updateWorkoutTemplateExercises(
+            workoutId,
+            patch.exercises.map((exercise, index) => ({
+              name: exercise.name,
+              itemOrder: index,
+            })),
+          ),
+        );
+      }
+      if (tasks.length) {
+        await Promise.all(tasks);
+      }
+    } catch (error) {
+      rollback(previousPlans, previousActive, previousLast);
+      toast("Unable to update workout", {
+        action: {
+          label: "Retry",
+          onClick: () => void updateWorkoutTemplate(planId, workoutId, patch),
+        },
+      });
+      throw error;
+    }
+  }, []);
+
+  const deleteWorkoutTemplate = useCallback(async (planId: string, workoutId: string) => {
+    const previousPlans = plansRef.current;
+    const previousActive = activePlanRef.current;
+    const previousLast = lastWorkoutRef.current;
+    setWorkoutPlans((prev) =>
+      prev.map((plan) =>
+        plan.id === planId
+          ? {
+              ...plan,
+              workouts: plan.workouts.filter((workout) => workout.id !== workoutId),
+            }
+          : plan,
+      ),
+    );
+    try {
+      await deleteWorkoutTemplateApi(workoutId);
+    } catch (error) {
+      rollback(previousPlans, previousActive, previousLast);
+      toast("Unable to delete workout", {
+        action: {
+          label: "Retry",
+          onClick: () => void deleteWorkoutTemplate(planId, workoutId),
+        },
+      });
+      throw error;
+    }
+  }, []);
+
+  const recordWorkoutCompleted = useCallback(async (planId: string, workoutId: string) => {
+    const previousLast = lastWorkoutRef.current;
+    setLastWorkoutByPlan((prev) => ({
+      ...prev,
+      [planId]: workoutId,
+    }));
+    try {
+      await completeWorkoutTemplate(workoutId);
+    } catch (error) {
+      setLastWorkoutByPlan(previousLast);
+      toast("Unable to complete workout", {
+        action: {
+          label: "Retry",
+          onClick: () => void recordWorkoutCompleted(planId, workoutId),
+        },
+      });
+      throw error;
+    }
+  }, []);
 
   return useMemo(
     () => ({

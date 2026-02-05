@@ -24,7 +24,7 @@ export const QuickActionSheet = ({
 }: QuickActionSheetProps) => (
   <Drawer open={open} onOpenChange={onOpenChange}>
     <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-[calc(1.5rem+env(safe-area-inset-bottom))] overflow-hidden">
-      <div className="max-h-[85vh] overflow-y-auto px-5 pb-6 pt-2" data-vaul-no-drag>
+      <div className="aura-sheet-scroll" data-vaul-no-drag>
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
             Quick add

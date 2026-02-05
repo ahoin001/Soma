@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -61,6 +61,8 @@ const activityOptions: Array<{
   },
 ];
 
+const GOALS_DRAFT_KEY = "aurafit-goals-draft-v1";
+
 const Goals = () => {
   const [goalType, setGoalType] = useState<GoalType>("balance");
   const [sex, setSex] = useState<Sex>("female");
@@ -84,10 +86,66 @@ const Goals = () => {
   const [macrosTouched, setMacrosTouched] = useState(false);
   const [optionalOpen, setOptionalOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const draftTimerRef = useRef<number | null>(null);
   const { nutrition, userProfile, setUserProfile } = useAppStore();
 
   useEffect(() => {
     if (hydrated) return;
+    if (typeof window !== "undefined") {
+      const stored = window.localStorage.getItem(GOALS_DRAFT_KEY);
+      if (stored) {
+        try {
+          const draft = JSON.parse(stored) as Partial<{
+            goalType: GoalType;
+            sex: Sex;
+            age: string;
+            heightUnit: "imperial" | "metric";
+            heightFt: string;
+            heightIn: string;
+            heightCm: string;
+            weightLb: string;
+            weightKg: string;
+            activity: ActivityLevel;
+            formula: Formula;
+            bodyFat: string;
+            trainingDays: string;
+            stepsPerDay: string;
+            kcalGoal: string;
+            carbs: string;
+            protein: string;
+            fat: string;
+            targetsTouched: boolean;
+            macrosTouched: boolean;
+            optionalOpen: boolean;
+          }>;
+          if (draft.goalType) setGoalType(draft.goalType);
+          if (draft.sex) setSex(draft.sex);
+          if (draft.age !== undefined) setAge(draft.age);
+          if (draft.heightUnit) setHeightUnit(draft.heightUnit);
+          if (draft.heightFt !== undefined) setHeightFt(draft.heightFt);
+          if (draft.heightIn !== undefined) setHeightIn(draft.heightIn);
+          if (draft.heightCm !== undefined) setHeightCm(draft.heightCm);
+          if (draft.weightLb !== undefined) setWeightLb(draft.weightLb);
+          if (draft.weightKg !== undefined) setWeightKg(draft.weightKg);
+          if (draft.activity) setActivity(draft.activity);
+          if (draft.formula) setFormula(draft.formula);
+          if (draft.bodyFat !== undefined) setBodyFat(draft.bodyFat);
+          if (draft.trainingDays !== undefined) setTrainingDays(draft.trainingDays);
+          if (draft.stepsPerDay !== undefined) setStepsPerDay(draft.stepsPerDay);
+          if (draft.kcalGoal !== undefined) setKcalGoal(draft.kcalGoal);
+          if (draft.carbs !== undefined) setCarbs(draft.carbs);
+          if (draft.protein !== undefined) setProtein(draft.protein);
+          if (draft.fat !== undefined) setFat(draft.fat);
+          if (draft.targetsTouched !== undefined) setTargetsTouched(draft.targetsTouched);
+          if (draft.macrosTouched !== undefined) setMacrosTouched(draft.macrosTouched);
+          if (draft.optionalOpen !== undefined) setOptionalOpen(draft.optionalOpen);
+          setHydrated(true);
+          return;
+        } catch {
+          window.localStorage.removeItem(GOALS_DRAFT_KEY);
+        }
+      }
+    }
     if (userProfile.sex) setSex(userProfile.sex);
     if (userProfile.age) setAge(String(userProfile.age));
     if (userProfile.activity) setActivity(userProfile.activity);
@@ -101,6 +159,70 @@ const Goals = () => {
     }
     setHydrated(true);
   }, [hydrated, userProfile]);
+
+  useEffect(() => {
+    if (!hydrated || typeof window === "undefined") return;
+    if (draftTimerRef.current) {
+      window.clearTimeout(draftTimerRef.current);
+    }
+    draftTimerRef.current = window.setTimeout(() => {
+      window.localStorage.setItem(
+        GOALS_DRAFT_KEY,
+        JSON.stringify({
+          goalType,
+          sex,
+          age,
+          heightUnit,
+          heightFt,
+          heightIn,
+          heightCm,
+          weightLb,
+          weightKg,
+          activity,
+          formula,
+          bodyFat,
+          trainingDays,
+          stepsPerDay,
+          kcalGoal,
+          carbs,
+          protein,
+          fat,
+          targetsTouched,
+          macrosTouched,
+          optionalOpen,
+        }),
+      );
+    }, 200);
+    return () => {
+      if (draftTimerRef.current) {
+        window.clearTimeout(draftTimerRef.current);
+        draftTimerRef.current = null;
+      }
+    };
+  }, [
+    activity,
+    age,
+    bodyFat,
+    carbs,
+    fat,
+    formula,
+    goalType,
+    heightCm,
+    heightFt,
+    heightIn,
+    heightUnit,
+    hydrated,
+    kcalGoal,
+    macrosTouched,
+    optionalOpen,
+    protein,
+    sex,
+    stepsPerDay,
+    targetsTouched,
+    trainingDays,
+    weightKg,
+    weightLb,
+  ]);
 
   useEffect(() => {
     if (targetsTouched) return;

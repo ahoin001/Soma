@@ -2,15 +2,19 @@ import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import type { LogItem } from "@/types/log";
+import type { FoodItem } from "@/data/mock";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "@/state/AppStore";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { calculateMacroPercent } from "@/data/foodApi";
 
 type EditLogSheetProps = {
   open: boolean;
   item: LogItem | null;
   onOpenChange: (open: boolean) => void;
-  onSave: (item: LogItem, multiplier: number) => void;
-  onDelete?: (item: LogItem) => void;
+  onSave: (item: LogItem, multiplier: number) => void | Promise<void>;
+  onDelete?: (item: LogItem) => void | Promise<void>;
 };
 
 export const EditLogSheet = ({
@@ -23,9 +27,13 @@ export const EditLogSheet = ({
   const [multiplier, setMultiplier] = useState(1);
   const [pulse, setPulse] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const draftTimerRef = useRef<number | null>(null);
   const { showFoodImages } = useAppStore();
   const [saving, setSaving] = useState(false);
+  const { email } = useAuth();
+  const navigate = useNavigate();
+  const isAdmin = email?.toLowerCase() === "ahoin001@gmail.com";
   const safeMultiplier = Number.isFinite(multiplier) ? multiplier : 1;
 
   useEffect(() => {
@@ -80,6 +88,39 @@ export const EditLogSheet = ({
     scrollRef.current.scrollTop = 0;
   }, [open]);
 
+  useEffect(() => {
+    if (!open || typeof window === "undefined") return;
+    if (!import.meta.env.DEV) return;
+    const log = (label: string) => {
+      const contentRect = contentRef.current?.getBoundingClientRect();
+      const scrollRect = scrollRef.current?.getBoundingClientRect();
+      console.info("[AuraFit][Sheet][EditLog]", {
+        label,
+        scrollY: window.scrollY,
+        innerHeight: window.innerHeight,
+        visualViewport: window.visualViewport?.height,
+        contentTop: contentRect?.top ?? null,
+        contentBottom: contentRect?.bottom ?? null,
+        contentHeight: contentRect?.height ?? null,
+        scrollTop: scrollRect?.top ?? null,
+        scrollBottom: scrollRect?.bottom ?? null,
+        scrollHeight: scrollRect?.height ?? null,
+      });
+    };
+    log("opening sheet");
+    const onScroll = () => log("scroll");
+    const onResize = () => log("resize");
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+    window.visualViewport?.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+      window.visualViewport?.removeEventListener("resize", onResize);
+      log("closing sheet");
+    };
+  }, [open]);
+
   const scaled = useMemo(() => {
     if (!item) {
       return { kcal: 0, carbs: 0, protein: 0, fat: 0 };
@@ -92,16 +133,45 @@ export const EditLogSheet = ({
     };
   }, [item, safeMultiplier]);
 
+  const adminFood = useMemo<FoodItem | null>(() => {
+    if (!item?.foodId) return null;
+    const portion =
+      item.portionLabel?.trim() ||
+      (item.portionGrams ? `${item.portionGrams} g` : "1 serving");
+    return {
+      id: item.foodId,
+      name: item.name,
+      portion,
+      portionLabel: item.portionLabel ?? undefined,
+      portionGrams: item.portionGrams ?? undefined,
+      kcal: item.kcal,
+      emoji: item.emoji,
+      imageUrl: item.imageUrl ?? undefined,
+      macros: { ...item.macros },
+      macroPercent: calculateMacroPercent(item.macros),
+    };
+  }, [item]);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && saving) return;
+    onOpenChange(nextOpen);
+  };
+
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-[calc(1.5rem+env(safe-area-inset-bottom))] overflow-hidden">
+    <Drawer open={open} onOpenChange={handleOpenChange}>
+      <DrawerContent className="relative rounded-t-[36px] border-none bg-aura-surface pb-[env(safe-area-inset-bottom)] overflow-hidden">
+        {saving && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 text-sm font-semibold text-emerald-700 backdrop-blur">
+            Saving changes...
+          </div>
+        )}
         <DrawerHeader className="sr-only">
           <DrawerTitle>Edit meal item</DrawerTitle>
         </DrawerHeader>
         {item && (
           <div
-            ref={scrollRef}
-            className="max-h-[85vh] overflow-y-auto px-5 pb-6 pt-2"
+            ref={contentRef}
+            className="aura-sheet-scroll max-h-[calc(100svh-160px)]"
             data-vaul-no-drag
           >
             <div className="flex items-center justify-center pt-4">
@@ -207,13 +277,30 @@ export const EditLogSheet = ({
             </div>
 
             <div className="mt-6 grid gap-3">
+              {isAdmin ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full rounded-full py-5 text-sm font-semibold"
+                  onClick={() => {
+                    if (!adminFood) return;
+                    onOpenChange(false);
+                    navigate("/nutrition/food/edit", {
+                      state: { food: adminFood, returnTo: "/nutrition" },
+                    });
+                  }}
+                  disabled={!adminFood}
+                >
+                  Admin edit food
+                </Button>
+              ) : null}
               <Button
                 className="w-full rounded-full bg-aura-primary py-6 text-base font-semibold text-white shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
                 onClick={async () => {
                   setSaving(true);
+                  onOpenChange(false);
                   try {
                     await onSave(item, safeMultiplier);
-                    onOpenChange(false);
                   } finally {
                     setSaving(false);
                   }
@@ -227,9 +314,11 @@ export const EditLogSheet = ({
                 variant="destructive"
                 className="w-full rounded-full py-5 text-sm font-semibold"
                 onClick={() => {
-                  onDelete?.(item);
+                  if (!onDelete) return;
                   onOpenChange(false);
+                  void onDelete(item);
                 }}
+                disabled={saving}
               >
                 Remove from meal
               </Button>

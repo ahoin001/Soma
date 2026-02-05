@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:server": "tsx server/index.ts",
-    "dev:all": "concurrently -k \"pnpm dev\" \"pnpm dev:server\"",
+    "dev:all": "concurrently --kill-others-on-fail \"pnpm dev\" \"pnpm dev:server\"",
     "migrate": "tsx server/migrate.ts",
     "seed:exercises": "tsx server/seedExercises.ts",
     "build": "vite build",

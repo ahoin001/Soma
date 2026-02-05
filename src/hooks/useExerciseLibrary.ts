@@ -109,6 +109,59 @@ export const useExerciseLibrary = () => {
     persistCache(next);
   }, []);
 
+  const clearSearchCache = useCallback(() => {
+    setCache((prev) => {
+      if (!Object.keys(prev.searches).length) return prev;
+      const nextCache: ExerciseCache = { ...prev, searches: {} };
+      persistCache(nextCache);
+      return nextCache;
+    });
+  }, []);
+
+  const upsertExercise = useCallback(
+    (exercise: Exercise, options?: { prepend?: boolean }) => {
+      setResults((prev) => {
+        const index = prev.findIndex((item) => item.id === exercise.id);
+        if (index >= 0) {
+          const next = [...prev];
+          next[index] = exercise;
+          return next;
+        }
+        return options?.prepend === false ? prev : [exercise, ...prev];
+      });
+      setCache((prev) => {
+        if (!Object.keys(prev.searches).length) return prev;
+        let changed = false;
+        const nextSearches: ExerciseCache["searches"] = {};
+        Object.entries(prev.searches).forEach(([key, entry]) => {
+          const index = entry.value.findIndex((item) => item.id === exercise.id);
+          if (index === -1) {
+            nextSearches[key] = entry;
+            return;
+          }
+          const nextValue = [...entry.value];
+          nextValue[index] = exercise;
+          nextSearches[key] = { ...entry, value: nextValue, updatedAt: Date.now() };
+          changed = true;
+        });
+        if (!changed) return prev;
+        const nextCache = { ...prev, searches: nextSearches };
+        persistCache(nextCache);
+        return nextCache;
+      });
+    },
+    [],
+  );
+
+  const upsertExerciseRecord = useCallback(
+    (record: Record<string, unknown>, options?: { prepend?: boolean }) => {
+      const mapped = mapExercise(record);
+      if (!mapped.id) return;
+      upsertExercise(mapped, options);
+    },
+    [upsertExercise],
+  );
+
   const searchExercises = useCallback(
     async (
       nextQuery: string,
@@ -165,7 +218,19 @@ export const useExerciseLibrary = () => {
       error,
       searchExercises,
       setQuery,
+      upsertExercise,
+      upsertExerciseRecord,
+      clearSearchCache,
     }),
-    [query, results, status, error, searchExercises],
+    [
+      query,
+      results,
+      status,
+      error,
+      searchExercises,
+      upsertExercise,
+      upsertExerciseRecord,
+      clearSearchCache,
+    ],
   );
 };

@@ -1,22 +1,15 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell } from "@/components/aura";
 import { CreateFoodForm } from "@/components/aura/CreateFoodSheet";
 import { useAppStore } from "@/state/AppStore";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 
-type LocationState = {
-  mealId?: string;
-  returnTo?: string;
-  tab?: "recent" | "liked" | "history";
-  query?: string;
-};
-
 const CreateFood = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const state = (location.state ?? {}) as LocationState;
-  const returnTo = state.returnTo ?? "/nutrition/add-food";
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get("returnTo") ?? "/nutrition/add-food";
   const { foodCatalog } = useAppStore();
 
   return (
@@ -29,14 +22,7 @@ const CreateFood = () => {
             size="icon"
             className="h-10 w-10 rounded-full bg-white/80 text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
             onClick={() =>
-              navigate(returnTo, {
-                state: {
-                  mealId: state.mealId,
-                  returnTo,
-                  tab: state.tab,
-                  query: state.query,
-                },
-              })
+              navigate(`${returnTo}?${searchParams.toString()}`)
             }
           >
             <ChevronLeft className="h-5 w-5" />
@@ -49,15 +35,13 @@ const CreateFood = () => {
         <CreateFoodForm
           onCreate={async (payload) => foodCatalog.createFood(payload)}
           onComplete={(created) => {
-            navigate("/nutrition/add-food", {
-              state: {
-                mealId: state.mealId,
-                createdFood: created,
-                returnTo,
-                tab: state.tab,
-                query: state.query,
-              },
-            });
+            if (typeof window !== "undefined" && created) {
+              window.localStorage.setItem(
+                "aurafit-created-food",
+                JSON.stringify({ food: created }),
+              );
+            }
+            navigate(`/nutrition/add-food?${searchParams.toString()}`);
           }}
         />
       </div>

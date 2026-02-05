@@ -162,13 +162,13 @@ router.post(
       [payload.email.toLowerCase()],
     );
     if (!record) {
-      res.status(401).json({ error: "Invalid credentials." });
+      res.status(401).json({ error: "No account found with this email.", code: "EMAIL_NOT_FOUND" });
       return;
     }
 
     const matches = await bcrypt.compare(payload.password, record.password_hash);
     if (!matches) {
-      res.status(401).json({ error: "Invalid credentials." });
+      res.status(401).json({ error: "Incorrect password. Please try again.", code: "INVALID_PASSWORD" });
       return;
     }
 

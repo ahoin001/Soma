@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 import { createExercise } from "@/lib/api";
 import { createExerciseMedia } from "@/data/exerciseMediaApi";
+import { useAppStore } from "@/state/AppStore";
 
 const CATEGORY_OPTIONS = [
   "Chest",
@@ -115,6 +116,8 @@ export const CreateExerciseForm = ({
   onSubmit,
   submitLabel = "Save exercise",
 }: CreateExerciseFormProps) => {
+  const { fitnessLibrary } = useAppStore();
+  const { upsertExerciseRecord, clearSearchCache } = fitnessLibrary;
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [primaryMuscles, setPrimaryMuscles] = useState<string[]>([]);
@@ -208,7 +211,7 @@ export const CreateExerciseForm = ({
       if (onSubmit) {
         await onSubmit(payload);
       } else {
-        await createExercise({
+        const response = await createExercise({
           name: payload.name,
           category: payload.category,
           description: payload.description || undefined,
@@ -216,6 +219,10 @@ export const CreateExerciseForm = ({
           equipment: payload.equipment,
           imageUrl: payload.imageUrl || undefined,
         });
+        if (response.exercise) {
+          upsertExerciseRecord(response.exercise, { prepend: true });
+          clearSearchCache();
+        }
         if (payload.videoUrl) {
           setStatusMessage("Uploading media...");
           await createExerciseMedia({
@@ -243,7 +250,7 @@ export const CreateExerciseForm = ({
   };
 
   return (
-    <div className="px-5 pb-6 pt-2" aria-busy={saving}>
+    <div className="aura-sheet-body" aria-busy={saving}>
       <div className="mt-2 text-center">
         <p className="text-xs uppercase tracking-[0.2em] text-white/50">
           Create exercise

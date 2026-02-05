@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useLayoutEffect, useState } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -12,12 +12,15 @@ import {
   useNavigationType,
 } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AppStoreProvider } from "@/state/AppStore";
-import { AuthDialog, OnboardingCarousel, OnboardingDialog, SplashScreen } from "@/components/aura";
+import { AppStoreProvider, UserProvider, UIProvider } from "@/state";
+import { OnboardingCarousel, OnboardingDialog, SplashScreen } from "@/components/aura";
 import { useAuth } from "@/hooks/useAuth";
-import { AnimatePresence } from "framer-motion";
 import { PageTransition } from "@/components/aura";
+import { PageErrorBoundary } from "@/components/ErrorBoundary";
 import NotFound from "./pages/NotFound";
+
+// Register offline mutation handlers for background sync
+import "@/lib/offlineHandlers";
 
 const Nutrition = lazy(() => import("./pages/Nutrition"));
 const Progress = lazy(() => import("./pages/Progress"));
@@ -34,8 +37,37 @@ const CreateExercise = lazy(() => import("./pages/CreateExercise"));
 const EditExercise = lazy(() => import("./pages/EditExercise"));
 const AddExerciseToWorkout = lazy(() => import("./pages/AddExerciseToWorkout"));
 const AdminExerciseThumbnails = lazy(() => import("./pages/AdminExerciseThumbnails"));
+const FitnessRoutines = lazy(() => import("./pages/FitnessRoutines"));
+const FitnessProgress = lazy(() => import("./pages/FitnessProgress"));
+const FitnessLog = lazy(() => import("./pages/FitnessLog"));
+const Auth = lazy(() => import("./pages/Auth"));
 
-const queryClient = new QueryClient();
+/**
+ * QueryClient configuration for optimal PWA experience:
+ * - Retry failed requests (3 attempts with exponential backoff)
+ * - Stale time: 30s (data considered fresh, no refetch)
+ * - Cache time: 5min (keep data in memory for quick navigation)
+ * - Refetch on window focus for fresh data
+ * - Network-first with cache fallback for offline support
+ */
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000, // 30 seconds - data is fresh
+      gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache
+      retry: 3,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      networkMode: "offlineFirst", // Use cache when offline
+    },
+    mutations: {
+      retry: 2,
+      retryDelay: 1000,
+      networkMode: "offlineFirst",
+    },
+  },
+});
 
 const AnimatedRoutes = () => {
   const location = useLocation();
@@ -58,6 +90,9 @@ const AnimatedRoutes = () => {
       "/nutrition/add-food/scan",
       "/nutrition/food/edit",
       "/fitness",
+      "/fitness/routines",
+      "/fitness/progress",
+      "/fitness/log",
       "/fitness/exercises/create",
     ].includes(path);
   };
@@ -80,8 +115,9 @@ const AnimatedRoutes = () => {
   }, [location.pathname]);
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <Routes location={location} key={location.pathname}>
+    <>
+      <ScrollRestoration />
+      <Routes location={location}>
         <Route path="/" element={<Navigate to="/nutrition" replace />} />
         <Route
           path="/nutrition"
@@ -174,12 +210,54 @@ const AnimatedRoutes = () => {
           }
         />
         <Route
+          path="/fitness/routines"
+          element={
+            shouldAnimate(location.pathname) ? (
+              withTransition(<FitnessRoutines />)
+            ) : (
+              <FitnessRoutines />
+            )
+          }
+        />
+        <Route
+          path="/fitness/progress"
+          element={
+            shouldAnimate(location.pathname) ? (
+              withTransition(<FitnessProgress />)
+            ) : (
+              <FitnessProgress />
+            )
+          }
+        />
+        <Route
+          path="/fitness/log"
+          element={
+            shouldAnimate(location.pathname) ? (
+              withTransition(<FitnessLog />)
+            ) : (
+              <FitnessLog />
+            )
+          }
+        />
+        <Route
           path="/fitness/workouts/:planId/:workoutId"
-          element={<WorkoutDetails />}
+          element={
+            shouldAnimate(location.pathname) ? (
+              withTransition(<WorkoutDetails />)
+            ) : (
+              <WorkoutDetails />
+            )
+          }
         />
         <Route
           path="/fitness/workouts/:planId/:workoutId/:mode"
-          element={<WorkoutDetails />}
+          element={
+            shouldAnimate(location.pathname) ? (
+              withTransition(<WorkoutDetails />)
+            ) : (
+              <WorkoutDetails />
+            )
+          }
         />
         <Route
           path="/fitness/workouts/:planId/:workoutId/exercises/:exerciseId/guide"
@@ -231,30 +309,55 @@ const AnimatedRoutes = () => {
             )
           }
         />
+        <Route path="/auth" element={<Navigate to="/nutrition" replace />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </AnimatePresence>
+    </>
   );
+};
+
+const ScrollRestoration = () => {
+  const location = useLocation();
+  const navigationType = useNavigationType();
+  const key = `${location.pathname}${location.search}`;
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.sessionStorage.getItem(`scroll:${key}`);
+    if (navigationType === "POP" && saved) {
+      window.scrollTo({ top: Number(saved), left: 0, behavior: "instant" });
+      return;
+    }
+    if (navigationType !== "POP") {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    }
+  }, [key, navigationType]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    return () => {
+      window.sessionStorage.setItem(`scroll:${key}`, String(window.scrollY));
+    };
+  }, [key]);
+
+  return null;
 };
 
 const AppShell = () => {
   const auth = useAuth();
   const needsAuth = auth.status === "ready" && !auth.userId;
   const [showSplash, setShowSplash] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
   const [carouselOpen, setCarouselOpen] = useState(false);
 
   useEffect(() => {
     if (!needsAuth) {
       setShowSplash(false);
-      setAuthOpen(false);
       return;
     }
     setShowSplash(true);
     const timer = window.setTimeout(() => {
       setShowSplash(false);
-      setAuthOpen(true);
     }, 1200);
     return () => window.clearTimeout(timer);
   }, [needsAuth]);
@@ -272,22 +375,9 @@ const AppShell = () => {
         <SplashScreen
           onContinue={() => {
             setShowSplash(false);
-            setAuthOpen(true);
           }}
         />
       )}
-      <AuthDialog open={needsAuth && authOpen} onClose={() => setAuthOpen(false)} />
-      {!needsAuth && carouselOpen && (
-        <OnboardingCarousel
-          onFinish={() => {
-            if (typeof window !== "undefined") {
-              window.localStorage.setItem("aurafit-carousel-v1", "true");
-            }
-            setCarouselOpen(false);
-          }}
-        />
-      )}
-      {!needsAuth && !carouselOpen && <OnboardingDialog />}
       <BrowserRouter>
         <Suspense
           fallback={
@@ -303,7 +393,27 @@ const AppShell = () => {
             </div>
           }
         >
-          <AnimatedRoutes />
+          {needsAuth ? (
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="*" element={<Navigate to="/auth" replace />} />
+            </Routes>
+          ) : (
+            <>
+              {carouselOpen && (
+                <OnboardingCarousel
+                  onFinish={() => {
+                    if (typeof window !== "undefined") {
+                      window.localStorage.setItem("aurafit-carousel-v1", "true");
+                    }
+                    setCarouselOpen(false);
+                  }}
+                />
+              )}
+              {!carouselOpen && <OnboardingDialog />}
+              <AnimatedRoutes />
+            </>
+          )}
         </Suspense>
       </BrowserRouter>
     </>
@@ -331,11 +441,25 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <AppStoreProvider>
-          <AppShell />
-        </AppStoreProvider>
+        <PageErrorBoundary
+          scope="App"
+          onError={(error, errorInfo) => {
+            // Future: Send to error tracking service (Sentry, etc.)
+            if (import.meta.env.DEV) {
+              console.error("[GlobalError]", error, errorInfo.componentStack);
+            }
+          }}
+        >
+          <Toaster />
+          <Sonner />
+          <UserProvider>
+            <UIProvider>
+              <AppStoreProvider>
+                <AppShell />
+              </AppStoreProvider>
+            </UIProvider>
+          </UserProvider>
+        </PageErrorBoundary>
       </TooltipProvider>
     </QueryClientProvider>
   );

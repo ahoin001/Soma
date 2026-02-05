@@ -1,11 +1,12 @@
 import { useEffect, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useNavigationType, useParams } from "react-router-dom";
 import { AppShell, WorkoutSessionEditor } from "@/components/aura";
 import { useAppStore } from "@/state/AppStore";
 import { toast } from "sonner";
 
 const WorkoutDetails = () => {
   const navigate = useNavigate();
+  const navigationType = useNavigationType();
   const { planId, workoutId, mode } = useParams();
   const {
     workoutPlans,
@@ -49,8 +50,9 @@ const WorkoutDetails = () => {
   const editorMode = mode === "session" ? "session" : "edit";
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [workoutId, mode]);
+    if (navigationType === "POP") return;
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [workoutId, mode, navigationType]);
 
   return (
     <AppShell experience="fitness" showNav={false}>
@@ -71,24 +73,36 @@ const WorkoutDetails = () => {
           if (!exercise.name) return;
           navigate(`/fitness/exercises/add?name=${encodeURIComponent(exercise.name)}&adminEdit=true`);
         }}
-        onSave={(nextExercises) => {
-          updateWorkoutTemplate(activePlan.id, activeWorkout.id, {
-            exercises: nextExercises,
-          });
-          toast("Workout updated");
-          navigate("/fitness");
+        onSave={async (nextExercises) => {
+          try {
+            await updateWorkoutTemplate(activePlan.id, activeWorkout.id, {
+              exercises: nextExercises,
+            });
+            toast("Workout updated");
+            navigate("/fitness");
+          } catch {
+            // handled in hook
+          }
         }}
-        onStartSession={() => {
-          fitnessPlanner.startSessionFromTemplate(
-            activeWorkout.name,
-            activeWorkout.exercises.map((exercise) => exercise.name),
-          );
-          navigate(`/fitness/workouts/${activePlan.id}/${activeWorkout.id}/session`);
+        onStartSession={async () => {
+          try {
+            await fitnessPlanner.startSessionFromTemplate(
+              activeWorkout.name,
+              activeWorkout.exercises.map((exercise) => exercise.name),
+            );
+            navigate(`/fitness/workouts/${activePlan.id}/${activeWorkout.id}/session`);
+          } catch {
+            // handled in hook
+          }
         }}
-        onFinish={() => {
-          recordWorkoutCompleted(activePlan.id, activeWorkout.id);
-          fitnessPlanner.finishSession();
-          toast("Workout complete");
+        onFinish={async () => {
+          try {
+            await recordWorkoutCompleted(activePlan.id, activeWorkout.id);
+            fitnessPlanner.finishSession();
+            toast("Workout complete");
+          } catch {
+            // handled in hook
+          }
         }}
       />
     </AppShell>

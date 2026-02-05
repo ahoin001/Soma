@@ -18,7 +18,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import type { FoodItem } from "@/data/mock";
 import type { BrandRecord } from "@/types/api";
@@ -29,6 +31,13 @@ import {
   fetchFoodImageSignature,
 } from "@/lib/api";
 import { useAppStore } from "@/state/AppStore";
+import {
+  createFoodSchema,
+  createFoodDefaults,
+  transformFoodFormToPayload,
+  servingUnits,
+  type CreateFoodFormValues,
+} from "@/lib/schemas/food";
 
 type CreateFoodSheetProps = {
   open: boolean;
@@ -65,267 +74,216 @@ type CreateFoodFormProps = {
   onComplete?: (created?: FoodItem) => void;
 };
 
+// Draft storage key
+const DRAFT_STORAGE_KEY = "aurafit-create-food-draft-v1";
+
+// Load draft from localStorage
+const loadDraft = (): Partial<CreateFoodFormValues> => {
+  if (typeof window === "undefined") return {};
+  const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as Partial<CreateFoodFormValues>;
+  } catch {
+    return {};
+  }
+};
+
 export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) => {
-  const [name, setName] = useState("");
-  const [brand, setBrand] = useState("");
-  const [brandId, setBrandId] = useState<string | null>(null);
+  // Track draft state
+  const lastSavedDraft = useRef<string>("");
+  
+  // Check if there's an existing draft on mount
+  const existingDraft = loadDraft();
+  const hasMeaningfulDraft = Boolean(
+    existingDraft.name || 
+    existingDraft.kcal || 
+    existingDraft.imageUrl ||
+    existingDraft.brandId
+  );
+  const [showDraftLoaded, setShowDraftLoaded] = useState(hasMeaningfulDraft);
+  
+  // React Hook Form with Zod validation
+  const form = useForm<CreateFoodFormValues>({
+    resolver: zodResolver(createFoodSchema),
+    defaultValues: { ...createFoodDefaults, ...existingDraft },
+    mode: "onBlur", // Validate on blur for better UX
+  });
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    watch,
+    reset,
+    setValue,
+    formState: { errors, isSubmitting, isDirty },
+  } = form;
+
+  // Brand-related state (not part of form schema)
   const [brands, setBrands] = useState<BrandRecord[]>([]);
   const [brandQuery, setBrandQuery] = useState("");
   const [brandLoading, setBrandLoading] = useState(false);
   const [brandCreateOpen, setBrandCreateOpen] = useState(false);
-  const [brandName, setBrandName] = useState("");
-  const [brandWebsite, setBrandWebsite] = useState("");
-  const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(null);
+  const [newBrandName, setNewBrandName] = useState("");
+  const [newBrandWebsite, setNewBrandWebsite] = useState("");
+  const [newBrandLogoUrl, setNewBrandLogoUrl] = useState<string | null>(null);
   const [brandUploading, setBrandUploading] = useState(false);
   const [brandUploadProgress, setBrandUploadProgress] = useState(0);
   const [brandNotice, setBrandNotice] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [draftSaved, setDraftSaved] = useState(false);
-  const [baseServingAmount, setBaseServingAmount] = useState("1");
-  const [baseServingUnit, setBaseServingUnit] = useState("serving");
-  const [baseServingGrams, setBaseServingGrams] = useState("");
-  const [kcal, setKcal] = useState("");
-  const [carbs, setCarbs] = useState("");
-  const [protein, setProtein] = useState("");
-  const [fat, setFat] = useState("");
+  // Selected brand logo (shown in trigger when a brand is selected)
+  const [selectedBrandLogoUrl, setSelectedBrandLogoUrl] = useState<string | null>(null);
+
+  // UI state
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [sodium, setSodium] = useState("");
-  const [sugar, setSugar] = useState("");
-  const [transFat, setTransFat] = useState("");
-  const [fiber, setFiber] = useState("");
-  const [cholesterol, setCholesterol] = useState("");
-  const [satFat, setSatFat] = useState("");
-  const [potassium, setPotassium] = useState("");
-  const [ingredients, setIngredients] = useState("");
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [draftSaved, setDraftSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+
   const { showFoodImages } = useAppStore();
   const draftTimerRef = useRef<number | null>(null);
   const draftSavedTimerRef = useRef<number | null>(null);
 
-  const servingUnits = {
-    weight: [
-      { value: "g", label: "g" },
-      { value: "kg", label: "kg" },
-      { value: "oz", label: "oz" },
-      { value: "lb", label: "lb" },
-    ],
-    volume: [
-      { value: "ml", label: "ml" },
-      { value: "l", label: "l" },
-      { value: "tsp", label: "tsp" },
-      { value: "tbsp", label: "tbsp" },
-      { value: "fl oz", label: "fl oz" },
-      { value: "cup", label: "cup" },
-      { value: "pint", label: "pint" },
-      { value: "quart", label: "quart" },
-      { value: "gallon", label: "gallon" },
-    ],
-    count: [
-      { value: "bar", label: "bar" },
-      { value: "bottle", label: "bottle" },
-      { value: "can", label: "can" },
-      { value: "packet", label: "packet" },
-      { value: "piece", label: "piece" },
-      { value: "scoop", label: "scoop" },
-      { value: "serving", label: "serving" },
-      { value: "slice", label: "slice" },
-    ],
-  };
+  // Watch specific fields for the image display (not all fields to avoid re-render loops)
+  const imageUrl = watch("imageUrl");
+  const foodName = watch("name");
 
+  // Auto-save draft on form changes - use subscription to avoid re-render loops
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const raw = window.localStorage.getItem("aurafit-create-food-draft-v1");
-    if (!raw) return;
-    try {
-      const draft = JSON.parse(raw) as Partial<Record<string, string>>;
-      if (draft.name) setName(draft.name);
-      if (draft.brand) setBrand(draft.brand);
-      if (draft.baseServingAmount) setBaseServingAmount(draft.baseServingAmount);
-      if (draft.baseServingUnit) setBaseServingUnit(draft.baseServingUnit);
-      if (draft.baseServingGrams) setBaseServingGrams(draft.baseServingGrams);
-      if (draft.kcal) setKcal(draft.kcal);
-      if (draft.carbs) setCarbs(draft.carbs);
-      if (draft.protein) setProtein(draft.protein);
-      if (draft.fat) setFat(draft.fat);
-      if (draft.sodium) setSodium(draft.sodium);
-      if (draft.sugar) setSugar(draft.sugar);
-      if (draft.transFat) setTransFat(draft.transFat);
-      if (draft.fiber) setFiber(draft.fiber);
-      if (draft.cholesterol) setCholesterol(draft.cholesterol);
-      if (draft.satFat) setSatFat(draft.satFat);
-      if (draft.potassium) setPotassium(draft.potassium);
-      if (draft.ingredients) setIngredients(draft.ingredients);
-      if (draft.imageUrl) setImageUrl(draft.imageUrl);
-      if (draft.brandId) setBrandId(draft.brandId);
-    } catch {
-      // ignore draft parse errors
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (draftTimerRef.current) {
-      window.clearTimeout(draftTimerRef.current);
-    }
-    draftTimerRef.current = window.setTimeout(() => {
-      const next = {
-        name,
-        brand,
-        brandId,
-        baseServingAmount,
-        baseServingUnit,
-        baseServingGrams,
-        kcal,
-        carbs,
-        protein,
-        fat,
-        sodium,
-        sugar,
-        transFat,
-        fiber,
-        cholesterol,
-        satFat,
-        potassium,
-        ingredients,
-        imageUrl: imageUrl ?? "",
-      };
-      window.localStorage.setItem(
-        "aurafit-create-food-draft-v1",
-        JSON.stringify(next),
-      );
-      setDraftSaved(true);
-      if (draftSavedTimerRef.current) {
-        window.clearTimeout(draftSavedTimerRef.current);
-      }
-      draftSavedTimerRef.current = window.setTimeout(() => {
-        setDraftSaved(false);
-      }, 1400);
-    }, 300);
-    return () => {
+    
+    // Subscribe to form changes instead of using watch() in render
+    const subscription = form.watch((formValues) => {
+      // Don't save if form is pristine (no user changes yet)
+      if (!isDirty) return;
+      
+      // Serialize and compare to avoid unnecessary saves
+      const serialized = JSON.stringify(formValues);
+      if (serialized === lastSavedDraft.current) return;
+      
       if (draftTimerRef.current) {
         window.clearTimeout(draftTimerRef.current);
-        draftTimerRef.current = null;
       }
-      if (draftSavedTimerRef.current) {
-        window.clearTimeout(draftSavedTimerRef.current);
-        draftSavedTimerRef.current = null;
-      }
+      
+      draftTimerRef.current = window.setTimeout(() => {
+        lastSavedDraft.current = serialized;
+        window.localStorage.setItem(DRAFT_STORAGE_KEY, serialized);
+        setDraftSaved(true);
+        
+        if (draftSavedTimerRef.current) {
+          window.clearTimeout(draftSavedTimerRef.current);
+        }
+        draftSavedTimerRef.current = window.setTimeout(() => {
+          setDraftSaved(false);
+        }, 1400);
+      }, 600); // Increased debounce to 600ms
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+      if (draftTimerRef.current) window.clearTimeout(draftTimerRef.current);
+      if (draftSavedTimerRef.current) window.clearTimeout(draftSavedTimerRef.current);
     };
-  }, [
-    name,
-    brand,
-    brandId,
-    baseServingAmount,
-    baseServingUnit,
-    baseServingGrams,
-    kcal,
-    carbs,
-    protein,
-    fat,
-    sodium,
-    sugar,
-    transFat,
-    fiber,
-    cholesterol,
-    satFat,
-    potassium,
-    ingredients,
-    imageUrl,
-  ]);
+  }, [form, isDirty]);
 
-  const handleSave = async () => {
-    if (saving) return;
-    if (!kcal.trim() || !carbs.trim() || !protein.trim() || !fat.trim()) {
-      toast("Enter calories, carbs, protein, and fat");
-      return;
+  // Handle image upload
+  const handleImageUpload = useCallback(async (file: File) => {
+    setUploading(true);
+    setUploadNotice(null);
+    setUploadProgress(0);
+    try {
+      const signature = await fetchFoodImageSignature();
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("api_key", signature.apiKey);
+      formData.append("timestamp", String(signature.timestamp));
+      formData.append("signature", signature.signature);
+      if (signature.uploadPreset) {
+        formData.append("upload_preset", signature.uploadPreset);
+      }
+
+      const data = await new Promise<{ secure_url?: string }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`);
+        xhr.upload.onprogress = (event) => {
+          if (!event.lengthComputable) return;
+          setUploadProgress(Math.round((event.loaded / event.total) * 100));
+        };
+        xhr.onload = () => {
+          try {
+            if (xhr.status < 200 || xhr.status >= 300) {
+              reject(new Error("Upload failed"));
+              return;
+            }
+            resolve(JSON.parse(xhr.responseText));
+          } catch {
+            reject(new Error("Upload failed"));
+          }
+        };
+        xhr.onerror = () => reject(new Error("Upload failed"));
+        xhr.send(formData);
+      });
+
+      if (!data.secure_url) throw new Error("Upload failed");
+      setValue("imageUrl", data.secure_url);
+      setUploadNotice("Image added.");
+    } catch {
+      setUploadNotice("Upload failed.");
+    } finally {
+      setUploading(false);
     }
-    setSaving(true);
-    const safeName = name.trim() || "Custom food";
-    const micronutrients: Record<string, unknown> = {};
-    if (sodium.trim()) micronutrients.sodium_mg = Number(sodium);
-    if (sugar.trim()) micronutrients.sugar_g = Number(sugar);
-    if (transFat.trim()) micronutrients.trans_fat_g = Number(transFat);
-    if (fiber.trim()) micronutrients.fiber_g = Number(fiber);
-    if (cholesterol.trim()) micronutrients.cholesterol_mg = Number(cholesterol);
-    if (satFat.trim()) micronutrients.saturated_fat_g = Number(satFat);
-    if (potassium.trim()) micronutrients.potassium_mg = Number(potassium);
-    if (ingredients.trim()) micronutrients.ingredients = ingredients.trim();
-    const safeAmount = baseServingAmount.trim() || "1";
-    const safeUnit = baseServingUnit.trim() || "serving";
-    const portionLabel = `${safeAmount} ${safeUnit}`.trim();
-    const portionGrams = baseServingGrams.trim()
-      ? Number(baseServingGrams)
-      : undefined;
-    const payload = {
-      name: safeName,
-      brand: brand.trim() || undefined,
-      brandId: brandId ?? undefined,
-      portionLabel,
-      portionGrams: Number.isFinite(portionGrams ?? undefined)
-        ? portionGrams
-        : undefined,
-      kcal: Number(kcal) || 0,
-      carbs: Number(carbs) || 0,
-      protein: Number(protein) || 0,
-      fat: Number(fat) || 0,
-      micronutrients: Object.keys(micronutrients).length
-        ? micronutrients
-        : undefined,
-      imageUrl: imageUrl ?? undefined,
-    };
+  }, [setValue]);
+
+  // Handle form submission
+  const onSubmit = async (values: CreateFoodFormValues) => {
+    const payload = transformFoodFormToPayload(values);
     try {
       const created = onCreate ? await onCreate(payload) : undefined;
       toast("Custom food saved", {
         description: `${payload.name} is ready to log.`,
       });
-      setName("");
-      setBrand("");
-      setBrandId(null);
+
+      // Reset form
+      reset(createFoodDefaults);
       setBrandQuery("");
       setBrandCreateOpen(false);
-      setBrandName("");
-      setBrandWebsite("");
-      setBrandLogoUrl(null);
+      setNewBrandName("");
+      setNewBrandWebsite("");
+      setNewBrandLogoUrl(null);
+      setSelectedBrandLogoUrl(null);
       setBrandNotice(null);
-      setBrandId(null);
-      setBrandQuery("");
-      setBrandCreateOpen(false);
-      setBrandName("");
-      setBrandWebsite("");
-      setBrandLogoUrl(null);
-      setBrandNotice(null);
-      setBaseServingAmount("1");
-      setBaseServingUnit("serving");
-      setBaseServingGrams("");
-      setKcal("");
-      setCarbs("");
-      setProtein("");
-      setFat("");
-      setSodium("");
-      setSugar("");
-      setTransFat("");
-      setFiber("");
-      setCholesterol("");
-      setSatFat("");
-      setPotassium("");
-      setIngredients("");
-      setImageUrl(null);
       setUploadNotice(null);
       setUploadProgress(0);
-      onComplete?.(created);
+
+      // Clear draft
       if (typeof window !== "undefined") {
-        window.localStorage.removeItem("aurafit-create-food-draft-v1");
+        window.localStorage.removeItem(DRAFT_STORAGE_KEY);
       }
-    } finally {
-      setSaving(false);
+
+      onComplete?.(created);
+    } catch {
+      toast("Failed to save food", {
+        action: {
+          label: "Retry",
+          onClick: () => void handleSubmit(onSubmit)(),
+        },
+      });
+    }
+  };
+
+  // Show validation error toast
+  const onError = () => {
+    const firstError = Object.values(errors)[0];
+    if (firstError?.message) {
+      toast(String(firstError.message));
+    } else {
+      toast("Enter calories, carbs, protein, and fat");
     }
   };
 
   return (
-    <div className="px-5 pb-6 pt-2">
+    <form onSubmit={handleSubmit(onSubmit, onError)} className="aura-sheet-body">
       <div className="text-center">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
           <Plus className="h-6 w-6" />
@@ -339,31 +297,68 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
       </div>
 
       <div className="mt-6 space-y-3 rounded-[24px] border border-black/5 bg-white p-4 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
-        {draftSaved ? (
-          <div className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-600">
-            Draft saved
+        {/* Show "Draft loaded" on initial load if there was a meaningful draft */}
+        {showDraftLoaded && !draftSaved ? (
+          <div className="flex items-center justify-between">
+            <div className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-600">
+              Draft loaded
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                reset(createFoodDefaults);
+                if (typeof window !== "undefined") {
+                  window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+                }
+                lastSavedDraft.current = "";
+                setShowDraftLoaded(false);
+                setDraftSaved(false);
+                setSelectedBrandLogoUrl(null);
+              }}
+              className="text-[11px] font-semibold text-slate-400 hover:text-slate-600"
+            >
+              Start fresh
+            </button>
           </div>
         ) : null}
-        <Input
-          value={brand}
-          onChange={(event) => setBrand(event.target.value)}
-          placeholder="Brand (optional)"
-          className="h-11 rounded-full"
-        />
+        {/* Show "Draft saved" after user makes changes */}
+        {draftSaved ? (
+          <div className="flex items-center justify-between">
+            <div className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-600">
+              Draft saved
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                reset(createFoodDefaults);
+                if (typeof window !== "undefined") {
+                  window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+                }
+                lastSavedDraft.current = "";
+                setShowDraftLoaded(false);
+                setDraftSaved(false);
+                setSelectedBrandLogoUrl(null);
+              }}
+              className="text-[11px] font-semibold text-slate-400 hover:text-slate-600"
+            >
+              Clear draft
+            </button>
+          </div>
+        ) : null}
         <div className="grid grid-cols-[1fr_130px] gap-2">
           <Input
             type="number"
             min={0}
             inputMode="decimal"
-            value={baseServingAmount}
-            onChange={(event) => setBaseServingAmount(event.target.value)}
+            {...register("baseServingAmount")}
             placeholder="Serving size"
             className="h-11 rounded-full"
           />
-          <Select
-            value={baseServingUnit}
-            onValueChange={setBaseServingUnit}
-          >
+          <Controller
+            name="baseServingUnit"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
             <SelectTrigger className="h-11 rounded-full">
               <SelectValue placeholder="Unit" />
             </SelectTrigger>
@@ -408,14 +403,15 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
             </SelectGroup>
             </SelectContent>
           </Select>
+            )}
+          />
         </div>
         <div className="relative">
           <Input
             type="number"
             min={0}
             inputMode="numeric"
-            value={baseServingGrams}
-            onChange={(event) => setBaseServingGrams(event.target.value)}
+            {...register("baseServingGrams")}
             placeholder="Serving grams (optional)"
             className="h-11 rounded-full pr-10"
           />
@@ -428,7 +424,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
             {showFoodImages && imageUrl ? (
               <img
                 src={imageUrl}
-                alt={name || "Food"}
+                alt={foodName || "Food"}
                 className="h-full w-full object-cover object-center"
                 loading="lazy"
                 decoding="async"
@@ -446,53 +442,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
               className="sr-only"
               onChange={(event) => {
                 const file = event.target.files?.[0];
-                if (!file) return;
-                setUploading(true);
-                setUploadNotice(null);
-                setUploadProgress(0);
-                  fetchFoodImageSignature()
-                  .then(async (signature) => {
-                    const formData = new FormData();
-                    formData.append("file", file);
-                    formData.append("api_key", signature.apiKey);
-                    formData.append("timestamp", String(signature.timestamp));
-                    formData.append("signature", signature.signature);
-                    if (signature.uploadPreset) {
-                      formData.append("upload_preset", signature.uploadPreset);
-                    }
-                      const data = await new Promise<{ secure_url?: string }>((resolve, reject) => {
-                      const xhr = new XMLHttpRequest();
-                      xhr.open(
-                        "POST",
-                        `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
-                      );
-                      xhr.upload.onprogress = (event) => {
-                        if (!event.lengthComputable) return;
-                        const pct = Math.round((event.loaded / event.total) * 100);
-                        setUploadProgress(pct);
-                      };
-                      xhr.onload = () => {
-                        try {
-                            if (xhr.status < 200 || xhr.status >= 300) {
-                              reject(new Error("Upload failed"));
-                              return;
-                            }
-                            resolve(JSON.parse(xhr.responseText));
-                        } catch {
-                          reject(new Error("Upload failed"));
-                        }
-                      };
-                      xhr.onerror = () => reject(new Error("Upload failed"));
-                      xhr.send(formData);
-                    });
-                    if (!data.secure_url) throw new Error("Upload failed");
-                    setImageUrl(data.secure_url);
-                    setUploadNotice("Image added.");
-                  })
-                  .catch(() => {
-                    setUploadNotice("Upload failed.");
-                  })
-                  .finally(() => setUploading(false));
+                if (file) void handleImageUpload(file);
               }}
             />
           </label>
@@ -507,27 +457,41 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
         )}
         {uploadNotice && <p className="text-xs text-emerald-600">{uploadNotice}</p>}
         <Input
-          value={name}
-          onChange={(event) => setName(event.target.value)}
+          {...register("name")}
           placeholder="Food name (optional)"
           className="rounded-full"
         />
         <div>
-          <Select
-            value={brandId ?? "none"}
-            onValueChange={(value) => {
-              if (value === "none") {
-                setBrandId(null);
-                setBrand("");
-                return;
-              }
-              const match = brands.find((item) => item.id === value);
-              setBrandId(value);
-              setBrand(match?.name ?? "");
-            }}
-          >
+          <Controller
+            name="brandId"
+            control={control}
+            render={({ field }) => (
+              <Select
+                value={field.value ?? "none"}
+                onValueChange={(value) => {
+                  if (value === "none") {
+                    field.onChange(null);
+                    setValue("brandName", "");
+                    setSelectedBrandLogoUrl(null);
+                    return;
+                  }
+                  const match = brands.find((item) => item.id === value);
+                  field.onChange(value);
+                  setValue("brandName", match?.name ?? "");
+                  setSelectedBrandLogoUrl(match?.logo_url ?? null);
+                }}
+              >
             <SelectTrigger className="h-10 rounded-full">
-              <SelectValue placeholder="Select brand (optional)" />
+              <div className="flex items-center gap-2">
+                {selectedBrandLogoUrl && (
+                  <img
+                    src={selectedBrandLogoUrl}
+                    alt="Brand"
+                    className="h-5 w-5 rounded-full object-cover"
+                  />
+                )}
+                <SelectValue placeholder="Select brand (optional)" />
+              </div>
             </SelectTrigger>
             <SelectContent>
               <div className="px-3 py-2">
@@ -552,6 +516,15 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                 .filter((brand) =>
                   brand.name.toLowerCase().includes(brandQuery.trim().toLowerCase()),
                 )
+                .reduce<BrandRecord[]>((unique, brand) => {
+                  const normalized = brand.name.trim().toLowerCase();
+                  if (!normalized) return unique;
+                  if (unique.some((item) => item.name.trim().toLowerCase() === normalized)) {
+                    return unique;
+                  }
+                  unique.push(brand);
+                  return unique;
+                }, [])
                 .map((brand) => (
                   <SelectItem key={brand.id} value={brand.id}>
                     <div className="flex items-center gap-2">
@@ -570,7 +543,9 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                 <div className="px-3 py-2 text-xs text-slate-500">No brands found</div>
               )}
             </SelectContent>
-          </Select>
+              </Select>
+            )}
+          />
           <button
             type="button"
             className="mt-2 text-xs font-semibold text-emerald-600"
@@ -580,32 +555,28 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
           </button>
         </div>
         <Input
-          value={kcal}
-          onChange={(event) => setKcal(event.target.value)}
+          {...register("kcal")}
           placeholder="Calories (cal)"
-          className="rounded-full"
+          className={`rounded-full ${errors.kcal ? "border-red-300" : ""}`}
           inputMode="numeric"
         />
         <div className="grid grid-cols-3 gap-2">
           <Input
-            value={carbs}
-            onChange={(event) => setCarbs(event.target.value)}
+            {...register("carbs")}
             placeholder="Carbs (g)"
-            className="rounded-full"
+            className={`rounded-full ${errors.carbs ? "border-red-300" : ""}`}
             inputMode="numeric"
           />
           <Input
-            value={protein}
-            onChange={(event) => setProtein(event.target.value)}
+            {...register("protein")}
             placeholder="Protein (g)"
-            className="rounded-full"
+            className={`rounded-full ${errors.protein ? "border-red-300" : ""}`}
             inputMode="numeric"
           />
           <Input
-            value={fat}
-            onChange={(event) => setFat(event.target.value)}
+            {...register("fat")}
             placeholder="Fat (g)"
-            className="rounded-full"
+            className={`rounded-full ${errors.fat ? "border-red-300" : ""}`}
             inputMode="numeric"
           />
         </div>
@@ -618,22 +589,22 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
           </p>
           <div className="mt-3 space-y-3">
             <Input
-              value={brandName}
-              onChange={(event) => setBrandName(event.target.value)}
+              value={newBrandName}
+              onChange={(event) => setNewBrandName(event.target.value)}
               placeholder="Brand name"
               className="h-10 rounded-full"
             />
             <Input
-              value={brandWebsite}
-              onChange={(event) => setBrandWebsite(event.target.value)}
+              value={newBrandWebsite}
+              onChange={(event) => setNewBrandWebsite(event.target.value)}
               placeholder="Website (optional)"
               className="h-10 rounded-full"
             />
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-white text-xl shadow-[0_8px_20px_rgba(16,185,129,0.12)]">
-                {brandLogoUrl ? (
+                {newBrandLogoUrl ? (
                   <img
-                    src={brandLogoUrl}
+                    src={newBrandLogoUrl}
                     alt="Brand logo"
                     className="h-full w-full object-cover"
                   />
@@ -686,7 +657,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                           xhr.send(formData);
                         });
                         if (!data.secure_url) throw new Error("Upload failed");
-                        setBrandLogoUrl(data.secure_url);
+                        setNewBrandLogoUrl(data.secure_url);
                         setBrandNotice("Logo added.");
                       })
                       .catch(() => setBrandNotice("Upload failed."))
@@ -708,23 +679,24 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
               type="button"
               className="w-full rounded-full bg-aura-primary py-4 text-sm font-semibold text-white"
               onClick={async () => {
-                if (!brandName.trim()) {
+                if (!newBrandName.trim()) {
                   setBrandNotice("Enter a brand name.");
                   return;
                 }
                 try {
                   const response = await createBrand({
-                    name: brandName.trim(),
-                    websiteUrl: brandWebsite.trim() || undefined,
-                    logoUrl: brandLogoUrl ?? undefined,
+                    name: newBrandName.trim(),
+                    websiteUrl: newBrandWebsite.trim() || undefined,
+                    logoUrl: newBrandLogoUrl ?? undefined,
                   });
                   setBrands((prev) => [response.brand, ...prev]);
-                  setBrandId(response.brand.id);
-                  setBrand(response.brand.name);
+                  setValue("brandId", response.brand.id);
+                  setValue("brandName", response.brand.name);
+                  setSelectedBrandLogoUrl(response.brand.logo_url);
                   setBrandCreateOpen(false);
-                  setBrandName("");
-                  setBrandWebsite("");
-                  setBrandLogoUrl(null);
+                  setNewBrandName("");
+                  setNewBrandWebsite("");
+                  setNewBrandLogoUrl(null);
                   setBrandNotice(null);
                 } catch {
                   setBrandNotice("Unable to create brand.");
@@ -754,8 +726,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
           <div className="grid grid-cols-2 gap-2">
             <div className="relative">
               <Input
-                value={sodium}
-                onChange={(event) => setSodium(event.target.value)}
+                {...register("sodium")}
                 placeholder="Sodium"
                 className="rounded-full pr-10"
                 inputMode="numeric"
@@ -767,8 +738,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
             </div>
             <div className="relative">
               <Input
-                value={potassium}
-                onChange={(event) => setPotassium(event.target.value)}
+                {...register("potassium")}
                 placeholder="Potassium"
                 className="rounded-full pr-10"
                 inputMode="numeric"
@@ -780,8 +750,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
             </div>
             <div className="relative">
               <Input
-                value={fiber}
-                onChange={(event) => setFiber(event.target.value)}
+                {...register("fiber")}
                 placeholder="Fiber"
                 className="rounded-full pr-8"
                 inputMode="numeric"
@@ -793,8 +762,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
             </div>
             <div className="relative">
               <Input
-                value={satFat}
-                onChange={(event) => setSatFat(event.target.value)}
+                {...register("satFat")}
                 placeholder="Saturated fat"
                 className="rounded-full pr-8"
                 inputMode="numeric"
@@ -806,8 +774,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
             </div>
             <div className="relative">
               <Input
-                value={sugar}
-                onChange={(event) => setSugar(event.target.value)}
+                {...register("sugar")}
                 placeholder="Sugar"
                 className="rounded-full pr-8"
                 inputMode="numeric"
@@ -819,8 +786,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
             </div>
             <div className="relative">
               <Input
-                value={transFat}
-                onChange={(event) => setTransFat(event.target.value)}
+                {...register("transFat")}
                 placeholder="Trans fat"
                 className="rounded-full pr-8"
                 inputMode="numeric"
@@ -832,8 +798,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
             </div>
             <div className="relative">
               <Input
-                value={cholesterol}
-                onChange={(event) => setCholesterol(event.target.value)}
+                {...register("cholesterol")}
                 placeholder="Cholesterol"
                 className="rounded-full pr-10"
                 inputMode="numeric"
@@ -845,8 +810,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
             </div>
           </div>
           <Textarea
-            value={ingredients}
-            onChange={(event) => setIngredients(event.target.value)}
+            {...register("ingredients")}
             placeholder="Ingredients (optional)"
             className="min-h-[96px] rounded-[18px]"
           />
@@ -854,13 +818,13 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
       </Collapsible>
 
       <Button
+        type="submit"
         className="mt-6 w-full rounded-full bg-aura-primary py-6 text-base font-semibold text-white shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
-        onClick={handleSave}
-        disabled={saving}
+        disabled={isSubmitting}
       >
-        {saving ? "Saving..." : "Save food"}
+        {isSubmitting ? "Saving..." : "Save food"}
       </Button>
-    </div>
+    </form>
   );
 };
 

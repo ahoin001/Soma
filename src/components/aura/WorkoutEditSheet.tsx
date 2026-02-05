@@ -31,7 +31,7 @@ export const WorkoutEditSheet = ({
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="rounded-t-[36px] border-none bg-slate-950 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-white">
         {workout && (
-          <div className="px-5 pb-6 pt-2">
+        <div className="aura-sheet-body">
             <div className="mt-2 text-center">
               <p className="text-xs uppercase tracking-[0.2em] text-white/50">
                 {plan?.name ?? "Workout plan"}

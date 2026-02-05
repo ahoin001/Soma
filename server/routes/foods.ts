@@ -50,6 +50,20 @@ router.get(
     );
 
     if (result.rows.length > 0 || !q) {
+      // Debug: Log any foods with micronutrients
+      const withMicros = result.rows.filter(
+        (r: { micronutrients?: Record<string, unknown> }) =>
+          r.micronutrients && Object.keys(r.micronutrients).length > 0
+      );
+      if (withMicros.length > 0) {
+        console.log("[foods search] Foods with micronutrients:", withMicros.map(
+          (r: { id: string; name: string; micronutrients: Record<string, unknown> }) => ({
+            id: r.id,
+            name: r.name,
+            micronutrients: r.micronutrients,
+          })
+        ));
+      }
       const payload = { items: result.rows };
       searchCache.set(cacheKey, payload);
       res.setHeader("Cache-Control", "private, max-age=30");
@@ -405,6 +419,12 @@ router.patch(
     const userId = getUserId(req);
     await assertAdmin(userId);
     const payload = updateFoodSchema.parse(req.body);
+    // Debug: Log micronutrients being saved
+    console.log("[foods PATCH] Updating food:", {
+      foodId: req.params.foodId,
+      hasMicronutrients: !!payload.micronutrients,
+      micronutrients: payload.micronutrients,
+    });
     const result = await query(
       `
       UPDATE foods
@@ -437,6 +457,12 @@ router.patch(
         payload.micronutrients ?? null,
       ],
     );
+    // Debug: Log the saved food's micronutrients
+    console.log("[foods PATCH] Saved food:", {
+      id: result.rows[0]?.id,
+      name: result.rows[0]?.name,
+      micronutrients: result.rows[0]?.micronutrients,
+    });
     searchCache.clear();
     listCache.clear();
     res.json({ item: result.rows[0] ?? null });

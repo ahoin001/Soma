@@ -109,7 +109,7 @@ export const WorkoutSessionSheet = ({
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="rounded-t-[36px] border-none bg-slate-950 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-white">
         {workout && (
-          <div className="px-5 pb-6 pt-2">
+        <div className="aura-sheet-body">
             <div className="mt-2 flex items-center justify-between">
               <Button
                 variant="ghost"

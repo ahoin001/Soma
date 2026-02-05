@@ -107,18 +107,30 @@ export const BottomNav = ({ experience, onAddAction }: BottomNavProps) => {
               icon={Layers}
               label="Routines"
               to="/fitness/routines"
+              active={path.startsWith("/fitness/routines")}
               tone={tone}
             />
-            <Button className="h-12 w-12 rounded-full bg-emerald-400 shadow-[0_16px_30px_rgba(45,212,191,0.35)] hover:bg-emerald-300">
+            <Button
+              className="h-12 w-12 rounded-full bg-emerald-400 shadow-[0_16px_30px_rgba(45,212,191,0.35)] hover:bg-emerald-300"
+              onClick={onAddAction}
+              type="button"
+            >
               <Timer className="h-5 w-5 text-slate-950" />
             </Button>
             <NavButton
               icon={LineChart}
               label="Progress"
               to="/fitness/progress"
+              active={path.startsWith("/fitness/progress")}
               tone={tone}
             />
-            <NavButton icon={BookOpen} label="Log" to="/fitness/log" tone={tone} />
+            <NavButton
+              icon={BookOpen}
+              label="Log"
+              to="/fitness/log"
+              active={path.startsWith("/fitness/log")}
+              tone={tone}
+            />
           </>
         )}
       </div>

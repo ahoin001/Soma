@@ -1,6 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { defaultMacroTargets, defaultSummary } from "@/data/defaults";
+import {
+  ensureUser,
+  fetchLatestWeightLog,
+  fetchMealEntries,
+  fetchNutritionSummary,
+  fetchUserProfile,
+} from "@/lib/api";
 import { useDailyIntake } from "@/hooks/useDailyIntake";
 import { useFoodCatalog } from "@/hooks/useFoodCatalog";
 import { useExerciseLibrary } from "@/hooks/useExerciseLibrary";
@@ -47,14 +54,38 @@ type AppStore = {
   workoutDrafts: Record<string, WorkoutTemplate["exercises"]>;
   setWorkoutDraft: (workoutId: string, exercises: WorkoutTemplate["exercises"]) => void;
   clearWorkoutDraft: (workoutId: string) => void;
+  mealPulse: { mealId?: string; at: number } | null;
+  setMealPulse: (mealId?: string) => void;
+  clearMealPulse: () => void;
 };
 
 const AppStoreContext = createContext<AppStore | null>(null);
 
+const USER_PROFILE_KEY = "aurafit-user-profile-v1";
+
 export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    displayName: "You",
-    goal: "balance",
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    if (typeof window === "undefined") {
+      return { displayName: "You", goal: "balance" };
+    }
+    const stored = window.localStorage.getItem(USER_PROFILE_KEY);
+    if (!stored) {
+      return { displayName: "You", goal: "balance" };
+    }
+    try {
+      const parsed = JSON.parse(stored) as UserProfile;
+      return {
+        displayName: parsed.displayName ?? "You",
+        goal: parsed.goal ?? "balance",
+        sex: parsed.sex,
+        age: parsed.age,
+        heightCm: parsed.heightCm,
+        weightKg: parsed.weightKg,
+        activity: parsed.activity,
+      };
+    } catch {
+      return { displayName: "You", goal: "balance" };
+    }
   });
   const [showFoodImages, setShowFoodImages] = useState(() => {
     if (typeof window === "undefined") return true;
@@ -63,6 +94,11 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
   });
   const mealTypes = useMealTypes();
   const nutrition = useDailyIntake(defaultSummary, defaultMacroTargets, mealTypes.meals);
+  const {
+    hydrateEntries: hydrateNutritionEntries,
+    hydrateSummary: hydrateNutritionSummary,
+    hydrateTargets: hydrateNutritionTargets,
+  } = nutrition;
   const foodCatalog = useFoodCatalog();
   const fitnessLibrary = useExerciseLibrary();
   const fitnessPlanner = useFitnessPlanner();
@@ -91,6 +127,9 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
     createWorkoutPlan,
     createWorkoutTemplate,
   } = useWorkoutPlans();
+  const [mealPulse, setMealPulseState] = useState<{ mealId?: string; at: number } | null>(
+    null,
+  );
 
   const setWorkoutDraft = (workoutId: string, exercises: WorkoutTemplate["exercises"]) => {
     setWorkoutDrafts((prev) => ({ ...prev, [workoutId]: exercises }));
@@ -102,6 +141,14 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
       delete next[workoutId];
       return next;
     });
+  };
+
+  const setMealPulse = (mealId?: string) => {
+    setMealPulseState({ mealId, at: Date.now() });
+  };
+
+  const clearMealPulse = () => {
+    setMealPulseState(null);
   };
 
   const value = useMemo(
@@ -129,6 +176,9 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
       workoutDrafts,
       setWorkoutDraft,
       clearWorkoutDraft,
+      mealPulse,
+      setMealPulse,
+      clearMealPulse,
     }),
     [
       userProfile,
@@ -150,6 +200,9 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
       createWorkoutPlan,
       createWorkoutTemplate,
       workoutDrafts,
+      mealPulse,
+      setMealPulse,
+      clearMealPulse,
     ],
   );
 
@@ -160,6 +213,125 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
       String(showFoodImages),
     );
   }, [showFoodImages]);
+
+  useEffect(() => {
+    let active = true;
+    const computeAge = (dob: string) => {
+      const birth = new Date(dob);
+      if (Number.isNaN(birth.getTime())) return undefined;
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDelta = today.getMonth() - birth.getMonth();
+      if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < birth.getDate())) {
+        age -= 1;
+      }
+      return age >= 0 ? age : undefined;
+    };
+    const normalizeWeight = (weight: number, unit: string) => {
+      if (!Number.isFinite(weight)) return undefined;
+      if (unit.toLowerCase() === "lb") {
+        return Math.round(weight * 0.453592 * 10) / 10;
+      }
+      return Math.round(weight * 10) / 10;
+    };
+    const toLocalDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+    const hydrateProfile = async () => {
+      try {
+        await ensureUser();
+        const today = toLocalDate(new Date());
+        const [profileRes, weightRes, nutritionSummary, mealEntries] = await Promise.all([
+          fetchUserProfile(),
+          fetchLatestWeightLog(),
+          fetchNutritionSummary(today),
+          fetchMealEntries(today),
+        ]);
+        if (!active) return;
+        const profile = profileRes.profile;
+        const weightEntry = weightRes.entry;
+        const settings = nutritionSummary.settings ?? null;
+        if (!profile && !weightEntry && !settings && !nutritionSummary.totals) {
+          if (mealEntries.entries.length) {
+            hydrateNutritionEntries(mealEntries.entries, mealEntries.items);
+          }
+          return;
+        }
+        setUserProfile((prev) => ({
+          ...prev,
+          displayName: profile?.display_name ?? prev.displayName ?? "You",
+          sex:
+            (profile?.sex as UserProfile["sex"] | null) ??
+            prev.sex ??
+            undefined,
+          age: profile?.dob ? computeAge(profile.dob) ?? prev.age : prev.age,
+          heightCm:
+            Number.isFinite(profile?.height_cm ?? undefined)
+              ? Number(profile?.height_cm)
+              : prev.heightCm,
+          weightKg:
+            weightEntry && Number.isFinite(weightEntry.weight)
+              ? normalizeWeight(weightEntry.weight, weightEntry.unit) ?? prev.weightKg
+              : prev.weightKg,
+        }));
+
+        if (settings) {
+          hydrateNutritionTargets(settings);
+        } else if (import.meta.env.DEV) {
+          const enabled =
+            typeof window !== "undefined" &&
+            window.localStorage.getItem("aurafit-debug") === "true";
+          if (enabled) {
+            console.info("[AuraFit] missing nutrition settings on hydrate");
+          }
+        }
+
+        hydrateNutritionSummary({
+          totals: nutritionSummary.totals,
+          targets: nutritionSummary.targets ?? null,
+          settings: nutritionSummary.settings ?? null,
+        });
+
+        if (import.meta.env.DEV) {
+          const enabled =
+            typeof window !== "undefined" &&
+            window.localStorage.getItem("aurafit-debug") === "true";
+          if (enabled) {
+            const kcal = Number(nutritionSummary.settings?.kcal_goal ?? Number.NaN);
+            const invalidKcal = !Number.isFinite(kcal) || kcal <= 0;
+            if (invalidKcal) {
+              console.info("[AuraFit] nutrition settings kcal_goal invalid", {
+                kcal_goal: nutritionSummary.settings?.kcal_goal ?? null,
+              });
+            }
+          }
+        }
+
+        if (mealEntries.entries.length) {
+          hydrateNutritionEntries(mealEntries.entries, mealEntries.items);
+        }
+      } catch {
+        // ignore hydration failures
+      }
+    };
+    void hydrateProfile();
+    return () => {
+      active = false;
+    };
+  }, [
+    hydrateNutritionEntries,
+    hydrateNutritionSummary,
+    hydrateNutritionTargets,
+    setUserProfile,
+  ]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(userProfile));
+  }, [userProfile]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
