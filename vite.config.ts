@@ -32,7 +32,8 @@ export default defineConfig(() => ({
         enabled: true,
       },
       workbox: {
-        navigateFallback: "/offline.html",
+        // Use index.html so refresh/failed document requests load the app; only show offline.html when truly uncached
+        navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//, /\/[^/?]+\.[^/]+$/],
         runtimeCaching: [
           {
