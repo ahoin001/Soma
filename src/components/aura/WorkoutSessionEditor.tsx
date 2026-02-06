@@ -1148,14 +1148,18 @@ export const WorkoutSessionEditor = ({
   }, [exercises.length, isEditMode]);
 
   useEffect(() => {
-    if (!dragMode) return;
-    const onTouchMove = (event: TouchEvent) => {
-      event.preventDefault();
-    };
-    document.addEventListener("touchmove", onTouchMove, { passive: false });
-    return () => {
-      document.removeEventListener("touchmove", onTouchMove);
-    };
+    if (typeof document === "undefined") return;
+    if (dragMode) {
+      document.body.style.overscrollBehaviorY = "none";
+      document.documentElement.style.overscrollBehaviorY = "none";
+      return () => {
+        document.body.style.overscrollBehaviorY = "";
+        document.documentElement.style.overscrollBehaviorY = "";
+      };
+    }
+    document.body.style.overscrollBehaviorY = "";
+    document.documentElement.style.overscrollBehaviorY = "";
+    return undefined;
   }, [dragMode]);
 
   const handleDragEnd = (event: { active: { id: string }; over?: { id: string } | null }) => {
@@ -1431,7 +1435,7 @@ export const WorkoutSessionEditor = ({
                           type="button"
                           ref={setActivatorNodeRef}
                           className={cn(
-                            "absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/80",
+                            "absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/80",
                             isDragging && "opacity-80",
                           )}
                           style={{ touchAction: "none" }}
