@@ -25,6 +25,7 @@ export const EditLogSheet = ({
   onDelete,
 }: EditLogSheetProps) => {
   const [multiplier, setMultiplier] = useState(1);
+  const [multiplierInput, setMultiplierInput] = useState("1");
   const [pulse, setPulse] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -45,6 +46,7 @@ export const EditLogSheet = ({
         const next = Number(stored);
         if (Number.isFinite(next) && next > 0) {
           setMultiplier(next);
+          setMultiplierInput(String(next));
           return;
         }
       }
@@ -53,10 +55,12 @@ export const EditLogSheet = ({
       const next = Number(item.quantity);
       if (Number.isFinite(next) && next > 0) {
         setMultiplier(next);
+        setMultiplierInput(String(next));
         return;
       }
     }
     setMultiplier(1);
+    setMultiplierInput("1");
   }, [open, item]);
 
   useEffect(() => {
@@ -222,7 +226,11 @@ export const EditLogSheet = ({
                   variant="secondary"
                   className="h-11 w-11 rounded-full text-lg font-semibold active:scale-95"
                   onClick={() =>
-                    setMultiplier((prev) => Math.max(1, Math.round(prev - 1)))
+                    setMultiplier((prev) => {
+                      const next = Math.max(1, Math.round(prev - 1));
+                      setMultiplierInput(String(next));
+                      return next;
+                    })
                   }
                 >
                   −
@@ -233,11 +241,22 @@ export const EditLogSheet = ({
                   max={10}
                   step={1}
                   inputMode="decimal"
-                  value={safeMultiplier}
+                  value={multiplierInput}
                   onChange={(event) => {
-                    const next = Number(event.target.value);
+                    const raw = event.target.value;
+                    setMultiplierInput(raw);
+                    if (raw === "") return;
+                    const next = Number(raw);
                     if (!Number.isFinite(next)) return;
-                    setMultiplier(Math.min(10, Math.max(1, Math.round(next))));
+                    const clamped = Math.min(10, Math.max(1, Math.round(next)));
+                    setMultiplier(clamped);
+                    setMultiplierInput(String(clamped));
+                  }}
+                  onBlur={() => {
+                    if (multiplierInput.trim() === "") {
+                      setMultiplier(1);
+                      setMultiplierInput("1");
+                    }
                   }}
                   className="h-11 rounded-full text-center text-sm font-semibold"
                 />
@@ -246,7 +265,11 @@ export const EditLogSheet = ({
                   variant="secondary"
                   className="h-11 w-11 rounded-full text-lg font-semibold active:scale-95"
                   onClick={() =>
-                    setMultiplier((prev) => Math.min(10, Math.round(prev + 1)))
+                    setMultiplier((prev) => {
+                      const next = Math.min(10, Math.round(prev + 1));
+                      setMultiplierInput(String(next));
+                      return next;
+                    })
                   }
                 >
                   +
@@ -259,7 +282,10 @@ export const EditLogSheet = ({
                     type="button"
                     variant={safeMultiplier === value ? "default" : "secondary"}
                     className="h-9 rounded-full px-4 text-xs font-semibold transition-transform active:scale-95"
-                    onClick={() => setMultiplier(value)}
+                    onClick={() => {
+                      setMultiplier(value);
+                      setMultiplierInput(String(value));
+                    }}
                   >
                     {value.toFixed(1)}x
                   </Button>

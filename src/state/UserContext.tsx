@@ -40,6 +40,7 @@ export type UserProfile = {
 
 export type UserSettings = {
   showFoodImages: boolean;
+  defaultHome: "nutrition" | "fitness";
 };
 
 type UserContextValue = {
@@ -51,6 +52,8 @@ type UserContextValue = {
   // Settings
   showFoodImages: boolean;
   setShowFoodImages: (next: boolean) => void;
+  defaultHome: "nutrition" | "fitness";
+  setDefaultHome: (next: "nutrition" | "fitness") => void;
 
   // Hydration state
   isHydrated: boolean;
@@ -62,6 +65,7 @@ type UserContextValue = {
 
 const USER_PROFILE_KEY = "aurafit-user-profile-v1";
 const FOOD_IMAGES_KEY = "aurafit-show-food-images";
+const DEFAULT_HOME_KEY = "aurafit-default-home";
 
 // ============================================================================
 // Default Values
@@ -115,6 +119,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     return stored ? stored === "true" : true;
   });
 
+  const [defaultHome, setDefaultHome] = useState<"nutrition" | "fitness">(() => {
+    if (typeof window === "undefined") return "nutrition";
+    const stored = window.localStorage.getItem(DEFAULT_HOME_KEY);
+    return stored === "fitness" ? "fitness" : "nutrition";
+  });
+
   // Convenience method to patch profile
   const updateUserProfile = useCallback((patch: Partial<UserProfile>) => {
     setUserProfile((prev) => ({ ...prev, ...patch }));
@@ -131,6 +141,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(FOOD_IMAGES_KEY, String(showFoodImages));
   }, [showFoodImages]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(DEFAULT_HOME_KEY, defaultHome);
+  }, [defaultHome]);
 
   // Hydrate from server on mount
   useEffect(() => {
@@ -218,9 +233,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       updateUserProfile,
       showFoodImages,
       setShowFoodImages,
+      defaultHome,
+      setDefaultHome,
       isHydrated,
     }),
-    [userProfile, updateUserProfile, showFoodImages, isHydrated]
+    [userProfile, updateUserProfile, showFoodImages, defaultHome, isHydrated]
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
@@ -250,6 +267,6 @@ export const useUserProfile = () => {
  * Convenience hook for just the settings
  */
 export const useUserSettings = () => {
-  const { showFoodImages, setShowFoodImages } = useUser();
-  return { showFoodImages, setShowFoodImages };
+  const { showFoodImages, setShowFoodImages, defaultHome, setDefaultHome } = useUser();
+  return { showFoodImages, setShowFoodImages, defaultHome, setDefaultHome };
 };

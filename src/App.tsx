@@ -1,10 +1,13 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Suspense, lazy, useEffect, useLayoutEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AnimatePresence } from "framer-motion";
 import {
   BrowserRouter,
   Routes,
@@ -19,12 +22,43 @@ import {
   UserProvider,
   UIProvider,
   useExperienceTransition,
+  useUserSettings,
 } from "@/state";
 import { OnboardingDialog } from "@/components/aura";
 import { useAuth } from "@/hooks/useAuth";
 import { PageTransition } from "@/components/aura";
 import { PageErrorBoundary } from "@/components/ErrorBoundary";
 import NotFound from "./pages/NotFound";
+import {
+  ensureUser,
+  ensureMealTypes,
+  fetchActivityGoals,
+  fetchActiveFitnessSession,
+  fetchFitnessRoutines,
+  fetchFitnessSessionHistory,
+  fetchFoodFavorites,
+  fetchFoodHistory,
+  fetchMealEntries,
+  fetchNutritionSettings,
+  fetchNutritionSummary,
+  fetchStepsLogs,
+  fetchTrainingAnalytics,
+  fetchWaterLogs,
+  fetchWeightLogs,
+  fetchWorkoutPlans,
+} from "@/lib/api";
+import { getMealRecommendation } from "@/lib/nutrition";
+import { computeLogSections, computeTotals, toLocalDate } from "@/lib/nutritionData";
+import { queryKeys } from "@/lib/queryKeys";
+import { defaultMacroTargets, defaultSummary } from "@/data/defaults";
+import type { FoodItem, Meal } from "@/data/mock";
+import type { FoodRecord } from "@/types/api";
+import { calculateMacroPercent } from "@/data/foodApi";
+import {
+  setFitnessPlannerCache,
+  setTrainingAnalyticsCache,
+  setWorkoutPlansCache,
+} from "@/lib/fitnessCache";
 
 // Register offline mutation handlers for background sync
 import "@/lib/offlineHandlers";
@@ -76,10 +110,39 @@ const queryClient = new QueryClient({
   },
 });
 
+const mapFoodRecord = (record: FoodRecord): FoodItem => {
+  const macros = {
+    carbs: Number(record.carbs_g ?? 0),
+    protein: Number(record.protein_g ?? 0),
+    fat: Number(record.fat_g ?? 0),
+  };
+  return {
+    id: record.id,
+    name: record.name,
+    brand: record.brand_name ?? record.brand ?? undefined,
+    brandId: record.brand_id ?? undefined,
+    brandLogoUrl: record.brand_logo_url ?? undefined,
+    portion:
+      record.portion_label ??
+      (record.portion_grams ? `${record.portion_grams} g` : "100 g"),
+    portionLabel: record.portion_label ?? undefined,
+    portionGrams: record.portion_grams ?? undefined,
+    kcal: Number(record.kcal ?? 0),
+    emoji: "🍽️",
+    barcode: record.barcode ?? undefined,
+    source: record.is_global ? "api" : "local",
+    imageUrl: record.image_url ?? undefined,
+    micronutrients: record.micronutrients ?? undefined,
+    macros,
+    macroPercent: calculateMacroPercent(macros),
+  };
+};
+
 const AnimatedRoutes = () => {
   const location = useLocation();
   const navigationType = useNavigationType();
   const { experienceTransition } = useExperienceTransition();
+  const { defaultHome } = useUserSettings();
   const prevExperienceRef = useRef<"nutrition" | "fitness">(
     location.pathname.startsWith("/fitness") ? "fitness" : "nutrition",
   );
@@ -152,7 +215,15 @@ const AnimatedRoutes = () => {
       <ScrollRestoration />
       <AnimatePresence mode="wait" initial={false}>
         <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<Navigate to="/nutrition" replace />} />
+          <Route
+            path="/"
+            element={
+              <Navigate
+                to={defaultHome === "fitness" ? "/fitness" : "/nutrition"}
+                replace
+              />
+            }
+          />
         <Route
           path="/nutrition"
           element={
@@ -394,6 +465,202 @@ const ExperienceBackdrop = () => {
   );
 };
 
+const AppPrefetch = () => {
+  const auth = useAuth();
+  const { defaultHome } = useUserSettings();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (auth.status !== "ready" || !auth.userId) return;
+    let cancelled = false;
+    const localDate = toLocalDate(new Date());
+
+    const prefetch = async () => {
+      try {
+        await ensureUser();
+        if (cancelled) return;
+
+        // Nutrition essentials
+        const mealTypes = await ensureMealTypes();
+        queryClient.setQueryData(queryKeys.mealTypes, mealTypes);
+        const meals: Meal[] = mealTypes.items.map((item) => ({
+          id: item.id,
+          label: item.label,
+          emoji: item.emoji ?? "🍽️",
+          recommended: getMealRecommendation(item.label),
+        }));
+
+        await queryClient.prefetchQuery({
+          queryKey: queryKeys.nutrition(localDate),
+          queryFn: async () => {
+            const [entriesRes, summaryRes, settingsRes] = await Promise.all([
+              fetchMealEntries(localDate),
+              fetchNutritionSummary(localDate),
+              fetchNutritionSettings(),
+            ]);
+            const logSections = computeLogSections(
+              entriesRes.entries,
+              entriesRes.items,
+              meals
+            );
+            const totals = computeTotals(logSections);
+
+            const goalCandidate =
+              summaryRes.targets?.kcal_goal ??
+              summaryRes.settings?.kcal_goal ??
+              settingsRes.settings?.kcal_goal ??
+              defaultSummary.goal;
+            const goal =
+              Number.isFinite(Number(goalCandidate)) && Number(goalCandidate) > 0
+                ? Number(goalCandidate)
+                : defaultSummary.goal;
+
+            const macros = defaultMacroTargets.map((macro) => ({
+              ...macro,
+              current: totals[macro.key],
+              goal:
+                macro.key === "carbs"
+                  ? Number(
+                      summaryRes.targets?.carbs_g ??
+                        settingsRes.settings?.carbs_g ??
+                        macro.goal
+                    )
+                  : macro.key === "protein"
+                    ? Number(
+                        summaryRes.targets?.protein_g ??
+                          settingsRes.settings?.protein_g ??
+                          macro.goal
+                      )
+                    : Number(
+                        summaryRes.targets?.fat_g ??
+                          settingsRes.settings?.fat_g ??
+                          macro.goal
+                      ),
+            }));
+
+            return {
+              summary: {
+                eaten: totals.kcal,
+                burned: 0,
+                kcalLeft: Math.max(goal - totals.kcal, 0),
+                goal,
+              },
+              macros,
+              logSections,
+            };
+          },
+          staleTime: 2 * 60 * 1000,
+          gcTime: 60 * 60 * 1000,
+        });
+
+        // Tracking essentials
+        await queryClient.prefetchQuery({
+          queryKey: queryKeys.trackingWeight,
+          queryFn: async () => {
+            const response = await fetchWeightLogs({ limit: 180 });
+            return response.items.map((item) => ({
+              date: item.local_date,
+              weight: Number(item.weight),
+            }));
+          },
+          staleTime: 10 * 60 * 1000,
+          gcTime: 60 * 60 * 1000,
+        });
+
+        await queryClient.prefetchQuery({
+          queryKey: queryKeys.trackingSteps(localDate),
+          queryFn: async () => {
+            const [stepsResponse, goalsResponse] = await Promise.all([
+              fetchStepsLogs(localDate),
+              fetchActivityGoals(),
+            ]);
+            const hasSteps = stepsResponse.items.length > 0;
+            const latest = stepsResponse.items[0];
+            return {
+              steps: hasSteps ? Number(latest.steps ?? 0) : 0,
+              connected: hasSteps,
+              goal: goalsResponse.goals?.steps_goal ?? 8000,
+            };
+          },
+          staleTime: 60 * 1000,
+          gcTime: 30 * 60 * 1000,
+        });
+
+        await queryClient.prefetchQuery({
+          queryKey: queryKeys.trackingWater(localDate),
+          queryFn: async () => {
+            const [waterResponse, goalsResponse] = await Promise.all([
+              fetchWaterLogs(localDate),
+              fetchActivityGoals(),
+            ]);
+            const total = waterResponse.items.reduce(
+              (sum, item) => sum + Number(item.amount_ml ?? 0),
+              0
+            );
+            return {
+              totalMl: total,
+              goalMl: goalsResponse.goals?.water_goal_ml ?? 2000,
+            };
+          },
+          staleTime: 60 * 1000,
+          gcTime: 30 * 60 * 1000,
+        });
+
+        // Food catalog essentials (favorites/history)
+        await queryClient.prefetchQuery({
+          queryKey: queryKeys.foodFavorites,
+          queryFn: async () => {
+            const response = await fetchFoodFavorites();
+            return response.items.map(mapFoodRecord);
+          },
+          staleTime: 10 * 60 * 1000,
+          gcTime: 60 * 60 * 1000,
+        });
+
+        await queryClient.prefetchQuery({
+          queryKey: queryKeys.foodHistory,
+          queryFn: async () => {
+            const response = await fetchFoodHistory(50);
+            return response.items.map(mapFoodRecord);
+          },
+          staleTime: 10 * 60 * 1000,
+          gcTime: 60 * 60 * 1000,
+        });
+
+        if (defaultHome === "fitness") {
+          const workoutPlans = await fetchWorkoutPlans();
+          setWorkoutPlansCache(workoutPlans);
+
+          const [routinesRes, activeRes, historyRes, goalsRes] = await Promise.all([
+            fetchFitnessRoutines(),
+            fetchActiveFitnessSession(),
+            fetchFitnessSessionHistory(),
+            fetchActivityGoals(),
+          ]);
+          setFitnessPlannerCache({ routinesRes, activeRes, historyRes, goalsRes });
+
+          const training = await fetchTrainingAnalytics(8);
+          setTrainingAnalyticsCache({ weeks: 8, items: training.items });
+        }
+      } catch {
+        // Prefetch failures should be silent
+      }
+    };
+
+    // Defer slightly so the app renders immediately
+    const timer = window.setTimeout(() => {
+      void prefetch();
+    }, defaultHome === "fitness" ? 150 : 50);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [auth.status, auth.userId, defaultHome, queryClient]);
+
+  return null;
+};
+
 const ScrollRestoration = () => {
   const location = useLocation();
   const navigationType = useNavigationType();
@@ -457,12 +724,17 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 
 const AuthRoute = () => {
   const auth = useAuth();
+  const { defaultHome } = useUserSettings();
 
   if (auth.status !== "ready") {
     return <AuthLoading />;
   }
 
-  return auth.userId ? <Navigate to="/nutrition" replace /> : <Auth />;
+  return auth.userId ? (
+    <Navigate to={defaultHome === "fitness" ? "/fitness" : "/nutrition"} replace />
+  ) : (
+    <Auth />
+  );
 };
 
 const AppShell = () => {
@@ -480,6 +752,7 @@ const AppShell = () => {
       <Suspense fallback={<AuthLoading />}>
         {isSignedIn ? (
           <>
+            <AppPrefetch />
             <ExperienceBackdrop />
             {/* OnboardingDialog shows automatically if user hasn't completed onboarding */}
             <OnboardingDialog />

@@ -19,6 +19,7 @@ import type { BrandRecord } from "@/types/api";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Heart, PencilLine, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   createBrand,
   fetchFoodImageSignature,
@@ -30,13 +31,21 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useAppStore } from "@/state/AppStore";
 import { useUserSettings } from "@/state";
+import { servingUnits } from "@/lib/schemas/food";
 
 type FoodDetailSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   food: FoodItem | null;
   macros: MacroTarget[];
-  onTrack: (food: FoodItem) => Promise<void>;
+  onTrack: (
+    food: FoodItem,
+    options?: {
+      quantity?: number;
+      portionLabel?: string;
+      portionGrams?: number | null;
+    }
+  ) => Promise<void>;
   onUpdateFood: (food: FoodItem, next: NutritionDraft) => void;
   onUpdateMaster?: (
     food: FoodItem,
@@ -146,6 +155,7 @@ export const FoodDetailSheet = ({
   const [adminEditing, setAdminEditing] = useState(false);
   const [draft, setDraft] = useState<NutritionDraft | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [quantityInput, setQuantityInput] = useState("1");
   const [servingOptions, setServingOptions] = useState<ServingOption[]>([]);
   const [selectedServingId, setSelectedServingId] = useState<string>("grams");
   const [baseServingAmount, setBaseServingAmount] = useState("1");
@@ -188,6 +198,7 @@ export const FoodDetailSheet = ({
       setAdminEditing(false);
       setDraft(null);
       setQuantity(1);
+      setQuantityInput("1");
       setServingOptions([]);
       setSelectedServingId("grams");
       setBaseServingAmount("1");
@@ -245,6 +256,7 @@ export const FoodDetailSheet = ({
       ingredients: readText("ingredients"),
     });
     setQuantity(1);
+    setQuantityInput("1");
     const options: ServingOption[] = [];
     const baseLabel = (food.portionLabel ?? food.portion)?.trim() || "Serving";
     const baseGrams = parsePortionGrams(baseLabel, food.portionGrams);
@@ -512,39 +524,9 @@ export const FoodDetailSheet = ({
     return `${quantityValue} ${label}`;
   };
 
-  const servingUnits = {
-    weight: [
-      { value: "g", label: "g" },
-      { value: "kg", label: "kg" },
-      { value: "oz", label: "oz" },
-      { value: "lb", label: "lb" },
-    ],
-    volume: [
-      { value: "ml", label: "ml" },
-      { value: "l", label: "l" },
-      { value: "tsp", label: "tsp" },
-      { value: "tbsp", label: "tbsp" },
-      { value: "fl oz", label: "fl oz" },
-      { value: "cup", label: "cup" },
-      { value: "pint", label: "pint" },
-      { value: "quart", label: "quart" },
-      { value: "gallon", label: "gallon" },
-    ],
-    count: [
-      { value: "bar", label: "bar" },
-      { value: "bottle", label: "bottle" },
-      { value: "can", label: "can" },
-      { value: "packet", label: "packet" },
-      { value: "piece", label: "piece" },
-      { value: "scoop", label: "scoop" },
-      { value: "serving", label: "serving" },
-      { value: "slice", label: "slice" },
-    ],
-  };
-
   const scaled = useMemo(() => {
     if (!food) {
-      return { kcal: 0, carbs: 0, protein: 0, fat: 0, grams: 0 };
+      return { kcal: 0, carbs: 0, protein: 0, fat: 0, grams: 0, multiplier: 1 };
     }
     const safeQuantity = Math.max(quantity, 0);
     const gramsPer = selectedServing?.grams ?? null;
@@ -573,6 +555,7 @@ export const FoodDetailSheet = ({
       protein: Math.round(food.macros.protein * multiplier),
       fat: Math.round(food.macros.fat * multiplier),
       grams: Math.round(grams),
+      multiplier,
     };
   }, [food, quantity, selectedServing, selectedServingId, basePortionGrams]);
 
@@ -823,11 +806,23 @@ export const FoodDetailSheet = ({
                   min={0}
                   step={0.1}
                   inputMode="decimal"
-                  value={quantity}
+                  value={quantityInput}
                   onChange={(event) => {
-                    const value = Number(event.target.value);
+                    const raw = event.target.value;
+                    setQuantityInput(raw);
+                    if (raw === "") {
+                      setQuantity(0);
+                      return;
+                    }
+                    const value = Number(raw);
                     if (!Number.isFinite(value)) return;
                     setQuantity(Math.max(0, value));
+                  }}
+                  onBlur={() => {
+                    if (quantityInput.trim() === "") {
+                      setQuantity(1);
+                      setQuantityInput("1");
+                    }
                   }}
                   className="h-11 rounded-full text-center"
                 />
@@ -1736,20 +1731,27 @@ export const FoodDetailSheet = ({
                 setSparkle(true);
                 setTracking(true);
                 const servingLabel = selectedServing?.label ?? food.portion;
-                const adjustedFood = {
+                const baseGramsRaw = basePortionGrams ?? food.portionGrams ?? null;
+                const baseGrams = Number.isFinite(Number(baseGramsRaw))
+                  ? Number(baseGramsRaw)
+                  : null;
+                const quantityForLog = scaled.multiplier;
+                if (!Number.isFinite(quantityForLog) || quantityForLog <= 0) {
+                  setTracking(false);
+                  return;
+                }
+                const baseFood = {
                   ...food,
-                  kcal: scaled.kcal,
-                  macros: {
-                    carbs: scaled.carbs,
-                    protein: scaled.protein,
-                    fat: scaled.fat,
-                  },
-                  portion: formatServingLabel(quantity, servingLabel),
+                  portion: servingLabel,
                   portionLabel: servingLabel,
-                  portionGrams: scaled.grams > 0 ? scaled.grams : undefined,
+                  portionGrams: baseGrams ?? undefined,
                 };
                 try {
-                  await onTrack(adjustedFood);
+                  await onTrack(baseFood, {
+                    quantity: quantityForLog,
+                    portionLabel: servingLabel,
+                    portionGrams: baseGrams,
+                  });
                   onOpenChange(false);
                 } finally {
                   setTracking(false);

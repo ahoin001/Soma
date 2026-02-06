@@ -24,6 +24,7 @@ import {
   startFitnessSession,
   updateFitnessRoutineExercise,
 } from "@/lib/api";
+import { getFitnessPlannerCache, setFitnessPlannerCache } from "@/lib/fitnessCache";
 
 export const useFitnessPlanner = () => {
   const [routines, setRoutines] = useState<Routine[]>([]);
@@ -39,77 +40,105 @@ export const useFitnessPlanner = () => {
       ? crypto.randomUUID()
       : `session_${Math.random().toString(36).slice(2, 9)}`;
 
-  const refresh = useCallback(async () => {
-    await ensureUser();
-    const [routinesRes, activeRes, historyRes, goalsRes] = await Promise.all([
-      fetchFitnessRoutines(),
-      fetchActiveFitnessSession(),
-      fetchFitnessSessionHistory(),
-      fetchActivityGoals(),
-    ]);
-
-    const routineMap = new Map<string, Routine>();
-    routinesRes.routines.forEach((routine) => {
-      routineMap.set(routine.id, {
-        id: routine.id,
-        name: routine.name,
-        exercises: [],
-        updatedAt: new Date(routine.updated_at).getTime(),
+  const applyPlannerData = useCallback(
+    (
+      routinesRes: Awaited<ReturnType<typeof fetchFitnessRoutines>>,
+      activeRes: Awaited<ReturnType<typeof fetchActiveFitnessSession>>,
+      historyRes: Awaited<ReturnType<typeof fetchFitnessSessionHistory>>,
+      goalsRes: Awaited<ReturnType<typeof fetchActivityGoals>>,
+    ) => {
+      const routineMap = new Map<string, Routine>();
+      routinesRes.routines.forEach((routine) => {
+        routineMap.set(routine.id, {
+          id: routine.id,
+          name: routine.name,
+          exercises: [],
+          updatedAt: new Date(routine.updated_at).getTime(),
+        });
       });
-    });
 
-    routinesRes.exercises.forEach((exercise) => {
-      const routine = routineMap.get(exercise.routine_id);
-      if (!routine) return;
-      routine.exercises.push({
-        id: exercise.id,
-        exerciseId: exercise.exercise_id ?? 0,
-        name: exercise.exercise_name,
-        targetSets: exercise.target_sets ?? 3,
-        notes: exercise.notes ?? undefined,
+      routinesRes.exercises.forEach((exercise) => {
+        const routine = routineMap.get(exercise.routine_id);
+        if (!routine) return;
+        routine.exercises.push({
+          id: exercise.id,
+          exerciseId: exercise.exercise_id ?? 0,
+          name: exercise.exercise_name,
+          targetSets: exercise.target_sets ?? 3,
+          notes: exercise.notes ?? undefined,
+        });
       });
-    });
 
-    const nextRoutines = Array.from(routineMap.values());
-    setRoutines(nextRoutines);
-    setActiveRoutineId((prev) => prev ?? nextRoutines[0]?.id ?? null);
+      const nextRoutines = Array.from(routineMap.values());
+      setRoutines(nextRoutines);
+      setActiveRoutineId((prev) => prev ?? nextRoutines[0]?.id ?? null);
 
-    if (activeRes.session) {
-      setSessionExercises(activeRes.exercises);
-      const sets: SessionSet[] = activeRes.sets.map((set) => ({
-        id: set.id,
-        exerciseId:
-          activeRes.exercises.find((ex) => ex.id === set.session_exercise_id)
-            ?.exercise_id ?? 0,
-        weight: Number(set.weight ?? 0),
-        reps: Number(set.reps ?? 0),
-        completedAt: Date.now(),
-      }));
-      setActiveSession({
-        id: activeRes.session.id,
-        routineId: activeRes.session.routine_id ?? "",
-        startedAt: new Date(activeRes.session.started_at).getTime(),
-        currentExerciseIndex: 0,
-        sets,
-      });
-    } else {
-      setSessionExercises([]);
-      setActiveSession(null);
-    }
+      if (activeRes.session) {
+        setSessionExercises(activeRes.exercises);
+        const sets: SessionSet[] = activeRes.sets.map((set) => ({
+          id: set.id,
+          exerciseId:
+            activeRes.exercises.find((ex) => ex.id === set.session_exercise_id)
+              ?.exercise_id ?? 0,
+          weight: Number(set.weight ?? 0),
+          reps: Number(set.reps ?? 0),
+          completedAt: Date.now(),
+        }));
+        setActiveSession({
+          id: activeRes.session.id,
+          routineId: activeRes.session.routine_id ?? "",
+          startedAt: new Date(activeRes.session.started_at).getTime(),
+          currentExerciseIndex: 0,
+          sets,
+        });
+      } else {
+        setSessionExercises([]);
+        setActiveSession(null);
+      }
 
-    setHistory(
-      historyRes.items.map((item) => ({
-        id: item.id,
-        routineId: item.routine_id ?? "",
-        startedAt: new Date(item.started_at).getTime(),
-        endedAt: new Date(item.ended_at).getTime(),
-        totalSets: Number(item.total_sets ?? 0),
-        totalVolume: Number(item.total_volume ?? 0),
-      })),
-    );
+      setHistory(
+        historyRes.items.map((item) => ({
+          id: item.id,
+          routineId: item.routine_id ?? "",
+          startedAt: new Date(item.started_at).getTime(),
+          endedAt: new Date(item.ended_at).getTime(),
+          totalSets: Number(item.total_sets ?? 0),
+          totalVolume: Number(item.total_volume ?? 0),
+        })),
+      );
 
-    setWeightUnit(goalsRes.goals?.weight_unit === "kg" ? "kg" : "lb");
-  }, []);
+      setWeightUnit(goalsRes.goals?.weight_unit === "kg" ? "kg" : "lb");
+    },
+    [],
+  );
+
+  const refresh = useCallback(
+    async (force = false) => {
+      if (!force) {
+        const cached = getFitnessPlannerCache();
+        if (cached) {
+          applyPlannerData(
+            cached.routinesRes,
+            cached.activeRes,
+            cached.historyRes,
+            cached.goalsRes,
+          );
+          return;
+        }
+      }
+      await ensureUser();
+      const [routinesRes, activeRes, historyRes, goalsRes] = await Promise.all([
+        fetchFitnessRoutines(),
+        fetchActiveFitnessSession(),
+        fetchFitnessSessionHistory(),
+        fetchActivityGoals(),
+      ]);
+
+      applyPlannerData(routinesRes, activeRes, historyRes, goalsRes);
+      setFitnessPlannerCache({ routinesRes, activeRes, historyRes, goalsRes });
+    },
+    [applyPlannerData],
+  );
 
   useEffect(() => {
     void refresh();
@@ -143,7 +172,7 @@ export const useFitnessPlanner = () => {
           ),
         );
         setActiveRoutineId(result.routine.id);
-        void refresh();
+        void refresh(true);
         return {
           id: result.routine.id,
           name: result.routine.name,
@@ -159,7 +188,7 @@ export const useFitnessPlanner = () => {
             onClick: () => void createRoutine(name),
           },
         });
-        void refresh();
+        void refresh(true);
         throw error;
       }
     },
@@ -179,7 +208,7 @@ export const useFitnessPlanner = () => {
       );
       try {
         await renameFitnessRoutine(routineId, trimmed);
-        void refresh();
+        void refresh(true);
       } catch (error) {
         if (previousName) {
           setRoutines((prev) =>
@@ -196,7 +225,7 @@ export const useFitnessPlanner = () => {
             onClick: () => void renameRoutine(routineId, name),
           },
         });
-        void refresh();
+        void refresh(true);
         throw error;
       }
     },
@@ -216,7 +245,7 @@ export const useFitnessPlanner = () => {
       });
       try {
         await deleteFitnessRoutine(routineId);
-        void refresh();
+        void refresh(true);
       } catch (error) {
         if (removed) {
           setRoutines((prev) => [removed as Routine, ...prev]);
@@ -230,7 +259,7 @@ export const useFitnessPlanner = () => {
             onClick: () => void removeRoutine(routineId),
           },
         });
-        void refresh();
+        void refresh(true);
         throw error;
       }
     },
@@ -261,7 +290,7 @@ export const useFitnessPlanner = () => {
           exerciseId: exercise.id,
           name: exercise.name,
         });
-        void refresh();
+        void refresh(true);
       } catch (error) {
         setRoutines((prev) =>
           prev.map((routine) =>
@@ -282,7 +311,7 @@ export const useFitnessPlanner = () => {
             onClick: () => void addExerciseToRoutine(routineId, exercise),
           },
         });
-        void refresh();
+        void refresh(true);
         throw error;
       }
     },
@@ -311,7 +340,7 @@ export const useFitnessPlanner = () => {
       );
       try {
         await removeFitnessRoutineExercise(routineId, routineExerciseId);
-        void refresh();
+        void refresh(true);
       } catch (error) {
         if (removed) {
           setRoutines((prev) =>
@@ -332,7 +361,7 @@ export const useFitnessPlanner = () => {
             onClick: () => void removeExerciseFromRoutine(routineId, routineExerciseId),
           },
         });
-        void refresh();
+        void refresh(true);
         throw error;
       }
     },
@@ -365,7 +394,7 @@ export const useFitnessPlanner = () => {
           targetSets: patch.targetSets,
           notes: patch.notes,
         });
-        void refresh();
+        void refresh(true);
       } catch (error) {
         if (previous) {
           setRoutines((prev) =>
@@ -388,7 +417,7 @@ export const useFitnessPlanner = () => {
             onClick: () => void updateRoutineExercise(routineId, routineExerciseId, patch),
           },
         });
-        void refresh();
+        void refresh(true);
         throw error;
       }
     },
@@ -420,7 +449,7 @@ export const useFitnessPlanner = () => {
       });
       try {
         const response = await startFitnessSession({ routineId });
-        void refresh();
+        void refresh(true);
         return response.session;
       } catch (error) {
         setActiveSession(previousSession);
@@ -460,7 +489,7 @@ export const useFitnessPlanner = () => {
       });
       try {
         await startFitnessSession({ exercises });
-        await refresh();
+        await refresh(true);
         return;
       } catch (error) {
         setActiveSession(previousSession);
@@ -471,7 +500,7 @@ export const useFitnessPlanner = () => {
             onClick: () => void startSessionFromTemplate(name, exercises),
           },
         });
-        void refresh();
+        void refresh(true);
         throw error;
       }
     },
@@ -513,7 +542,7 @@ export const useFitnessPlanner = () => {
           unitUsed: weightUnit,
           reps,
         });
-        void refresh();
+        void refresh(true);
       } catch (error) {
         setActiveSession((prev) => {
           if (!prev) return prev;
@@ -528,7 +557,7 @@ export const useFitnessPlanner = () => {
             onClick: () => void logSet(exerciseId, weight, reps),
           },
         });
-        void refresh();
+        void refresh(true);
         throw error;
       }
     },
@@ -548,7 +577,7 @@ export const useFitnessPlanner = () => {
     setActiveSession(null);
     try {
       await finishFitnessSession(activeSession.id);
-      void refresh();
+      void refresh(true);
     } catch (error) {
       setActiveSession(previousSession);
       toast("Unable to finish session", {
@@ -557,7 +586,7 @@ export const useFitnessPlanner = () => {
           onClick: () => void finishSession(),
         },
       });
-      void refresh();
+      void refresh(true);
       throw error;
     }
   }, [activeSession, refresh]);
@@ -588,7 +617,7 @@ export const useFitnessPlanner = () => {
           });
         }
       }
-      void refresh();
+      void refresh(true);
     },
     [activeSession, weightUnit, refresh],
   );

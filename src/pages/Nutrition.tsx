@@ -65,6 +65,11 @@ const transitionOptions: SegmentedOption[] = [
   { value: "circular-reveal", label: "Circular Reveal" },
 ];
 
+const homeOptions: SegmentedOption[] = [
+  { value: "nutrition", label: "Nutrition" },
+  { value: "fitness", label: "Fitness" },
+];
+
 const Nutrition = () => {
   const { activeSheet, openSheet, closeSheets, setActiveSheet } =
     useSheetManager<Exclude<ActiveSheet, null>>(null, {
@@ -92,7 +97,8 @@ const Nutrition = () => {
     foodCatalog,
     mealTypes,
   } = useAppStore();
-  const { showFoodImages, setShowFoodImages } = useUserSettings();
+  const { showFoodImages, setShowFoodImages, defaultHome, setDefaultHome } =
+    useUserSettings();
   const { mealPulse, setMealPulse, clearMealPulse } = useMealPulse();
   const { email, logout } = useAuth();
   const isAdmin = email?.toLowerCase() === "ahoin001@gmail.com";
@@ -237,9 +243,12 @@ const Nutrition = () => {
     openSheet("detail");
   };
 
-  const handleTrack = async (food: FoodItem) => {
+  const handleTrack = async (
+    food: FoodItem,
+    options?: { quantity?: number; portionLabel?: string; portionGrams?: number | null },
+  ) => {
     try {
-      await logFood(food, selectedMeal?.id);
+      await logFood(food, selectedMeal?.id, options);
       setMealPulse(selectedMeal?.id);
       toast("Logged to diary", {
         description: "Food added to your day.",
@@ -487,6 +496,29 @@ const Nutrition = () => {
               value={headerStyle}
               options={headerStyleOptions}
               onValueChange={(next) => setHeaderStyle(next as "immersive" | "card" | "media")}
+              className="mt-3"
+              itemClassName="bg-emerald-50"
+              activeClassName="text-white"
+              inactiveClassName="text-emerald-700"
+              indicatorClassName="bg-emerald-500"
+            />
+          </div>
+          <div className="mt-4 border-t border-emerald-100 pt-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+              Default home
+            </p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              Open the app on
+            </p>
+            <p className="text-xs text-slate-500">
+              Choose which experience loads first.
+            </p>
+            <SegmentedControl
+              value={defaultHome}
+              options={homeOptions}
+              onValueChange={(next) =>
+                setDefaultHome(next === "fitness" ? "fitness" : "nutrition")
+              }
               className="mt-3"
               itemClassName="bg-emerald-50"
               activeClassName="text-white"

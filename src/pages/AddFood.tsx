@@ -387,7 +387,10 @@ const AddFood = () => {
     return null;
   };
 
-  const handleTrack = (food: FoodItem) => {
+  const handleTrack = (
+    food: FoodItem,
+    options?: { quantity?: number; portionLabel?: string; portionGrams?: number | null },
+  ) => {
     const mealId = resolveMealId();
     if (!mealId) {
       toast("Select a meal first", { description: "Choose where to log this food." });
@@ -408,7 +411,7 @@ const AddFood = () => {
       return;
     }
     // Optimistic - fires immediately, errors handled by mutation's onError
-    nutrition.logFood(food, mealId);
+    nutrition.logFood(food, mealId, options);
     setMealPulse(mealId);
     toast("Logged to diary", { description: "Food added to your day." });
     closeSheets();

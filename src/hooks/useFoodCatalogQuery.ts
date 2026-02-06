@@ -179,7 +179,8 @@ export const useFoodCatalogQuery = () => {
       const response = await fetchFoodFavorites();
       return response.items.map(toFoodItem);
     },
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: 10 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
   });
 
   // --- Query: History ---
@@ -190,7 +191,8 @@ export const useFoodCatalogQuery = () => {
       const response = await fetchFoodHistory(50);
       return response.items.map(toFoodItem);
     },
-    staleTime: 60 * 1000,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
   });
 
   // --- Query: Search ---

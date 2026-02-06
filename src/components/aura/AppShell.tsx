@@ -64,7 +64,7 @@ export const AppShell = ({
     <div
       className={cn(
         // NO pt-[env(safe-area-inset-top)] here! Let backgrounds flow edge-to-edge
-        "relative min-h-screen overflow-x-hidden text-foreground",
+        "relative min-h-screen min-h-[100svh] overflow-x-hidden text-foreground",
         showNav && "pb-[calc(6rem+var(--sab,0px))]",
         experience === "nutrition"
           ? "experience-nutrition bg-aura-surface"
@@ -73,10 +73,11 @@ export const AppShell = ({
       )}
     >
       {/* 
-        STATUS BAR SCRIM
-        A subtle blur layer that sits ONLY in the status bar area.
-        This ensures the time/battery icons are always legible while
-        our beautiful gradient shows through.
+        STATUS BAR SCRIM — scroll-reactive
+        At scroll=0 the header gradient flows seamlessly under the status bar
+        icons (the "invisible header" effect). As the user scrolls and the
+        gradient moves off-screen, a frosted-glass scrim fades in so the
+        time/battery text stays readable over whatever content is underneath.
       */}
       <div
         className="pointer-events-none fixed inset-x-0 top-0 z-40"
@@ -84,18 +85,20 @@ export const AppShell = ({
       >
         <div
           className={cn(
-            "h-full w-full backdrop-blur-md",
+            "h-full w-full backdrop-blur-md transition-opacity duration-200",
             experience === "nutrition"
-              ? "bg-white/30"
-              : "bg-slate-950/50"
+              ? "bg-white/80"
+              : "bg-slate-950/85"
           )}
+          style={{ opacity: solidOpacity }}
         />
       </div>
 
       {/* 
         SCROLL-AWARE HEADER BAR
         As user scrolls, a solid/blurred bar fades in below the status bar
-        to separate the header from content.
+        to separate the header from content. When combined with the status
+        bar scrim above, they form one unified frosted-glass region.
       */}
       <div
         className="pointer-events-none fixed inset-x-0 z-40 backdrop-blur-md transition-opacity duration-200"

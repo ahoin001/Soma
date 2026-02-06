@@ -12,6 +12,11 @@ import {
   updateWorkoutTemplate as updateWorkoutTemplateApi,
   updateWorkoutTemplateExercises,
 } from "@/lib/api";
+import {
+  clearWorkoutPlansCache,
+  getWorkoutPlansCache,
+  setWorkoutPlansCache,
+} from "@/lib/fitnessCache";
 import { toast } from "sonner";
 
 const createTempId = (prefix: string) => {
@@ -32,46 +37,64 @@ export const useWorkoutPlans = () => {
   const activePlanRef = useRef<string | null>(null);
   const lastWorkoutRef = useRef<Record<string, string | null>>({});
 
+  const mapWorkoutPlans = useCallback(
+    (data: Awaited<ReturnType<typeof fetchWorkoutPlans>>) => {
+      const plans = data.plans ?? [];
+      const templates = data.templates ?? [];
+      const exercises = data.exercises ?? [];
+      const templatesByPlan = new Map<string, WorkoutTemplate[]>();
+      for (const template of templates) {
+        const list = templatesByPlan.get(template.plan_id) ?? [];
+        list.push({
+          id: template.id,
+          name: template.name,
+          exercises: [],
+          lastPerformed: template.last_performed_at ?? undefined,
+        });
+        templatesByPlan.set(template.plan_id, list);
+      }
+      const exercisesByTemplate = new Map<
+        string,
+        { id: string; name: string; item_order: number }[]
+      >();
+      for (const exercise of exercises) {
+        const list = exercisesByTemplate.get(exercise.template_id) ?? [];
+        list.push(exercise);
+        exercisesByTemplate.set(exercise.template_id, list);
+      }
+
+      return plans.map((plan) => {
+        const workouts = (templatesByPlan.get(plan.id) ?? []).map((template) => ({
+          ...template,
+          exercises: (exercisesByTemplate.get(template.id) ?? []).map((exercise) => ({
+            id: exercise.id,
+            name: exercise.exercise_name,
+          })),
+        }));
+        return { id: plan.id, name: plan.name, workouts };
+      });
+    },
+    [],
+  );
+
   const load = useCallback(async () => {
     if (loaded) return;
+    const cached = getWorkoutPlansCache();
+    if (cached) {
+      const workoutPlansData = mapWorkoutPlans(cached);
+      setWorkoutPlans(workoutPlansData);
+      setActivePlanId((prev) => prev ?? workoutPlansData[0]?.id ?? null);
+      setLoaded(true);
+      return;
+    }
     await ensureUser();
     const data = await fetchWorkoutPlans();
-    const plans = data.plans ?? [];
-    const templates = data.templates ?? [];
-    const exercises = data.exercises ?? [];
-    const templatesByPlan = new Map<string, WorkoutTemplate[]>();
-    for (const template of templates) {
-      const list = templatesByPlan.get(template.plan_id) ?? [];
-      list.push({
-        id: template.id,
-        name: template.name,
-        exercises: [],
-        lastPerformed: template.last_performed_at ?? undefined,
-      });
-      templatesByPlan.set(template.plan_id, list);
-    }
-    const exercisesByTemplate = new Map<string, { id: string; name: string; item_order: number }[]>();
-    for (const exercise of exercises) {
-      const list = exercisesByTemplate.get(exercise.template_id) ?? [];
-      list.push(exercise);
-      exercisesByTemplate.set(exercise.template_id, list);
-    }
-
-    const workoutPlansData = plans.map((plan) => {
-      const workouts = (templatesByPlan.get(plan.id) ?? []).map((template) => ({
-        ...template,
-        exercises: (exercisesByTemplate.get(template.id) ?? []).map((exercise) => ({
-          id: exercise.id,
-          name: exercise.exercise_name,
-        })),
-      }));
-      return { id: plan.id, name: plan.name, workouts };
-    });
-
+    setWorkoutPlansCache(data);
+    const workoutPlansData = mapWorkoutPlans(data);
     setWorkoutPlans(workoutPlansData);
     setActivePlanId((prev) => prev ?? workoutPlansData[0]?.id ?? null);
     setLoaded(true);
-  }, [loaded]);
+  }, [loaded, mapWorkoutPlans]);
 
   useEffect(() => {
     if (!loaded) {
@@ -111,6 +134,7 @@ export const useWorkoutPlans = () => {
     try {
       if (patch.name) {
         await updateWorkoutPlanApi(planId, { name: patch.name });
+        clearWorkoutPlansCache();
       }
     } catch (error) {
       rollback(previousPlans, previousActive, previousLast);
@@ -143,6 +167,7 @@ export const useWorkoutPlans = () => {
     });
     try {
       await deleteWorkoutPlanApi(planId);
+      clearWorkoutPlansCache();
     } catch (error) {
       rollback(previousPlans, previousActive, previousLast);
       toast("Unable to delete plan", {
@@ -169,6 +194,7 @@ export const useWorkoutPlans = () => {
     try {
       await ensureUser();
       const response = await createWorkoutPlanApi({ name: trimmed });
+      clearWorkoutPlansCache();
       const plan = { id: response.plan.id, name: response.plan.name, workouts: [] };
       setWorkoutPlans((prev) =>
         prev.map((item) => (item.id === optimisticId ? plan : item)),
@@ -206,6 +232,7 @@ export const useWorkoutPlans = () => {
     );
     try {
       const response = await createWorkoutTemplateApi({ planId, name: trimmed });
+      clearWorkoutPlansCache();
       const workout = {
         id: response.template.id,
         name: response.template.name,
@@ -285,6 +312,7 @@ export const useWorkoutPlans = () => {
       if (tasks.length) {
         await Promise.all(tasks);
       }
+      clearWorkoutPlansCache();
     } catch (error) {
       rollback(previousPlans, previousActive, previousLast);
       toast("Unable to update workout", {
@@ -313,6 +341,7 @@ export const useWorkoutPlans = () => {
     );
     try {
       await deleteWorkoutTemplateApi(workoutId);
+      clearWorkoutPlansCache();
     } catch (error) {
       rollback(previousPlans, previousActive, previousLast);
       toast("Unable to delete workout", {
@@ -333,6 +362,7 @@ export const useWorkoutPlans = () => {
     }));
     try {
       await completeWorkoutTemplate(workoutId);
+      clearWorkoutPlansCache();
     } catch (error) {
       setLastWorkoutByPlan(previousLast);
       toast("Unable to complete workout", {

@@ -59,7 +59,10 @@ export const BottomNav = ({ experience, onAddAction }: BottomNavProps) => {
   // Use portal to render directly to body, escaping any parent transforms
   // that would break fixed positioning (e.g., PageTransition animations)
   return createPortal(
-    <div className="fixed inset-x-0 bottom-0 z-[60] flex justify-center px-5" style={{ paddingBottom: `max(1.25rem, env(safe-area-inset-bottom))` }}>
+    <div
+      className="fixed inset-x-0 bottom-0 z-[60] flex justify-center px-5"
+      style={{ paddingBottom: "max(1.25rem, var(--sab))" }}
+    >
       <div
         className={`flex w-full max-w-sm items-center justify-between rounded-[28px] border px-6 py-3 shadow-[0_18px_36px_rgba(15,23,42,0.12)] backdrop-blur-md ${containerTone}`}
       >

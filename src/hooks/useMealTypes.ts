@@ -1,41 +1,45 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { MealTypeRecord } from "@/types/api";
 import type { Meal } from "@/data/mock";
 import { ensureMealTypes, ensureUser } from "@/lib/api";
 import { getMealRecommendation } from "@/lib/nutrition";
+import { queryKeys } from "@/lib/queryKeys";
 
 export const useMealTypes = () => {
-  const [items, setItems] = useState<MealTypeRecord[]>([]);
-  const [meals, setMeals] = useState<Meal[]>([]);
-  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const load = useCallback(async () => {
-    setStatus("loading");
-    setError(null);
-    try {
+  const query = useQuery({
+    queryKey: queryKeys.mealTypes,
+    queryFn: async () => {
       await ensureUser();
-      const response = await ensureMealTypes();
-      setItems(response.items);
-      setMeals(
-        response.items.map((item) => ({
-          id: item.id,
-          label: item.label,
-          emoji: item.emoji ?? "🍽️",
-          recommended: getMealRecommendation(item.label),
-        })),
-      );
-      setStatus("idle");
-    } catch (err) {
-      const detail = err instanceof Error ? err.message : "Unable to load meals.";
-      setError(detail);
-      setStatus("error");
-    }
-  }, []);
+      return ensureMealTypes();
+    },
+    staleTime: 30 * 60 * 1000,
+    gcTime: 2 * 60 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const items = query.data?.items ?? [];
+  const meals = useMemo<Meal[]>(
+    () =>
+      items.map((item) => ({
+        id: item.id,
+        label: item.label,
+        emoji: item.emoji ?? "🍽️",
+        recommended: getMealRecommendation(item.label),
+      })),
+    [items],
+  );
 
-  return { items, meals, status, error, reload: load };
+  const reload = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.mealTypes });
+  }, [queryClient]);
+
+  return {
+    items,
+    meals,
+    status: query.isFetching ? "loading" : query.isError ? "error" : "idle",
+    error: query.error instanceof Error ? query.error.message : null,
+    reload,
+  };
 };

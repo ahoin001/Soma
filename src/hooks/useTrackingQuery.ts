@@ -52,6 +52,8 @@ export const useWeightLogsQuery = () => {
         weight: Number(item.weight),
       })) as WeightEntry[];
     },
+    staleTime: 10 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
   });
 
   const mutation = useMutation({
@@ -173,6 +175,8 @@ export const useStepsSummaryQuery = (date: Date) => {
         goal: goalsResponse.goals?.steps_goal ?? 8000,
       };
     },
+    staleTime: 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   const stepsMutation = useMutation({
@@ -284,6 +288,8 @@ export const useWaterSummaryQuery = (date: Date) => {
         goalMl: goalsResponse.goals?.water_goal_ml ?? 2000,
       };
     },
+    staleTime: 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   const addWaterMutation = useMutation({
