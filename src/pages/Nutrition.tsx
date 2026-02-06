@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
+import { SegmentedControl, type SegmentedOption } from "@/components/ui/segmented-control";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
 import { useSheetManager } from "@/hooks/useSheetManager";
@@ -51,6 +52,12 @@ type NutritionDraft = {
 
 type ActiveSheet = "detail" | "quick" | "edit" | "admin" | null;
 
+const headerStyleOptions: SegmentedOption[] = [
+  { value: "immersive", label: "Immersive" },
+  { value: "card", label: "Card" },
+  { value: "media", label: "Media" },
+];
+
 const Nutrition = () => {
   const { activeSheet, openSheet, closeSheets, setActiveSheet } =
     useSheetManager<Exclude<ActiveSheet, null>>(null, {
@@ -65,6 +72,11 @@ const Nutrition = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showWelcome, setShowWelcome] = useState(false);
+  const [headerStyle, setHeaderStyle] = useState<"immersive" | "card" | "media">(() => {
+    if (typeof window === "undefined") return "immersive";
+    const saved = window.localStorage.getItem("aurafit-header-style");
+    return saved === "card" || saved === "media" ? saved : "immersive";
+  });
   const locationState = location.state as { justLoggedIn?: boolean; isNewUser?: boolean } | null;
   const {
     nutrition,
@@ -159,6 +171,11 @@ const Nutrition = () => {
       return () => window.clearTimeout(timer);
     }
   }, [locationState?.justLoggedIn]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("aurafit-header-style", headerStyle);
+  }, [headerStyle]);
 
   useEffect(() => {
     const editItemId = searchParams.get("editItemId");
@@ -373,8 +390,9 @@ const Nutrition = () => {
         )}
       </AnimatePresence>
 
-      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-4">
-        <div className="-mx-4 -mt-[env(safe-area-inset-top)]">
+      <div className="mx-auto w-full max-w-[420px] px-4 pb-10">
+        {/* Header extends to screen edges (-mx-4) for immersive gradient effect */}
+        <div className="-mx-4">
           <DashboardHeader
             eaten={summary.eaten}
             steps={stepsSummary.steps}
@@ -383,6 +401,7 @@ const Nutrition = () => {
             syncState={syncState}
             macros={macros}
             animateTrigger={animateTrigger}
+            variant={headerStyle}
             onProfileClick={
               isAdmin
                 ? () => {
@@ -443,6 +462,27 @@ const Nutrition = () => {
             <Switch
               checked={showFoodImages}
               onCheckedChange={setShowFoodImages}
+            />
+          </div>
+          <div className="mt-4 border-t border-emerald-100 pt-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+              Immersive style
+            </p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              Header look & feel
+            </p>
+            <p className="text-xs text-slate-500">
+              Try the three immersive PWA styles from the brief.
+            </p>
+            <SegmentedControl
+              value={headerStyle}
+              options={headerStyleOptions}
+              onValueChange={(next) => setHeaderStyle(next as "immersive" | "card" | "media")}
+              className="mt-3"
+              itemClassName="bg-emerald-50"
+              activeClassName="text-white"
+              inactiveClassName="text-emerald-700"
+              indicatorClassName="bg-emerald-500"
             />
           </div>
         </Card>

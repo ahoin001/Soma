@@ -19,7 +19,8 @@ export const FitnessHeader = ({
   onStartWorkout,
   starting = false,
 }: FitnessHeaderProps) => (
-  <header className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 pb-10 pt-6 text-white shadow-[0_20px_45px_rgba(15,23,42,0.5)]">
+  // pt includes safe-area-inset-top for immersive edge-to-edge display under status bar
+  <header className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 pb-10 text-white shadow-[0_20px_45px_rgba(15,23,42,0.5)]" style={{ paddingTop: "calc(1.5rem + var(--sat, env(safe-area-inset-top)))" }}>
     <div className="pointer-events-none absolute inset-0">
       <div className="absolute -right-10 top-6 h-32 w-32 rounded-full bg-emerald-400/20 blur-2xl" />
       <div className="absolute -left-8 bottom-4 h-24 w-24 rounded-full bg-teal-400/20 blur-2xl" />

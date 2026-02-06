@@ -492,7 +492,8 @@ const AddFood = () => {
 
   return (
     <AppShell experience="nutrition" showNav={false}>
-      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-4">
+      {/* pt includes safe-area for immersive edge-to-edge display */}
+      <div className="mx-auto w-full max-w-[420px] px-4 pb-10" style={{ paddingTop: "calc(1rem + var(--sat, env(safe-area-inset-top)))" }}>
         <div className="flex items-center justify-between">
           <Button
             type="button"

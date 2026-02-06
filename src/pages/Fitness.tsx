@@ -348,7 +348,8 @@ const Fitness = () => {
   return (
     <AppShell experience="fitness" onAddAction={handleStartNextWorkout}>
       <div className="w-full text-foreground">
-        <div className="pt-6">
+        {/* Header handles its own safe-area padding for immersive effect */}
+        <div>
           <FitnessHeader
             planName={activePlanForHud?.name}
             lastWorkout={

@@ -28,8 +28,8 @@ const WorkoutDetails = () => {
 
   if (!activePlan || !activeWorkout) {
     return (
-      <AppShell experience="fitness">
-        <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6 text-white">
+      <AppShell experience="fitness" showNav={false} safeAreaTop="extra">
+        <div className="mx-auto w-full max-w-sm px-5 pb-10 text-white">
           <div className="rounded-[28px] border border-white/10 bg-white/5 px-4 py-6 text-center">
             <p className="text-sm text-white/70">
               We could not find that workout. Try selecting a different plan.
@@ -55,7 +55,7 @@ const WorkoutDetails = () => {
   }, [workoutId, mode, navigationType]);
 
   return (
-    <AppShell experience="fitness" showNav={false}>
+    <AppShell experience="fitness" showNav={false} safeAreaTop="extra">
       <WorkoutSessionEditor
         mode={editorMode}
         workout={activeWorkout}
@@ -72,6 +72,14 @@ const WorkoutDetails = () => {
         onEditExercise={(exercise) => {
           if (!exercise.name) return;
           navigate(`/fitness/exercises/add?name=${encodeURIComponent(exercise.name)}&adminEdit=true`);
+        }}
+        onAddExercise={() => {
+          if (!activePlan || !activeWorkout) return;
+          navigate(
+            `/fitness/exercises/add?planId=${encodeURIComponent(
+              activePlan.id,
+            )}&workoutId=${encodeURIComponent(activeWorkout.id)}`,
+          );
         }}
         onSave={async (nextExercises) => {
           try {

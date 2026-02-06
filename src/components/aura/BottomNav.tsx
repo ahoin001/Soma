@@ -9,6 +9,7 @@ import {
   Target,
   Timer,
 } from "lucide-react";
+import { createPortal } from "react-dom";
 import { NavLink, useLocation } from "react-router-dom";
 
 const NavButton = ({
@@ -55,10 +56,12 @@ export const BottomNav = ({ experience, onAddAction }: BottomNavProps) => {
     ? "border-black/5 bg-white"
     : "border-white/10 bg-slate-950/90 text-white";
 
-  return (
-    <div className="fixed bottom-5 left-1/2 z-[30] w-full max-w-sm -translate-x-1/2 px-5 pb-[env(safe-area-inset-bottom)]">
+  // Use portal to render directly to body, escaping any parent transforms
+  // that would break fixed positioning (e.g., PageTransition animations)
+  return createPortal(
+    <div className="fixed inset-x-0 bottom-0 z-[60] flex justify-center px-5" style={{ paddingBottom: `max(1.25rem, env(safe-area-inset-bottom))` }}>
       <div
-        className={`flex items-center justify-between rounded-[28px] border px-6 py-3 shadow-[0_18px_36px_rgba(15,23,42,0.12)] backdrop-blur-md ${containerTone}`}
+        className={`flex w-full max-w-sm items-center justify-between rounded-[28px] border px-6 py-3 shadow-[0_18px_36px_rgba(15,23,42,0.12)] backdrop-blur-md ${containerTone}`}
       >
         {isNutrition ? (
           <>
@@ -134,6 +137,7 @@ export const BottomNav = ({ experience, onAddAction }: BottomNavProps) => {
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

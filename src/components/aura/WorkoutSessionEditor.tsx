@@ -58,6 +58,35 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+const isInteractiveTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(
+    target.closest(
+      [
+        "[data-dnd-ignore]",
+        "button",
+        "a",
+        "input",
+        "textarea",
+        "select",
+        "[role='button']",
+      ].join(","),
+    ),
+  );
+};
+
+class SmartPointerSensor extends PointerSensor {
+  static activators = [
+    {
+      eventName: "onPointerDown" as const,
+      handler: ({ nativeEvent }: { nativeEvent: PointerEvent }) => {
+        if (isInteractiveTarget(nativeEvent.target)) return false;
+        return true;
+      },
+    },
+  ];
+}
+
 type EditableSet = {
   id: string;
   weight: string;
@@ -110,7 +139,6 @@ const SortableExercise = ({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    touchAction: "none",
   };
   return (
     <motion.div
@@ -200,6 +228,7 @@ type WorkoutSessionEditorProps = {
   onStartSession?: () => void;
   onOpenGuide?: (exercise: { id: string; name: string }) => void;
   onEditExercise?: (exercise: { id: string; name: string }) => void;
+  onAddExercise?: () => void;
 };
 
 export const WorkoutSessionEditor = ({
@@ -212,6 +241,7 @@ export const WorkoutSessionEditor = ({
   onStartSession,
   onOpenGuide,
   onEditExercise,
+  onAddExercise,
 }: WorkoutSessionEditorProps) => {
   const { workoutDrafts, setWorkoutDraft, clearWorkoutDraft } = useAppStore();
   const [exercises, setExercises] = useState<EditableExercise[]>([]);
@@ -223,6 +253,7 @@ export const WorkoutSessionEditor = ({
   const [isAdmin, setIsAdmin] = useState(false);
   const [thumbnailMap, setThumbnailMap] = useState<Record<string, string | null>>({});
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const addTapRef = useRef(false);
   const [unitUsed, setUnitUsed] = useState<"lb" | "kg">("lb");
   const [advancedLogging, setAdvancedLogging] = useState(false);
   const draftTimerRef = useRef<number | null>(null);
@@ -236,7 +267,7 @@ export const WorkoutSessionEditor = ({
     active: boolean;
   } | null>(null);
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(SmartPointerSensor, {
       activationConstraint: { delay: 180, tolerance: 6 },
     }),
   );
@@ -435,6 +466,29 @@ export const WorkoutSessionEditor = ({
     setHighlightId(replaceTargetId);
   };
 
+  const triggerAddExercise = () => {
+    if (onAddExercise) {
+      onAddExercise();
+      return;
+    }
+    setReplaceTargetId("new");
+    setReplaceOpen(true);
+  };
+
+  const handleAddClick = () => {
+    if (addTapRef.current) {
+      addTapRef.current = false;
+      return;
+    }
+    triggerAddExercise();
+  };
+
+  const handleAddPointerUp = (event: React.PointerEvent) => {
+    if (event.pointerType !== "touch") return;
+    addTapRef.current = true;
+    triggerAddExercise();
+  };
+
   const saveExercises = () => {
     if (!onSave) return;
     setSavePulse(true);
@@ -618,6 +672,8 @@ export const WorkoutSessionEditor = ({
             <Button
               className="w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
               onClick={onStartSession}
+              onPointerDown={(event) => event.stopPropagation()}
+              type="button"
             >
               Start session
             </Button>
@@ -630,10 +686,10 @@ export const WorkoutSessionEditor = ({
               <Button
                 variant="outline"
                 className="mt-4 rounded-full border-white/20 text-white hover:bg-white/10"
-                onClick={() => {
-                  setReplaceTargetId("new");
-                  setReplaceOpen(true);
-                }}
+                onClick={handleAddClick}
+                onPointerUp={handleAddPointerUp}
+                type="button"
+                data-dnd-ignore
               >
                 <Plus className="h-4 w-4" />
                 Add exercise
@@ -674,7 +730,7 @@ export const WorkoutSessionEditor = ({
                       id={exercise.id}
                       disabled={!isEditMode}
                       className={cn(
-                        "relative rounded-[22px] border border-white/10 bg-white/5 px-3 py-3 touch-none will-change-transform",
+                        "relative rounded-[22px] border border-white/10 bg-white/5 px-3 py-3 touch-pan-y will-change-transform",
                         exercise.id === highlightId &&
                           "ring-1 ring-emerald-400/60 shadow-[0_0_22px_rgba(52,211,153,0.28)]",
                       )}
@@ -684,9 +740,10 @@ export const WorkoutSessionEditor = ({
                           type="button"
                           ref={setActivatorNodeRef}
                           className={cn(
-                            "absolute left-3 top-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-400/20 via-slate-950 to-slate-900 text-xs font-semibold uppercase tracking-[0.2em] text-white/70",
+                            "absolute left-3 top-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-400/20 via-slate-950 to-slate-900 text-xs font-semibold uppercase tracking-[0.2em] text-white/70 touch-none",
                             isDragging && "opacity-80",
                           )}
+                          style={{ touchAction: "none" }}
                           {...listeners}
                           aria-label="Drag to reorder"
                           data-swipe-ignore
@@ -1164,10 +1221,10 @@ export const WorkoutSessionEditor = ({
           <Button
             variant="outline"
             className="mt-6 w-full rounded-full border-white/20 text-white hover:bg-white/10"
-            onClick={() => {
-              setReplaceTargetId("new");
-              setReplaceOpen(true);
-            }}
+            onClick={handleAddClick}
+            onPointerUp={handleAddPointerUp}
+            type="button"
+            data-dnd-ignore
           >
             <Plus className="h-4 w-4" />
             Add exercise

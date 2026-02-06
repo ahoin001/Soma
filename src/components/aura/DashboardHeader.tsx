@@ -1,11 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { Bell, User } from "lucide-react";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { CalorieGauge } from "./CalorieGauge";
 import { ExperienceSwitch } from "./ExperienceSwitch";
 import { SyncStatus } from "./SyncStatus";
 import type { MacroTarget } from "@/data/mock";
+
+type DashboardHeaderVariant = "immersive" | "card" | "media";
 
 type DashboardHeaderProps = {
   eaten: number;
@@ -16,6 +19,7 @@ type DashboardHeaderProps = {
   macros: MacroTarget[];
   onProfileClick?: () => void;
   animateTrigger?: number;
+  variant?: DashboardHeaderVariant;
 };
 
 export const DashboardHeader = ({
@@ -27,12 +31,40 @@ export const DashboardHeader = ({
   macros,
   onProfileClick,
   animateTrigger,
+  variant = "immersive",
 }: DashboardHeaderProps) => {
   const consumed = Math.max(eaten, 0);
   const remaining = goal > 0 ? Math.max(goal - consumed, 0) : 0;
+  const isCard = variant === "card";
+  const isMedia = variant === "media";
+  const headerTopPadding = isCard
+    ? "calc(0.75rem + var(--sat, env(safe-area-inset-top)))"
+    : undefined;
+  const containerTopPadding = isCard
+    ? "1.25rem"
+    : "calc(3rem + var(--sat, env(safe-area-inset-top)))";
+
   return (
-    <header className="relative overflow-visible pb-10">
-      <div className="relative overflow-hidden rounded-b-[40px] bg-[radial-gradient(circle_at_15%_10%,_rgba(191,219,254,0.85),_transparent_50%),radial-gradient(circle_at_85%_0%,_rgba(167,243,208,0.92),_transparent_50%),radial-gradient(circle_at_70%_80%,_rgba(253,224,71,0.28),_transparent_60%),linear-gradient(180deg,_rgba(255,255,255,0.96)_0%,_rgba(236,253,245,0.92)_50%,_rgba(209,250,229,0.86)_100%)] pb-20 pt-[calc(3rem+env(safe-area-inset-top))] shadow-[0_22px_55px_rgba(52,211,153,0.28)]">
+    <header
+      className={cn("relative overflow-visible pb-10", isCard && "pt-2")}
+      style={isCard ? { paddingTop: headerTopPadding } : undefined}
+    >
+      {/* 
+        Header card extends visually from the TOP of the screen (under status bar)
+        but content is padded down by safe-area-inset-top for the notch.
+        This creates the "invisible header" effect where gradient flows under status bar.
+      */}
+      <div
+        className={cn(
+          "relative overflow-hidden shadow-[0_22px_55px_rgba(52,211,153,0.28)]",
+          isCard
+            ? "mx-4 rounded-[32px] bg-gradient-to-br from-white via-emerald-50 to-white"
+            : "rounded-b-[40px] bg-[radial-gradient(circle_at_15%_10%,_rgba(191,219,254,0.85),_transparent_50%),radial-gradient(circle_at_85%_0%,_rgba(167,243,208,0.92),_transparent_50%),radial-gradient(circle_at_70%_80%,_rgba(253,224,71,0.28),_transparent_60%),linear-gradient(180deg,_rgba(255,255,255,0.96)_0%,_rgba(236,253,245,0.92)_50%,_rgba(209,250,229,0.86)_100%)]",
+          isMedia && "rounded-b-none pb-24",
+          !isMedia && "pb-20",
+        )}
+        style={{ paddingTop: containerTopPadding }}
+      >
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-16 top-2 h-40 w-40 rounded-full bg-white/45 blur-2xl" />
           <div className="absolute -left-16 bottom-6 h-36 w-36 rounded-full bg-sky-200/60 blur-2xl" />

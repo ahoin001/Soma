@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { AppShell } from "@/components/aura";
+import { AppShell, VirtualizedExerciseList } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/state/AppStore";
@@ -17,10 +17,20 @@ const AddExerciseToWorkout = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const exerciseName = params.get("name") ?? "";
+  const planIdParam = params.get("planId");
+  const workoutIdParam = params.get("workoutId");
   const adminEdit = params.get("adminEdit") === "true";
   const { workoutPlans, updateWorkoutTemplate, createWorkoutTemplate, fitnessLibrary } =
     useAppStore();
-  const { upsertExerciseRecord } = fitnessLibrary;
+  const {
+    upsertExerciseRecord,
+    query,
+    results,
+    status,
+    error,
+    searchExercises,
+    setQuery,
+  } = fitnessLibrary;
   const [isAdmin, setIsAdmin] = useState(false);
   const [loadingAdmin, setLoadingAdmin] = useState(false);
   const [masterId, setMasterId] = useState<number | null>(null);
@@ -28,8 +38,33 @@ const AddExerciseToWorkout = () => {
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [thumbnailProgress, setThumbnailProgress] = useState(0);
   const [thumbnailNotice, setThumbnailNotice] = useState<string | null>(null);
+  const [selectedName, setSelectedName] = useState(exerciseName);
+  const abortRef = useRef<AbortController | null>(null);
 
   const plans = useMemo(() => workoutPlans, [workoutPlans]);
+  const previewItems = useMemo(() => results.slice(0, 120), [results]);
+  const targetPlan = planIdParam
+    ? workoutPlans.find((item) => item.id === planIdParam) ?? null
+    : null;
+  const targetWorkout = targetPlan?.workouts.find((item) => item.id === workoutIdParam) ?? null;
+
+  useEffect(() => {
+    setSelectedName(exerciseName);
+  }, [exerciseName]);
+
+  useEffect(() => {
+    if (!query.trim()) return;
+    const controller = new AbortController();
+    abortRef.current?.abort();
+    abortRef.current = controller;
+    const timer = window.setTimeout(() => {
+      searchExercises(query, controller.signal, "mine");
+    }, 300);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query, searchExercises]);
 
   useEffect(() => {
     if (!adminEdit) return;
@@ -70,7 +105,7 @@ const AddExerciseToWorkout = () => {
     navigate("/fitness");
   };
 
-  if (!exerciseName.trim()) {
+  if (!exerciseName.trim() && !planIdParam) {
     return (
       <AppShell experience="fitness" showNav={false}>
         <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6 text-white">
@@ -91,13 +126,13 @@ const AddExerciseToWorkout = () => {
     );
   }
 
-  const handleAdd = async (planId: string, workoutId: string) => {
+  const handleAdd = async (planId: string, workoutId: string, name: string) => {
     const plan = plans.find((item) => item.id === planId);
     const workout = plan?.workouts.find((item) => item.id === workoutId);
     if (!plan || !workout) return;
     const nextExercises = [
       ...workout.exercises,
-      { id: createId(), name: exerciseName },
+      { id: createId(), name },
     ];
     try {
       await updateWorkoutTemplate(plan.id, workout.id, { exercises: nextExercises });
@@ -105,7 +140,7 @@ const AddExerciseToWorkout = () => {
         navigator.vibrate(8);
       }
       toast("Added to workout", {
-        description: `${exerciseName} added to ${workout.name}.`,
+        description: `${name} added to ${workout.name}.`,
       });
       navigate(`/fitness/workouts/${plan.id}/${workout.id}`);
     } catch {
@@ -128,12 +163,63 @@ const AddExerciseToWorkout = () => {
             <p className="text-xs uppercase tracking-[0.2em] text-white/50">
               {adminEdit ? "Admin edit" : "Add to workout"}
             </p>
-            <p className="text-sm text-white/80">{exerciseName}</p>
+            <p className="text-sm text-white/80">
+              {selectedName || exerciseName || "Select an exercise"}
+            </p>
           </div>
           <div className="h-10 w-10" />
         </div>
 
         <div className="mt-6 space-y-4">
+          {!adminEdit ? (
+            <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                Choose exercise
+              </p>
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search exercises"
+                className="mt-3 border-white/10 bg-white/5 text-white placeholder:text-white/40"
+              />
+              {status === "error" ? (
+                <p className="mt-2 text-sm text-rose-300">{error}</p>
+              ) : null}
+              {status === "loading" ? (
+                <p className="mt-2 text-sm text-white/60">Loading exercises...</p>
+              ) : null}
+              {previewItems.length ? (
+                <div className="mt-3">
+                  <VirtualizedExerciseList
+                    items={previewItems}
+                    onSelect={(exercise) => {
+                      setSelectedName(exercise.name);
+                      if (targetPlan && targetWorkout) {
+                        void handleAdd(targetPlan.id, targetWorkout.id, exercise.name);
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-white/50">
+                  Start typing to search the Atlas.
+                </p>
+              )}
+              {query.trim().length > 1 ? (
+                <Button
+                  className="mt-3 w-full rounded-full bg-white/10 text-white hover:bg-white/20"
+                  onClick={() => {
+                    setSelectedName(query.trim());
+                    if (targetPlan && targetWorkout) {
+                      void handleAdd(targetPlan.id, targetWorkout.id, query.trim());
+                    }
+                  }}
+                >
+                  Create "{query.trim()}"
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
           {adminEdit && isAdmin ? (
             <div className="rounded-[24px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-4">
               <p className="text-xs uppercase tracking-[0.2em] text-emerald-200/80">
@@ -209,7 +295,26 @@ const AddExerciseToWorkout = () => {
               </Button>
             </div>
           ) : null}
-          {plans.length === 0 ? (
+          {selectedName || exerciseName ? (
+            targetPlan && targetWorkout ? (
+              <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-center">
+                <p className="text-sm text-white/70">
+                  Adding to {targetWorkout.name}.
+                </p>
+                <Button
+                  className="mt-4 w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                  onClick={() =>
+                    void handleAdd(
+                      targetPlan.id,
+                      targetWorkout.id,
+                      selectedName || exerciseName,
+                    )
+                  }
+                >
+                  Add exercise
+                </Button>
+              </div>
+            ) : plans.length === 0 ? (
             <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-6 text-center">
               <p className="text-sm text-white/70">
                 Create a workout first, then add exercises.
@@ -221,7 +326,7 @@ const AddExerciseToWorkout = () => {
                 Go to workouts
               </Button>
             </div>
-          ) : (
+            ) : (
             plans.map((plan) => (
               <div
                 key={plan.id}
@@ -234,7 +339,13 @@ const AddExerciseToWorkout = () => {
                       key={workout.id}
                       type="button"
                       className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left text-sm text-white/80 hover:border-white/30"
-                      onClick={() => void handleAdd(plan.id, workout.id)}
+                      onClick={() =>
+                        void handleAdd(
+                          plan.id,
+                          workout.id,
+                          selectedName || exerciseName,
+                        )
+                      }
                     >
                       <span>{workout.name}</span>
                       <span className="text-xs text-white/50">
@@ -250,7 +361,11 @@ const AddExerciseToWorkout = () => {
                         plan.id,
                         "New workout",
                       );
-                      await handleAdd(plan.id, workout.id);
+                      await handleAdd(
+                        plan.id,
+                        workout.id,
+                        selectedName || exerciseName,
+                      );
                     }}
                   >
                     Create workout in {plan.name}
@@ -258,7 +373,7 @@ const AddExerciseToWorkout = () => {
                 </div>
               </div>
             ))
-          )}
+          )) : null}
         </div>
       </div>
     </AppShell>

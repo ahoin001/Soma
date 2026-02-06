@@ -314,7 +314,8 @@ const Groceries = () => {
 
   return (
     <AppShell experience="nutrition">
-      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6">
+      {/* pt includes safe-area for immersive edge-to-edge display */}
+      <div className="mx-auto w-full max-w-[420px] px-4 pb-10" style={{ paddingTop: "calc(1.5rem + var(--sat, env(safe-area-inset-top)))" }}>
         <div className="rounded-[28px] bg-gradient-to-br from-emerald-200 via-emerald-100 to-white px-5 py-6 shadow-[0_18px_40px_rgba(16,185,129,0.18)]">
           <p className="text-xs uppercase tracking-[0.2em] text-emerald-500">
             Groceries

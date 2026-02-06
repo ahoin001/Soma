@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import { calculateDynamicTargets, calculateTargets } from "@/lib/nutritionTargets";
 import { useAppStore } from "@/state/AppStore";
+import { useAuth } from "@/hooks/useAuth";
 
 const STORAGE_KEY = "aurafit-onboarded-v1";
 
@@ -25,7 +26,9 @@ export const OnboardingDialog = ({
   onComplete?: () => void;
 }) => {
   const { nutrition, setUserProfile } = useAppStore();
+  const { userId, status } = useAuth();
   const [open, setOpen] = useState(false);
+  const [hasSeen, setHasSeen] = useState<boolean | null>(null);
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [name, setName] = useState("You");
   const [sex, setSex] = useState<"male" | "female" | "other" | "">("");
@@ -51,13 +54,34 @@ export const OnboardingDialog = ({
   const [optionalOpen, setOptionalOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
+  const isSignedIn = status === "ready" && Boolean(userId);
+  const hasGoal = nutrition.summary.goal > 0;
+  const hasMacroTargets = nutrition.macros.some((macro) => macro.goal > 0);
+  const nutritionReady = !nutrition.isLoading;
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const seen = window.localStorage.getItem(STORAGE_KEY);
-    if (!seen) {
-      setOpen(true);
-    }
+    setHasSeen(Boolean(seen));
   }, []);
+
+  useEffect(() => {
+    if (!isSignedIn || !nutritionReady || hasSeen === null) {
+      setOpen(false);
+      return;
+    }
+
+    if (hasGoal || hasMacroTargets) {
+      if (typeof window !== "undefined" && !hasSeen) {
+        window.localStorage.setItem(STORAGE_KEY, "true");
+        setHasSeen(true);
+      }
+      setOpen(false);
+      return;
+    }
+
+    setOpen(!hasSeen);
+  }, [hasGoal, hasMacroTargets, hasSeen, isSignedIn, nutritionReady]);
 
   useEffect(() => {
     if (targetsTouched) return;
@@ -204,6 +228,7 @@ export const OnboardingDialog = ({
 
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY, "true");
+      setHasSeen(true);
     }
     onComplete?.();
     setOpen(false);
@@ -242,6 +267,7 @@ export const OnboardingDialog = ({
             className="rounded-full bg-white/80 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-[0_8px_20px_rgba(16,185,129,0.15)]"
             onClick={() => {
               window.localStorage.setItem(STORAGE_KEY, "true");
+              setHasSeen(true);
               setOpen(false);
             }}
           >

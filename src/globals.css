@@ -4,6 +4,16 @@
 
 @layer base {
   :root {
+    /* Safe area insets - use these throughout the app for consistency */
+    --sat: env(safe-area-inset-top);
+    --sab: env(safe-area-inset-bottom);
+    --sal: env(safe-area-inset-left);
+    --sar: env(safe-area-inset-right);
+
+    /* Theme colors for dynamic status bar - updated via JS */
+    --theme-color-nutrition: #f0fdf4; /* emerald-50 - top of gradient */
+    --theme-color-fitness: #0f172a; /* slate-900 */
+
     --background: 0 0% 99%;
     --foreground: 222 25% 12%;
 

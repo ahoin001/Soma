@@ -63,8 +63,8 @@ export default defineConfig(() => ({
         start_url: "/",
         display: "standalone",
         display_override: ["standalone", "fullscreen"],
-        background_color: "#ffffff",
-        theme_color: "#36d485",
+        background_color: "#f0fdf4",
+        theme_color: "#f0fdf4",
         orientation: "portrait-primary",
         icons: [
           {

@@ -77,6 +77,7 @@ const AnimatedRoutes = () => {
       {element}
     </PageTransition>
   );
+  const protect = (element: JSX.Element) => <ProtectedRoute>{element}</ProtectedRoute>;
   const shouldAnimate = (path: string) => {
     if (path.startsWith("/fitness/workouts")) return true;
     if (path.startsWith("/fitness/exercises")) return true;
@@ -106,12 +107,19 @@ const AnimatedRoutes = () => {
   useEffect(() => {
     if (typeof document === "undefined") return;
     const root = document.documentElement;
+    const isFitness = location.pathname.startsWith("/fitness");
+    
+    // Update experience class on root
     root.classList.remove("experience-nutrition", "experience-fitness");
-    root.classList.add(
-      location.pathname.startsWith("/fitness")
-        ? "experience-fitness"
-        : "experience-nutrition",
-    );
+    root.classList.add(isFitness ? "experience-fitness" : "experience-nutrition");
+
+    // Dynamic theme-color for immersive status bar
+    // Colors match the top of each experience's header gradient
+    const themeColor = isFitness ? "#020617" : "#f0fdf4";
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute("content", themeColor);
+    }
   }, [location.pathname]);
 
   return (
@@ -123,9 +131,9 @@ const AnimatedRoutes = () => {
           path="/nutrition"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<Nutrition />)
+              withTransition(protect(<Nutrition />))
             ) : (
-              <Nutrition />
+              protect(<Nutrition />)
             )
           }
         />
@@ -133,9 +141,9 @@ const AnimatedRoutes = () => {
           path="/nutrition/progress"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<Progress />)
+              withTransition(protect(<Progress />))
             ) : (
-              <Progress />
+              protect(<Progress />)
             )
           }
         />
@@ -143,9 +151,9 @@ const AnimatedRoutes = () => {
           path="/nutrition/goals"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<Goals />)
+              withTransition(protect(<Goals />))
             ) : (
-              <Goals />
+              protect(<Goals />)
             )
           }
         />
@@ -153,9 +161,9 @@ const AnimatedRoutes = () => {
           path="/nutrition/groceries"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<Groceries />)
+              withTransition(protect(<Groceries />))
             ) : (
-              <Groceries />
+              protect(<Groceries />)
             )
           }
         />
@@ -163,9 +171,9 @@ const AnimatedRoutes = () => {
           path="/nutrition/add-food"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<AddFood />)
+              withTransition(protect(<AddFood />))
             ) : (
-              <AddFood />
+              protect(<AddFood />)
             )
           }
         />
@@ -173,9 +181,9 @@ const AnimatedRoutes = () => {
           path="/nutrition/add-food/create"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<CreateFood />)
+              withTransition(protect(<CreateFood />))
             ) : (
-              <CreateFood />
+              protect(<CreateFood />)
             )
           }
         />
@@ -183,9 +191,9 @@ const AnimatedRoutes = () => {
           path="/nutrition/add-food/scan"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<ScanBarcode />)
+              withTransition(protect(<ScanBarcode />))
             ) : (
-              <ScanBarcode />
+              protect(<ScanBarcode />)
             )
           }
         />
@@ -193,9 +201,9 @@ const AnimatedRoutes = () => {
           path="/nutrition/food/edit"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<EditFood />)
+              withTransition(protect(<EditFood />))
             ) : (
-              <EditFood />
+              protect(<EditFood />)
             )
           }
         />
@@ -203,9 +211,9 @@ const AnimatedRoutes = () => {
           path="/fitness"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<Fitness />)
+              withTransition(protect(<Fitness />))
             ) : (
-              <Fitness />
+              protect(<Fitness />)
             )
           }
         />
@@ -213,9 +221,9 @@ const AnimatedRoutes = () => {
           path="/fitness/routines"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<FitnessRoutines />)
+              withTransition(protect(<FitnessRoutines />))
             ) : (
-              <FitnessRoutines />
+              protect(<FitnessRoutines />)
             )
           }
         />
@@ -223,9 +231,9 @@ const AnimatedRoutes = () => {
           path="/fitness/progress"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<FitnessProgress />)
+              withTransition(protect(<FitnessProgress />))
             ) : (
-              <FitnessProgress />
+              protect(<FitnessProgress />)
             )
           }
         />
@@ -233,9 +241,9 @@ const AnimatedRoutes = () => {
           path="/fitness/log"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<FitnessLog />)
+              withTransition(protect(<FitnessLog />))
             ) : (
-              <FitnessLog />
+              protect(<FitnessLog />)
             )
           }
         />
@@ -243,9 +251,9 @@ const AnimatedRoutes = () => {
           path="/fitness/workouts/:planId/:workoutId"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<WorkoutDetails />)
+              withTransition(protect(<WorkoutDetails />))
             ) : (
-              <WorkoutDetails />
+              protect(<WorkoutDetails />)
             )
           }
         />
@@ -253,9 +261,9 @@ const AnimatedRoutes = () => {
           path="/fitness/workouts/:planId/:workoutId/:mode"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<WorkoutDetails />)
+              withTransition(protect(<WorkoutDetails />))
             ) : (
-              <WorkoutDetails />
+              protect(<WorkoutDetails />)
             )
           }
         />
@@ -263,9 +271,9 @@ const AnimatedRoutes = () => {
           path="/fitness/workouts/:planId/:workoutId/exercises/:exerciseId/guide"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<ExerciseGuide />)
+              withTransition(protect(<ExerciseGuide />))
             ) : (
-              <ExerciseGuide />
+              protect(<ExerciseGuide />)
             )
           }
         />
@@ -273,9 +281,9 @@ const AnimatedRoutes = () => {
           path="/fitness/exercises/create"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<CreateExercise />)
+              withTransition(protect(<CreateExercise />))
             ) : (
-              <CreateExercise />
+              protect(<CreateExercise />)
             )
           }
         />
@@ -283,9 +291,9 @@ const AnimatedRoutes = () => {
           path="/fitness/exercises/:exerciseId/edit"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<EditExercise />)
+              withTransition(protect(<EditExercise />))
             ) : (
-              <EditExercise />
+              protect(<EditExercise />)
             )
           }
         />
@@ -293,9 +301,9 @@ const AnimatedRoutes = () => {
           path="/fitness/exercises/add"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<AddExerciseToWorkout />)
+              withTransition(protect(<AddExerciseToWorkout />))
             ) : (
-              <AddExerciseToWorkout />
+              protect(<AddExerciseToWorkout />)
             )
           }
         />
@@ -303,13 +311,13 @@ const AnimatedRoutes = () => {
           path="/fitness/admin/exercises"
           element={
             shouldAnimate(location.pathname) ? (
-              withTransition(<AdminExerciseThumbnails />)
+              withTransition(protect(<AdminExerciseThumbnails />))
             ) : (
-              <AdminExerciseThumbnails />
+              protect(<AdminExerciseThumbnails />)
             )
           }
         />
-        <Route path="/auth" element={<Navigate to="/nutrition" replace />} />
+        <Route path="/auth" element={<AuthRoute />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -344,37 +352,74 @@ const ScrollRestoration = () => {
   return null;
 };
 
+const AuthLoading = () => (
+  <div className="min-h-screen bg-background">
+    <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6">
+      <Skeleton className="h-60 w-full rounded-[36px]" />
+      <div className="mt-6 space-y-3">
+        <Skeleton className="h-4 w-2/3" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+    </div>
+  </div>
+);
+
+const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+  const auth = useAuth();
+  const location = useLocation();
+
+  if (auth.status !== "ready") {
+    return <AuthLoading />;
+  }
+
+  if (!auth.userId) {
+    return (
+      <Navigate
+        to="/auth"
+        replace
+        state={{ from: `${location.pathname}${location.search}` }}
+      />
+    );
+  }
+
+  return children;
+};
+
+const AuthRoute = () => {
+  const auth = useAuth();
+
+  if (auth.status !== "ready") {
+    return <AuthLoading />;
+  }
+
+  return auth.userId ? <Navigate to="/nutrition" replace /> : <Auth />;
+};
+
 const AppShell = () => {
   const auth = useAuth();
-  const needsAuth = auth.status === "ready" && !auth.userId;
+  const authReady = auth.status === "ready";
+
+  if (!authReady) {
+    return <AuthLoading />;
+  }
+
+  const isSignedIn = Boolean(auth.userId);
 
   return (
     <BrowserRouter>
-      <Suspense
-        fallback={
-          <div className="min-h-screen bg-background">
-            <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6">
-              <Skeleton className="h-60 w-full rounded-[36px]" />
-              <div className="mt-6 space-y-3">
-                <Skeleton className="h-4 w-2/3" />
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-24 w-full" />
-              </div>
-            </div>
-          </div>
-        }
-      >
-        {needsAuth ? (
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="*" element={<Navigate to="/auth" replace />} />
-          </Routes>
-        ) : (
+      <Suspense fallback={<AuthLoading />}>
+        {isSignedIn ? (
           <>
             {/* OnboardingDialog shows automatically if user hasn't completed onboarding */}
             <OnboardingDialog />
             <AnimatedRoutes />
           </>
+        ) : (
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="*" element={<Navigate to="/auth" replace />} />
+          </Routes>
         )}
       </Suspense>
     </BrowserRouter>
