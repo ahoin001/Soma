@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { FoodItem } from "@/data/mock";
-import { AppShell } from "@/components/aura";
+import { AppShell, PageContainer } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -323,7 +323,7 @@ const EditFood = () => {
   if (!currentFood || !draft) {
     return (
       <AppShell experience="nutrition" showNav={false}>
-        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6">
+        <PageContainer>
           <Button
             type="button"
             variant="ghost"
@@ -336,14 +336,14 @@ const EditFood = () => {
           <Card className="mt-6 rounded-[24px] border border-black/5 bg-white px-4 py-4 text-sm text-slate-600">
             Food details are unavailable. Go back and select a food again.
           </Card>
-        </div>
+        </PageContainer>
       </AppShell>
     );
   }
 
   return (
     <AppShell experience="nutrition" showNav={false}>
-      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-4">
+      <PageContainer>
         <div className="flex items-center gap-3">
           <Button
             type="button"
@@ -1218,7 +1218,7 @@ const EditFood = () => {
         >
           {saving ? "Saving..." : adminEditing ? "Save changes" : "Save nutrition"}
         </Button>
-      </div>
+      </PageContainer>
     </AppShell>
   );
 };

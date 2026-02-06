@@ -20,8 +20,15 @@ const AddExerciseToWorkout = () => {
   const planIdParam = params.get("planId");
   const workoutIdParam = params.get("workoutId");
   const adminEdit = params.get("adminEdit") === "true";
-  const { workoutPlans, updateWorkoutTemplate, createWorkoutTemplate, fitnessLibrary } =
-    useAppStore();
+  const {
+    workoutPlans,
+    updateWorkoutTemplate,
+    createWorkoutTemplate,
+    workoutDrafts,
+    setWorkoutDraft,
+    clearWorkoutDraft,
+    fitnessLibrary,
+  } = useAppStore();
   const {
     upsertExerciseRecord,
     query,
@@ -41,7 +48,6 @@ const AddExerciseToWorkout = () => {
   const [selectedName, setSelectedName] = useState(exerciseName);
   const abortRef = useRef<AbortController | null>(null);
 
-  const plans = useMemo(() => workoutPlans, [workoutPlans]);
   const previewItems = useMemo(() => results.slice(0, 120), [results]);
   const targetPlan = planIdParam
     ? workoutPlans.find((item) => item.id === planIdParam) ?? null
@@ -127,13 +133,12 @@ const AddExerciseToWorkout = () => {
   }
 
   const handleAdd = async (planId: string, workoutId: string, name: string) => {
-    const plan = plans.find((item) => item.id === planId);
+    const plan = workoutPlans.find((item) => item.id === planId);
     const workout = plan?.workouts.find((item) => item.id === workoutId);
     if (!plan || !workout) return;
-    const nextExercises = [
-      ...workout.exercises,
-      { id: createId(), name },
-    ];
+    const draft = workoutDrafts[workout.id];
+    const baseExercises = draft?.exercises.length ? draft.exercises : workout.exercises;
+    const nextExercises = [...baseExercises, { id: createId(), name }];
     try {
       await updateWorkoutTemplate(plan.id, workout.id, { exercises: nextExercises });
       if (navigator.vibrate) {
@@ -142,6 +147,17 @@ const AddExerciseToWorkout = () => {
       toast("Added to workout", {
         description: `${name} added to ${workout.name}.`,
       });
+      if (draft?.exercises.length) {
+        if (!draft.exercises.some((entry) => entry.name === name)) {
+          setWorkoutDraft(
+            workout.id,
+            [...draft.exercises, { id: createId(), name }],
+            draft.baseSignature,
+          );
+        }
+      } else {
+        clearWorkoutDraft(workout.id);
+      }
       navigate(`/fitness/workouts/${plan.id}/${workout.id}`);
     } catch {
       // handled in hook
@@ -314,7 +330,7 @@ const AddExerciseToWorkout = () => {
                   Add exercise
                 </Button>
               </div>
-            ) : plans.length === 0 ? (
+            ) : workoutPlans.length === 0 ? (
             <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-6 text-center">
               <p className="text-sm text-white/70">
                 Create a workout first, then add exercises.
@@ -327,7 +343,7 @@ const AddExerciseToWorkout = () => {
               </Button>
             </div>
             ) : (
-            plans.map((plan) => (
+            workoutPlans.map((plan) => (
               <div
                 key={plan.id}
                 className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4"

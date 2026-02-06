@@ -21,6 +21,17 @@ const formatWeekLabel = (weekStart: string) => {
   }).format(d);
 };
 
+const formatWeekRange = (chartData: { week_start: string }[]) => {
+  if (chartData.length === 0) return "";
+  const first = new Date(chartData[0].week_start);
+  const last = new Date(chartData[chartData.length - 1].week_start);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).formatRange(first, last);
+};
+
 const trainingChartConfig = {
   volume: {
     label: "Volume (kg)",
@@ -113,28 +124,53 @@ const FitnessProgress = () => {
             </div>
 
             <div className="mt-6 rounded-[28px] border border-white/10 bg-white/5 px-3 py-4">
-              <p className="mb-3 text-xs uppercase tracking-[0.2em] text-white/50">
-                Weekly volume
-              </p>
+              <div className="mb-3 flex items-baseline justify-between gap-2">
+                <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+                  Weekly volume
+                </p>
+                <p className="text-[10px] text-white/40">
+                  {formatWeekRange(chartData)}
+                </p>
+              </div>
               <ChartContainer
                 config={trainingChartConfig}
                 className="h-[220px] w-full [&_.recharts-cartesian-axis-tick_text]:fill-white/50"
               >
                 <BarChart
                   data={chartData}
-                  margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                  margin={{ top: 8, right: 8, bottom: 24, left: 28 }}
                 >
                   <XAxis
                     dataKey="weekLabel"
-                    tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 10 }}
+                    tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 10 }}
                     tickLine={false}
                     axisLine={false}
+                    label={{
+                      value: "Week of",
+                      position: "insideBottom",
+                      offset: -18,
+                      fill: "rgba(255,255,255,0.4)",
+                      fontSize: 10,
+                    }}
                   />
                   <YAxis
-                    tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 10 }}
+                    tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 10 }}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(v) => (v >= 1000 ? `${v / 1000}k` : String(v))}
+                    tickFormatter={(v) =>
+                      typeof v === "number"
+                        ? v >= 1000
+                          ? `${v / 1000}k`
+                          : String(v)
+                        : String(v)
+                    }
+                    label={{
+                      value: "Volume (kg)",
+                      angle: -90,
+                      position: "insideLeft",
+                      fill: "rgba(255,255,255,0.5)",
+                      fontSize: 10,
+                    }}
                   />
                   <ChartTooltip
                     content={
@@ -157,6 +193,9 @@ const FitnessProgress = () => {
                   />
                 </BarChart>
               </ChartContainer>
+              <p className="mt-1 text-center text-[10px] text-white/40">
+                Volume in kg per week
+              </p>
             </div>
           </>
         ) : (

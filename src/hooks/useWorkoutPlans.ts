@@ -96,6 +96,16 @@ export const useWorkoutPlans = () => {
     setLoaded(true);
   }, [loaded, mapWorkoutPlans]);
 
+  const refreshWorkoutPlans = useCallback(async () => {
+    await ensureUser();
+    const data = await fetchWorkoutPlans();
+    setWorkoutPlansCache(data);
+    const workoutPlansData = mapWorkoutPlans(data);
+    setWorkoutPlans(workoutPlansData);
+    setActivePlanId((prev) => prev ?? workoutPlansData[0]?.id ?? null);
+    setLoaded(true);
+  }, [mapWorkoutPlans]);
+
   useEffect(() => {
     if (!loaded) {
       void load();
@@ -168,6 +178,7 @@ export const useWorkoutPlans = () => {
     try {
       await deleteWorkoutPlanApi(planId);
       clearWorkoutPlansCache();
+      await refreshWorkoutPlans();
     } catch (error) {
       rollback(previousPlans, previousActive, previousLast);
       toast("Unable to delete plan", {
@@ -313,6 +324,7 @@ export const useWorkoutPlans = () => {
         await Promise.all(tasks);
       }
       clearWorkoutPlansCache();
+      await refreshWorkoutPlans();
     } catch (error) {
       rollback(previousPlans, previousActive, previousLast);
       toast("Unable to update workout", {
@@ -323,7 +335,7 @@ export const useWorkoutPlans = () => {
       });
       throw error;
     }
-  }, []);
+  }, [refreshWorkoutPlans]);
 
   const deleteWorkoutTemplate = useCallback(async (planId: string, workoutId: string) => {
     const previousPlans = plansRef.current;
@@ -378,6 +390,8 @@ export const useWorkoutPlans = () => {
   return useMemo(
     () => ({
       workoutPlans,
+      workoutPlansLoaded: loaded,
+      refreshWorkoutPlans,
       activePlanId,
       setActivePlanId,
       lastWorkoutByPlan,
@@ -391,6 +405,8 @@ export const useWorkoutPlans = () => {
     }),
     [
       workoutPlans,
+      loaded,
+      refreshWorkoutPlans,
       activePlanId,
       lastWorkoutByPlan,
       updateWorkoutPlan,

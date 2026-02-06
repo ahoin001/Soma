@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type { FoodItem, Meal } from "@/data/mock";
-import { AppShell, EditLogSheet, FoodDetailSheet } from "@/components/aura";
+import { AppShell, EditLogSheet, FoodDetailSheet, PageContainer } from "@/components/aura";
 import { FoodSearchContent } from "@/components/aura/FoodSearchContent";
 import { useAppStore } from "@/state/AppStore";
 import { toast } from "sonner";
@@ -496,7 +496,7 @@ const AddFood = () => {
   return (
     <AppShell experience="nutrition" showNav={false}>
       {/* pt includes safe-area for immersive edge-to-edge display */}
-      <div className="mx-auto w-full max-w-[420px] px-4 pb-10" style={{ paddingTop: "calc(1rem + var(--sat, env(safe-area-inset-top)))" }}>
+      <PageContainer>
         <div className="flex items-center justify-between">
           <Button
             type="button"
@@ -602,7 +602,7 @@ const AddFood = () => {
             inputRef={inputRef}
           />
         </div>
-      </div>
+      </PageContainer>
 
       <FoodDetailSheet
         open={isDetailOpen}

@@ -28,11 +28,10 @@ export {
 export {
   UIProvider,
   useUI,
-  useWorkoutDrafts,
   useMealPulse,
   useSelectedDate,
   useExperienceTransition,
 } from "./UIContext";
 
 // Legacy AppStore - still used during migration
-export { AppStoreProvider, useAppStore } from "./AppStore";
+export { AppStoreProvider, useAppStore, useWorkoutDrafts } from "./AppStore";

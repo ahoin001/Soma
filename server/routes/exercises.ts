@@ -253,4 +253,22 @@ router.patch(
   }),
 );
 
+router.delete(
+  "/:exerciseId",
+  asyncHandler(async (req, res) => {
+    const userId = getUserId(req);
+    await ensureAdmin(userId);
+    const exerciseId = z.coerce.number().int().parse(req.params.exerciseId);
+    const result = await query(
+      "DELETE FROM exercises WHERE id = $1 RETURNING id;",
+      [exerciseId],
+    );
+    if (result.rowCount === 0) {
+      res.status(404).json({ error: "Exercise not found." });
+      return;
+    }
+    res.json({ ok: true });
+  }),
+);
+
 export default router;

@@ -37,6 +37,8 @@ type AppStore = {
   fitnessLibrary: ReturnType<typeof useExerciseLibrary>;
   fitnessPlanner: ReturnType<typeof useFitnessPlanner>;
   workoutPlans: WorkoutPlan[];
+  workoutPlansLoaded: boolean;
+  refreshWorkoutPlans: () => Promise<void>;
   activePlanId: string | null;
   setActivePlanId: (planId: string | null) => void;
   lastWorkoutByPlan: Record<string, string | null>;
@@ -51,8 +53,12 @@ type AppStore = {
   deleteWorkoutTemplate: (planId: string, workoutId: string) => void;
   createWorkoutPlan: (name: string) => Promise<WorkoutPlan>;
   createWorkoutTemplate: (planId: string, name: string) => Promise<WorkoutTemplate>;
-  workoutDrafts: Record<string, WorkoutTemplate["exercises"]>;
-  setWorkoutDraft: (workoutId: string, exercises: WorkoutTemplate["exercises"]) => void;
+  workoutDrafts: Record<string, WorkoutDraft>;
+  setWorkoutDraft: (
+    workoutId: string,
+    exercises: WorkoutTemplate["exercises"],
+    baseSignature: string,
+  ) => void;
   clearWorkoutDraft: (workoutId: string) => void;
   mealPulse: { mealId?: string; at: number } | null;
   setMealPulse: (mealId?: string) => void;
@@ -62,6 +68,13 @@ type AppStore = {
 const AppStoreContext = createContext<AppStore | null>(null);
 
 const USER_PROFILE_KEY = "aurafit-user-profile-v1";
+const WORKOUT_DRAFTS_KEY_V2 = "ironflow-workout-drafts-v2";
+
+type WorkoutDraft = {
+  exercises: WorkoutTemplate["exercises"];
+  baseSignature: string;
+  updatedAt: number;
+};
 
 export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
@@ -102,20 +115,22 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
   const foodCatalog = useFoodCatalog();
   const fitnessLibrary = useExerciseLibrary();
   const fitnessPlanner = useFitnessPlanner();
-  const [workoutDrafts, setWorkoutDrafts] = useState<
-    Record<string, WorkoutTemplate["exercises"]>
-  >(() => {
+  const [workoutDrafts, setWorkoutDrafts] = useState<Record<string, WorkoutDraft>>(() => {
     if (typeof window === "undefined") return {};
-    const stored = window.localStorage.getItem("ironflow-workout-drafts-v1");
-    if (!stored) return {};
-    try {
-      return JSON.parse(stored) as Record<string, WorkoutTemplate["exercises"]>;
-    } catch {
-      return {};
+    const storedV2 = window.localStorage.getItem(WORKOUT_DRAFTS_KEY_V2);
+    if (storedV2) {
+      try {
+        return JSON.parse(storedV2) as Record<string, WorkoutDraft>;
+      } catch {
+        return {};
+      }
     }
+    return {};
   });
   const {
     workoutPlans,
+    workoutPlansLoaded,
+    refreshWorkoutPlans,
     activePlanId,
     setActivePlanId,
     lastWorkoutByPlan,
@@ -131,8 +146,15 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
     null,
   );
 
-  const setWorkoutDraft = (workoutId: string, exercises: WorkoutTemplate["exercises"]) => {
-    setWorkoutDrafts((prev) => ({ ...prev, [workoutId]: exercises }));
+  const setWorkoutDraft = (
+    workoutId: string,
+    exercises: WorkoutTemplate["exercises"],
+    baseSignature: string,
+  ) => {
+    setWorkoutDrafts((prev) => ({
+      ...prev,
+      [workoutId]: { exercises, baseSignature, updatedAt: Date.now() },
+    }));
   };
 
   const clearWorkoutDraft = (workoutId: string) => {
@@ -163,6 +185,8 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
       fitnessLibrary,
       fitnessPlanner,
       workoutPlans,
+      workoutPlansLoaded,
+      refreshWorkoutPlans,
       activePlanId,
       setActivePlanId,
       lastWorkoutByPlan,
@@ -189,6 +213,8 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
       fitnessLibrary,
       fitnessPlanner,
       workoutPlans,
+      workoutPlansLoaded,
+      refreshWorkoutPlans,
       activePlanId,
       setActivePlanId,
       lastWorkoutByPlan,
@@ -336,7 +362,7 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(
-      "ironflow-workout-drafts-v1",
+      WORKOUT_DRAFTS_KEY_V2,
       JSON.stringify(workoutDrafts),
     );
   }, [workoutDrafts]);

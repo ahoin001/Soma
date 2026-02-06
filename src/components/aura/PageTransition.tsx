@@ -1,14 +1,27 @@
 import type { ReactNode } from "react";
 import { forwardRef } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
+
+type TransitionStyle = "blur-scale" | "color-wash" | "circular-reveal";
 
 type PageTransitionProps = {
   children: ReactNode;
   /** Slightly more dramatic entrance when switching Nutrition ↔ Fitness */
   isExperienceSwitch?: boolean;
-  transitionStyle?: "blur-scale" | "color-wash" | "circular-reveal";
+  transitionStyle?: TransitionStyle;
+  /** The INCOMING experience tone (the one being navigated TO) */
   experienceTone?: "nutrition" | "fitness";
 };
+
+/*
+ * Experience color tokens
+ * Used by the transition curtain to mask the content swap.
+ */
+const TONE_COLORS = {
+  nutrition: "#f0fdf4", // bg-green-50  (AuraFit surface)
+  fitness: "#020617", // bg-slate-950 (IronFlow surface)
+} as const;
 
 /**
  * Lightweight enter-only page wrapper.
@@ -17,8 +30,29 @@ type PageTransitionProps = {
  * showing the next page. The new page mounts instantly and fades in.
  *
  * - Dock tab switches: 120ms opacity fade (near-instant, but not jarring).
- * - Experience switches: slightly more dramatic entrance per user preference.
+ * - Experience switches: user-configurable entrance + transition curtain.
  * - No `exit` prop → AnimatePresence is not needed around Routes.
+ *
+ * ─── Transition curtain ──────────────────────────────────────────────
+ * When switching between experiences the old page unmounts instantly
+ * while the new page starts at opacity 0. Without intervention there
+ * is a 1-2 frame flash where only the ExperienceBackdrop is visible.
+ *
+ * The curtain is a full-screen div (rendered via portal to <body>) that:
+ *  1. Appears at opacity 1 in the SOURCE experience color → visually
+ *     matches what the user was just looking at.
+ *  2. Fades out over ~500ms, revealing the new page underneath.
+ *
+ * Because it uses a portal it escapes any clipPath / transforms on
+ * the wrapper and always covers the full viewport.
+ *
+ * ─── CSS containing-block safety ─────────────────────────────────────
+ * The wrapper motion.div must NEVER have `filter` or `transform` applied
+ * (even blur(0px) or scale(1)) — these create a CSS "containing block"
+ * that breaks position:fixed children (status bar glass, bottom nav).
+ *
+ * Safe properties: opacity, clipPath
+ * Unsafe properties: filter, transform, scale, perspective
  */
 export const PageTransition = forwardRef<HTMLDivElement, PageTransitionProps>(
   (
@@ -30,9 +64,6 @@ export const PageTransition = forwardRef<HTMLDivElement, PageTransitionProps>(
     },
     ref,
   ) => {
-    const transitionColor =
-      experienceTone === "fitness" ? "#020617" : "#f0fdf4";
-
     // ---- Dock tab / normal navigation: fast subtle fade ----
     if (!isExperienceSwitch) {
       return (
@@ -47,53 +78,64 @@ export const PageTransition = forwardRef<HTMLDivElement, PageTransitionProps>(
       );
     }
 
-    // ---- Experience switch: configurable entrance ----
-    const blurScale = {
-      initial: { opacity: 0, scale: 0.97, filter: "blur(6px)" },
-      animate: { opacity: 1, scale: 1, filter: "blur(0px)" },
-      transition: { duration: 0.22, ease: "easeOut" },
-    };
+    // ---- Experience switch ----
 
-    const circularReveal = {
-      initial: { opacity: 0, clipPath: "circle(0% at 50% 20%)" },
-      animate: { opacity: 1, clipPath: "circle(150% at 50% 20%)" },
-      transition: { duration: 0.35, ease: "easeOut" },
-    };
+    // Source = the experience we're LEAVING (opposite of target)
+    const sourceColor =
+      experienceTone === "fitness"
+        ? TONE_COLORS.nutrition
+        : TONE_COLORS.fitness;
 
-    // Color-wash: fast fade plus a reveal overlay
-    const colorWash = {
+    // --- Page entrance variants (keep lightweight for mobile) ---
+    // Avoid clipPath on the content itself (expensive on large DOM trees).
+    const motionProps = {
       initial: { opacity: 0 },
       animate: { opacity: 1 },
-      transition: { duration: 0.18, ease: "easeOut" },
+      transition: { duration: 0.22, ease: "easeOut", delay: 0.04 },
     };
 
-    const motionProps =
-      transitionStyle === "circular-reveal"
-        ? circularReveal
-        : transitionStyle === "color-wash"
-          ? colorWash
-          : blurScale;
+    // --- Curtain variant (rendered via portal) ---
+    // Color-wash gets a dramatic top-wipe; others get a soft fade.
+    const curtainMotion =
+      transitionStyle === "color-wash"
+        ? {
+            initial: { opacity: 1, clipPath: "inset(0% 0% 0% 0%)" },
+            animate: { opacity: 0, clipPath: "inset(0% 0% 100% 0%)" },
+            transition: { duration: 0.42, ease: [0.22, 1, 0.36, 1] },
+          }
+        : transitionStyle === "circular-reveal"
+          ? {
+              initial: { opacity: 1, clipPath: "circle(120% at 50% 18%)" },
+              animate: { opacity: 0, clipPath: "circle(0% at 50% 18%)" },
+              transition: { duration: 0.42, ease: [0.22, 1, 0.36, 1] },
+            }
+          : {
+              initial: { opacity: 1, scale: 1 },
+              animate: { opacity: 0, scale: 1.02 },
+              transition: { duration: 0.32, ease: [0.33, 1, 0.68, 1] },
+            };
 
     return (
       <motion.div
         ref={ref}
-        style={{ willChange: "opacity, filter, transform" }}
         initial={motionProps.initial}
         animate={motionProps.animate}
         transition={motionProps.transition}
       >
-        {isExperienceSwitch && transitionStyle === "color-wash" ? (
+        {/* ── Transition curtain (portal to body) ───────────────
+             Covers the viewport in the SOURCE experience color to
+             mask the 1-frame gap between old page unmount and new
+             page becoming visible.  Fades/wipes out smoothly. */}
+        {createPortal(
           <motion.div
-            className="pointer-events-none fixed inset-0 z-20"
-            initial={{ opacity: 1, scaleY: 1 }}
-            animate={{ opacity: 0, scaleY: 0 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            style={{
-              background: transitionColor,
-              transformOrigin: "top",
-            }}
-          />
-        ) : null}
+            className="pointer-events-none fixed inset-0 z-[55]"
+            initial={curtainMotion.initial}
+            animate={curtainMotion.animate}
+            transition={curtainMotion.transition}
+            style={{ background: sourceColor }}
+          />,
+          document.body,
+        )}
         {children}
       </motion.div>
     );

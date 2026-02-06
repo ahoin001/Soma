@@ -2,7 +2,6 @@
  * UIContext - Transient UI state
  *
  * This context holds ephemeral UI state that doesn't persist:
- * - Workout drafts (temporary exercise lists before saving)
  * - Meal pulse animations (highlight effects)
  * - Modal/drawer states (if needed)
  *
@@ -18,7 +17,6 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
-import type { WorkoutTemplate } from "@/types/fitness";
 
 // ============================================================================
 // Types
@@ -30,12 +28,6 @@ type MealPulse = {
 } | null;
 
 type UIContextValue = {
-  // Workout Drafts - temporary exercise list before saving
-  workoutDrafts: Record<string, WorkoutTemplate["exercises"]>;
-  setWorkoutDraft: (workoutId: string, exercises: WorkoutTemplate["exercises"]) => void;
-  clearWorkoutDraft: (workoutId: string) => void;
-  getWorkoutDraft: (workoutId: string) => WorkoutTemplate["exercises"] | undefined;
-
   // Meal Pulse - highlight animation trigger
   mealPulse: MealPulse;
   setMealPulse: (mealId?: string) => void;
@@ -59,7 +51,6 @@ type UIContextValue = {
 // Storage Keys
 // ============================================================================
 
-const WORKOUT_DRAFTS_KEY = "ironflow-workout-drafts-v1";
 const EXPERIENCE_TRANSITION_KEY = "aurafit-experience-transition-v1";
 
 // ============================================================================
@@ -73,20 +64,6 @@ const UIContext = createContext<UIContextValue | null>(null);
 // ============================================================================
 
 export const UIProvider = ({ children }: { children: ReactNode }) => {
-  // Workout Drafts - persisted to localStorage to survive page refresh
-  const [workoutDrafts, setWorkoutDrafts] = useState<
-    Record<string, WorkoutTemplate["exercises"]>
-  >(() => {
-    if (typeof window === "undefined") return {};
-    const stored = window.localStorage.getItem(WORKOUT_DRAFTS_KEY);
-    if (!stored) return {};
-    try {
-      return JSON.parse(stored) as Record<string, WorkoutTemplate["exercises"]>;
-    } catch {
-      return {};
-    }
-  });
-
   // Meal Pulse - ephemeral, no persistence
   const [mealPulse, setMealPulseState] = useState<MealPulse>(null);
 
@@ -104,28 +81,6 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
     }
     return "blur-scale";
   });
-
-  // --- Workout Draft Actions ---
-
-  const setWorkoutDraft = useCallback(
-    (workoutId: string, exercises: WorkoutTemplate["exercises"]) => {
-      setWorkoutDrafts((prev) => ({ ...prev, [workoutId]: exercises }));
-    },
-    []
-  );
-
-  const clearWorkoutDraft = useCallback((workoutId: string) => {
-    setWorkoutDrafts((prev) => {
-      const next = { ...prev };
-      delete next[workoutId];
-      return next;
-    });
-  }, []);
-
-  const getWorkoutDraft = useCallback(
-    (workoutId: string) => workoutDrafts[workoutId],
-    [workoutDrafts]
-  );
 
   // --- Meal Pulse Actions ---
 
@@ -163,11 +118,6 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(WORKOUT_DRAFTS_KEY, JSON.stringify(workoutDrafts));
-  }, [workoutDrafts]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
     window.localStorage.setItem(EXPERIENCE_TRANSITION_KEY, experienceTransition);
   }, [experienceTransition]);
 
@@ -175,10 +125,6 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
 
   const value = useMemo(
     () => ({
-      workoutDrafts,
-      setWorkoutDraft,
-      clearWorkoutDraft,
-      getWorkoutDraft,
       mealPulse,
       setMealPulse,
       clearMealPulse,
@@ -191,10 +137,6 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
       setExperienceTransition,
     }),
     [
-      workoutDrafts,
-      setWorkoutDraft,
-      clearWorkoutDraft,
-      getWorkoutDraft,
       mealPulse,
       setMealPulse,
       clearMealPulse,
@@ -220,14 +162,6 @@ export const useUI = () => {
     throw new Error("useUI must be used within UIProvider");
   }
   return context;
-};
-
-/**
- * Convenience hook for workout drafts only
- */
-export const useWorkoutDrafts = () => {
-  const { workoutDrafts, setWorkoutDraft, clearWorkoutDraft, getWorkoutDraft } = useUI();
-  return { workoutDrafts, setWorkoutDraft, clearWorkoutDraft, getWorkoutDraft };
 };
 
 /**

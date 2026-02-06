@@ -226,6 +226,11 @@ export const updateExerciseMaster = async (
     body: JSON.stringify(payload),
   });
 
+export const deleteExercise = async (exerciseId: number) =>
+  apiFetch<{ ok: boolean }>(`/api/exercises/${exerciseId}`, {
+    method: "DELETE",
+  });
+
 export const fetchGroceryBag = async () =>
   apiFetch<{ items: Array<{ id: string; name: string; bucket: string; macroGroup?: string | null; category?: string | null }> }>(
     "/api/groceries",
@@ -585,6 +590,20 @@ export const upsertWaterLog = async (payload: {
     method: "POST",
     body: JSON.stringify(payload),
   });
+
+/** Replace all water entries for a day with a single absolute total. */
+export const setWaterLogTotal = async (payload: {
+  localDate: string;
+  totalMl: number;
+  source?: string;
+}) =>
+  apiFetch<{ entry: { local_date: string; amount_ml: number } | null; totalMl: number }>(
+    "/api/tracking/water/total",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 
 export const fetchActivityGoals = async () =>
   apiFetch<{ goals: { steps_goal: number | null; water_goal_ml: number | null; weight_unit: string | null } | null }>(

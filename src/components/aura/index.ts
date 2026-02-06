@@ -27,6 +27,7 @@ export { FoodSearchSheet } from "./FoodSearchSheet";
 export { MacroPills } from "./MacroPills";
 export { MealCard } from "./MealCard";
 export { MealLogPanel } from "./MealLogPanel";
+export { PageContainer } from "./PageContainer";
 export { PageTransition } from "./PageTransition";
 export { Pressable } from "./Pressable";
 export { QuickActionSheet } from "./QuickActionSheet";

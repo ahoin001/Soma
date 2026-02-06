@@ -19,6 +19,7 @@ import {
   upsertNutritionTargets,
   upsertStepsLog,
   upsertWaterLog,
+  setWaterLogTotal,
   upsertWeightLog,
 } from "./api";
 
@@ -124,12 +125,12 @@ registerMutationHandler("tracking.addWater", async (payload) => {
 });
 
 registerMutationHandler("tracking.setWaterTotal", async (payload) => {
-  const { localDate, delta } = payload as {
+  const { localDate, totalMl } = payload as {
     localDate: string;
-    delta: number;
+    totalMl: number;
   };
   await ensureUser();
-  await upsertWaterLog({ localDate, amountMl: delta, source: "manual" });
+  await setWaterLogTotal({ localDate, totalMl, source: "manual" });
 });
 
 registerMutationHandler("tracking.setSteps", async (payload) => {

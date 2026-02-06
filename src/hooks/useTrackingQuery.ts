@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -11,6 +11,7 @@ import {
   upsertStepsLog,
   upsertActivityGoals,
   upsertWaterLog,
+  setWaterLogTotal,
   upsertWeightLog,
 } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
@@ -328,10 +329,6 @@ export const useWaterSummaryQuery = (date: Date) => {
     },
   });
 
-  // Ref tracks the pre-optimistic cache value so mutationFn can compute the
-  // correct delta even when multiple mutations overlap (e.g. rapid cup taps).
-  const preOptimisticTotalRef = useRef(0);
-
   const setTotalMutation = useMutation({
     mutationKey: ["setWaterTotal", localDate],
     mutationFn: async (nextTotal: number) => {
@@ -339,19 +336,14 @@ export const useWaterSummaryQuery = (date: Date) => {
         throw new Error("Invalid total");
       }
       const rounded = Math.round(nextTotal);
-      const delta = rounded - preOptimisticTotalRef.current;
-      if (delta === 0) return rounded;
-
       await ensureUser();
-      await upsertWaterLog({ localDate, amountMl: delta, source: "manual" });
+      // Use the absolute-total endpoint — no delta computation needed.
+      await setWaterLogTotal({ localDate, totalMl: rounded, source: "manual" });
       return rounded;
     },
     onMutate: async (nextTotal) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.trackingWater(localDate) });
       const previous = queryClient.getQueryData<WaterData>(queryKeys.trackingWater(localDate));
-
-      // Snapshot what the cache held BEFORE we optimistically overwrite it.
-      preOptimisticTotalRef.current = previous?.totalMl ?? 0;
 
       queryClient.setQueryData<WaterData>(queryKeys.trackingWater(localDate), (old) => ({
         totalMl: Math.round(nextTotal),

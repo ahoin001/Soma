@@ -43,10 +43,11 @@ export const MealLogPanel = ({
   }, [logSections]);
 
   return (
-    <Card className="mt-6 rounded-[28px] border border-black/5 bg-white px-5 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+    <Card className="relative mt-6 overflow-hidden rounded-[28px] border border-black/5 bg-white/85 px-5 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,_rgba(16,185,129,0.14),_transparent_45%),radial-gradient(circle_at_85%_0%,_rgba(59,130,246,0.08),_transparent_50%),radial-gradient(circle_at_70%_85%,_rgba(253,224,71,0.08),_transparent_55%)] opacity-70" />
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+          <p className="text-xs uppercase tracking-[0.2em] text-emerald-500/70">
             Meals & log
           </p>
           <h3 className="text-lg font-display font-semibold text-slate-900">
@@ -85,67 +86,71 @@ export const MealLogPanel = ({
               transition={{ duration: 0.9, ease: "easeOut" }}
               className="rounded-[22px]"
             >
-              <Collapsible
+            <Collapsible
               key={meal.id}
               open={isOpen}
               onOpenChange={(open) =>
                 setOpenMeals((prev) => ({ ...prev, [meal.id]: open }))
               }
-              className="group relative overflow-hidden rounded-[22px] border border-black/5 bg-emerald-50/60 p-3 transition-colors transition-shadow data-[state=open]:border-emerald-100 data-[state=open]:bg-emerald-50/80 data-[state=open]:shadow-[0_14px_30px_rgba(16,185,129,0.16)]"
+              className="group relative overflow-hidden rounded-[22px] border border-black/5 bg-white/70 transition-colors transition-shadow data-[state=open]:border-emerald-100/70 data-[state=open]:shadow-[0_10px_26px_rgba(16,185,129,0.12)]"
             >
-              <div className="pointer-events-none absolute inset-x-4 top-2 h-px bg-emerald-200/70 opacity-0 transition-opacity group-data-[state=open]:opacity-100" />
-              <div className="flex items-center gap-3">
-                <CollapsibleTrigger asChild>
+              <div className="pointer-events-none absolute inset-x-4 top-2 h-px bg-emerald-200/60 opacity-0 transition-opacity group-data-[state=open]:opacity-100" />
+              <div className="bg-emerald-50/50 p-3 transition-colors group-data-[state=open]:bg-emerald-50/70">
+                <div className="flex items-center gap-3">
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="group h-auto flex-1 justify-between gap-3 rounded-[18px] px-3 py-3 text-left transition-colors hover:text-emerald-700/80 active:text-emerald-800/90"
+                      aria-label={`Toggle ${meal.label} details`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-lg shadow-[0_8px_18px_rgba(15,23,42,0.08)]">
+                          {meal.emoji}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-800">
+                            {meal.label}
+                          </p>
+                          <motion.p
+                            className="text-xs text-slate-500/90"
+                            animate={
+                              shouldGlow ? { scale: [1, 1.04, 1] } : undefined
+                            }
+                            transition={{ duration: 0.4, ease: "easeOut" }}
+                          >
+                            {itemCount > 0 ? (
+                              <>
+                                <AnimatedNumber
+                                  value={itemCount}
+                                  animateTrigger={animateTrigger}
+                                />{" "}
+                                items •{" "}
+                                <AnimatedNumber
+                                  value={kcalTotal}
+                                  animateTrigger={animateTrigger}
+                                />{" "}
+                                cal
+                              </>
+                            ) : (
+                              "No items logged yet"
+                            )}
+                          </motion.p>
+                        </div>
+                      </div>
+                      <div className="h-4 w-4" />
+                    </Button>
+                  </CollapsibleTrigger>
                   <Button
                     type="button"
-                    variant="ghost"
-                    className="group h-auto flex-1 justify-between gap-3 rounded-[18px] px-3 py-3 text-left hover:bg-white/70"
-                    aria-label={`Toggle ${meal.label} details`}
+                    onClick={() => onAddMeal(meal)}
+                    aria-label={`Add to ${meal.label}`}
+                    size="icon"
+                  className="h-11 w-11 shrink-0 rounded-full bg-emerald-100/80 text-emerald-700 shadow-[0_6px_16px_rgba(16,185,129,0.14)] hover:bg-emerald-200/80"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-lg shadow-[0_10px_25px_rgba(15,23,42,0.1)]">
-                        {meal.emoji}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-800">
-                          {meal.label}
-                        </p>
-                        <motion.p
-                          className="text-xs text-slate-500"
-                          animate={shouldGlow ? { scale: [1, 1.04, 1] } : undefined}
-                          transition={{ duration: 0.4, ease: "easeOut" }}
-                        >
-                          {itemCount > 0 ? (
-                            <>
-                              <AnimatedNumber
-                                value={itemCount}
-                                animateTrigger={animateTrigger}
-                              />{" "}
-                              items •{" "}
-                              <AnimatedNumber
-                                value={kcalTotal}
-                                animateTrigger={animateTrigger}
-                              />{" "}
-                              cal
-                            </>
-                          ) : (
-                            "No items logged yet"
-                          )}
-                        </motion.p>
-                      </div>
-                    </div>
-                    <div className="h-4 w-4" />
+                    <Plus className="h-4 w-4" />
                   </Button>
-                </CollapsibleTrigger>
-                <Button
-                  type="button"
-                  onClick={() => onAddMeal(meal)}
-                  aria-label={`Add to ${meal.label}`}
-                  size="icon"
-                  className="h-11 w-11 shrink-0 rounded-full bg-emerald-100 text-emerald-700 shadow-[0_8px_20px_rgba(16,185,129,0.18)] hover:bg-emerald-200"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                </div>
               </div>
 
               <CollapsibleContent forceMount asChild>
@@ -158,7 +163,7 @@ export const MealLogPanel = ({
                   }}
                   transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  <div className="space-y-2 pb-1">
+                  <div className="space-y-2 px-3 pb-3 pt-2">
                     <MealSummary items={section?.items ?? []} pulse={shouldGlow} />
                     <LogItems
                       key={`log-items-${animateTrigger ?? 0}-${meal.id}`}
@@ -168,7 +173,7 @@ export const MealLogPanel = ({
                       animateOnMount={Boolean(animateTrigger)}
                     />
                     {!itemCount && (
-                      <div className="rounded-[16px] border border-dashed border-emerald-200 bg-white/80 px-4 py-4 text-xs text-slate-500">
+                      <div className="rounded-[16px] border border-dashed border-emerald-200/80 bg-white/70 px-4 py-4 text-xs text-slate-500/90">
                         No items logged yet. Tap add to start tracking.
                       </div>
                     )}
@@ -236,7 +241,7 @@ const LogRow = forwardRef<
       }}
       transition={{ type: "spring", stiffness: 260, damping: 20 }}
       type="button"
-      className="relative w-full overflow-hidden rounded-[16px] bg-white px-3 py-3 text-sm text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.08)] cursor-pointer"
+      className="relative w-full overflow-hidden rounded-[16px] border border-white/70 bg-white/80 px-3 py-3 text-sm text-slate-700 shadow-[0_6px_14px_rgba(15,23,42,0.06)] backdrop-blur-sm transition-shadow hover:shadow-[0_10px_20px_rgba(15,23,42,0.1)] cursor-pointer"
       onClick={onEdit}
     >
       <motion.span
@@ -255,7 +260,7 @@ const LogRow = forwardRef<
         💨
       </motion.span>
       <motion.span
-        className="pointer-events-none absolute -right-4 -top-4 h-10 w-10 rounded-full bg-emerald-100/70 blur-xl"
+        className="pointer-events-none absolute -right-4 -top-4 h-10 w-10 rounded-full bg-emerald-100/60 blur-xl"
         animate={{ opacity: [0.2, 0.5, 0.2], scale: [1, 1.2, 1] }}
         transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
       />
@@ -274,13 +279,13 @@ const LogRow = forwardRef<
           ) : null}
           <span className="font-medium">{item.name}</span>
           {showQuantity && (
-            <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">
+            <span className="rounded-full bg-emerald-50/80 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">
               {quantityLabel}x
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-emerald-600">{totalKcal} cal</span>
+          <span className="text-xs text-emerald-600/90">{totalKcal} cal</span>
         </div>
       </div>
     </motion.button>
@@ -303,8 +308,8 @@ const MealSummary = ({ items, pulse }: { items: LogItem[]; pulse?: boolean }) =>
   );
 
   return (
-    <div className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-emerald-100/60 px-4 py-4 shadow-[0_14px_30px_rgba(16,185,129,0.12)]">
-      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+    <div className="rounded-[24px] border border-emerald-100/70 bg-white/75 px-4 py-4 shadow-[0_10px_22px_rgba(16,185,129,0.1)] backdrop-blur-sm">
+      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500/70">
         <span>Meal summary</span>
         <motion.span
           animate={pulse ? { scale: [1, 1.08, 1] } : undefined}
@@ -314,8 +319,8 @@ const MealSummary = ({ items, pulse }: { items: LogItem[]; pulse?: boolean }) =>
         </motion.span>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-3 text-xs text-emerald-700/80">
-        <div className="rounded-[16px] bg-white/90 px-3 py-3 text-center">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-400">
+        <div className="rounded-[16px] bg-white/80 px-3 py-3 text-center">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-500/70">
             Carbs
           </p>
           <motion.p
@@ -326,8 +331,8 @@ const MealSummary = ({ items, pulse }: { items: LogItem[]; pulse?: boolean }) =>
             <AnimatedNumber value={totals.carbs} />g
           </motion.p>
         </div>
-        <div className="rounded-[16px] bg-white/90 px-3 py-3 text-center">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-400">
+        <div className="rounded-[16px] bg-white/80 px-3 py-3 text-center">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-500/70">
             Protein
           </p>
           <motion.p
@@ -338,8 +343,8 @@ const MealSummary = ({ items, pulse }: { items: LogItem[]; pulse?: boolean }) =>
             <AnimatedNumber value={totals.protein} />g
           </motion.p>
         </div>
-        <div className="rounded-[16px] bg-white/90 px-3 py-3 text-center">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-400">
+        <div className="rounded-[16px] bg-white/80 px-3 py-3 text-center">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-500/70">
             Fat
           </p>
           <motion.p

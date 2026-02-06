@@ -178,6 +178,42 @@ router.post(
   }),
 );
 
+// Set absolute water total for a day (replaces all existing entries)
+const waterSetTotalSchema = z.object({
+  localDate: z.string().min(1),
+  totalMl: z.number().int().nonnegative(),
+  source: z.string().optional(),
+});
+
+const setWaterTotal = asyncHandler(async (req, res) => {
+  const userId = getUserId(req);
+  const payload = waterSetTotalSchema.parse(req.body);
+  const result = await withTransaction(async (client) => {
+    // Remove all water entries for this day
+    await client.query(
+      `DELETE FROM water_logs WHERE user_id = $1 AND local_date = $2;`,
+      [userId, payload.localDate],
+    );
+    // Insert a single entry with the new total (skip if 0)
+    if (payload.totalMl > 0) {
+      const ins = await client.query(
+        `INSERT INTO water_logs (user_id, local_date, amount_ml, source)
+         VALUES ($1, $2, $3, $4)
+         RETURNING *;`,
+        [userId, payload.localDate, payload.totalMl, payload.source ?? null],
+      );
+      return ins.rows[0];
+    }
+    return null;
+  });
+  res.json({ entry: result, totalMl: payload.totalMl });
+});
+
+router.put("/water", setWaterTotal);
+
+// POST fallback for environments where PUT is blocked by SW/proxies
+router.post("/water/total", setWaterTotal);
+
 router.get(
   "/water",
   asyncHandler(async (req, res) => {

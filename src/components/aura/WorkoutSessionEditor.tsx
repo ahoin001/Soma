@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -279,6 +279,8 @@ export const WorkoutSessionEditor = ({
   const [unitUsed, setUnitUsed] = useState<"lb" | "kg">("lb");
   const [advancedLogging, setAdvancedLogging] = useState(false);
   const draftTimerRef = useRef<number | null>(null);
+  const draftWriteRef = useRef<string | null>(null);
+  const baseSignatureRef = useRef<string | null>(null);
   const navigationType = useNavigationType();
   const shouldAnimateList = navigationType !== "POP";
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -294,8 +296,28 @@ export const WorkoutSessionEditor = ({
     }),
   );
 
+  const buildSignature = useCallback((entries: WorkoutTemplate["exercises"]) => {
+    return entries
+      .map((exercise) => {
+        const steps = exercise.steps?.join("|") ?? "";
+        return [
+          exercise.id,
+          exercise.name,
+          exercise.note ?? "",
+          steps,
+          exercise.guideUrl ?? "",
+          exercise.customVideoName ?? "",
+        ].join("::");
+      })
+      .join("||");
+  }, []);
+
   useEffect(() => {
     if (!workout) return;
+    if (mode === "edit" && draftWriteRef.current === workout.id) {
+      draftWriteRef.current = null;
+      return;
+    }
     const storedRaw =
       typeof window !== "undefined"
         ? window.localStorage.getItem(`ironflow-workout-last-sets:${workout.id}`)
@@ -304,8 +326,18 @@ export const WorkoutSessionEditor = ({
       storedRaw && mode === "session"
         ? (JSON.parse(storedRaw) as Record<string, Array<{ weight: string; reps: string }>>)
         : {};
+    const currentSignature = buildSignature(workout.exercises);
     const draft = mode === "edit" ? workoutDrafts[workout.id] : null;
-    const base = draft?.length ? draft : workout.exercises;
+    const shouldUseDraft = Boolean(
+      draft?.exercises.length && draft.baseSignature === currentSignature,
+    );
+    if (draft && !shouldUseDraft) {
+      clearWorkoutDraft(workout.id);
+    }
+    baseSignatureRef.current = shouldUseDraft
+      ? draft?.baseSignature ?? currentSignature
+      : currentSignature;
+    const base = shouldUseDraft ? draft?.exercises ?? [] : workout.exercises;
     setExercises(
       base.map((exercise) => {
         const previousSets = stored?.[exercise.name];
@@ -330,7 +362,7 @@ export const WorkoutSessionEditor = ({
         };
       }),
     );
-  }, [workout, mode, workoutDrafts]);
+  }, [workout, mode, workoutDrafts, buildSignature, clearWorkoutDraft]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -544,7 +576,11 @@ export const WorkoutSessionEditor = ({
         guideUrl: exercise.guideUrl?.trim() || undefined,
         customVideoName: exercise.customVideoName || undefined,
       }));
-      setWorkoutDraft(workout.id, next);
+      const baseSignature =
+        baseSignatureRef.current ??
+        (workout ? buildSignature(workout.exercises) : "");
+      draftWriteRef.current = workout.id;
+      setWorkoutDraft(workout.id, next, baseSignature);
     }, 300);
     return () => {
       if (draftTimerRef.current) {
@@ -638,6 +674,8 @@ export const WorkoutSessionEditor = ({
       .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
   };
 
+  const [isPersisting, setIsPersisting] = useState(false);
+
   const handleFinish = async () => {
     if (isEditMode) {
       saveExercises();
@@ -652,16 +690,23 @@ export const WorkoutSessionEditor = ({
     ) {
       const payload = buildPersistPayload();
       if (payload.length > 0) {
+        setIsPersisting(true);
         try {
           await onPersistSets(payload);
-        } catch {
-          toast("Unable to save sets. Retry or finish anyway.", {
+        } catch (err) {
+          setIsPersisting(false);
+          const message =
+            err instanceof Error ? err.message : "Unable to save sets.";
+          toast("Sets could not be saved. Retry or finish anyway.", {
+            description: message,
             action: {
               label: "Finish anyway",
               onClick: () => onFinish?.(),
             },
           });
           return;
+        } finally {
+          setIsPersisting(false);
         }
       }
     }
@@ -696,9 +741,17 @@ export const WorkoutSessionEditor = ({
               savePulse && "shadow-[0_0_24px_rgba(52,211,153,0.5)]",
             )}
             onClick={() => void handleFinish()}
-            disabled={hasInvalidEntries || (isEditMode && !hasExercises)}
+            disabled={
+              hasInvalidEntries ||
+              (isEditMode && !hasExercises) ||
+              isPersisting
+            }
           >
-            {savePulse && isEditMode ? "Saved" : headerAction}
+            {isPersisting
+              ? "Saving…"
+              : savePulse && isEditMode
+                ? "Saved"
+                : headerAction}
           </Button>
         </div>
         {hasInvalidEntries ? (

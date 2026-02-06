@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,16 @@ import { Textarea } from "@/components/ui/textarea";
 import type { WorkoutExerciseEntry } from "@/types/fitness";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAppStore } from "@/state/AppStore";
 import {
   createExerciseMedia,
@@ -212,6 +222,30 @@ export const ExerciseGuideSheet = ({
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [thumbnailProgress, setThumbnailProgress] = useState(0);
   const [thumbnailNotice, setThumbnailNotice] = useState<string | null>(null);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+
+  const isUploading = thumbnailUploading || Boolean(uploadStatus);
+
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open && isUploading) {
+        setLeaveConfirmOpen(true);
+        return;
+      }
+      onOpenChange(open);
+    },
+    [isUploading, onOpenChange],
+  );
+
+  useEffect(() => {
+    if (!isUploading) return;
+    const fn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", fn);
+    return () => window.removeEventListener("beforeunload", fn);
+  }, [isUploading]);
+
   const isImage = mediaUrl
     ? [".jpg", ".jpeg", ".png", ".webp", ".gif"].some((ext) =>
         mediaUrl.toLowerCase().includes(ext),
@@ -461,7 +495,7 @@ export const ExerciseGuideSheet = ({
             variant="ghost"
             size="icon"
             className="h-10 w-10 rounded-full bg-white/10 text-white hover:bg-white/20"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
@@ -545,6 +579,10 @@ export const ExerciseGuideSheet = ({
                 <Button
                   className="rounded-full bg-white/10 text-white hover:bg-white/20"
                   onClick={async () => {
+                    const prevItems = mediaItems;
+                    const prevUrl = mediaUrl;
+                    const prevKind = mediaKind;
+                    const prevLabel = mediaLabel;
                     try {
                       setSaving(true);
                       const response = await setExerciseMediaPrimary({
@@ -566,8 +604,14 @@ export const ExerciseGuideSheet = ({
                           : "Your media",
                       );
                       toast("Primary updated");
-                    } catch {
-                      toast("Unable to update primary");
+                    } catch (err) {
+                      setMediaItems(prevItems);
+                      setMediaUrl(prevUrl);
+                      setMediaKind(prevKind);
+                      setMediaLabel(prevLabel ?? "Media preview");
+                      toast("Unable to update primary", {
+                        description: err instanceof Error ? err.message : undefined,
+                      });
                     } finally {
                       setSaving(false);
                     }
@@ -582,6 +626,11 @@ export const ExerciseGuideSheet = ({
                   variant="outline"
                   className="rounded-full border-rose-400/40 text-rose-200 hover:bg-rose-500/20"
                   onClick={async () => {
+                    const prevItems = mediaItems;
+                    const prevSelected = selectedMediaId;
+                    const prevUrl = mediaUrl;
+                    const prevKind = mediaKind;
+                    const prevLabel = mediaLabel;
                     try {
                       setSaving(true);
                       await deleteExerciseMedia({
@@ -611,8 +660,15 @@ export const ExerciseGuideSheet = ({
                         setMediaLabel("Media preview");
                       }
                       toast("Media removed");
-                    } catch {
-                      toast("Unable to delete media");
+                    } catch (err) {
+                      setMediaItems(prevItems);
+                      setSelectedMediaId(prevSelected);
+                      setMediaUrl(prevUrl);
+                      setMediaKind(prevKind);
+                      setMediaLabel(prevLabel ?? "Media preview");
+                      toast("Unable to delete media", {
+                        description: err instanceof Error ? err.message : undefined,
+                      });
                     } finally {
                       setSaving(false);
                     }
@@ -635,8 +691,10 @@ export const ExerciseGuideSheet = ({
                         isPrimary: true,
                       });
                       toast("Global media set");
-                    } catch {
-                      toast("Unable to set global media");
+                    } catch (err) {
+                      toast("Unable to set global media", {
+                        description: err instanceof Error ? err.message : undefined,
+                      });
                     } finally {
                       setSaving(false);
                     }
@@ -733,6 +791,7 @@ export const ExerciseGuideSheet = ({
                   className="w-full rounded-full bg-white/10 text-white hover:bg-white/20"
                   disabled={saving}
                   onClick={async () => {
+                    const prevSavedAt = overrideSavedAt;
                     try {
                       setSaving(true);
                       const response = await saveExerciseOverride({
@@ -743,8 +802,11 @@ export const ExerciseGuideSheet = ({
                       });
                       setOverrideSavedAt(response.override.updated_at);
                       toast("Saved your default cues");
-                    } catch {
-                      toast("Unable to save cues");
+                    } catch (err) {
+                      setOverrideSavedAt(prevSavedAt);
+                      toast("Unable to save cues", {
+                        description: err instanceof Error ? err.message : undefined,
+                      });
                     } finally {
                       setSaving(false);
                     }
@@ -861,6 +923,17 @@ export const ExerciseGuideSheet = ({
                         toast("Unable to find master exercise");
                         return;
                       }
+                      const prevName = masterName;
+                      const prevDesc = masterDescription;
+                      const prevCategory = masterCategory;
+                      const prevEquipment = masterEquipment;
+                      const prevMuscles = masterMuscles;
+                      const prevImageUrl = masterImageUrl;
+                      const prevThumbUrl = thumbnailUrl;
+                      const prevMediaItems = mediaItems;
+                      const prevMediaUrl = mediaUrl;
+                      const prevMediaKind = mediaKind;
+                      const prevMediaLabel = mediaLabel;
                       try {
                         setSaving(true);
                         const response = await updateExerciseMaster(masterId, {
@@ -907,8 +980,21 @@ export const ExerciseGuideSheet = ({
                           onUpdate({ name: masterName.trim() });
                         }
                         toast("Master exercise updated");
-                      } catch {
-                        toast("Unable to update master exercise");
+                      } catch (err) {
+                        setMasterName(prevName);
+                        setMasterDescription(prevDesc);
+                        setMasterCategory(prevCategory);
+                        setMasterEquipment(prevEquipment);
+                        setMasterMuscles(prevMuscles);
+                        setMasterImageUrl(prevImageUrl);
+                        setThumbnailUrl(prevThumbUrl);
+                        setMediaItems(prevMediaItems);
+                        setMediaUrl(prevMediaUrl);
+                        setMediaKind(prevMediaKind);
+                        setMediaLabel(prevMediaLabel);
+                        toast("Unable to update master exercise", {
+                          description: err instanceof Error ? err.message : undefined,
+                        });
                       } finally {
                         setSaving(false);
                       }
@@ -952,6 +1038,11 @@ export const ExerciseGuideSheet = ({
                       className="w-full rounded-full bg-white/10 text-white hover:bg-white/20"
                       onClick={async () => {
                         if (!exercise.guideUrl) return;
+                        const prevUrl = mediaUrl;
+                        const prevLabel = mediaLabel;
+                        const prevKind = mediaKind;
+                        const prevId = selectedMediaId;
+                        const prevItems = mediaItems;
                         try {
                           setSaving(true);
                           setUploadStatus("Saving guide link...");
@@ -976,8 +1067,15 @@ export const ExerciseGuideSheet = ({
                           toast("Guide link saved", {
                             description: "Set as your primary reference.",
                           });
-                        } catch (error) {
-                          toast("Unable to save guide link");
+                        } catch (err) {
+                          setMediaUrl(prevUrl);
+                          setMediaLabel(prevLabel);
+                          setMediaKind(prevKind);
+                          setSelectedMediaId(prevId);
+                          setMediaItems(prevItems);
+                          toast("Unable to save guide link", {
+                            description: err instanceof Error ? err.message : undefined,
+                          });
                         } finally {
                           setSaving(false);
                           setUploadStatus(null);
@@ -1015,6 +1113,12 @@ export const ExerciseGuideSheet = ({
                     onChange={(event) => {
                       const file = event.target.files?.[0];
                       if (!file) return;
+                      const prevUrl = mediaUrl;
+                      const prevLabel = mediaLabel;
+                      const prevKind = mediaKind;
+                      const prevId = selectedMediaId;
+                      const prevItems = mediaItems;
+                      const prevVideoName = exercise.customVideoName;
                       setSaving(true);
                       setUploadStatus("Uploading video...");
                       fetch("/api/workouts/exercise-media/signature")
@@ -1065,8 +1169,16 @@ export const ExerciseGuideSheet = ({
                             description: "Set as your primary reference.",
                           });
                         })
-                        .catch(() => {
-                          toast("Upload failed");
+                        .catch((err) => {
+                          setMediaUrl(prevUrl);
+                          setMediaLabel(prevLabel);
+                          setMediaKind(prevKind);
+                          setSelectedMediaId(prevId);
+                          setMediaItems(prevItems);
+                          if (prevVideoName) onUpdate({ customVideoName: prevVideoName });
+                          toast("Upload failed", {
+                            description: err instanceof Error ? err.message : undefined,
+                          });
                         })
                         .finally(() => {
                           setSaving(false);
@@ -1085,11 +1197,34 @@ export const ExerciseGuideSheet = ({
       <motion.div variants={sectionVariants} className="mt-6">
         <Button
           className="w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
-          onClick={() => onOpenChange(false)}
+          onClick={() => handleOpenChange(false)}
         >
           Done
         </Button>
       </motion.div>
+
+      <AlertDialog open={leaveConfirmOpen} onOpenChange={setLeaveConfirmOpen}>
+        <AlertDialogContent className="border-white/10 bg-slate-900 text-white">
+          <AlertDialogTitle>Media still uploading</AlertDialogTitle>
+          <AlertDialogDescription>
+            If you leave now, the upload may not finish. Stay to ensure it completes?
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-white/20 text-white hover:bg-white/10">
+              Stay
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-emerald-500 text-white hover:bg-emerald-600"
+              onClick={() => {
+                setLeaveConfirmOpen(false);
+                onOpenChange(false);
+              }}
+            >
+              Leave anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       </motion.div>
     </div>
   );
@@ -1150,7 +1285,7 @@ export const ExerciseGuideSheet = ({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
+    <Drawer open={open} onOpenChange={handleOpenChange}>
       <DrawerContent className="rounded-t-[36px] border-none bg-slate-950 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-white">
         {content}
       </DrawerContent>

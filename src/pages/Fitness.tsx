@@ -30,7 +30,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { toast } from "sonner";
-import { fetchCurrentUser } from "@/lib/api";
+import { deleteExercise, fetchCurrentUser } from "@/lib/api";
 import { motion } from "framer-motion";
 
 const fitnessBlocks = [
@@ -184,10 +184,13 @@ const Fitness = () => {
     [selectedPlan, sheetWorkoutId],
   );
 
-  const detailOpen = sheet === "exercise" && Boolean(selectedExercise);
-  const planSheetOpen = sheet === "plan" && Boolean(selectedPlan);
-  const workoutSheetOpen =
-    sheet === "workout" && Boolean(selectedPlan) && Boolean(selectedWorkout);
+  const detailOpen = sheet === "exercise";
+  const planSheetOpen = sheet === "plan";
+  const workoutSheetOpen = sheet === "workout";
+  const canResolveExercise = status !== "loading";
+  const detailLoading = detailOpen && !selectedExercise;
+  const planSheetLoading = planSheetOpen && !selectedPlan;
+  const workoutSheetLoading = workoutSheetOpen && (!selectedPlan || !selectedWorkout);
 
   const openSheet = (next: Record<string, string>) => {
     setParams(next);
@@ -203,24 +206,34 @@ const Fitness = () => {
 
   useEffect(() => {
     if (sheet !== "exercise") return;
-    if (!selectedExercise && sheetExerciseName) {
+    if (!canResolveExercise) return;
+    if (!selectedExercise && (sheetExerciseName || sheetExerciseId)) {
       setParams({}, { replace: true });
     }
-  }, [sheet, sheetExerciseName, selectedExercise, setParams]);
+  }, [
+    sheet,
+    sheetExerciseName,
+    sheetExerciseId,
+    selectedExercise,
+    canResolveExercise,
+    setParams,
+  ]);
 
   useEffect(() => {
     if (sheet !== "plan") return;
+    if (!workoutPlansLoaded) return;
     if (!selectedPlan) {
       setParams({}, { replace: true });
     }
-  }, [sheet, selectedPlan, setParams]);
+  }, [sheet, selectedPlan, workoutPlansLoaded, setParams]);
 
   useEffect(() => {
     if (sheet !== "workout") return;
+    if (!workoutPlansLoaded) return;
     if (!selectedPlan || !selectedWorkout) {
       setParams({}, { replace: true });
     }
-  }, [sheet, selectedPlan, selectedWorkout, setParams]);
+  }, [sheet, selectedPlan, selectedWorkout, workoutPlansLoaded, setParams]);
 
   const handleSelectExercise = (exercise: Exercise) => {
     openSheet({
@@ -531,10 +544,32 @@ const Fitness = () => {
           if (!open) closeSheet();
         }}
         exercise={selectedExercise}
+        loading={detailLoading}
         canAddToRoutine={canAddToRoutine}
         onAddToRoutine={handleAddToRoutine}
         onAddToWorkout={handleAddToWorkout}
         onEditExercise={handleEditExercise}
+        isAdmin={isAdmin}
+        onDeleteExercise={
+          isAdmin
+            ? async (ex) => {
+                try {
+                  await deleteExercise(ex.id);
+                  closeSheet();
+                  toast("Exercise deleted");
+                  if (query.trim()) {
+                    const ctrl = new AbortController();
+                    searchExercises(query, ctrl.signal, "mine");
+                  }
+                } catch (err) {
+                  const msg =
+                    err instanceof Error ? err.message : "Delete failed.";
+                  toast("Could not delete exercise", { description: msg });
+                  throw err;
+                }
+              }
+            : undefined
+        }
       />
 
       <WorkoutPlanSheet
@@ -543,6 +578,7 @@ const Fitness = () => {
           if (!open) closeSheet();
         }}
         plan={selectedPlan}
+        loading={planSheetLoading}
         isActive={selectedPlan?.id === activePlanId}
         onEditPlan={async (name) => {
           if (!selectedPlan) return;
@@ -579,6 +615,7 @@ const Fitness = () => {
         }}
         plan={selectedPlan}
         workout={selectedWorkout}
+        loading={workoutSheetLoading}
         onEdit={() => {
           if (!selectedPlan || !selectedWorkout) return;
           closeSheet();
