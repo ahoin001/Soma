@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Suspense, lazy, useEffect, useLayoutEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useLayoutEffect } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -13,7 +13,7 @@ import {
 } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AppStoreProvider, UserProvider, UIProvider } from "@/state";
-import { OnboardingCarousel, OnboardingDialog, SplashScreen } from "@/components/aura";
+import { OnboardingDialog } from "@/components/aura";
 import { useAuth } from "@/hooks/useAuth";
 import { PageTransition } from "@/components/aura";
 import { PageErrorBoundary } from "@/components/ErrorBoundary";
@@ -347,76 +347,37 @@ const ScrollRestoration = () => {
 const AppShell = () => {
   const auth = useAuth();
   const needsAuth = auth.status === "ready" && !auth.userId;
-  const [showSplash, setShowSplash] = useState(false);
-  const [carouselOpen, setCarouselOpen] = useState(false);
-
-  useEffect(() => {
-    if (!needsAuth) {
-      setShowSplash(false);
-      return;
-    }
-    setShowSplash(true);
-    const timer = window.setTimeout(() => {
-      setShowSplash(false);
-    }, 1200);
-    return () => window.clearTimeout(timer);
-  }, [needsAuth]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (needsAuth || auth.status !== "ready") return;
-    const seen = window.localStorage.getItem("aurafit-carousel-v1");
-    setCarouselOpen(!seen);
-  }, [needsAuth, auth.status]);
 
   return (
-    <>
-      {needsAuth && showSplash && (
-        <SplashScreen
-          onContinue={() => {
-            setShowSplash(false);
-          }}
-        />
-      )}
-      <BrowserRouter>
-        <Suspense
-          fallback={
-            <div className="min-h-screen bg-background">
-              <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6">
-                <Skeleton className="h-60 w-full rounded-[36px]" />
-                <div className="mt-6 space-y-3">
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="h-24 w-full" />
-                  <Skeleton className="h-24 w-full" />
-                </div>
+    <BrowserRouter>
+      <Suspense
+        fallback={
+          <div className="min-h-screen bg-background">
+            <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6">
+              <Skeleton className="h-60 w-full rounded-[36px]" />
+              <div className="mt-6 space-y-3">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
               </div>
             </div>
-          }
-        >
-          {needsAuth ? (
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route path="*" element={<Navigate to="/auth" replace />} />
-            </Routes>
-          ) : (
-            <>
-              {carouselOpen && (
-                <OnboardingCarousel
-                  onFinish={() => {
-                    if (typeof window !== "undefined") {
-                      window.localStorage.setItem("aurafit-carousel-v1", "true");
-                    }
-                    setCarouselOpen(false);
-                  }}
-                />
-              )}
-              {!carouselOpen && <OnboardingDialog />}
-              <AnimatedRoutes />
-            </>
-          )}
-        </Suspense>
-      </BrowserRouter>
-    </>
+          </div>
+        }
+      >
+        {needsAuth ? (
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="*" element={<Navigate to="/auth" replace />} />
+          </Routes>
+        ) : (
+          <>
+            {/* OnboardingDialog shows automatically if user hasn't completed onboarding */}
+            <OnboardingDialog />
+            <AnimatedRoutes />
+          </>
+        )}
+      </Suspense>
+    </BrowserRouter>
   );
 };
 

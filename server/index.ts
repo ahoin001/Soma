@@ -34,7 +34,20 @@ const allowedOrigins = (process.env.CORS_ORIGIN ?? "")
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      // Allow any Vercel deployment (*.vercel.app) so preview URLs work without updating CORS_ORIGIN
+      if (origin.endsWith(".vercel.app")) {
+        callback(null, true);
+        return;
+      }
+      if (allowedOrigins.length === 0) {
         callback(null, true);
         return;
       }

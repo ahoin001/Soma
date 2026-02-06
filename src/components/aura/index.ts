@@ -35,7 +35,5 @@ export { StepsCard } from "./StepsCard";
 export { WaterCard } from "./WaterCard";
 export { OnboardingDialog } from "./OnboardingDialog";
 export { AuthDialog } from "./AuthDialog";
-export { SplashScreen } from "./SplashScreen";
-export { OnboardingCarousel } from "./OnboardingCarousel";
 export { SyncStatus } from "./SyncStatus";
 export { Stat } from "./Stat";
