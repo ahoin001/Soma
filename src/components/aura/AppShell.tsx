@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { BottomNav } from "./BottomNav";
 import { OfflineBanner } from "./OfflineBanner";
+import { PullToRefresh } from "./PullToRefresh";
 
 type AppShellProps = {
   experience: "nutrition" | "fitness";
@@ -111,6 +112,8 @@ export const AppShell = ({
           }}
         />
       </div>
+
+      <PullToRefresh experience={experience} />
 
       <OfflineBanner />
 

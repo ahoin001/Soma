@@ -4,7 +4,7 @@
  * The app uses a layered state architecture:
  *
  * 1. UserContext - Persistent user data (profile, settings)
- * 2. UIContext - Transient UI state (drafts, animations, date selection)
+ * 2. UIContext - Transient UI state (animations, date selection)
  * 3. React Query - Server state (nutrition, tracking, fitness data)
  * 4. AppStore (legacy) - Being migrated to the above
  *
@@ -30,7 +30,7 @@ export {
   useUI,
   useMealPulse,
   useSelectedDate,
-  useExperienceTransition,
+  useExperienceTransitionConfig,
 } from "./UIContext";
 
 // Legacy AppStore - still used during migration

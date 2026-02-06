@@ -3,13 +3,16 @@ import { forwardRef } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 
-type TransitionStyle = "blur-scale" | "color-wash" | "circular-reveal";
-
 type PageTransitionProps = {
   children: ReactNode;
   /** Slightly more dramatic entrance when switching Nutrition ↔ Fitness */
   isExperienceSwitch?: boolean;
-  transitionStyle?: TransitionStyle;
+  transitionConfig?: {
+    durationMs?: number;
+    curve?: number;
+    originY?: number;
+    radiusPct?: number;
+  };
   /** The INCOMING experience tone (the one being navigated TO) */
   experienceTone?: "nutrition" | "fitness";
 };
@@ -59,7 +62,7 @@ export const PageTransition = forwardRef<HTMLDivElement, PageTransitionProps>(
     {
       children,
       isExperienceSwitch = false,
-      transitionStyle = "blur-scale",
+      transitionConfig,
       experienceTone = "nutrition",
     },
     ref,
@@ -88,32 +91,30 @@ export const PageTransition = forwardRef<HTMLDivElement, PageTransitionProps>(
 
     // --- Page entrance variants (keep lightweight for mobile) ---
     // Avoid clipPath on the content itself (expensive on large DOM trees).
+    const {
+      durationMs = 900,
+      curve = 1.1,
+      originY = 0.22,
+      radiusPct = 160,
+    } = transitionConfig ?? {};
+    const duration = Math.max(0.3, durationMs / 1000);
+    const easeCurve: [number, number, number, number] = [0.2, curve, 0.25, 1];
+    const origin = `${Math.round(originY * 100)}%`;
+    const radius = `${Math.round(radiusPct)}%`;
+
     const motionProps = {
       initial: { opacity: 0 },
       animate: { opacity: 1 },
-      transition: { duration: 0.22, ease: "easeOut", delay: 0.04 },
+      transition: { duration: Math.min(0.38, duration * 0.42), ease: easeCurve, delay: 0.06 },
     };
 
     // --- Curtain variant (rendered via portal) ---
-    // Color-wash gets a dramatic top-wipe; others get a soft fade.
-    const curtainMotion =
-      transitionStyle === "color-wash"
-        ? {
-            initial: { opacity: 1, clipPath: "inset(0% 0% 0% 0%)" },
-            animate: { opacity: 0, clipPath: "inset(0% 0% 100% 0%)" },
-            transition: { duration: 0.42, ease: [0.22, 1, 0.36, 1] },
-          }
-        : transitionStyle === "circular-reveal"
-          ? {
-              initial: { opacity: 1, clipPath: "circle(120% at 50% 18%)" },
-              animate: { opacity: 0, clipPath: "circle(0% at 50% 18%)" },
-              transition: { duration: 0.42, ease: [0.22, 1, 0.36, 1] },
-            }
-          : {
-              initial: { opacity: 1, scale: 1 },
-              animate: { opacity: 0, scale: 1.02 },
-              transition: { duration: 0.32, ease: [0.33, 1, 0.68, 1] },
-            };
+    // Circular reveal only (tunable).
+    const curtainMotion = {
+      initial: { opacity: 1, clipPath: `circle(${radius} at 50% ${origin})` },
+      animate: { opacity: 0, clipPath: `circle(0% at 50% ${origin})` },
+      transition: { duration, ease: easeCurve },
+    };
 
     return (
       <motion.div

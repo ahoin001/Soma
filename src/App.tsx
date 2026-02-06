@@ -21,7 +21,7 @@ import {
   AppStoreProvider,
   UserProvider,
   UIProvider,
-  useExperienceTransition,
+  useExperienceTransitionConfig,
   useUserSettings,
 } from "@/state";
 import {
@@ -196,7 +196,7 @@ const withSuspense = (element: JSX.Element) => (
 
 const AppRoutes = () => {
   const location = useLocation();
-  const { experienceTransition } = useExperienceTransition();
+  const { experienceTransitionConfig } = useExperienceTransitionConfig();
   const { defaultHome } = useUserSettings();
 
   const currentExperience = location.pathname.startsWith("/fitness")
@@ -239,7 +239,7 @@ const AppRoutes = () => {
     <PageTransition
       key={location.pathname}
       isExperienceSwitch={isExperienceSwitch}
-      transitionStyle={experienceTransition}
+      transitionConfig={experienceTransitionConfig}
       experienceTone={currentExperience}
     >
       {element}
@@ -345,7 +345,7 @@ const ExperienceBackdrop = () => {
     <div className="pointer-events-none fixed inset-0 z-0">
       {/* Nutrition layer */}
       <div
-        className="absolute inset-0 transition-opacity duration-300 ease-out"
+        className="absolute inset-0 transition-opacity duration-500 ease-out"
         style={{ opacity: isFitness ? 0 : 1 }}
       >
         <div
@@ -359,7 +359,7 @@ const ExperienceBackdrop = () => {
       </div>
       {/* Fitness layer */}
       <div
-        className="absolute inset-0 transition-opacity duration-300 ease-out"
+        className="absolute inset-0 transition-opacity duration-500 ease-out"
         style={{ opacity: isFitness ? 1 : 0 }}
       >
         <div

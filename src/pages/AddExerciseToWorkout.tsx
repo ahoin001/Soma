@@ -13,6 +13,21 @@ const createId = () =>
     ? crypto.randomUUID()
     : `exercise_${Math.random().toString(36).slice(2, 9)}`;
 
+const buildSignature = (entries: WorkoutTemplate["exercises"]) =>
+  entries
+    .map((exercise) => {
+      const steps = exercise.steps?.join("|") ?? "";
+      return [
+        exercise.id,
+        exercise.name,
+        exercise.note ?? "",
+        steps,
+        exercise.guideUrl ?? "",
+        exercise.customVideoName ?? "",
+      ].join("::");
+    })
+    .join("||");
+
 const AddExerciseToWorkout = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -137,7 +152,12 @@ const AddExerciseToWorkout = () => {
     const workout = plan?.workouts.find((item) => item.id === workoutId);
     if (!plan || !workout) return;
     const draft = workoutDrafts[workout.id];
-    const baseExercises = draft?.exercises.length ? draft.exercises : workout.exercises;
+    const signature = buildSignature(workout.exercises);
+    const draftMatches = Boolean(draft?.exercises.length && draft.baseSignature === signature);
+    if (draft && !draftMatches) {
+      clearWorkoutDraft(workout.id);
+    }
+    const baseExercises = draftMatches ? draft?.exercises ?? [] : workout.exercises;
     const nextExercises = [...baseExercises, { id: createId(), name }];
     try {
       await updateWorkoutTemplate(plan.id, workout.id, { exercises: nextExercises });

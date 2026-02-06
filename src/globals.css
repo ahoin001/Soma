@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    /* Prefer our custom pull-to-refresh over the browser’s (avoids full reload). */
+    overscroll-behavior-y: contain;
+  }
   :root {
     /* Safe area insets - use these throughout the app for consistency */
     --sat: env(safe-area-inset-top, 0px);

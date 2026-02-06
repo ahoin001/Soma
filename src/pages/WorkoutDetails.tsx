@@ -3,6 +3,7 @@ import { useNavigate, useNavigationType, useParams } from "react-router-dom";
 import { AppShell, WorkoutSessionEditor } from "@/components/aura";
 import { useAppStore } from "@/state/AppStore";
 import { toast } from "sonner";
+import { fetchExerciseByName } from "@/lib/api";
 
 const WorkoutDetails = () => {
   const navigate = useNavigate();
@@ -78,9 +79,24 @@ const WorkoutDetails = () => {
             )}`,
           );
         }}
-        onEditExercise={(exercise) => {
+        onEditExercise={async (exercise) => {
           if (!exercise.name) return;
-          navigate(`/fitness/exercises/add?name=${encodeURIComponent(exercise.name)}&adminEdit=true`);
+          try {
+            const response = await fetchExerciseByName(exercise.name);
+            const record = response.exercise as { id?: number } | null;
+            const id = record?.id ? Number(record.id) : null;
+            if (!id) {
+              toast("Exercise not found", {
+                description: "Create it first to edit the full details.",
+              });
+              return;
+            }
+            navigate(`/fitness/exercises/${id}/edit`);
+          } catch {
+            toast("Unable to open editor", {
+              description: "Please try again.",
+            });
+          }
         }}
         onAddExercise={() => {
           if (!activePlan || !activeWorkout) return;

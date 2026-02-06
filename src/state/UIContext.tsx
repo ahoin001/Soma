@@ -40,18 +40,26 @@ type UIContextValue = {
   goToPrevDay: () => void;
   goToNextDay: () => void;
 
-  // Experience transition style - shared across nutrition/fitness
-  experienceTransition: "blur-scale" | "color-wash" | "circular-reveal";
-  setExperienceTransition: (
-    value: "blur-scale" | "color-wash" | "circular-reveal"
-  ) => void;
+  // Experience transition tuning - circular reveal only
+  experienceTransitionConfig: {
+    durationMs: number;
+    curve: number;
+    originY: number;
+    radiusPct: number;
+  };
+  setExperienceTransitionConfig: (config: {
+    durationMs?: number;
+    curve?: number;
+    originY?: number;
+    radiusPct?: number;
+  }) => void;
 };
 
 // ============================================================================
 // Storage Keys
 // ============================================================================
 
-const EXPERIENCE_TRANSITION_KEY = "aurafit-experience-transition-v1";
+const EXPERIENCE_TRANSITION_CONFIG_KEY = "aurafit-experience-transition-config-v1";
 
 // ============================================================================
 // Context
@@ -70,16 +78,23 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
   // Selected Date - ephemeral, defaults to today
   const [selectedDate, setSelectedDate] = useState(() => new Date());
 
-  // Experience transition style - persisted
-  const [experienceTransition, setExperienceTransition] = useState<
-    "blur-scale" | "color-wash" | "circular-reveal"
-  >(() => {
-    if (typeof window === "undefined") return "blur-scale";
-    const stored = window.localStorage.getItem(EXPERIENCE_TRANSITION_KEY);
-    if (stored === "color-wash" || stored === "circular-reveal") {
-      return stored;
+  // Experience transition tuning - persisted
+  const [experienceTransitionConfig, setExperienceTransitionConfigState] = useState(() => {
+    const defaults = {
+      durationMs: 900,
+      curve: 1.1,
+      originY: 0.22,
+      radiusPct: 160,
+    };
+    if (typeof window === "undefined") return defaults;
+    const stored = window.localStorage.getItem(EXPERIENCE_TRANSITION_CONFIG_KEY);
+    if (!stored) return defaults;
+    try {
+      const parsed = JSON.parse(stored) as Partial<typeof defaults>;
+      return { ...defaults, ...parsed };
+    } catch {
+      return defaults;
     }
-    return "blur-scale";
   });
 
   // --- Meal Pulse Actions ---
@@ -114,12 +129,26 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
     });
   }, []);
 
-  // --- Persistence ---
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(EXPERIENCE_TRANSITION_KEY, experienceTransition);
-  }, [experienceTransition]);
+  const setExperienceTransitionConfig = useCallback(
+    (config: {
+      durationMs?: number;
+      curve?: number;
+      originY?: number;
+      radiusPct?: number;
+    }) => {
+      setExperienceTransitionConfigState((prev) => {
+        const next = { ...prev, ...config };
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(
+            EXPERIENCE_TRANSITION_CONFIG_KEY,
+            JSON.stringify(next),
+          );
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   // --- Memoized Value ---
 
@@ -133,8 +162,8 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
       goToToday,
       goToPrevDay,
       goToNextDay,
-      experienceTransition,
-      setExperienceTransition,
+      experienceTransitionConfig,
+      setExperienceTransitionConfig,
     }),
     [
       mealPulse,
@@ -144,8 +173,8 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
       goToToday,
       goToPrevDay,
       goToNextDay,
-      experienceTransition,
-      setExperienceTransition,
+      experienceTransitionConfig,
+      setExperienceTransitionConfig,
     ]
   );
 
@@ -181,9 +210,9 @@ export const useSelectedDate = () => {
 };
 
 /**
- * Experience transition preference
+ * Experience transition tuning (circular reveal only)
  */
-export const useExperienceTransition = () => {
-  const { experienceTransition, setExperienceTransition } = useUI();
-  return { experienceTransition, setExperienceTransition };
+export const useExperienceTransitionConfig = () => {
+  const { experienceTransitionConfig, setExperienceTransitionConfig } = useUI();
+  return { experienceTransitionConfig, setExperienceTransitionConfig };
 };

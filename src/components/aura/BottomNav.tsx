@@ -10,7 +10,7 @@ import {
   Timer,
 } from "lucide-react";
 import { createPortal } from "react-dom";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 const NavButton = ({
   icon: Icon,
@@ -51,6 +51,7 @@ export const BottomNav = ({ experience, onAddAction }: BottomNavProps) => {
   const isNutrition = experience === "nutrition";
   const tone = isNutrition ? "light" : "dark";
   const location = useLocation();
+  const navigate = useNavigate();
   const path = location.pathname;
   const containerTone = isNutrition
     ? "border-black/5 bg-white"
@@ -58,6 +59,16 @@ export const BottomNav = ({ experience, onAddAction }: BottomNavProps) => {
 
   // Use portal to render directly to body, escaping any parent transforms
   // that would break fixed positioning (e.g., PageTransition animations)
+  const handleAddAction = () => {
+    if (onAddAction) {
+      onAddAction();
+      return;
+    }
+    if (isNutrition) {
+      navigate("/nutrition/add-food");
+    }
+  };
+
   return createPortal(
     <div
       className="fixed inset-x-0 bottom-0 z-[60] flex justify-center px-5"
@@ -82,7 +93,7 @@ export const BottomNav = ({ experience, onAddAction }: BottomNavProps) => {
             />
             <Button
               type="button"
-              onClick={onAddAction}
+              onClick={handleAddAction}
               className="h-12 w-12 rounded-full bg-aura-primary shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
             >
               <Plus className="h-5 w-5 text-white" />
@@ -118,7 +129,7 @@ export const BottomNav = ({ experience, onAddAction }: BottomNavProps) => {
             />
             <Button
               className="h-12 w-12 rounded-full bg-emerald-400 shadow-[0_16px_30px_rgba(45,212,191,0.35)] hover:bg-emerald-300"
-              onClick={onAddAction}
+              onClick={handleAddAction}
               type="button"
             >
               <Timer className="h-5 w-5 text-slate-950" />

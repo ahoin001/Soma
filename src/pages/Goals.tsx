@@ -64,6 +64,20 @@ const activityOptions: Array<{
 
 const GOALS_DRAFT_KEY = "aurafit-goals-draft-v1";
 
+const cmToImperial = (cm: number) => {
+  const totalInches = cm / 2.54;
+  let feet = Math.floor(totalInches / 12);
+  let inches = Math.round(totalInches - feet * 12);
+  if (inches === 12) {
+    feet += 1;
+    inches = 0;
+  }
+  return { feet, inches };
+};
+
+const imperialToCm = (feet: number, inches: number) =>
+  Math.round((feet * 12 + inches) * 2.54);
+
 const Goals = () => {
   const [goalType, setGoalType] = useState<GoalType>("balance");
   const [sex, setSex] = useState<Sex>("female");
@@ -92,74 +106,121 @@ const Goals = () => {
 
   useEffect(() => {
     if (hydrated) return;
+    const hasSavedProfile =
+      Boolean(userProfile.goal) ||
+      Number.isFinite(userProfile.heightCm) ||
+      Number.isFinite(userProfile.weightKg) ||
+      Number.isFinite(userProfile.age) ||
+      Boolean(userProfile.sex) ||
+      Boolean(userProfile.activity);
+
+    let draft: Partial<{
+      goalType: GoalType;
+      sex: Sex;
+      age: string;
+      heightUnit: "imperial" | "metric";
+      heightFt: string;
+      heightIn: string;
+      heightCm: string;
+      weightLb: string;
+      weightKg: string;
+      activity: ActivityLevel;
+      formula: Formula;
+      bodyFat: string;
+      trainingDays: string;
+      stepsPerDay: string;
+      kcalGoal: string;
+      carbs: string;
+      protein: string;
+      fat: string;
+      targetsTouched: boolean;
+      macrosTouched: boolean;
+      optionalOpen: boolean;
+    }> = {};
+
     if (typeof window !== "undefined") {
       const stored = window.localStorage.getItem(GOALS_DRAFT_KEY);
       if (stored) {
         try {
-          const draft = JSON.parse(stored) as Partial<{
-            goalType: GoalType;
-            sex: Sex;
-            age: string;
-            heightUnit: "imperial" | "metric";
-            heightFt: string;
-            heightIn: string;
-            heightCm: string;
-            weightLb: string;
-            weightKg: string;
-            activity: ActivityLevel;
-            formula: Formula;
-            bodyFat: string;
-            trainingDays: string;
-            stepsPerDay: string;
-            kcalGoal: string;
-            carbs: string;
-            protein: string;
-            fat: string;
-            targetsTouched: boolean;
-            macrosTouched: boolean;
-            optionalOpen: boolean;
-          }>;
-          if (draft.goalType) setGoalType(draft.goalType);
-          if (draft.sex) setSex(draft.sex);
-          if (draft.age !== undefined) setAge(draft.age);
-          if (draft.heightUnit) setHeightUnit(draft.heightUnit);
-          if (draft.heightFt !== undefined) setHeightFt(draft.heightFt);
-          if (draft.heightIn !== undefined) setHeightIn(draft.heightIn);
-          if (draft.heightCm !== undefined) setHeightCm(draft.heightCm);
-          if (draft.weightLb !== undefined) setWeightLb(draft.weightLb);
-          if (draft.weightKg !== undefined) setWeightKg(draft.weightKg);
-          if (draft.activity) setActivity(draft.activity);
-          if (draft.formula) setFormula(draft.formula);
-          if (draft.bodyFat !== undefined) setBodyFat(draft.bodyFat);
-          if (draft.trainingDays !== undefined) setTrainingDays(draft.trainingDays);
-          if (draft.stepsPerDay !== undefined) setStepsPerDay(draft.stepsPerDay);
-          if (draft.kcalGoal !== undefined) setKcalGoal(draft.kcalGoal);
-          if (draft.carbs !== undefined) setCarbs(draft.carbs);
-          if (draft.protein !== undefined) setProtein(draft.protein);
-          if (draft.fat !== undefined) setFat(draft.fat);
-          if (draft.targetsTouched !== undefined) setTargetsTouched(draft.targetsTouched);
-          if (draft.macrosTouched !== undefined) setMacrosTouched(draft.macrosTouched);
-          if (draft.optionalOpen !== undefined) setOptionalOpen(draft.optionalOpen);
-          setHydrated(true);
-          return;
+          draft = JSON.parse(stored);
         } catch {
           window.localStorage.removeItem(GOALS_DRAFT_KEY);
         }
       }
     }
+
+    if (!hasSavedProfile && Object.keys(draft).length > 0) {
+      if (draft.goalType) setGoalType(draft.goalType);
+      if (draft.sex) setSex(draft.sex);
+      if (draft.age !== undefined) setAge(draft.age);
+      if (draft.heightUnit) setHeightUnit(draft.heightUnit);
+      if (draft.heightFt !== undefined) setHeightFt(draft.heightFt);
+      if (draft.heightIn !== undefined) setHeightIn(draft.heightIn);
+      if (draft.heightCm !== undefined) setHeightCm(draft.heightCm);
+      if (draft.weightLb !== undefined) setWeightLb(draft.weightLb);
+      if (draft.weightKg !== undefined) setWeightKg(draft.weightKg);
+      if (draft.activity) setActivity(draft.activity);
+      if (draft.formula) setFormula(draft.formula);
+      if (draft.bodyFat !== undefined) setBodyFat(draft.bodyFat);
+      if (draft.trainingDays !== undefined) setTrainingDays(draft.trainingDays);
+      if (draft.stepsPerDay !== undefined) setStepsPerDay(draft.stepsPerDay);
+      if (draft.kcalGoal !== undefined) setKcalGoal(draft.kcalGoal);
+      if (draft.carbs !== undefined) setCarbs(draft.carbs);
+      if (draft.protein !== undefined) setProtein(draft.protein);
+      if (draft.fat !== undefined) setFat(draft.fat);
+      if (draft.targetsTouched !== undefined) setTargetsTouched(draft.targetsTouched);
+      if (draft.macrosTouched !== undefined) setMacrosTouched(draft.macrosTouched);
+      if (draft.optionalOpen !== undefined) setOptionalOpen(draft.optionalOpen);
+      setHydrated(true);
+      return;
+    }
+
     if (userProfile.sex) setSex(userProfile.sex);
     if (userProfile.age) setAge(String(userProfile.age));
     if (userProfile.activity) setActivity(userProfile.activity);
     if (userProfile.goal) setGoalType(userProfile.goal);
     if (Number.isFinite(userProfile.heightCm)) {
-      setHeightUnit("metric");
-      setHeightCm(String(Math.round(userProfile.heightCm ?? 0)));
+      const cmValue = Math.round(userProfile.heightCm ?? 0);
+      setHeightCm(String(cmValue));
+      const { feet, inches } = cmToImperial(cmValue);
+      setHeightFt(String(feet));
+      setHeightIn(String(inches));
+      setHeightUnit(draft.heightUnit ?? "metric");
     }
     if (Number.isFinite(userProfile.weightKg)) {
-      setWeightKg(String(Math.round(userProfile.weightKg ?? 0)));
+      const kgValue = Number(userProfile.weightKg ?? 0);
+      setWeightKg(String(Math.round(kgValue)));
+      setWeightLb(String(Math.round(kgValue / 0.453592)));
     }
     setHydrated(true);
   }, [hydrated, userProfile]);
+
+  const handleHeightUnitChange = (unit: "imperial" | "metric") => {
+    if (unit === heightUnit) return;
+    if (unit === "metric") {
+      const ft = Number(heightFt);
+      const inches = Number(heightIn);
+      if (Number.isFinite(ft) && Number.isFinite(inches)) {
+        setHeightCm(String(imperialToCm(ft, inches)));
+      }
+      const lb = Number(weightLb);
+      if (Number.isFinite(lb)) {
+        setWeightKg(String(Math.round(lb * 0.453592)));
+      }
+    } else {
+      const cm = Number(heightCm);
+      if (Number.isFinite(cm)) {
+        const { feet, inches } = cmToImperial(cm);
+        setHeightFt(String(feet));
+        setHeightIn(String(inches));
+      }
+      const kg = Number(weightKg);
+      if (Number.isFinite(kg)) {
+        setWeightLb(String(Math.round(kg / 0.453592)));
+      }
+    }
+    setHeightUnit(unit);
+  };
 
   useEffect(() => {
     if (!hydrated || typeof window === "undefined") return;
@@ -454,49 +515,60 @@ const Goals = () => {
               />
             </div>
           </div>
+          <div className="mt-3 rounded-[18px] border border-emerald-100 bg-emerald-50/60 p-2">
+            <SegmentedControl
+              value={heightUnit}
+              onValueChange={(value) =>
+                handleHeightUnitChange(value as "imperial" | "metric")
+              }
+              options={[
+                { value: "imperial", label: "ft / lb" },
+                { value: "metric", label: "cm / kg" },
+              ]}
+            />
+          </div>
           {heightUnit === "imperial" ? (
-            <div className="mt-3 grid grid-cols-3 gap-3">
-              <Input
-                value={heightFt}
-                onChange={(event) => setHeightFt(event.target.value)}
-                placeholder="Height (ft)"
-                inputMode="numeric"
-                type="number"
-                className="h-11 rounded-full"
-              />
-              <Input
-                value={heightIn}
-                onChange={(event) => setHeightIn(event.target.value)}
-                placeholder="Height (in)"
-                inputMode="numeric"
-                type="number"
-                className="h-11 rounded-full"
-              />
-              <button
-                type="button"
-                onClick={() => setHeightUnit("metric")}
-                className="h-11 rounded-full border border-emerald-100 bg-emerald-50 text-xs font-semibold text-emerald-700"
-              >
-                Use cm / kg
-              </button>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Height (ft)</Label>
+                <Input
+                  value={heightFt}
+                  onChange={(event) => setHeightFt(event.target.value)}
+                  placeholder="ft"
+                  inputMode="numeric"
+                  type="number"
+                  min={3}
+                  max={8}
+                  className="h-11 rounded-full"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Height (in)</Label>
+                <Input
+                  value={heightIn}
+                  onChange={(event) => setHeightIn(event.target.value)}
+                  placeholder="in"
+                  inputMode="numeric"
+                  type="number"
+                  min={0}
+                  max={11}
+                  className="h-11 rounded-full"
+                />
+              </div>
             </div>
           ) : (
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="mt-3 space-y-2">
+              <Label>Height (cm)</Label>
               <Input
                 value={heightCm}
                 onChange={(event) => setHeightCm(event.target.value)}
-                placeholder="Height (cm)"
+                placeholder="cm"
                 inputMode="numeric"
                 type="number"
+                min={90}
+                max={250}
                 className="h-11 rounded-full"
               />
-              <button
-                type="button"
-                onClick={() => setHeightUnit("imperial")}
-                className="h-11 rounded-full border border-emerald-100 bg-emerald-50 text-xs font-semibold text-emerald-700"
-              >
-                Use ft / lb
-              </button>
             </div>
           )}
           <div className="mt-4 space-y-2">

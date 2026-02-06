@@ -65,6 +65,7 @@ const Fitness = () => {
     fitnessLibrary: { query, results, status, error, searchExercises, setQuery },
     fitnessPlanner,
     workoutPlans,
+    workoutPlansLoaded,
     activePlanId,
     setActivePlanId,
     lastWorkoutByPlan,

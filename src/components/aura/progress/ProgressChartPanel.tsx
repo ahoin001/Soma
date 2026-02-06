@@ -1,0 +1,133 @@
+import {
+  SegmentedControl,
+  type SegmentedOption,
+} from "@/components/ui/segmented-control";
+import { formatShortDate } from "@/lib/progressChartUtils";
+import type {
+  MacroSeriesItem,
+  TrendEntry,
+  WeightEntry,
+  WeightStats,
+} from "@/types/progress";
+import { CaloriesChart } from "./CaloriesChart";
+import { MacroChart } from "./MacroChart";
+import { WeightChart } from "./WeightChart";
+
+const CHART_OPTIONS: SegmentedOption[] = [
+  { value: "weight", label: "Weight" },
+  { value: "calories", label: "Calories" },
+  { value: "macros", label: "Macros" },
+];
+
+const RANGE_OPTIONS: SegmentedOption[] = [
+  { value: "7", label: "7d" },
+  { value: "14", label: "14d" },
+  { value: "30", label: "30d" },
+];
+
+type ChartType = "weight" | "calories" | "macros";
+
+type ProgressChartPanelProps = {
+  activeChart: ChartType;
+  onActiveChartChange: (v: ChartType) => void;
+  trendRange: 7 | 14 | 30;
+  onTrendRangeChange: (v: 7 | 14 | 30) => void;
+  weightEntries: WeightEntry[];
+  caloriesByDate: Record<string, number | null | undefined>;
+  onActiveWeightDateChange: (date: string | null) => void;
+  caloriesEntries: TrendEntry[];
+  macroSeries: MacroSeriesItem[];
+  stats: WeightStats | null;
+};
+
+export const ProgressChartPanel = ({
+  activeChart,
+  onActiveChartChange,
+  trendRange,
+  onTrendRangeChange,
+  weightEntries,
+  caloriesByDate,
+  onActiveWeightDateChange,
+  caloriesEntries,
+  macroSeries,
+  stats,
+}: ProgressChartPanelProps) => {
+  return (
+    <>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <SegmentedControl
+          value={activeChart}
+          onValueChange={(v) => onActiveChartChange(v as ChartType)}
+          options={CHART_OPTIONS}
+          className="min-w-[220px] flex-1"
+        />
+        <SegmentedControl
+          value={String(trendRange)}
+          onValueChange={(v) => onTrendRangeChange(Number(v) as 7 | 14 | 30)}
+          options={RANGE_OPTIONS}
+          className="min-w-[150px]"
+        />
+      </div>
+      <div className="mt-4 rounded-[22px] border border-emerald-100 bg-white/80 p-3 shadow-[0_12px_28px_rgba(16,185,129,0.12)]">
+        {activeChart === "weight" && (
+          <>
+            <WeightChart
+              entries={weightEntries}
+              caloriesByDate={caloriesByDate}
+              onActiveDateChange={onActiveWeightDateChange}
+            />
+            {stats && (
+              <>
+                <div className="mt-3 flex items-center justify-between text-xs text-emerald-700/80">
+                  <span>Low {stats.minWeight} lb</span>
+                  <span>High {stats.maxWeight} lb</span>
+                </div>
+                <div className="mt-2 grid grid-cols-3 text-[11px] text-emerald-500/70">
+                  <span>{formatShortDate(stats.startDate)}</span>
+                  <span className="text-center">
+                    {stats.midDate ? formatShortDate(stats.midDate) : ""}
+                  </span>
+                  <span className="text-right">
+                    {formatShortDate(stats.endDate)}
+                  </span>
+                </div>
+              </>
+            )}
+            <div className="mt-4 flex items-center justify-between text-[11px] text-emerald-600/70">
+              <span>Weight (lb)</span>
+              <span>Date</span>
+            </div>
+          </>
+        )}
+        {activeChart === "calories" && (
+          <>
+            <CaloriesChart entries={caloriesEntries} />
+            <div className="mt-4 flex items-center justify-between text-[11px] text-emerald-600/70">
+              <span>Calories</span>
+              <span>Last {trendRange} days</span>
+            </div>
+          </>
+        )}
+        {activeChart === "macros" && (
+          <>
+            <MacroChart series={macroSeries} />
+            <div className="mt-4 flex flex-wrap items-center gap-3 text-[11px] text-emerald-600/70">
+              {macroSeries.map((macro) => (
+                <span
+                  key={macro.key}
+                  className="inline-flex items-center gap-2"
+                >
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ background: macro.color }}
+                  />
+                  {macro.label}
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  );
+};

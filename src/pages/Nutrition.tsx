@@ -24,12 +24,18 @@ import { Card } from "@/components/ui/card";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { SegmentedControl, type SegmentedOption } from "@/components/ui/segmented-control";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
-import { useExperienceTransition } from "@/state";
+import { useExperienceTransitionConfig } from "@/state";
 import { useSheetManager } from "@/hooks/useSheetManager";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { ChevronDown, Sparkles } from "lucide-react";
 
 type NutritionDraft = {
   name?: string;
@@ -59,12 +65,6 @@ const headerStyleOptions: SegmentedOption[] = [
   { value: "media", label: "Media" },
 ];
 
-const transitionOptions: SegmentedOption[] = [
-  { value: "blur-scale", label: "Blur + Scale" },
-  { value: "color-wash", label: "Color Wash" },
-  { value: "circular-reveal", label: "Circular Reveal" },
-];
-
 const homeOptions: SegmentedOption[] = [
   { value: "nutrition", label: "Nutrition" },
   { value: "fitness", label: "Fitness" },
@@ -84,8 +84,8 @@ const Nutrition = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showWelcome, setShowWelcome] = useState(false);
-  const { experienceTransition, setExperienceTransition } =
-    useExperienceTransition();
+  const { experienceTransitionConfig, setExperienceTransitionConfig } =
+    useExperienceTransitionConfig();
   const [headerStyle, setHeaderStyle] = useState<"immersive" | "card" | "media">(() => {
     if (typeof window === "undefined") return "immersive";
     const saved = window.localStorage.getItem("aurafit-header-style");
@@ -321,7 +321,7 @@ const Nutrition = () => {
       experience="nutrition"
       onAddAction={() => {
         closeSheets();
-        openSheet("quick");
+        navigate("/nutrition/add-food");
       }}
     >
       {/* Welcome overlay for fresh logins */}
@@ -534,22 +534,80 @@ const Nutrition = () => {
               Switching Nutrition ↔ Fitness
             </p>
             <p className="text-xs text-slate-500">
-              Choose the transition style when swapping experiences.
+              Circular reveal is now the default. Tweak the feel below.
             </p>
-            <SegmentedControl
-              value={experienceTransition}
-              options={transitionOptions}
-              onValueChange={(next) =>
-                setExperienceTransition(
-                  next as "blur-scale" | "color-wash" | "circular-reveal"
-                )
-              }
-              className="mt-3"
-              itemClassName="bg-emerald-50"
-              activeClassName="text-white"
-              inactiveClassName="text-emerald-700"
-              indicatorClassName="bg-emerald-500"
-            />
+            <Collapsible className="mt-3">
+              <CollapsibleTrigger className="group flex w-full items-center justify-between rounded-[14px] border border-emerald-100 bg-emerald-50/60 px-3 py-2 text-xs font-semibold text-emerald-700">
+                <span>Advanced tuning</span>
+                <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3 space-y-4 rounded-[16px] border border-emerald-100 bg-white px-3 py-3">
+                <div>
+                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    <span>Duration</span>
+                    <span>{Math.round(experienceTransitionConfig.durationMs)} ms</span>
+                  </div>
+                  <Slider
+                    value={[experienceTransitionConfig.durationMs]}
+                    min={600}
+                    max={1400}
+                    step={25}
+                    onValueChange={(value) =>
+                      setExperienceTransitionConfig({ durationMs: value[0] })
+                    }
+                    className="mt-2"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    <span>Curve</span>
+                    <span>{experienceTransitionConfig.curve.toFixed(2)}</span>
+                  </div>
+                  <Slider
+                    value={[experienceTransitionConfig.curve]}
+                    min={0.9}
+                    max={1.35}
+                    step={0.01}
+                    onValueChange={(value) =>
+                      setExperienceTransitionConfig({ curve: value[0] })
+                    }
+                    className="mt-2"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    <span>Origin</span>
+                    <span>{Math.round(experienceTransitionConfig.originY * 100)}%</span>
+                  </div>
+                  <Slider
+                    value={[experienceTransitionConfig.originY]}
+                    min={0.12}
+                    max={0.3}
+                    step={0.01}
+                    onValueChange={(value) =>
+                      setExperienceTransitionConfig({ originY: value[0] })
+                    }
+                    className="mt-2"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    <span>Radius</span>
+                    <span>{Math.round(experienceTransitionConfig.radiusPct)}%</span>
+                  </div>
+                  <Slider
+                    value={[experienceTransitionConfig.radiusPct]}
+                    min={140}
+                    max={220}
+                    step={5}
+                    onValueChange={(value) =>
+                      setExperienceTransitionConfig({ radiusPct: value[0] })
+                    }
+                    className="mt-2"
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         </Card>
         <StreakCard

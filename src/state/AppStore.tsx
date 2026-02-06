@@ -381,3 +381,8 @@ export const useAppStore = () => {
   }
   return context;
 };
+
+export const useWorkoutDrafts = () => {
+  const { workoutDrafts, setWorkoutDraft, clearWorkoutDraft } = useAppStore();
+  return { workoutDrafts, setWorkoutDraft, clearWorkoutDraft };
+};
