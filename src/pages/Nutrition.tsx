@@ -19,6 +19,7 @@ import { useAppStore } from "@/state/AppStore";
 import { useUserSettings, useMealPulse } from "@/state";
 import { useStepsSummary, useWaterSummary } from "@/hooks/useTracking";
 import { useNutritionInsights } from "@/hooks/useNutritionInsights";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
@@ -72,7 +73,7 @@ const Nutrition = () => {
   } = useAppStore();
   const { showFoodImages, setShowFoodImages } = useUserSettings();
   const { mealPulse, setMealPulse, clearMealPulse } = useMealPulse();
-  const { email } = useAuth();
+  const { email, logout } = useAuth();
   const isAdmin = email?.toLowerCase() === "ahoin001@gmail.com";
   const {
     results: apiResults,
@@ -450,6 +451,36 @@ const Nutrition = () => {
           bestWeek={insights.streak.bestWeek}
           message={insights.streak.message}
         />
+
+        <Card className="mt-6 rounded-[24px] border border-black/5 bg-white px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
+          <div className="flex flex-col gap-3">
+            <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+              Account
+            </p>
+            <p className="text-sm font-semibold text-slate-800">
+              {email ?? "Not signed in"}
+            </p>
+            {email ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void logout()}
+                className="w-full rounded-full"
+              >
+                Log out
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate("/auth", { state: { from: "/nutrition" } })}
+                className="w-full rounded-full"
+              >
+                Sign in
+              </Button>
+            )}
+          </div>
+        </Card>
       </div>
 
       <FoodDetailSheet
