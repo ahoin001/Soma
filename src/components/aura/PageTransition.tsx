@@ -4,81 +4,99 @@ import { motion } from "framer-motion";
 
 type PageTransitionProps = {
   children: ReactNode;
-  direction?: "forward" | "back";
+  /** Slightly more dramatic entrance when switching Nutrition ↔ Fitness */
+  isExperienceSwitch?: boolean;
   transitionStyle?: "blur-scale" | "color-wash" | "circular-reveal";
   experienceTone?: "nutrition" | "fitness";
-  isExperienceSwitch?: boolean;
 };
 
+/**
+ * Lightweight enter-only page wrapper.
+ *
+ * Premium apps (Spotify, Lifesum) never wait for an "exit" animation before
+ * showing the next page. The new page mounts instantly and fades in.
+ *
+ * - Dock tab switches: 120ms opacity fade (near-instant, but not jarring).
+ * - Experience switches: slightly more dramatic entrance per user preference.
+ * - No `exit` prop → AnimatePresence is not needed around Routes.
+ */
 export const PageTransition = forwardRef<HTMLDivElement, PageTransitionProps>(
   (
     {
       children,
-      direction = "forward",
+      isExperienceSwitch = false,
       transitionStyle = "blur-scale",
       experienceTone = "nutrition",
-      isExperienceSwitch = false,
     },
     ref,
   ) => {
-  const offset = direction === "forward" ? 12 : -12;
-  const transitionColor = experienceTone === "fitness" ? "#020617" : "#f0fdf4";
+    const transitionColor =
+      experienceTone === "fitness" ? "#020617" : "#f0fdf4";
 
-  const defaultMotion = {
-    initial: { opacity: 0, x: offset, filter: "blur(8px)" },
-    animate: { opacity: 1, x: 0, filter: "blur(0px)" },
-    exit: { opacity: 0, x: -offset, filter: "blur(6px)" },
-    transition: { duration: 0.25, ease: "easeOut" },
-  };
-
-  const blurScaleMotion = {
-    initial: { opacity: 0, scale: 0.96, filter: "blur(10px)" },
-    animate: { opacity: 1, scale: 1, filter: "blur(0px)" },
-    exit: { opacity: 0, scale: 1.02, filter: "blur(6px)" },
-    transition: { duration: 0.3, ease: "easeOut" },
-  };
-
-  const circularRevealMotion = {
-    initial: { opacity: 0, clipPath: "circle(0% at 50% 20%)" },
-    animate: { opacity: 1, clipPath: "circle(140% at 50% 20%)" },
-    exit: { opacity: 0, clipPath: "circle(20% at 50% 20%)" },
-    transition: { duration: 0.5, ease: "easeOut" },
-  };
-
-  const motionProps =
-    !isExperienceSwitch
-      ? defaultMotion
-      : transitionStyle === "blur-scale"
-      ? blurScaleMotion
-      : transitionStyle === "circular-reveal"
-      ? circularRevealMotion
-      : defaultMotion;
-
-  return (
-    <motion.div
-      ref={ref}
-      className="relative min-h-screen bg-background"
-      style={{ willChange: "opacity, filter, transform" }}
-      initial={motionProps.initial}
-      animate={motionProps.animate}
-      exit={motionProps.exit}
-      transition={motionProps.transition}
-    >
-      {isExperienceSwitch && transitionStyle === "color-wash" ? (
+    // ---- Dock tab / normal navigation: fast subtle fade ----
+    if (!isExperienceSwitch) {
+      return (
         <motion.div
-          className="pointer-events-none fixed inset-0 z-20"
-          initial={{ opacity: 1, scaleY: 1 }}
-          animate={{ opacity: 1, scaleY: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          style={{
-            background: transitionColor,
-            transformOrigin: "top",
-          }}
-        />
-      ) : null}
-      <div className="relative z-10">{children}</div>
-    </motion.div>
-  );
+          ref={ref}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.12, ease: "easeOut" }}
+        >
+          {children}
+        </motion.div>
+      );
+    }
+
+    // ---- Experience switch: configurable entrance ----
+    const blurScale = {
+      initial: { opacity: 0, scale: 0.97, filter: "blur(6px)" },
+      animate: { opacity: 1, scale: 1, filter: "blur(0px)" },
+      transition: { duration: 0.22, ease: "easeOut" },
+    };
+
+    const circularReveal = {
+      initial: { opacity: 0, clipPath: "circle(0% at 50% 20%)" },
+      animate: { opacity: 1, clipPath: "circle(150% at 50% 20%)" },
+      transition: { duration: 0.35, ease: "easeOut" },
+    };
+
+    // Color-wash: fast fade plus a reveal overlay
+    const colorWash = {
+      initial: { opacity: 0 },
+      animate: { opacity: 1 },
+      transition: { duration: 0.18, ease: "easeOut" },
+    };
+
+    const motionProps =
+      transitionStyle === "circular-reveal"
+        ? circularReveal
+        : transitionStyle === "color-wash"
+          ? colorWash
+          : blurScale;
+
+    return (
+      <motion.div
+        ref={ref}
+        style={{ willChange: "opacity, filter, transform" }}
+        initial={motionProps.initial}
+        animate={motionProps.animate}
+        transition={motionProps.transition}
+      >
+        {isExperienceSwitch && transitionStyle === "color-wash" ? (
+          <motion.div
+            className="pointer-events-none fixed inset-0 z-20"
+            initial={{ opacity: 1, scaleY: 1 }}
+            animate={{ opacity: 0, scaleY: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            style={{
+              background: transitionColor,
+              transformOrigin: "top",
+            }}
+          />
+        ) : null}
+        {children}
+      </motion.div>
+    );
   },
 );
 

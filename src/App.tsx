@@ -24,9 +24,12 @@ import {
   useExperienceTransition,
   useUserSettings,
 } from "@/state";
-import { OnboardingDialog } from "@/components/aura";
-import { useAuth } from "@/hooks/useAuth";
-import { PageTransition } from "@/components/aura";
+import {
+  AppShell as AuraAppShell,
+  OnboardingDialog,
+  PageTransition,
+} from "@/components/aura";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { PageErrorBoundary } from "@/components/ErrorBoundary";
 import NotFound from "./pages/NotFound";
 import {
@@ -63,24 +66,32 @@ import {
 // Register offline mutation handlers for background sync
 import "@/lib/offlineHandlers";
 
-const Nutrition = lazy(() => import("./pages/Nutrition"));
-const Progress = lazy(() => import("./pages/Progress"));
-const Goals = lazy(() => import("./pages/Goals"));
-const Groceries = lazy(() => import("./pages/Groceries"));
-const AddFood = lazy(() => import("./pages/AddFood"));
+// ─── Core dock pages: eagerly imported, always ready ────────────────
+// These are the pages reachable from the bottom dock tabs.
+// Eagerly bundling them eliminates chunk-download lag on every tap,
+// which is how Spotify / Lifesum / MFP achieve instant navigation.
+import Nutrition from "./pages/Nutrition";
+import Progress from "./pages/Progress";
+import Goals from "./pages/Goals";
+import Groceries from "./pages/Groceries";
+import AddFood from "./pages/AddFood";
+import Fitness from "./pages/Fitness";
+import FitnessRoutines from "./pages/FitnessRoutines";
+import FitnessProgress from "./pages/FitnessProgress";
+import FitnessLog from "./pages/FitnessLog";
+
+// ─── Secondary screens: lazy-loaded on demand ───────────────────────
+// These are accessed through specific user actions (create, edit, etc.)
+// and are fine to load on-demand with a quick Suspense fallback.
 const CreateFood = lazy(() => import("./pages/CreateFood"));
 const ScanBarcode = lazy(() => import("./pages/ScanBarcode"));
 const EditFood = lazy(() => import("./pages/EditFood"));
-const Fitness = lazy(() => import("./pages/Fitness"));
 const WorkoutDetails = lazy(() => import("./pages/WorkoutDetails"));
 const ExerciseGuide = lazy(() => import("./pages/ExerciseGuide"));
 const CreateExercise = lazy(() => import("./pages/CreateExercise"));
 const EditExercise = lazy(() => import("./pages/EditExercise"));
 const AddExerciseToWorkout = lazy(() => import("./pages/AddExerciseToWorkout"));
 const AdminExerciseThumbnails = lazy(() => import("./pages/AdminExerciseThumbnails"));
-const FitnessRoutines = lazy(() => import("./pages/FitnessRoutines"));
-const FitnessProgress = lazy(() => import("./pages/FitnessProgress"));
-const FitnessLog = lazy(() => import("./pages/FitnessLog"));
 const Auth = lazy(() => import("./pages/Auth"));
 
 /**
@@ -138,49 +149,65 @@ const mapFoodRecord = (record: FoodRecord): FoodItem => {
   };
 };
 
-const AnimatedRoutes = () => {
+// ─── Suspense fallback for lazy secondary screens ───────────────────
+// Uses AuraAppShell so the dock stays visible while a lazy chunk loads.
+const LazyFallback = () => {
   const location = useLocation();
-  const navigationType = useNavigationType();
+  const experience = location.pathname.startsWith("/fitness")
+    ? "fitness"
+    : "nutrition";
+  return (
+    <AuraAppShell experience={experience}>
+      <div
+        className="mx-auto w-full max-w-sm px-5 pb-10"
+        style={{
+          paddingTop: "calc(1.5rem + var(--sat, env(safe-area-inset-top)))",
+        }}
+      >
+        <Skeleton className="h-56 w-full rounded-[32px]" />
+        <div className="mt-5 space-y-3">
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      </div>
+    </AuraAppShell>
+  );
+};
+
+/**
+ * Wrap a lazy-loaded page element in its own Suspense boundary so that
+ * the fallback only appears for that specific route, not the entire app.
+ */
+const withSuspense = (element: JSX.Element) => (
+  <Suspense fallback={<LazyFallback />}>{element}</Suspense>
+);
+
+// ─── Routes ─────────────────────────────────────────────────────────
+// Architecture note: NO AnimatePresence around <Routes>.
+//
+// AnimatePresence mode="wait" was the primary cause of slow navigation.
+// It forces the OLD page to fully exit-animate (250-500ms) before the
+// NEW page can start entering. That's 500ms+ of dead time per tap.
+//
+// Instead, each page wraps itself in <PageTransition> which plays a
+// quick enter-only animation (120ms fade for tabs, slightly more for
+// experience switches). Old pages unmount immediately.
+
+const AppRoutes = () => {
+  const location = useLocation();
   const { experienceTransition } = useExperienceTransition();
   const { defaultHome } = useUserSettings();
-  const prevExperienceRef = useRef<"nutrition" | "fitness">(
-    location.pathname.startsWith("/fitness") ? "fitness" : "nutrition",
-  );
+
   const currentExperience = location.pathname.startsWith("/fitness")
     ? "fitness"
     : "nutrition";
+  const prevExperienceRef = useRef(currentExperience);
   const isExperienceSwitch = prevExperienceRef.current !== currentExperience;
-  const withTransition = (element: JSX.Element) => (
-    <PageTransition
-      key={location.pathname}
-      direction={navigationType === "POP" ? "back" : "forward"}
-      transitionStyle={experienceTransition}
-      experienceTone={currentExperience}
-      isExperienceSwitch={isExperienceSwitch}
-    >
-      {element}
-    </PageTransition>
-  );
-  const protect = (element: JSX.Element) => <ProtectedRoute>{element}</ProtectedRoute>;
-  const shouldAnimate = (path: string) => {
-    if (path.startsWith("/fitness/workouts")) return true;
-    if (path.startsWith("/fitness/exercises")) return true;
-    return [
-      "/nutrition",
-      "/nutrition/progress",
-      "/nutrition/goals",
-      "/nutrition/groceries",
-      "/nutrition/add-food",
-      "/nutrition/add-food/create",
-      "/nutrition/add-food/scan",
-      "/nutrition/food/edit",
-      "/fitness",
-      "/fitness/routines",
-      "/fitness/progress",
-      "/fitness/log",
-      "/fitness/exercises/create",
-    ].includes(path);
-  };
+
+  useEffect(() => {
+    prevExperienceRef.current = currentExperience;
+  }, [currentExperience]);
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -189,245 +216,126 @@ const AnimatedRoutes = () => {
   }, [location.pathname]);
 
   useEffect(() => {
-    prevExperienceRef.current = currentExperience;
-  }, [currentExperience]);
-
-  useEffect(() => {
     if (typeof document === "undefined") return;
     const root = document.documentElement;
     const isFitness = location.pathname.startsWith("/fitness");
-    
+
     // Update experience class on root
     root.classList.remove("experience-nutrition", "experience-fitness");
     root.classList.add(isFitness ? "experience-fitness" : "experience-nutrition");
 
     // Dynamic theme-color for immersive status bar
-    // Colors match the top of each experience's header gradient
     const themeColor = isFitness ? "#020617" : "#f0fdf4";
-    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
       metaThemeColor.setAttribute("content", themeColor);
     }
   }, [location.pathname]);
 
+  // Shared transition props passed to every page's PageTransition wrapper.
+  // The `key` prop on PageTransition causes it to re-mount on every
+  // location change, which triggers the enter animation exactly once.
+  const transition = (element: JSX.Element) => (
+    <PageTransition
+      key={location.pathname}
+      isExperienceSwitch={isExperienceSwitch}
+      transitionStyle={experienceTransition}
+      experienceTone={currentExperience}
+    >
+      {element}
+    </PageTransition>
+  );
+
+  // Auth is already verified at AppShellRoot level — these routes only
+  // render when isSignedIn is true, so no per-route auth check needed.
+
   return (
     <>
       <ScrollRestoration />
-      <AnimatePresence mode="wait" initial={false}>
-        <Routes location={location} key={location.pathname}>
-          <Route
-            path="/"
-            element={
-              <Navigate
-                to={defaultHome === "fitness" ? "/fitness" : "/nutrition"}
-                replace
-              />
-            }
-          />
+      <Routes>
         <Route
-          path="/nutrition"
+          path="/"
           element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<Nutrition />))
-            ) : (
-              protect(<Nutrition />)
-            )
+            <Navigate
+              to={defaultHome === "fitness" ? "/fitness" : "/nutrition"}
+              replace
+            />
           }
         />
-        <Route
-          path="/nutrition/progress"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<Progress />))
-            ) : (
-              protect(<Progress />)
-            )
-          }
-        />
-        <Route
-          path="/nutrition/goals"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<Goals />))
-            ) : (
-              protect(<Goals />)
-            )
-          }
-        />
-        <Route
-          path="/nutrition/groceries"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<Groceries />))
-            ) : (
-              protect(<Groceries />)
-            )
-          }
-        />
-        <Route
-          path="/nutrition/add-food"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<AddFood />))
-            ) : (
-              protect(<AddFood />)
-            )
-          }
-        />
+
+        {/* ── Nutrition dock tabs (eager) ── */}
+        <Route path="/nutrition" element={transition(<Nutrition />)} />
+        <Route path="/nutrition/progress" element={transition(<Progress />)} />
+        <Route path="/nutrition/goals" element={transition(<Goals />)} />
+        <Route path="/nutrition/groceries" element={transition(<Groceries />)} />
+        <Route path="/nutrition/add-food" element={transition(<AddFood />)} />
+
+        {/* ── Nutrition secondary (lazy) ── */}
         <Route
           path="/nutrition/add-food/create"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<CreateFood />))
-            ) : (
-              protect(<CreateFood />)
-            )
-          }
+          element={transition(withSuspense(<CreateFood />))}
         />
         <Route
           path="/nutrition/add-food/scan"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<ScanBarcode />))
-            ) : (
-              protect(<ScanBarcode />)
-            )
-          }
+          element={transition(withSuspense(<ScanBarcode />))}
         />
         <Route
           path="/nutrition/food/edit"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<EditFood />))
-            ) : (
-              protect(<EditFood />)
-            )
-          }
+          element={transition(withSuspense(<EditFood />))}
         />
-        <Route
-          path="/fitness"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<Fitness />))
-            ) : (
-              protect(<Fitness />)
-            )
-          }
-        />
-        <Route
-          path="/fitness/routines"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<FitnessRoutines />))
-            ) : (
-              protect(<FitnessRoutines />)
-            )
-          }
-        />
-        <Route
-          path="/fitness/progress"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<FitnessProgress />))
-            ) : (
-              protect(<FitnessProgress />)
-            )
-          }
-        />
-        <Route
-          path="/fitness/log"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<FitnessLog />))
-            ) : (
-              protect(<FitnessLog />)
-            )
-          }
-        />
+
+        {/* ── Fitness dock tabs (eager) ── */}
+        <Route path="/fitness" element={transition(<Fitness />)} />
+        <Route path="/fitness/routines" element={transition(<FitnessRoutines />)} />
+        <Route path="/fitness/progress" element={transition(<FitnessProgress />)} />
+        <Route path="/fitness/log" element={transition(<FitnessLog />)} />
+
+        {/* ── Fitness secondary (lazy) ── */}
         <Route
           path="/fitness/workouts/:planId/:workoutId"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<WorkoutDetails />))
-            ) : (
-              protect(<WorkoutDetails />)
-            )
-          }
+          element={transition(withSuspense(<WorkoutDetails />))}
         />
         <Route
           path="/fitness/workouts/:planId/:workoutId/:mode"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<WorkoutDetails />))
-            ) : (
-              protect(<WorkoutDetails />)
-            )
-          }
+          element={transition(withSuspense(<WorkoutDetails />))}
         />
         <Route
           path="/fitness/workouts/:planId/:workoutId/exercises/:exerciseId/guide"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<ExerciseGuide />))
-            ) : (
-              protect(<ExerciseGuide />)
-            )
-          }
+          element={transition(withSuspense(<ExerciseGuide />))}
         />
         <Route
           path="/fitness/exercises/create"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<CreateExercise />))
-            ) : (
-              protect(<CreateExercise />)
-            )
-          }
+          element={transition(withSuspense(<CreateExercise />))}
         />
         <Route
           path="/fitness/exercises/:exerciseId/edit"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<EditExercise />))
-            ) : (
-              protect(<EditExercise />)
-            )
-          }
+          element={transition(withSuspense(<EditExercise />))}
         />
         <Route
           path="/fitness/exercises/add"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<AddExerciseToWorkout />))
-            ) : (
-              protect(<AddExerciseToWorkout />)
-            )
-          }
+          element={transition(withSuspense(<AddExerciseToWorkout />))}
         />
         <Route
           path="/fitness/admin/exercises"
-          element={
-            shouldAnimate(location.pathname) ? (
-              withTransition(protect(<AdminExerciseThumbnails />))
-            ) : (
-              protect(<AdminExerciseThumbnails />)
-            )
-          }
+          element={transition(withSuspense(<AdminExerciseThumbnails />))}
         />
+
         <Route path="/auth" element={<AuthRoute />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
-        </Routes>
-      </AnimatePresence>
+      </Routes>
     </>
   );
 };
 
+// ─── Experience backdrop ────────────────────────────────────────────
 const ExperienceBackdrop = () => {
   const location = useLocation();
   if (location.pathname.startsWith("/auth")) return null;
 
-  const experience = location.pathname.startsWith("/fitness") ? "fitness" : "nutrition";
+  const experience = location.pathname.startsWith("/fitness")
+    ? "fitness"
+    : "nutrition";
   const nutritionHudGradient =
     "radial-gradient(circle_at_15%_10%,_rgba(191,219,254,0.8),_transparent_45%),radial-gradient(circle_at_85%_0%,_rgba(167,243,208,0.9),_transparent_45%),radial-gradient(circle_at_70%_80%,_rgba(253,224,71,0.35),_transparent_55%),linear-gradient(180deg,_rgba(240,253,244,1)_0%,_rgba(236,253,245,0.92)_50%,_rgba(209,250,229,0.88)_100%)";
   const fitnessGradient = "linear-gradient(180deg,_#020617_0%,_#0f172a_100%)";
@@ -443,7 +351,10 @@ const ExperienceBackdrop = () => {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
         >
-          <div className="absolute inset-x-0 top-0 h-[400px]" style={{ background: nutritionHudGradient }} />
+          <div
+            className="absolute inset-x-0 top-0 h-[400px]"
+            style={{ background: nutritionHudGradient }}
+          />
           <div className="absolute inset-0">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,_rgba(125,211,252,0.28),_transparent_45%),radial-gradient(circle_at_80%_15%,_rgba(134,239,172,0.32),_transparent_45%),radial-gradient(circle_at_70%_80%,_rgba(253,224,71,0.2),_transparent_50%),radial-gradient(circle_at_10%_85%,_rgba(59,130,246,0.18),_transparent_45%)] opacity-70" />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,_rgba(255,255,255,0.9)_0%,_rgba(255,255,255,0.7)_35%,_rgba(255,255,255,0.85)_100%)]" />
@@ -458,13 +369,17 @@ const ExperienceBackdrop = () => {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
         >
-          <div className="absolute inset-0" style={{ background: fitnessGradient }} />
+          <div
+            className="absolute inset-0"
+            style={{ background: fitnessGradient }}
+          />
         </motion.div>
       )}
     </AnimatePresence>
   );
 };
 
+// ─── Data prefetch ──────────────────────────────────────────────────
 const AppPrefetch = () => {
   const auth = useAuth();
   const { defaultHome } = useUserSettings();
@@ -501,7 +416,7 @@ const AppPrefetch = () => {
             const logSections = computeLogSections(
               entriesRes.entries,
               entriesRes.items,
-              meals
+              meals,
             );
             const totals = computeTotals(logSections);
 
@@ -523,18 +438,18 @@ const AppPrefetch = () => {
                   ? Number(
                       summaryRes.targets?.carbs_g ??
                         settingsRes.settings?.carbs_g ??
-                        macro.goal
+                        macro.goal,
                     )
                   : macro.key === "protein"
                     ? Number(
                         summaryRes.targets?.protein_g ??
                           settingsRes.settings?.protein_g ??
-                          macro.goal
+                          macro.goal,
                       )
                     : Number(
                         summaryRes.targets?.fat_g ??
                           settingsRes.settings?.fat_g ??
-                          macro.goal
+                          macro.goal,
                       ),
             }));
 
@@ -595,7 +510,7 @@ const AppPrefetch = () => {
             ]);
             const total = waterResponse.items.reduce(
               (sum, item) => sum + Number(item.amount_ml ?? 0),
-              0
+              0,
             );
             return {
               totalMl: total,
@@ -627,17 +542,24 @@ const AppPrefetch = () => {
           gcTime: 60 * 60 * 1000,
         });
 
+        // Fitness data prefetch (when default home is fitness, or always)
         if (defaultHome === "fitness") {
           const workoutPlans = await fetchWorkoutPlans();
           setWorkoutPlansCache(workoutPlans);
 
-          const [routinesRes, activeRes, historyRes, goalsRes] = await Promise.all([
-            fetchFitnessRoutines(),
-            fetchActiveFitnessSession(),
-            fetchFitnessSessionHistory(),
-            fetchActivityGoals(),
-          ]);
-          setFitnessPlannerCache({ routinesRes, activeRes, historyRes, goalsRes });
+          const [routinesRes, activeRes, historyRes, goalsRes] =
+            await Promise.all([
+              fetchFitnessRoutines(),
+              fetchActiveFitnessSession(),
+              fetchFitnessSessionHistory(),
+              fetchActivityGoals(),
+            ]);
+          setFitnessPlannerCache({
+            routinesRes,
+            activeRes,
+            historyRes,
+            goalsRes,
+          });
 
           const training = await fetchTrainingAnalytics(8);
           setTrainingAnalyticsCache({ weeks: 8, items: training.items });
@@ -648,9 +570,10 @@ const AppPrefetch = () => {
     };
 
     // Defer slightly so the app renders immediately
-    const timer = window.setTimeout(() => {
-      void prefetch();
-    }, defaultHome === "fitness" ? 150 : 50);
+    const timer = window.setTimeout(
+      () => void prefetch(),
+      defaultHome === "fitness" ? 150 : 50,
+    );
 
     return () => {
       cancelled = true;
@@ -661,6 +584,7 @@ const AppPrefetch = () => {
   return null;
 };
 
+// ─── Scroll restoration ─────────────────────────────────────────────
 const ScrollRestoration = () => {
   const location = useLocation();
   const navigationType = useNavigationType();
@@ -688,6 +612,7 @@ const ScrollRestoration = () => {
   return null;
 };
 
+// ─── Auth helpers ───────────────────────────────────────────────────
 const AuthLoading = () => (
   <div className="min-h-screen bg-background">
     <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6">
@@ -701,27 +626,6 @@ const AuthLoading = () => (
   </div>
 );
 
-const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-  const auth = useAuth();
-  const location = useLocation();
-
-  if (auth.status !== "ready") {
-    return <AuthLoading />;
-  }
-
-  if (!auth.userId) {
-    return (
-      <Navigate
-        to="/auth"
-        replace
-        state={{ from: `${location.pathname}${location.search}` }}
-      />
-    );
-  }
-
-  return children;
-};
-
 const AuthRoute = () => {
   const auth = useAuth();
   const { defaultHome } = useUserSettings();
@@ -731,13 +635,17 @@ const AuthRoute = () => {
   }
 
   return auth.userId ? (
-    <Navigate to={defaultHome === "fitness" ? "/fitness" : "/nutrition"} replace />
+    <Navigate
+      to={defaultHome === "fitness" ? "/fitness" : "/nutrition"}
+      replace
+    />
   ) : (
     <Auth />
   );
 };
 
-const AppShell = () => {
+// ─── App shell ──────────────────────────────────────────────────────
+const AppShellRoot = () => {
   const auth = useAuth();
   const authReady = auth.status === "ready";
 
@@ -749,22 +657,21 @@ const AppShell = () => {
 
   return (
     <BrowserRouter>
-      <Suspense fallback={<AuthLoading />}>
-        {isSignedIn ? (
-          <>
-            <AppPrefetch />
-            <ExperienceBackdrop />
-            {/* OnboardingDialog shows automatically if user hasn't completed onboarding */}
-            <OnboardingDialog />
-            <AnimatedRoutes />
-          </>
-        ) : (
+      {isSignedIn ? (
+        <>
+          <AppPrefetch />
+          <ExperienceBackdrop />
+          <OnboardingDialog />
+          <AppRoutes />
+        </>
+      ) : (
+        <Suspense fallback={<AuthLoading />}>
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="*" element={<Navigate to="/auth" replace />} />
           </Routes>
-        )}
-      </Suspense>
+        </Suspense>
+      )}
     </BrowserRouter>
   );
 };
@@ -801,13 +708,15 @@ const App = () => {
         >
           <Toaster />
           <Sonner />
-          <UserProvider>
-            <UIProvider>
-              <AppStoreProvider>
-                <AppShell />
-              </AppStoreProvider>
-            </UIProvider>
-          </UserProvider>
+          <AuthProvider>
+            <UserProvider>
+              <UIProvider>
+                <AppStoreProvider>
+                  <AppShellRoot />
+                </AppStoreProvider>
+              </UIProvider>
+            </UserProvider>
+          </AuthProvider>
         </PageErrorBoundary>
       </TooltipProvider>
     </QueryClientProvider>

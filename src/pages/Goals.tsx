@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { toast } from "sonner";
 import { useAppStore } from "@/state/AppStore";
 import { ChevronDown } from "lucide-react";
@@ -408,26 +409,16 @@ const Goals = () => {
           <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
             Goal type
           </p>
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            {([
+          <SegmentedControl
+            value={goalType}
+            onValueChange={(v) => setGoalType(v as GoalType)}
+            options={[
               { value: "cut", label: "Cut" },
               { value: "balance", label: "Maintain" },
               { value: "bulk", label: "Bulk" },
-            ] as { value: GoalType; label: string }[]).map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => setGoalType(item.value)}
-                className={`rounded-[18px] px-3 py-3 text-center text-sm font-semibold transition ${
-                  goalType === item.value
-                    ? "bg-emerald-500 text-white shadow-[0_10px_24px_rgba(16,185,129,0.3)]"
-                    : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+            ]}
+            className="mt-4"
+          />
         </Card>
 
         <Card className="mt-6 rounded-[28px] border border-black/5 bg-white px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
