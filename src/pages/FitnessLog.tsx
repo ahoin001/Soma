@@ -18,7 +18,7 @@ const FitnessLog = () => {
 
   return (
     <AppShell experience="fitness" onAddAction={() => navigate("/fitness")} safeAreaTop="extra">
-      <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6 text-white">
+      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-white">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-white/50">

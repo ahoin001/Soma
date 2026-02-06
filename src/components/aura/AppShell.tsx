@@ -72,48 +72,45 @@ export const AppShell = ({
         className,
       )}
     >
-      {/* 
-        STATUS BAR SCRIM — scroll-reactive
-        At scroll=0 the header gradient flows seamlessly under the status bar
-        icons (the "invisible header" effect). As the user scrolls and the
-        gradient moves off-screen, a frosted-glass scrim fades in so the
-        time/battery text stays readable over whatever content is underneath.
+      {/*
+        UNIFIED STATUS BAR GLASS — single element, scroll-reactive.
+        
+        At scroll = 0  → fully transparent so the header gradient bleeds
+                          seamlessly under the system clock/battery icons.
+        As user scrolls → a single frosted-glass bar fades in covering
+                          exactly the safe-area height.  A soft gradient
+                          mask below it lets content "dissolve" into the
+                          blur instead of hitting a hard edge.
+        
+        Modern trend (iOS 18 / Arc / Linear): one thin glass region,
+        no thick opaque header bar, content peeks through the blur.
       */}
       <div
-        className="pointer-events-none fixed inset-x-0 top-0 z-40"
-        style={{ height: "var(--sat, 0px)" }}
+        className="pointer-events-none fixed inset-x-0 top-0 z-40 transition-opacity duration-300"
+        style={{ opacity: solidOpacity }}
       >
+        {/* Frosted glass — covers exactly the safe-area (notch / status bar) */}
         <div
           className={cn(
-            "h-full w-full backdrop-blur-md transition-opacity duration-200",
+            "w-full backdrop-blur-xl backdrop-saturate-150",
             experience === "nutrition"
-              ? "bg-white/80"
-              : "bg-slate-950/85"
+              ? "bg-white/70"
+              : "bg-slate-950/75",
           )}
-          style={{ opacity: solidOpacity }}
+          style={{ height: "var(--sat, 0px)" }}
+        />
+        {/* Soft gradient fade — dissolves the hard edge into content below */}
+        <div
+          className="w-full"
+          style={{
+            height: "20px",
+            background:
+              experience === "nutrition"
+                ? "linear-gradient(to bottom, rgba(255,255,255,0.55), rgba(255,255,255,0))"
+                : "linear-gradient(to bottom, rgba(15,23,42,0.6), rgba(15,23,42,0))",
+          }}
         />
       </div>
-
-      {/* 
-        SCROLL-AWARE HEADER BAR
-        As user scrolls, a solid/blurred bar fades in below the status bar
-        to separate the header from content. When combined with the status
-        bar scrim above, they form one unified frosted-glass region.
-      */}
-      <div
-        className="pointer-events-none fixed inset-x-0 z-40 backdrop-blur-md transition-opacity duration-200"
-        style={{
-          top: "var(--sat, 0px)",
-          height: "56px",
-          opacity: solidOpacity,
-          background: experience === "nutrition"
-            ? "rgba(255,255,255,0.85)"
-            : "rgba(15,23,42,0.92)",
-          boxShadow: solidOpacity > 0.5 
-            ? "0 4px 20px rgba(0,0,0,0.08)" 
-            : "none",
-        }}
-      />
 
       <OfflineBanner />
 

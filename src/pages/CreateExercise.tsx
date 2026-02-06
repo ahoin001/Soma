@@ -8,7 +8,7 @@ const CreateExercise = () => {
 
   return (
     <AppShell experience="fitness" showNav={false}>
-      <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-4 text-white">
+      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-4 text-white">
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"

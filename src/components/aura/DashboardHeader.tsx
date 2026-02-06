@@ -46,7 +46,7 @@ export const DashboardHeader = ({
 
   return (
     <header
-      className={cn("relative overflow-visible pb-10", isCard && "pt-2")}
+      className={cn("relative overflow-visible", isCard && "pt-2")}
       style={isCard ? { paddingTop: headerTopPadding } : undefined}
     >
       {/* 
@@ -60,8 +60,8 @@ export const DashboardHeader = ({
           isCard
             ? "mx-4 rounded-[32px] bg-gradient-to-br from-white via-emerald-50 to-white"
             : "rounded-b-[40px] bg-[radial-gradient(circle_at_15%_10%,_rgba(191,219,254,0.85),_transparent_50%),radial-gradient(circle_at_85%_0%,_rgba(167,243,208,0.92),_transparent_50%),radial-gradient(circle_at_70%_80%,_rgba(253,224,71,0.28),_transparent_60%),linear-gradient(180deg,_rgba(255,255,255,0.96)_0%,_rgba(236,253,245,0.92)_50%,_rgba(209,250,229,0.86)_100%)]",
-          isMedia && "rounded-b-none pb-24",
-          !isMedia && "pb-20",
+          isMedia && "rounded-b-none pb-10",
+          !isMedia && "pb-8",
         )}
         style={{ paddingTop: containerTopPadding }}
       >
@@ -162,7 +162,13 @@ export const DashboardHeader = ({
           </motion.div>
         </motion.div>
       </div>
-      <div className="absolute inset-x-0 -bottom-6 z-20 px-5">
+      {/* Macro cards: center of cards aligns with the bottom edge of the HUD.
+         translateY(-50%) shifts visually but doesn't affect layout, so -mb-10
+         (~half card height) collapses the leftover "ghost" space. */}
+      <div
+        className="relative z-20 -mb-10 px-5"
+        style={{ transform: "translateY(-50%)" }}
+      >
         <div className="grid grid-cols-3 gap-3">
           {macros.map((macro) => {
             const progress =

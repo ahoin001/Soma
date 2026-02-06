@@ -57,7 +57,7 @@ const ExerciseGuide = () => {
   if (isLoading) {
     return (
       <AppShell experience="fitness" showNav={false} safeAreaTop="extra">
-        <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6 text-white">
+        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-white">
           <p className="text-sm text-white/60">Loading exercise...</p>
         </div>
       </AppShell>
@@ -67,7 +67,7 @@ const ExerciseGuide = () => {
   if (!activePlan || !activeWorkout || !draft) {
     return (
       <AppShell experience="fitness" showNav={false} safeAreaTop="extra">
-        <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6 text-white">
+        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-white">
           <div className="rounded-[28px] border border-white/10 bg-white/5 px-4 py-6 text-center">
             <p className="text-sm text-white/70">
               We could not find that exercise.

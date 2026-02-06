@@ -347,9 +347,9 @@ const Fitness = () => {
 
   return (
     <AppShell experience="fitness" onAddAction={handleStartNextWorkout}>
-      <div className="w-full text-foreground">
-        {/* Header handles its own safe-area padding for immersive effect */}
-        <div>
+      <div className="mx-auto w-full max-w-[420px] px-4 pb-10">
+        {/* Header extends to screen edges for immersive gradient effect (mirrors Nutrition) */}
+        <div className="-mx-4">
           <FitnessHeader
             planName={activePlanForHud?.name}
             lastWorkout={
@@ -364,7 +364,7 @@ const Fitness = () => {
           />
         </div>
 
-        <div className="mx-auto w-full max-w-sm px-5 pb-10">
+        <div>
           <section className="mt-8 space-y-6">
           {showEmptyState ? (
             <motion.div

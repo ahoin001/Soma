@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -328,14 +328,18 @@ export const useWaterSummaryQuery = (date: Date) => {
     },
   });
 
+  // Ref tracks the pre-optimistic cache value so mutationFn can compute the
+  // correct delta even when multiple mutations overlap (e.g. rapid cup taps).
+  const preOptimisticTotalRef = useRef(0);
+
   const setTotalMutation = useMutation({
+    mutationKey: ["setWaterTotal", localDate],
     mutationFn: async (nextTotal: number) => {
       if (!Number.isFinite(nextTotal) || nextTotal < 0) {
         throw new Error("Invalid total");
       }
       const rounded = Math.round(nextTotal);
-      const currentTotal = query.data?.totalMl ?? 0;
-      const delta = rounded - currentTotal;
+      const delta = rounded - preOptimisticTotalRef.current;
       if (delta === 0) return rounded;
 
       await ensureUser();
@@ -345,6 +349,9 @@ export const useWaterSummaryQuery = (date: Date) => {
     onMutate: async (nextTotal) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.trackingWater(localDate) });
       const previous = queryClient.getQueryData<WaterData>(queryKeys.trackingWater(localDate));
+
+      // Snapshot what the cache held BEFORE we optimistically overwrite it.
+      preOptimisticTotalRef.current = previous?.totalMl ?? 0;
 
       queryClient.setQueryData<WaterData>(queryKeys.trackingWater(localDate), (old) => ({
         totalMl: Math.round(nextTotal),
@@ -365,7 +372,15 @@ export const useWaterSummaryQuery = (date: Date) => {
       });
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.trackingWater(localDate) });
+      // Only refetch from server once no other setWaterTotal mutations are in
+      // flight, preventing a stale refetch from overwriting a newer optimistic
+      // update (the root cause of the "cups refill" race condition).
+      const pending = queryClient.isMutating({
+        mutationKey: ["setWaterTotal", localDate],
+      });
+      if (pending === 0) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.trackingWater(localDate) });
+      }
     },
   });
 

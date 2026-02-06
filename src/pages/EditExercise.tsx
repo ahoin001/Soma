@@ -46,7 +46,7 @@ const EditExercise = () => {
   if (loading) {
     return (
       <AppShell experience="fitness" showNav={false}>
-        <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6 text-white">
+        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-white">
           <p className="text-sm text-white/60">Loading exercise...</p>
         </div>
       </AppShell>
@@ -56,7 +56,7 @@ const EditExercise = () => {
   if (!exercise) {
     return (
       <AppShell experience="fitness" showNav={false}>
-        <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6 text-white">
+        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-white">
           <div className="rounded-[28px] border border-white/10 bg-white/5 px-4 py-6 text-center">
             <p className="text-sm text-white/70">
               We could not find that exercise.
@@ -76,7 +76,7 @@ const EditExercise = () => {
 
   return (
     <AppShell experience="fitness" showNav={false}>
-      <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-4 text-white">
+      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-4 text-white">
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
