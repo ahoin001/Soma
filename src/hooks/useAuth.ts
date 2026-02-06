@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchCurrentUser, loginUser, logoutUser, registerUser, setUserId } from "@/lib/api";
+import {
+  fetchCurrentUser,
+  loginUser,
+  logoutUser,
+  registerUser,
+  setSessionToken,
+  setUserId,
+} from "@/lib/api";
 
 type AuthState = {
   userId: string | null;
@@ -36,6 +43,7 @@ export const useAuth = () => {
     const result = await registerUser(payload);
     if (result.user?.id) {
       setUserId(result.user.id);
+      if (result.sessionToken) setSessionToken(result.sessionToken);
       await refresh();
     }
   }, [refresh]);
@@ -44,12 +52,14 @@ export const useAuth = () => {
     const result = await loginUser(payload);
     if (result.user?.id) {
       setUserId(result.user.id);
+      if (result.sessionToken) setSessionToken(result.sessionToken);
       await refresh();
     }
   }, [refresh]);
 
   const logout = useCallback(async () => {
     await logoutUser();
+    setSessionToken(null);
     setState({ userId: null, email: null, status: "ready" });
   }, []);
 

@@ -39,7 +39,7 @@ const issueToken = async (
   return token;
 };
 
-const createSession = async (userId: string, req: Request, res: Response) => {
+const createSession = async (userId: string, req: Request, res: Response): Promise<string> => {
   const token = crypto.randomBytes(32).toString("hex");
   const tokenHash = hashToken(token);
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
@@ -67,6 +67,7 @@ const createSession = async (userId: string, req: Request, res: Response) => {
     expires: expiresAt,
     path: "/",
   });
+  return token;
 };
 
 const authSchema = z.object({
@@ -141,9 +142,10 @@ router.post(
       new Date(Date.now() + VERIFY_TOKEN_DAYS * 24 * 60 * 60 * 1000),
     );
 
-    await createSession(result, req, res);
+    const sessionToken = await createSession(result, req, res);
     res.json({
       user: { id: result },
+      ...(cookieSameSite === "none" ? { sessionToken } : {}),
       ...(shouldReturnToken ? { verificationToken: verifyToken } : {}),
     });
   }),
@@ -172,9 +174,10 @@ router.post(
       return;
     }
 
-    await createSession(record.user_id, req, res);
+    const sessionToken = await createSession(record.user_id, req, res);
     res.json({
       user: { id: record.user_id, emailVerified: Boolean(record.email_verified_at) },
+      ...(cookieSameSite === "none" ? { sessionToken } : {}),
     });
   }),
 );
@@ -182,7 +185,9 @@ router.post(
 router.post(
   "/logout",
   asyncHandler(async (req, res) => {
-    const token = req.cookies?.[SESSION_COOKIE] as string | undefined;
+    const cookieToken = req.cookies?.[SESSION_COOKIE] as string | undefined;
+    const bearerToken = req.header("Authorization")?.replace(/^Bearer\s+/i, "").trim();
+    const token = cookieToken ?? bearerToken;
     if (token) {
       const tokenHash = hashToken(token);
       await withTransaction((client) =>
@@ -197,36 +202,18 @@ router.post(
 router.get(
   "/me",
   asyncHandler(async (req, res) => {
-    const token = req.cookies?.[SESSION_COOKIE] as string | undefined;
-    if (!token) {
+    const userId = (req as Request & { userId?: string }).userId;
+    if (!userId) {
       res.status(401).json({ user: null });
       return;
     }
-    const tokenHash = hashToken(token);
-    const session = await queryOne<{ user_id: string }>(
-      `
-      SELECT user_id
-      FROM user_sessions
-      WHERE token_hash = $1 AND expires_at > now();
-      `,
-      [tokenHash],
-    );
-    if (!session) {
-      res.status(401).json({ user: null });
-      return;
-    }
-    await withTransaction((client) =>
-      client.query("UPDATE user_sessions SET last_used_at = now() WHERE token_hash = $1;", [
-        tokenHash,
-      ]),
-    );
     const profile = await queryOne<{ email: string; email_verified_at: string | null }>(
       "SELECT email, email_verified_at FROM user_auth_local WHERE user_id = $1;",
-      [session.user_id],
+      [userId],
     );
     res.json({
       user: {
-        id: session.user_id,
+        id: userId,
         email: profile?.email ?? null,
         emailVerified: Boolean(profile?.email_verified_at),
       },

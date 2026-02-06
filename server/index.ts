@@ -60,7 +60,9 @@ app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
 
 app.use(async (req, _res, next) => {
-  const token = req.cookies?.aurafit_session as string | undefined;
+  const cookieToken = req.cookies?.aurafit_session as string | undefined;
+  const bearerToken = req.header("Authorization")?.replace(/^Bearer\s+/i, "").trim();
+  const token = cookieToken ?? bearerToken;
   if (!token) {
     next();
     return;

@@ -8,7 +8,17 @@ import type {
 } from "@/types/api";
 
 const USER_ID_KEY = "aurafit-user-id";
+const SESSION_TOKEN_KEY = "aurafit-session-token";
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+
+export const getSessionToken = () =>
+  typeof window !== "undefined" ? window.localStorage.getItem(SESSION_TOKEN_KEY) : null;
+
+export const setSessionToken = (token: string | null) => {
+  if (typeof window === "undefined") return;
+  if (token) window.localStorage.setItem(SESSION_TOKEN_KEY, token);
+  else window.localStorage.removeItem(SESSION_TOKEN_KEY);
+};
 
 const buildApiUrl = (path: string) => {
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
@@ -35,9 +45,13 @@ export const setUserId = (userId: string) => {
 
 const apiFetch = async <T>(path: string, options?: RequestInit) => {
   const userId = getUserId();
+  const sessionToken = getSessionToken();
   const headers = new Headers(options?.headers);
   if (userId) {
     headers.set("x-user-id", userId);
+  }
+  if (sessionToken) {
+    headers.set("Authorization", `Bearer ${sessionToken}`);
   }
   if (!headers.has("Content-Type") && options?.body) {
     headers.set("Content-Type", "application/json");
@@ -70,17 +84,20 @@ export const ensureUser = async (displayName = "You") => {
   });
 };
 
-export const fetchCurrentUser = async () =>
-  {
-    const userId = getUserId();
-    const headers = new Headers();
-    if (userId) {
-      headers.set("x-user-id", userId);
-    }
-    const response = await fetch(buildApiUrl("/api/auth/me"), {
-      credentials: "include",
-      headers,
-    });
+export const fetchCurrentUser = async () => {
+  const userId = getUserId();
+  const sessionToken = getSessionToken();
+  const headers = new Headers();
+  if (userId) {
+    headers.set("x-user-id", userId);
+  }
+  if (sessionToken) {
+    headers.set("Authorization", `Bearer ${sessionToken}`);
+  }
+  const response = await fetch(buildApiUrl("/api/auth/me"), {
+    credentials: "include",
+    headers,
+  });
     if (response.status === 401) {
       return { user: null };
     }
@@ -110,16 +127,22 @@ export const registerUser = async (payload: {
   password: string;
   displayName?: string;
 }) =>
-  apiFetch<{ user: { id: string }; verificationToken?: string }>("/api/auth/register", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  apiFetch<{ user: { id: string }; sessionToken?: string; verificationToken?: string }>(
+    "/api/auth/register",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 
 export const loginUser = async (payload: { email: string; password: string }) =>
-  apiFetch<{ user: { id: string; emailVerified?: boolean } }>("/api/auth/login", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  apiFetch<{ user: { id: string; emailVerified?: boolean }; sessionToken?: string }>(
+    "/api/auth/login",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 
 export const logoutUser = async () =>
   apiFetch<{ ok: boolean }>("/api/auth/logout", {
