@@ -547,6 +547,11 @@ export const upsertWeightLog = async (payload: {
     },
   );
 
+export const deleteWeightLog = async (localDate: string) =>
+  apiFetch<{ ok: boolean }>("/api/tracking/weight?localDate=" + encodeURIComponent(localDate), {
+    method: "DELETE",
+  });
+
 export const fetchStepsLogs = async (localDate?: string) => {
   const query = localDate ? `?localDate=${encodeURIComponent(localDate)}` : "";
   return apiFetch<{ items: Array<{ local_date: string; steps: number; source: string | null }> }>(

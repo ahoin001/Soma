@@ -60,14 +60,6 @@ export const AppShell = ({
 
   const solidOpacity = scrollProgress;
 
-  // Nutrition experience: soft, luminous gradient that flows under the status bar
-  const nutritionHudGradient =
-    "radial-gradient(circle_at_15%_10%,_rgba(191,219,254,0.8),_transparent_45%),radial-gradient(circle_at_85%_0%,_rgba(167,243,208,0.9),_transparent_45%),radial-gradient(circle_at_70%_80%,_rgba(253,224,71,0.35),_transparent_55%),linear-gradient(180deg,_rgba(240,253,244,1)_0%,_rgba(236,253,245,0.92)_50%,_rgba(209,250,229,0.88)_100%)";
-
-  // Fitness experience: dark, immersive background
-  const fitnessGradient =
-    "linear-gradient(180deg,_#020617_0%,_#0f172a_100%)";
-
   return (
     <div
       className={cn(
@@ -80,32 +72,6 @@ export const AppShell = ({
         className,
       )}
     >
-      {/* 
-        IMMERSIVE BACKGROUND LAYER
-        These gradients flow under the status bar for that premium edge-to-edge feel.
-        The gradient starts at the very top of the screen (top: 0).
-      */}
-      {experience === "nutrition" ? (
-        <>
-          {/* Main ambient gradient - extends under status bar */}
-          <div
-            className="pointer-events-none fixed inset-x-0 top-0 z-20 h-[400px]"
-            style={{ background: nutritionHudGradient }}
-          />
-          {/* Decorative orbs */}
-          <div className="pointer-events-none fixed inset-0 z-20">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,_rgba(125,211,252,0.28),_transparent_45%),radial-gradient(circle_at_80%_15%,_rgba(134,239,172,0.32),_transparent_45%),radial-gradient(circle_at_70%_80%,_rgba(253,224,71,0.2),_transparent_50%),radial-gradient(circle_at_10%_85%,_rgba(59,130,246,0.18),_transparent_45%)] opacity-70" />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,_rgba(255,255,255,0.9)_0%,_rgba(255,255,255,0.7)_35%,_rgba(255,255,255,0.85)_100%)]" />
-          </div>
-        </>
-      ) : (
-        /* Fitness: dark gradient that extends under status bar */
-        <div
-          className="pointer-events-none fixed inset-x-0 top-0 z-20 h-screen"
-          style={{ background: fitnessGradient }}
-        />
-      )}
-
       {/* 
         STATUS BAR SCRIM
         A subtle blur layer that sits ONLY in the status bar area.

@@ -7,6 +7,7 @@ import {
   fetchStepsLogs,
   fetchWaterLogs,
   fetchWeightLogs,
+  deleteWeightLog,
   upsertStepsLog,
   upsertActivityGoals,
   upsertWaterLog,
@@ -104,6 +105,36 @@ export const useWeightLogsQuery = () => {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (localDate: string) => {
+      await ensureUser();
+      await deleteWeightLog(localDate);
+      return localDate;
+    },
+    onMutate: async (localDate) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.trackingWeight });
+      const previous = queryClient.getQueryData<WeightEntry[]>(queryKeys.trackingWeight);
+      queryClient.setQueryData<WeightEntry[]>(queryKeys.trackingWeight, (old) =>
+        (old ?? []).filter((entry) => entry.date !== localDate),
+      );
+      return { previous };
+    },
+    onError: (_err, localDate, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.trackingWeight, context.previous);
+      }
+      toast("Unable to delete weight", {
+        action: {
+          label: "Retry",
+          onClick: () => deleteMutation.mutate(localDate),
+        },
+      });
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.trackingWeight });
+    },
+  });
+
   return {
     entries: query.data ?? [],
     status: query.isLoading ? "loading" : query.isError ? "error" : "idle",
@@ -111,6 +142,8 @@ export const useWeightLogsQuery = () => {
     refresh: () => queryClient.invalidateQueries({ queryKey: queryKeys.trackingWeight }),
     addEntry: mutation.mutate,
     isAdding: mutation.isPending,
+    removeEntry: deleteMutation.mutate,
+    isRemoving: deleteMutation.isPending,
   };
 };
 

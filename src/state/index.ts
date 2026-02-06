@@ -31,6 +31,7 @@ export {
   useWorkoutDrafts,
   useMealPulse,
   useSelectedDate,
+  useExperienceTransition,
 } from "./UIContext";
 
 // Legacy AppStore - still used during migration

@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { SegmentedControl, type SegmentedOption } from "@/components/ui/segmented-control";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
+import { useExperienceTransition } from "@/state";
 import { useSheetManager } from "@/hooks/useSheetManager";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
@@ -58,6 +59,12 @@ const headerStyleOptions: SegmentedOption[] = [
   { value: "media", label: "Media" },
 ];
 
+const transitionOptions: SegmentedOption[] = [
+  { value: "blur-scale", label: "Blur + Scale" },
+  { value: "color-wash", label: "Color Wash" },
+  { value: "circular-reveal", label: "Circular Reveal" },
+];
+
 const Nutrition = () => {
   const { activeSheet, openSheet, closeSheets, setActiveSheet } =
     useSheetManager<Exclude<ActiveSheet, null>>(null, {
@@ -72,6 +79,8 @@ const Nutrition = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showWelcome, setShowWelcome] = useState(false);
+  const { experienceTransition, setExperienceTransition } =
+    useExperienceTransition();
   const [headerStyle, setHeaderStyle] = useState<"immersive" | "card" | "media">(() => {
     if (typeof window === "undefined") return "immersive";
     const saved = window.localStorage.getItem("aurafit-header-style");
@@ -478,6 +487,31 @@ const Nutrition = () => {
               value={headerStyle}
               options={headerStyleOptions}
               onValueChange={(next) => setHeaderStyle(next as "immersive" | "card" | "media")}
+              className="mt-3"
+              itemClassName="bg-emerald-50"
+              activeClassName="text-white"
+              inactiveClassName="text-emerald-700"
+              indicatorClassName="bg-emerald-500"
+            />
+          </div>
+          <div className="mt-4 border-t border-emerald-100 pt-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+              Experience transition
+            </p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              Switching Nutrition ↔ Fitness
+            </p>
+            <p className="text-xs text-slate-500">
+              Choose the transition style when swapping experiences.
+            </p>
+            <SegmentedControl
+              value={experienceTransition}
+              options={transitionOptions}
+              onValueChange={(next) =>
+                setExperienceTransition(
+                  next as "blur-scale" | "color-wash" | "circular-reveal"
+                )
+              }
               className="mt-3"
               itemClassName="bg-emerald-50"
               activeClassName="text-white"

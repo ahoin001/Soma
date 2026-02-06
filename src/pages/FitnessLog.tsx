@@ -3,12 +3,21 @@ import { AppShell, LiveSessionPanel } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/state/AppStore";
 
+const formatSessionDate = (ms: number) =>
+  new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(ms));
+
 const FitnessLog = () => {
   const navigate = useNavigate();
   const { fitnessPlanner } = useAppStore();
+  const history = fitnessPlanner.history ?? [];
 
   return (
-    <AppShell experience="fitness" onAddAction={() => navigate("/fitness")}>
+    <AppShell experience="fitness" onAddAction={() => navigate("/fitness")} safeAreaTop="extra">
       <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6 text-white">
         <div className="flex items-center justify-between">
           <div>
@@ -47,6 +56,32 @@ const FitnessLog = () => {
             >
               Start a session
             </Button>
+          ) : null}
+
+          {history.length > 0 ? (
+            <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+                Recent sessions
+              </p>
+              <p className="mt-1 text-sm font-medium text-white/90">
+                Last {Math.min(history.length, 20)} finished
+              </p>
+              <ul className="mt-3 space-y-2">
+                {history.slice(0, 20).map((session) => (
+                  <li
+                    key={session.id}
+                    className="flex items-center justify-between rounded-[16px] border border-white/10 bg-white/5 px-3 py-2 text-sm"
+                  >
+                    <span className="text-white/90">
+                      {formatSessionDate(session.endedAt)}
+                    </span>
+                    <span className="tabular-nums text-white/70">
+                      {session.totalSets} sets · {Math.round(session.totalVolume)} kg
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : null}
         </div>
       </div>

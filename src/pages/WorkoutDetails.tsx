@@ -103,6 +103,20 @@ const WorkoutDetails = () => {
             // handled in hook
           }
         }}
+        activeSessionId={
+          editorMode === "session" ? fitnessPlanner.activeSession?.id ?? null : null
+        }
+        sessionExercises={
+          editorMode === "session"
+            ? fitnessPlanner.sessionExercises.map((se) => ({
+                id: se.id,
+                exercise_name: se.exercise_name,
+              }))
+            : undefined
+        }
+        onPersistSets={
+          editorMode === "session" ? fitnessPlanner.persistTemplateSessionSets : undefined
+        }
         onFinish={async () => {
           try {
             await recordWorkoutCompleted(activePlan.id, activeWorkout.id);

@@ -36,7 +36,7 @@ const FitnessRoutines = () => {
   const previewItems = useMemo(() => results.slice(0, 120), [results]);
 
   return (
-    <AppShell experience="fitness" onAddAction={() => navigate("/fitness")}>
+    <AppShell experience="fitness" onAddAction={() => navigate("/fitness")} safeAreaTop="extra">
       <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6 text-white">
         <div className="flex items-center justify-between">
           <div>

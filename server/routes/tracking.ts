@@ -81,6 +81,28 @@ router.get(
   }),
 );
 
+router.delete(
+  "/weight",
+  asyncHandler(async (req, res) => {
+    const userId = getUserId(req);
+    const localDate = typeof req.query.localDate === "string" ? req.query.localDate : null;
+    if (!localDate) {
+      res.status(400).json({ error: "localDate is required" });
+      return;
+    }
+    await withTransaction((client) =>
+      client.query(
+        `
+        DELETE FROM weight_logs
+        WHERE user_id = $1 AND local_date = $2;
+        `,
+        [userId, localDate],
+      ),
+    );
+    res.status(204).send();
+  }),
+);
+
 router.get(
   "/goals",
   asyncHandler(async (req, res) => {

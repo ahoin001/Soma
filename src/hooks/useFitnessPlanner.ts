@@ -459,9 +459,9 @@ export const useFitnessPlanner = () => {
         sets: [],
       });
       try {
-        const response = await startFitnessSession({ exercises });
-        void refresh();
-        return response.session;
+        await startFitnessSession({ exercises });
+        await refresh();
+        return;
       } catch (error) {
         setActiveSession(previousSession);
         setSessionExercises(previousExercises);
@@ -562,6 +562,37 @@ export const useFitnessPlanner = () => {
     }
   }, [activeSession, refresh]);
 
+  type TemplateSetPayload = Array<{
+    sessionExerciseId: string;
+    sets: Array<{
+      weight: number;
+      reps: number;
+      rpe?: number;
+      restSeconds?: number;
+    }>;
+  }>;
+
+  const persistTemplateSessionSets = useCallback(
+    async (payload: TemplateSetPayload) => {
+      if (!activeSession) return;
+      for (const entry of payload) {
+        for (const set of entry.sets) {
+          await logFitnessSet({
+            sessionId: activeSession.id,
+            sessionExerciseId: entry.sessionExerciseId,
+            weightDisplay: set.weight,
+            unitUsed: weightUnit,
+            reps: set.reps,
+            rpe: set.rpe,
+            restSeconds: set.restSeconds,
+          });
+        }
+      }
+      void refresh();
+    },
+    [activeSession, weightUnit, refresh],
+  );
+
   const activeRoutine = useMemo(() => {
     const routine = routines.find((item) => item.id === activeRoutineId) ?? null;
     if (routine) return routine;
@@ -587,6 +618,7 @@ export const useFitnessPlanner = () => {
       activeRoutineId,
       activeRoutine,
       activeSession,
+      sessionExercises,
       history,
       createRoutine,
       renameRoutine,
@@ -600,6 +632,7 @@ export const useFitnessPlanner = () => {
       logSet,
       advanceExercise,
       finishSession,
+      persistTemplateSessionSets,
       weightUnit,
     }),
     [
@@ -607,6 +640,7 @@ export const useFitnessPlanner = () => {
       activeRoutineId,
       activeRoutine,
       activeSession,
+      sessionExercises,
       history,
       createRoutine,
       renameRoutine,
@@ -620,6 +654,7 @@ export const useFitnessPlanner = () => {
       logSet,
       advanceExercise,
       finishSession,
+      persistTemplateSessionSets,
       weightUnit,
     ],
   );

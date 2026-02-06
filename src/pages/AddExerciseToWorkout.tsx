@@ -107,7 +107,7 @@ const AddExerciseToWorkout = () => {
 
   if (!exerciseName.trim() && !planIdParam) {
     return (
-      <AppShell experience="fitness" showNav={false}>
+      <AppShell experience="fitness" showNav={false} safeAreaTop="extra">
         <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6 text-white">
           <div className="rounded-[28px] border border-white/10 bg-white/5 px-4 py-6 text-center">
             <p className="text-sm text-white/70">
@@ -149,7 +149,7 @@ const AddExerciseToWorkout = () => {
   };
 
   return (
-    <AppShell experience="fitness" showNav={false}>
+    <AppShell experience="fitness" showNav={false} safeAreaTop="extra">
       <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-4 text-white">
         <div className="flex items-center justify-between">
           <Button

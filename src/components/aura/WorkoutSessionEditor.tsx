@@ -218,6 +218,21 @@ const getInitials = (value: string) =>
     .join("")
     .toUpperCase();
 
+export type SessionExerciseForPersist = {
+  id: string;
+  exercise_name: string;
+};
+
+type PersistSetPayload = Array<{
+  sessionExerciseId: string;
+  sets: Array<{
+    weight: number;
+    reps: number;
+    rpe?: number;
+    restSeconds?: number;
+  }>;
+}>;
+
 type WorkoutSessionEditorProps = {
   mode: "edit" | "session";
   workout: WorkoutTemplate | null;
@@ -229,6 +244,10 @@ type WorkoutSessionEditorProps = {
   onOpenGuide?: (exercise: { id: string; name: string }) => void;
   onEditExercise?: (exercise: { id: string; name: string }) => void;
   onAddExercise?: () => void;
+  /** When in session mode: persist sets to server before calling onFinish. */
+  activeSessionId?: string | null;
+  sessionExercises?: SessionExerciseForPersist[];
+  onPersistSets?: (payload: PersistSetPayload) => Promise<void>;
 };
 
 export const WorkoutSessionEditor = ({
@@ -242,6 +261,9 @@ export const WorkoutSessionEditor = ({
   onOpenGuide,
   onEditExercise,
   onAddExercise,
+  activeSessionId,
+  sessionExercises,
+  onPersistSets,
 }: WorkoutSessionEditorProps) => {
   const { workoutDrafts, setWorkoutDraft, clearWorkoutDraft } = useAppStore();
   const [exercises, setExercises] = useState<EditableExercise[]>([]);
@@ -483,8 +505,8 @@ export const WorkoutSessionEditor = ({
     triggerAddExercise();
   };
 
-  const handleAddPointerUp = (event: React.PointerEvent) => {
-    if (event.pointerType !== "touch") return;
+  const handleAddTouchEnd = (event: React.TouchEvent) => {
+    event.preventDefault();
     addTapRef.current = true;
     triggerAddExercise();
   };
@@ -582,6 +604,70 @@ export const WorkoutSessionEditor = ({
   const headerAction = isEditMode ? "Save" : "Finish";
   const hasExercises = exercises.length > 0;
 
+  const buildPersistPayload = (): PersistSetPayload => {
+    if (!sessionExercises?.length) return [];
+    return exercises
+      .map((exercise) => {
+        const sessionEx = sessionExercises.find(
+          (se) => se.exercise_name === exercise.name,
+        );
+        if (!sessionEx) return null;
+        const sets = exercise.sets
+          .filter(
+            (set) =>
+              isValidNumber(set.weight) &&
+              isValidNumber(set.reps) &&
+              Number(set.weight) > 0 &&
+              Number(set.reps) > 0,
+          )
+          .map((set) => ({
+            weight: Number(set.weight),
+            reps: Number(set.reps),
+            rpe:
+              advancedLogging && set.rpe?.trim()
+                ? Number(set.rpe)
+                : undefined,
+            restSeconds:
+              advancedLogging && set.restSeconds?.trim()
+                ? Number(set.restSeconds)
+                : undefined,
+          }));
+        if (sets.length === 0) return null;
+        return { sessionExerciseId: sessionEx.id, sets };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+  };
+
+  const handleFinish = async () => {
+    if (isEditMode) {
+      saveExercises();
+      return;
+    }
+    persistSessionSets();
+    if (
+      activeSessionId &&
+      sessionExercises?.length &&
+      onPersistSets &&
+      exercises.length > 0
+    ) {
+      const payload = buildPersistPayload();
+      if (payload.length > 0) {
+        try {
+          await onPersistSets(payload);
+        } catch {
+          toast("Unable to save sets. Retry or finish anyway.", {
+            action: {
+              label: "Finish anyway",
+              onClick: () => onFinish?.(),
+            },
+          });
+          return;
+        }
+      }
+    }
+    onFinish?.();
+  };
+
   return (
     <div className="relative min-h-screen bg-slate-950 text-white select-none touch-pan-y">
       <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-4">
@@ -609,14 +695,7 @@ export const WorkoutSessionEditor = ({
               "h-10 rounded-full bg-emerald-400 px-4 text-slate-950 transition hover:bg-emerald-300",
               savePulse && "shadow-[0_0_24px_rgba(52,211,153,0.5)]",
             )}
-            onClick={() => {
-              if (isEditMode) {
-                saveExercises();
-              } else {
-                persistSessionSets();
-                onFinish?.();
-              }
-            }}
+            onClick={() => void handleFinish()}
             disabled={hasInvalidEntries || (isEditMode && !hasExercises)}
           >
             {savePulse && isEditMode ? "Saved" : headerAction}
@@ -687,7 +766,7 @@ export const WorkoutSessionEditor = ({
                 variant="outline"
                 className="mt-4 rounded-full border-white/20 text-white hover:bg-white/10"
                 onClick={handleAddClick}
-                onPointerUp={handleAddPointerUp}
+                onTouchEnd={handleAddTouchEnd}
                 type="button"
                 data-dnd-ignore
               >
@@ -1222,7 +1301,7 @@ export const WorkoutSessionEditor = ({
             variant="outline"
             className="mt-6 w-full rounded-full border-white/20 text-white hover:bg-white/10"
             onClick={handleAddClick}
-            onPointerUp={handleAddPointerUp}
+            onTouchEnd={handleAddTouchEnd}
             type="button"
             data-dnd-ignore
           >

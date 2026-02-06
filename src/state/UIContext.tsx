@@ -47,6 +47,12 @@ type UIContextValue = {
   goToToday: () => void;
   goToPrevDay: () => void;
   goToNextDay: () => void;
+
+  // Experience transition style - shared across nutrition/fitness
+  experienceTransition: "blur-scale" | "color-wash" | "circular-reveal";
+  setExperienceTransition: (
+    value: "blur-scale" | "color-wash" | "circular-reveal"
+  ) => void;
 };
 
 // ============================================================================
@@ -54,6 +60,7 @@ type UIContextValue = {
 // ============================================================================
 
 const WORKOUT_DRAFTS_KEY = "ironflow-workout-drafts-v1";
+const EXPERIENCE_TRANSITION_KEY = "aurafit-experience-transition-v1";
 
 // ============================================================================
 // Context
@@ -85,6 +92,18 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
 
   // Selected Date - ephemeral, defaults to today
   const [selectedDate, setSelectedDate] = useState(() => new Date());
+
+  // Experience transition style - persisted
+  const [experienceTransition, setExperienceTransition] = useState<
+    "blur-scale" | "color-wash" | "circular-reveal"
+  >(() => {
+    if (typeof window === "undefined") return "blur-scale";
+    const stored = window.localStorage.getItem(EXPERIENCE_TRANSITION_KEY);
+    if (stored === "color-wash" || stored === "circular-reveal") {
+      return stored;
+    }
+    return "blur-scale";
+  });
 
   // --- Workout Draft Actions ---
 
@@ -147,6 +166,11 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
     window.localStorage.setItem(WORKOUT_DRAFTS_KEY, JSON.stringify(workoutDrafts));
   }, [workoutDrafts]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(EXPERIENCE_TRANSITION_KEY, experienceTransition);
+  }, [experienceTransition]);
+
   // --- Memoized Value ---
 
   const value = useMemo(
@@ -163,6 +187,8 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
       goToToday,
       goToPrevDay,
       goToNextDay,
+      experienceTransition,
+      setExperienceTransition,
     }),
     [
       workoutDrafts,
@@ -176,6 +202,8 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
       goToToday,
       goToPrevDay,
       goToNextDay,
+      experienceTransition,
+      setExperienceTransition,
     ]
   );
 
@@ -216,4 +244,12 @@ export const useMealPulse = () => {
 export const useSelectedDate = () => {
   const { selectedDate, setSelectedDate, goToToday, goToPrevDay, goToNextDay } = useUI();
   return { selectedDate, setSelectedDate, goToToday, goToPrevDay, goToNextDay };
+};
+
+/**
+ * Experience transition preference
+ */
+export const useExperienceTransition = () => {
+  const { experienceTransition, setExperienceTransition } = useUI();
+  return { experienceTransition, setExperienceTransition };
 };

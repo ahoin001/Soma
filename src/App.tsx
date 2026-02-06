@@ -2,7 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Suspense, lazy, useEffect, useLayoutEffect } from "react";
+import { Suspense, lazy, useEffect, useLayoutEffect, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import {
   BrowserRouter,
   Routes,
@@ -12,7 +14,12 @@ import {
   useNavigationType,
 } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AppStoreProvider, UserProvider, UIProvider } from "@/state";
+import {
+  AppStoreProvider,
+  UserProvider,
+  UIProvider,
+  useExperienceTransition,
+} from "@/state";
 import { OnboardingDialog } from "@/components/aura";
 import { useAuth } from "@/hooks/useAuth";
 import { PageTransition } from "@/components/aura";
@@ -72,8 +79,22 @@ const queryClient = new QueryClient({
 const AnimatedRoutes = () => {
   const location = useLocation();
   const navigationType = useNavigationType();
+  const { experienceTransition } = useExperienceTransition();
+  const prevExperienceRef = useRef<"nutrition" | "fitness">(
+    location.pathname.startsWith("/fitness") ? "fitness" : "nutrition",
+  );
+  const currentExperience = location.pathname.startsWith("/fitness")
+    ? "fitness"
+    : "nutrition";
+  const isExperienceSwitch = prevExperienceRef.current !== currentExperience;
   const withTransition = (element: JSX.Element) => (
-    <PageTransition direction={navigationType === "POP" ? "back" : "forward"}>
+    <PageTransition
+      key={location.pathname}
+      direction={navigationType === "POP" ? "back" : "forward"}
+      transitionStyle={experienceTransition}
+      experienceTone={currentExperience}
+      isExperienceSwitch={isExperienceSwitch}
+    >
       {element}
     </PageTransition>
   );
@@ -105,6 +126,10 @@ const AnimatedRoutes = () => {
   }, [location.pathname]);
 
   useEffect(() => {
+    prevExperienceRef.current = currentExperience;
+  }, [currentExperience]);
+
+  useEffect(() => {
     if (typeof document === "undefined") return;
     const root = document.documentElement;
     const isFitness = location.pathname.startsWith("/fitness");
@@ -125,7 +150,8 @@ const AnimatedRoutes = () => {
   return (
     <>
       <ScrollRestoration />
-      <Routes location={location}>
+      <AnimatePresence mode="wait" initial={false}>
+        <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Navigate to="/nutrition" replace />} />
         <Route
           path="/nutrition"
@@ -320,8 +346,51 @@ const AnimatedRoutes = () => {
         <Route path="/auth" element={<AuthRoute />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
-      </Routes>
+        </Routes>
+      </AnimatePresence>
     </>
+  );
+};
+
+const ExperienceBackdrop = () => {
+  const location = useLocation();
+  if (location.pathname.startsWith("/auth")) return null;
+
+  const experience = location.pathname.startsWith("/fitness") ? "fitness" : "nutrition";
+  const nutritionHudGradient =
+    "radial-gradient(circle_at_15%_10%,_rgba(191,219,254,0.8),_transparent_45%),radial-gradient(circle_at_85%_0%,_rgba(167,243,208,0.9),_transparent_45%),radial-gradient(circle_at_70%_80%,_rgba(253,224,71,0.35),_transparent_55%),linear-gradient(180deg,_rgba(240,253,244,1)_0%,_rgba(236,253,245,0.92)_50%,_rgba(209,250,229,0.88)_100%)";
+  const fitnessGradient = "linear-gradient(180deg,_#020617_0%,_#0f172a_100%)";
+
+  return (
+    <AnimatePresence mode="wait">
+      {experience === "nutrition" ? (
+        <motion.div
+          key="experience-backdrop-nutrition"
+          className="pointer-events-none fixed inset-0 z-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        >
+          <div className="absolute inset-x-0 top-0 h-[400px]" style={{ background: nutritionHudGradient }} />
+          <div className="absolute inset-0">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,_rgba(125,211,252,0.28),_transparent_45%),radial-gradient(circle_at_80%_15%,_rgba(134,239,172,0.32),_transparent_45%),radial-gradient(circle_at_70%_80%,_rgba(253,224,71,0.2),_transparent_50%),radial-gradient(circle_at_10%_85%,_rgba(59,130,246,0.18),_transparent_45%)] opacity-70" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,_rgba(255,255,255,0.9)_0%,_rgba(255,255,255,0.7)_35%,_rgba(255,255,255,0.85)_100%)]" />
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div
+          key="experience-backdrop-fitness"
+          className="pointer-events-none fixed inset-0 z-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        >
+          <div className="absolute inset-0" style={{ background: fitnessGradient }} />
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
@@ -411,6 +480,7 @@ const AppShell = () => {
       <Suspense fallback={<AuthLoading />}>
         {isSignedIn ? (
           <>
+            <ExperienceBackdrop />
             {/* OnboardingDialog shows automatically if user hasn't completed onboarding */}
             <OnboardingDialog />
             <AnimatedRoutes />
