@@ -197,6 +197,7 @@ const ExerciseCard = memo(
     exercise,
     thumb,
     isEditMode,
+    dragMode,
     isAdmin,
     isHighlighted,
     isNoteOpen,
@@ -216,7 +217,8 @@ const ExerciseCard = memo(
   }: ExerciseCardProps) => (
     <motion.div
       className={cn(
-        "relative rounded-[22px] border border-white/10 bg-white/5 px-3 py-3 touch-pan-y will-change-transform",
+        "relative rounded-[22px] border border-white/10 bg-white/5 px-3 py-3 will-change-transform",
+        dragMode ? "touch-none" : "touch-pan-y",
         isHighlighted && "ring-1 ring-emerald-400/60 shadow-[0_0_22px_rgba(52,211,153,0.28)]",
       )}
       style={{ contentVisibility: "auto", containIntrinsicSize: "640px" }}
@@ -801,7 +803,7 @@ export const WorkoutSessionEditor = ({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(SmartPointerSensor, {
-      activationConstraint: { delay: 180, tolerance: 6 },
+      activationConstraint: { distance: 4 },
     }),
   );
 
@@ -1145,6 +1147,17 @@ export const WorkoutSessionEditor = ({
     }
   }, [exercises.length, isEditMode]);
 
+  useEffect(() => {
+    if (!dragMode) return;
+    const onTouchMove = (event: TouchEvent) => {
+      event.preventDefault();
+    };
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => {
+      document.removeEventListener("touchmove", onTouchMove);
+    };
+  }, [dragMode]);
+
   const handleDragEnd = (event: { active: { id: string }; over?: { id: string } | null }) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -1373,12 +1386,26 @@ export const WorkoutSessionEditor = ({
                 if (navigator.vibrate) {
                   navigator.vibrate(8);
                 }
+                if (typeof document !== "undefined") {
+                  document.body.style.overscrollBehaviorY = "contain";
+                  document.documentElement.style.overscrollBehaviorY = "contain";
+                }
               }}
               onDragEnd={(event) => {
                 handleDragEnd(event);
                 setActiveDragId(null);
+                if (typeof document !== "undefined") {
+                  document.body.style.overscrollBehaviorY = "";
+                  document.documentElement.style.overscrollBehaviorY = "";
+                }
               }}
-              onDragCancel={() => setActiveDragId(null)}
+              onDragCancel={() => {
+                setActiveDragId(null);
+                if (typeof document !== "undefined") {
+                  document.body.style.overscrollBehaviorY = "";
+                  document.documentElement.style.overscrollBehaviorY = "";
+                }
+              }}
             >
               <SortableContext
                 items={exerciseIds}
@@ -1388,7 +1415,8 @@ export const WorkoutSessionEditor = ({
                   variants={listVariants}
                   initial={shouldAnimateList ? "hidden" : false}
                   animate={shouldAnimateList ? "show" : undefined}
-                  className="space-y-4"
+                  className="space-y-4 overscroll-contain"
+                  style={{ overscrollBehaviorY: "contain" }}
                 >
                   {exercises.map((exercise) => (
                     <SortableExercise
