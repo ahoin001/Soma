@@ -8,6 +8,8 @@ import {
 import type { ReactNode } from "react";
 import {
   fetchCurrentUser,
+  getSessionToken,
+  getStoredUserId,
   loginUser,
   logoutUser,
   registerUser,
@@ -42,12 +44,21 @@ const AuthContext = createContext<AuthContextValue | null>(null);
  * calling useAuth() got its own copy starting at status:"loading",
  * making a fresh fetchCurrentUser() call and flashing a skeleton.
  */
+// Restore auth from storage so the app shell can render immediately (no blocking network).
+const getInitialAuthState = (): AuthState => {
+  if (typeof window === "undefined") {
+    return { userId: null, email: null, status: "loading" };
+  }
+  const storedUserId = getStoredUserId();
+  const sessionToken = getSessionToken();
+  if (storedUserId && sessionToken) {
+    return { userId: storedUserId, email: null, status: "ready" };
+  }
+  return { userId: null, email: null, status: "loading" };
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [state, setState] = useState<AuthState>({
-    userId: null,
-    email: null,
-    status: "loading",
-  });
+  const [state, setState] = useState<AuthState>(getInitialAuthState);
 
   const refresh = useCallback(async () => {
     try {
@@ -64,7 +75,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    void refresh();
+    const initial = getInitialAuthState();
+    if (initial.status === "ready") {
+      // Validate in background; app is already visible
+      void refresh();
+    } else {
+      void refresh();
+    }
   }, [refresh]);
 
   const register = useCallback(

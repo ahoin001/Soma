@@ -12,6 +12,30 @@ export default defineConfig(() => ({
       "/api": "http://localhost:8787",
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes("node_modules")) {
+            if (id.includes("react-dom") || id.includes("react/jsx")) return "react-dom";
+            if (id.includes("react")) return "react";
+            if (id.includes("@tanstack/react-query")) return "react-query";
+            if (id.includes("react-router") || id.includes("react-router-dom")) return "router";
+            if (id.includes("framer-motion")) return "framer-motion";
+            if (id.includes("sonner") || id.includes("vaul") || id.includes("radix-ui")) return "ui-vendor";
+          }
+          return undefined;
+        },
+        chunkFileNames: "assets/[name]-[hash].js",
+        entryFileNames: "assets/[name]-[hash].js",
+        assetFileNames: "assets/[name]-[hash][extname]",
+      },
+    },
+    target: "es2020",
+    minify: "esbuild",
+    cssCodeSplit: true,
+    sourcemap: false,
+  },
   plugins: [
     dyadComponentTagger(),
     react(),

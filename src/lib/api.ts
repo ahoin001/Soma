@@ -26,6 +26,10 @@ const buildApiUrl = (path: string) => {
   return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
 };
 
+/** Read stored user id only; does not create one. For auth restore. */
+export const getStoredUserId = () =>
+  typeof window !== "undefined" ? window.localStorage.getItem(USER_ID_KEY) : null;
+
 export const getUserId = () => {
   if (typeof window === "undefined") return null;
   const existing = window.localStorage.getItem(USER_ID_KEY);
