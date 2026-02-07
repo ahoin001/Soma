@@ -175,7 +175,22 @@ router.get(
 
       const items = await client.query(
         `
-        SELECT meal_entry_items.*, foods.image_url
+        SELECT
+          meal_entry_items.id,
+          meal_entry_items.meal_entry_id,
+          meal_entry_items.food_id,
+          meal_entry_items.food_name,
+          meal_entry_items.portion_label,
+          meal_entry_items.portion_grams,
+          meal_entry_items.quantity,
+          meal_entry_items.micronutrients,
+          meal_entry_items.sort_order,
+          meal_entry_items.created_at,
+          COALESCE(NULLIF(meal_entry_items.kcal, 0), foods.kcal, 0) AS kcal,
+          COALESCE(NULLIF(meal_entry_items.carbs_g, 0), foods.carbs_g, 0) AS carbs_g,
+          COALESCE(NULLIF(meal_entry_items.protein_g, 0), foods.protein_g, 0) AS protein_g,
+          COALESCE(NULLIF(meal_entry_items.fat_g, 0), foods.fat_g, 0) AS fat_g,
+          foods.image_url AS image_url
         FROM meal_entry_items
         LEFT JOIN foods ON foods.id = meal_entry_items.food_id
         WHERE meal_entry_id = ANY($1::uuid[])

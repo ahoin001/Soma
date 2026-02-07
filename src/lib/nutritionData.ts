@@ -54,25 +54,28 @@ export const computeLogSections = (
     if (!target) continue;
     target.latestLoggedAt = Math.max(target.latestLoggedAt, loggedAt);
     target.section.items.push(
-      ...entryItems.map((item) => ({
-        id: item.id,
-        foodId: item.food_id ?? null,
-        mealTypeId: entry.meal_type_id ?? null,
-        mealLabel,
-        mealEmoji,
-        name: item.food_name,
-        quantity: item.quantity ?? 1,
-        portionLabel: item.portion_label ?? null,
-        portionGrams: item.portion_grams ?? null,
-        kcal: Number(item.kcal ?? 0),
-        macros: {
-          carbs: Number(item.carbs_g ?? 0),
-          protein: Number(item.protein_g ?? 0),
-          fat: Number(item.fat_g ?? 0),
-        },
-        emoji: mealEmoji,
-        imageUrl: item.image_url ?? null,
-      }))
+      ...entryItems.map((item) => {
+        const quantity = Number(item.quantity ?? 1) || 1;
+        const kcal = Number(item.kcal ?? 0) || 0;
+        const carbs = Number(item.carbs_g ?? 0) || 0;
+        const protein = Number(item.protein_g ?? 0) || 0;
+        const fat = Number(item.fat_g ?? 0) || 0;
+        return {
+          id: item.id,
+          foodId: item.food_id ?? null,
+          mealTypeId: entry.meal_type_id ?? null,
+          mealLabel,
+          mealEmoji,
+          name: item.food_name,
+          quantity,
+          portionLabel: item.portion_label ?? null,
+          portionGrams: item.portion_grams ?? null,
+          kcal,
+          macros: { carbs, protein, fat },
+          emoji: mealEmoji,
+          imageUrl: item.image_url ?? null,
+        };
+      })
     );
   }
 
@@ -103,12 +106,17 @@ export const computeTotals = (sections: LogSection[]) =>
   sections.reduce(
     (acc, section) =>
       section.items.reduce((inner, entry) => {
-        const quantity = entry.quantity ?? 1;
+        const quantity = Number(entry.quantity ?? 1) || 1;
+        const macros = entry.macros ?? { carbs: 0, protein: 0, fat: 0 };
+        const kcal = Number(entry.kcal ?? 0) || 0;
+        const carbs = Number(macros.carbs ?? 0) || 0;
+        const protein = Number(macros.protein ?? 0) || 0;
+        const fat = Number(macros.fat ?? 0) || 0;
         return {
-          kcal: inner.kcal + entry.kcal * quantity,
-          carbs: inner.carbs + entry.macros.carbs * quantity,
-          protein: inner.protein + entry.macros.protein * quantity,
-          fat: inner.fat + entry.macros.fat * quantity,
+          kcal: inner.kcal + kcal * quantity,
+          carbs: inner.carbs + carbs * quantity,
+          protein: inner.protein + protein * quantity,
+          fat: inner.fat + fat * quantity,
         };
       }, acc),
     { kcal: 0, carbs: 0, protein: 0, fat: 0 }

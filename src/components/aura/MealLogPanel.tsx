@@ -373,12 +373,17 @@ LogRow.displayName = "LogRow";
 const MealSummary = ({ items, pulse }: { items: LogItem[]; pulse?: boolean }) => {
   const totals = items.reduce(
     (acc, item) => {
-      const quantity = item.quantity ?? 1;
+      const quantity = Number(item.quantity ?? 1) || 1;
+      const macros = item.macros ?? { carbs: 0, protein: 0, fat: 0 };
+      const kcal = Number(item.kcal ?? 0) || 0;
+      const carbs = Number(macros.carbs ?? 0) || 0;
+      const protein = Number(macros.protein ?? 0) || 0;
+      const fat = Number(macros.fat ?? 0) || 0;
       return {
-        kcal: acc.kcal + item.kcal * quantity,
-        carbs: acc.carbs + item.macros.carbs * quantity,
-        protein: acc.protein + item.macros.protein * quantity,
-        fat: acc.fat + item.macros.fat * quantity,
+        kcal: acc.kcal + kcal * quantity,
+        carbs: acc.carbs + carbs * quantity,
+        protein: acc.protein + protein * quantity,
+        fat: acc.fat + fat * quantity,
       };
     },
     { kcal: 0, carbs: 0, protein: 0, fat: 0 },
