@@ -344,6 +344,7 @@ const EditFood = () => {
       setDraft({ ...draft, ingredients: value });
       return;
     }
+    
     const numeric = value.trim() === "" ? null : Number(value);
     if (key === "kcal" || key === "carbs" || key === "protein" || key === "fat") {
       setDraft({
