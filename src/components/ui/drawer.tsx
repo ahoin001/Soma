@@ -45,6 +45,7 @@ const Drawer = ({
       open={open}
       onOpenChange={handleOpenChange}
       shouldScaleBackground={shouldScaleBackground}
+      noBodyStyles
       {...props}
     />
   );

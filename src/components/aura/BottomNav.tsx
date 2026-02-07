@@ -71,8 +71,14 @@ export const BottomNav = ({ experience, onAddAction }: BottomNavProps) => {
 
   return createPortal(
     <div
-      className="fixed inset-x-0 bottom-0 z-[60] flex justify-center px-5"
-      style={{ paddingBottom: "max(1.25rem, var(--sab))" }}
+      className="flex justify-center px-5 z-[60]"
+      style={{
+        position: "fixed",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        paddingBottom: "max(1.25rem, var(--sab))",
+      }}
     >
       <div
         className={`flex w-full max-w-sm items-center justify-between rounded-[28px] border px-6 py-3 shadow-[0_18px_36px_rgba(15,23,42,0.12)] backdrop-blur-md ${containerTone}`}
