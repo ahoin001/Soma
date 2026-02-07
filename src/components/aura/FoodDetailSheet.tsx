@@ -608,7 +608,7 @@ export const FoodDetailSheet = ({
                   <img
                     src={imageUrl}
                     alt={food.name}
-                    className="h-full w-full object-cover object-center"
+                    className="h-full w-full object-contain object-center"
                     loading="lazy"
                     decoding="async"
                   />
@@ -624,7 +624,7 @@ export const FoodDetailSheet = ({
                   <img
                     src={food.brandLogoUrl}
                     alt={food.brand ?? "Brand logo"}
-                    className="h-6 w-6 rounded-full object-cover object-center"
+                    className="h-6 w-6 rounded-full object-contain object-center"
                     loading="lazy"
                     decoding="async"
                   />
@@ -684,7 +684,7 @@ export const FoodDetailSheet = ({
                       <img
                         src={imageUrl}
                         alt={food?.name ?? "Food image"}
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center border-dashed">

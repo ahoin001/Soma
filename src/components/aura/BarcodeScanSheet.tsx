@@ -67,7 +67,7 @@ export const BarcodeScanSheet = ({
             <div className="relative flex h-44 items-center justify-center overflow-hidden rounded-[18px] bg-emerald-50/70">
               <video
                 ref={videoRef}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain"
                 playsInline
                 muted
               />

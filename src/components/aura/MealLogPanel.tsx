@@ -42,6 +42,12 @@ export const MealLogPanel = ({
     return map;
   }, [logSections]);
 
+  // Sections that don't match any meal (e.g. API "Meal" or legacy) so they still show
+  const unmatchedSections = useMemo(() => {
+    const matchedLabels = new Set(meals.map((m) => m.label));
+    return logSections.filter((s) => !matchedLabels.has(s.meal));
+  }, [logSections, meals]);
+
   return (
     <Card className="relative mt-6 overflow-hidden rounded-[28px] border border-black/5 bg-white/85 px-5 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)] backdrop-blur-sm">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,_rgba(16,185,129,0.14),_transparent_45%),radial-gradient(circle_at_85%_0%,_rgba(59,130,246,0.08),_transparent_50%),radial-gradient(circle_at_70%_85%,_rgba(253,224,71,0.08),_transparent_55%)] opacity-70" />
@@ -184,6 +190,77 @@ export const MealLogPanel = ({
             </motion.div>
           );
         })}
+        {unmatchedSections.map((section) => {
+          const itemCount = section.items.length;
+          const kcalTotal = section.items.reduce(
+            (sum, item) => sum + (item.quantity ?? 1) * item.kcal,
+            0,
+          );
+          const fakeMealId = `other-${section.meal}`;
+          const isOpen = openMeals[fakeMealId] ?? itemCount > 0;
+          return (
+            <motion.div key={`meal-wrap-${fakeMealId}`} className="rounded-[22px]">
+              <Collapsible
+                open={isOpen}
+                onOpenChange={(open) =>
+                  setOpenMeals((prev) => ({ ...prev, [fakeMealId]: open }))
+                }
+                className="group relative overflow-hidden rounded-[22px] border border-black/5 bg-white/70 transition-colors data-[state=open]:border-emerald-100/70 data-[state=open]:shadow-[0_10px_26px_rgba(16,185,129,0.12)]"
+              >
+                <div className="bg-emerald-50/50 p-3">
+                  <div className="flex items-center gap-3">
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="group h-auto flex-1 justify-between gap-3 rounded-[18px] px-3 py-3 text-left"
+                        aria-label={`Toggle ${section.meal} details`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-11 w-11 rounded-full bg-white/95 text-lg shadow-[0_8px_18px_rgba(15,23,42,0.08)] flex items-center justify-center">
+                            🍽️
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800">
+                              {section.meal}
+                            </p>
+                            <p className="text-xs text-slate-500/90">
+                              <AnimatedNumber value={itemCount} /> items •{" "}
+                              <AnimatedNumber value={kcalTotal} /> cal
+                            </p>
+                          </div>
+                        </div>
+                      </Button>
+                    </CollapsibleTrigger>
+                    <div className="h-11 w-11 shrink-0" />
+                  </div>
+                </div>
+                <CollapsibleContent forceMount asChild>
+                  <motion.div
+                    className="mt-3 overflow-hidden"
+                    initial={false}
+                    animate={{
+                      height: isOpen ? "auto" : 0,
+                      opacity: isOpen ? 1 : 0,
+                    }}
+                    transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <div className="space-y-2 px-3 pb-3 pt-2">
+                      <MealSummary items={section.items} pulse={false} />
+                      <LogItems
+                        key={`log-items-other-${section.meal}`}
+                        meal={section.meal}
+                        items={section.items}
+                        onEditItem={onEditItem}
+                        animateOnMount={false}
+                      />
+                    </div>
+                  </motion.div>
+                </CollapsibleContent>
+              </Collapsible>
+            </motion.div>
+          );
+        })}
       </div>
     </Card>
   );
@@ -271,7 +348,7 @@ const LogRow = forwardRef<
               <img
                 src={item.imageUrl}
                 alt={item.name}
-                className="h-full w-full object-cover object-center"
+                className="h-full w-full object-contain object-center"
                 loading="lazy"
                 decoding="async"
               />

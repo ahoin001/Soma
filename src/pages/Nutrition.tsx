@@ -725,7 +725,7 @@ const Nutrition = () => {
                         <img
                           src={food.imageUrl}
                           alt={food.name}
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-contain"
                         />
                       ) : (
                         food.emoji

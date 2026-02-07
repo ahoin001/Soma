@@ -430,7 +430,7 @@ const EditFood = () => {
                   <img
                     src={currentFood.imageUrl}
                     alt={currentFood.name}
-                    className="h-16 w-16 shrink-0 rounded-xl object-cover shadow-sm"
+                    className="h-16 w-16 shrink-0 rounded-xl object-contain shadow-sm"
                   />
                 </div>
               )}
@@ -440,7 +440,7 @@ const EditFood = () => {
                   <img
                     src={newImagePreview}
                     alt="New upload"
-                    className="h-16 w-16 shrink-0 rounded-xl object-cover shadow-sm ring-2 ring-emerald-400"
+                    className="h-16 w-16 shrink-0 rounded-xl object-contain shadow-sm ring-2 ring-emerald-400"
                   />
                 </div>
               )}
@@ -526,7 +526,7 @@ const EditFood = () => {
                       <img
                         src={brandLogoUrl}
                         alt="Brand"
-                        className="h-5 w-5 rounded-full object-cover"
+                        className="h-5 w-5 rounded-full object-contain"
                       />
                     )}
                     <SelectValue placeholder="Select brand" />
@@ -569,7 +569,7 @@ const EditFood = () => {
                             <img
                               src={brand.logo_url}
                               alt={brand.name}
-                              className="h-5 w-5 rounded-full object-cover"
+                              className="h-5 w-5 rounded-full object-contain"
                             />
                           ) : null}
                           <span>{brand.name}</span>
@@ -617,7 +617,7 @@ const EditFood = () => {
                         <img
                           src={brandLogoUrl}
                           alt="Brand logo"
-                          className="h-12 w-12 shrink-0 rounded-full object-cover shadow-sm ring-2 ring-emerald-400"
+                          className="h-12 w-12 shrink-0 rounded-full object-contain shadow-sm ring-2 ring-emerald-400"
                         />
                       </div>
                     )}
@@ -747,7 +747,7 @@ const EditFood = () => {
                         <img
                           src={originalBrandLogoUrl}
                           alt="Brand logo"
-                          className="h-12 w-12 shrink-0 rounded-full object-cover shadow-sm"
+                          className="h-12 w-12 shrink-0 rounded-full object-contain shadow-sm"
                         />
                       </div>
                     )}
@@ -757,7 +757,7 @@ const EditFood = () => {
                         <img
                           src={brandLogoUrl}
                           alt="New logo"
-                          className="h-12 w-12 shrink-0 rounded-full object-cover shadow-sm ring-2 ring-emerald-400"
+                          className="h-12 w-12 shrink-0 rounded-full object-contain shadow-sm ring-2 ring-emerald-400"
                         />
                       </div>
                     )}

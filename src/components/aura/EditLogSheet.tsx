@@ -184,7 +184,7 @@ export const EditLogSheet = ({
                   <img
                     src={item.imageUrl}
                     alt={item.name}
-                    className="h-full w-full object-cover object-center"
+                    className="h-full w-full object-contain object-center"
                     loading="lazy"
                     decoding="async"
                   />

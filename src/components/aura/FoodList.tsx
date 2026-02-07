@@ -65,7 +65,7 @@ export const FoodList: FC<FoodListProps> = ({
                     <img
                       src={food.imageUrl}
                       alt={food.name}
-                      className="h-full w-full object-cover object-center"
+                      className="h-full w-full object-contain object-center"
                       loading="lazy"
                       decoding="async"
                     />
@@ -81,7 +81,7 @@ export const FoodList: FC<FoodListProps> = ({
                         <img
                           src={food.brandLogoUrl}
                           alt={food.brand ?? ""}
-                          className="h-4 w-4 rounded-full object-cover"
+                          className="h-4 w-4 rounded-full object-contain"
                           loading="lazy"
                           decoding="async"
                         />

@@ -259,10 +259,10 @@ export const useDailyIntakeQuery = (
       );
       console.log("[logFood] onMutate: previous logSections count", previous?.logSections.length);
 
-      // Find meal label from meals array
+      // Find meal by id so section.meal matches a meal.label (MealLogPanel looks up by meal.label)
       const meal = meals.find((m) => m.id === mealTypeId);
-      const mealLabel = meal?.label ?? "Meal";
-      const mealEmoji = meal?.emoji ?? "🍽️";
+      const mealLabel = meal?.label ?? (meals[0]?.label ?? "Meal");
+      const mealEmoji = meal?.emoji ?? meals[0]?.emoji ?? "🍽️";
 
       // Create optimistic log item
       const safeQuantity =

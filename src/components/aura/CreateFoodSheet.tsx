@@ -443,7 +443,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
               <img
                 src={imageUrl}
                 alt={foodName || "Food"}
-                className="h-full w-full object-cover object-center"
+                className="h-full w-full object-contain object-center"
                 loading="lazy"
                 decoding="async"
               />
@@ -487,7 +487,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                 <img
                   src={selectedBrandLogoUrl}
                   alt="Brand"
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                 />
               ) : (
                 <span className="text-slate-400">🏷️</span>
@@ -563,7 +563,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                               <img
                                 src={brand.logo_url}
                                 alt={brand.name}
-                                className="h-5 w-5 rounded-full object-cover"
+                                className="h-5 w-5 rounded-full object-contain"
                               />
                             ) : (
                               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[10px]">🏷️</span>
@@ -648,7 +648,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   <img
                     src={newBrandLogoUrl}
                     alt="Brand logo"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain"
                   />
                 ) : (
                   "🏷️"
