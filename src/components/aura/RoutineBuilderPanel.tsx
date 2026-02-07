@@ -49,10 +49,12 @@ export const RoutineBuilderPanel = ({
 }: RoutineBuilderPanelProps) => {
   const [routineName, setRoutineName] = useState("");
   const [renameValue, setRenameValue] = useState(activeRoutine?.name ?? "");
+  const [targetSetInputs, setTargetSetInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setRenameValue(activeRoutine?.name ?? "");
-  }, [activeRoutine?.name]);
+    setTargetSetInputs({});
+  }, [activeRoutine?.id, activeRoutine?.name]);
 
   const routineOptions = useMemo(
     () =>
@@ -161,12 +163,25 @@ export const RoutineBuilderPanel = ({
                     <Input
                       type="number"
                       min={1}
-                      value={exercise.targetSets}
-                      onChange={(event) =>
+                      value={targetSetInputs[exercise.id] ?? String(exercise.targetSets ?? "")}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setTargetSetInputs((prev) => ({ ...prev, [exercise.id]: value }));
+                        if (!value.trim()) return;
+                        const next = Number(value);
+                        if (!Number.isFinite(next) || next <= 0) return;
                         onUpdateExercise(activeRoutine.id, exercise.id, {
-                          targetSets: Number(event.target.value) || 1,
-                        })
-                      }
+                          targetSets: next,
+                        });
+                      }}
+                      onBlur={() => {
+                        const current = targetSetInputs[exercise.id];
+                        if (current && current.trim().length > 0) return;
+                        setTargetSetInputs((prev) => ({
+                          ...prev,
+                          [exercise.id]: String(exercise.targetSets ?? 1),
+                        }));
+                      }}
                       className="h-9 w-16 border-white/10 bg-white/5 text-center text-white"
                     />
                     <Button

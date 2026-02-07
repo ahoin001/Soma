@@ -419,50 +419,79 @@ router.patch(
     const userId = getUserId(req);
     await assertAdmin(userId);
     const payload = updateFoodSchema.parse(req.body);
-    // Debug: Log micronutrients being saved
-    console.log("[foods PATCH] Updating food:", {
-      foodId: req.params.foodId,
-      hasMicronutrients: !!payload.micronutrients,
-      micronutrients: payload.micronutrients,
-    });
+    const params: unknown[] = [req.params.foodId];
+    const sets: string[] = ["updated_at = now()"];
+    let idx = 2;
+
+    if (payload.name !== undefined) {
+      sets.push(`name = $${idx}`);
+      params.push(payload.name);
+      idx += 1;
+    }
+    if (payload.brand !== undefined) {
+      sets.push(`brand = $${idx}`);
+      params.push(payload.brand);
+      idx += 1;
+    }
+    if (payload.brandId !== undefined) {
+      sets.push(`brand_id = $${idx}`);
+      params.push(payload.brandId);
+      idx += 1;
+    }
+    if (payload.portionLabel !== undefined) {
+      sets.push(`portion_label = $${idx}`);
+      params.push(payload.portionLabel);
+      idx += 1;
+    }
+    if (payload.portionGrams !== undefined) {
+      sets.push(`portion_grams = $${idx}`);
+      params.push(payload.portionGrams);
+      idx += 1;
+    }
+    if (payload.kcal !== undefined) {
+      sets.push(`kcal = $${idx}`);
+      params.push(payload.kcal);
+      idx += 1;
+    }
+    if (payload.carbsG !== undefined) {
+      sets.push(`carbs_g = $${idx}`);
+      params.push(payload.carbsG);
+      idx += 1;
+    }
+    if (payload.proteinG !== undefined) {
+      sets.push(`protein_g = $${idx}`);
+      params.push(payload.proteinG);
+      idx += 1;
+    }
+    if (payload.fatG !== undefined) {
+      sets.push(`fat_g = $${idx}`);
+      params.push(payload.fatG);
+      idx += 1;
+    }
+    if (payload.micronutrients !== undefined) {
+      sets.push(`micronutrients = $${idx}`);
+      params.push(payload.micronutrients);
+      idx += 1;
+    }
+
+    if (sets.length <= 1) {
+      const result = await query(
+        `SELECT * FROM foods WHERE id = $1`,
+        [req.params.foodId],
+      );
+      res.json({ item: result.rows[0] ?? null });
+      return;
+    }
+
     const result = await query(
       `
       UPDATE foods
-      SET
-        name = COALESCE($2, name),
-        brand = COALESCE($3, brand),
-        brand_id = COALESCE($4, brand_id),
-        portion_label = COALESCE($5, portion_label),
-        portion_grams = COALESCE($6, portion_grams),
-        kcal = COALESCE($7, kcal),
-        carbs_g = COALESCE($8, carbs_g),
-        protein_g = COALESCE($9, protein_g),
-        fat_g = COALESCE($10, fat_g),
-        micronutrients = COALESCE($11, micronutrients),
-        updated_at = now()
+      SET ${sets.join(", ")}
       WHERE id = $1
       RETURNING *;
       `,
-      [
-        req.params.foodId,
-        payload.name ?? null,
-        payload.brand ?? null,
-        payload.brandId ?? null,
-        payload.portionLabel ?? null,
-        payload.portionGrams ?? null,
-        payload.kcal ?? null,
-        payload.carbsG ?? null,
-        payload.proteinG ?? null,
-        payload.fatG ?? null,
-        payload.micronutrients ?? null,
-      ],
+      params,
     );
-    // Debug: Log the saved food's micronutrients
-    console.log("[foods PATCH] Saved food:", {
-      id: result.rows[0]?.id,
-      name: result.rows[0]?.name,
-      micronutrients: result.rows[0]?.micronutrients,
-    });
     searchCache.clear();
     listCache.clear();
     res.json({ item: result.rows[0] ?? null });

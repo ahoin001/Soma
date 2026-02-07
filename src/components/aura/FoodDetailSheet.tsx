@@ -62,10 +62,10 @@ type NutritionDraft = {
   brandId: string | null;
   portion: string;
   portionGrams: number | null;
-  kcal: number;
-  carbs: number;
-  protein: number;
-  fat: number;
+  kcal: number | "";
+  carbs: number | "";
+  protein: number | "";
+  fat: number | "";
   sodiumMg: number | null;
   fiberG: number | null;
   sugarG: number | null;
@@ -370,7 +370,7 @@ export const FoodDetailSheet = ({
     if (!draft) return false;
     return (
       [draft.kcal, draft.carbs, draft.protein, draft.fat].every(
-        (value) => Number.isFinite(value) && value >= 0,
+        (value) => typeof value === "number" && Number.isFinite(value) && value >= 0,
       )
     );
   }, [draft]);
@@ -418,7 +418,10 @@ export const FoodDetailSheet = ({
     }
     const numeric = value.trim() === "" ? null : Number(value);
     if (key === "kcal" || key === "carbs" || key === "protein" || key === "fat") {
-      setDraft({ ...draft, [key]: Number.isFinite(numeric) ? numeric : 0 });
+      setDraft({
+        ...draft,
+        [key]: Number.isFinite(numeric as number) ? (numeric as number) : "",
+      });
       return;
     }
     setDraft({
@@ -949,254 +952,28 @@ export const FoodDetailSheet = ({
                   {adminEditing || editing ? "Cancel" : "Edit"}
                 </Button>
               </div>
-              {(adminEditing || editing) && draft && (
+              {adminEditing && (
+                <div className="mt-4">
+                  <p className="text-xs text-slate-500">
+                    Use the full editor to update master nutrition data.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="mt-3 h-9 rounded-full px-4 text-xs font-semibold"
+                    onClick={() => {
+                      handleOpenChange(false);
+                      navigate("/nutrition/food/edit", {
+                        state: { food, returnTo: "/nutrition" },
+                      });
+                    }}
+                  >
+                    Edit in full page
+                  </Button>
+                </div>
+              )}
+              {!adminEditing && editing && draft && (
                 <div className="mt-4 space-y-3">
-                  {adminEditing && (
-                    <>
-                      {/* Food name input */}
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                          Name
-                        </p>
-                        <Input
-                          value={draft.name}
-                          onChange={(event) =>
-                            handleDraftChange("name", event.target.value)
-                          }
-                          className="mt-1 h-10 rounded-full"
-                        />
-                      </div>
-
-                      {/* Brand section - consolidated */}
-                      <div className="rounded-[16px] border border-slate-100 bg-slate-50/50 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                          Brand
-                        </p>
-                        <div className="mt-2 flex items-center gap-3">
-                          {/* Brand logo preview */}
-                          <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm">
-                            {brandLogoUrl ? (
-                              <img
-                                src={brandLogoUrl}
-                                alt="Brand logo"
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-lg">
-                                🏷️
-                              </div>
-                            )}
-                          </div>
-                          {/* Brand selector */}
-                          <div className="flex-1">
-                            <Select
-                              value={draft.brandId ?? "none"}
-                              onValueChange={(value) => {
-                                if (value === "none") {
-                                  setDraft({ ...draft, brandId: null, brand: "" });
-                                  setBrandLogoUrl(null);
-                                  setBrandCreateOpen(false);
-                                  return;
-                                }
-                                if (value === "__create__") {
-                                  setBrandCreateOpen(true);
-                                  return;
-                                }
-                                const match = brands.find((brand) => brand.id === value);
-                                setDraft({
-                                  ...draft,
-                                  brandId: value,
-                                  brand: match?.name ?? "",
-                                });
-                                setBrandLogoUrl(match?.logo_url ?? null);
-                                setBrandCreateOpen(false);
-                              }}
-                            >
-                              <SelectTrigger className="h-10 rounded-full">
-                                <SelectValue placeholder="Select brand" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <div className="px-3 py-2">
-                                  <Input
-                                    value={brandQuery}
-                                    onChange={(event) => setBrandQuery(event.target.value)}
-                                    placeholder="Search brand"
-                                    className="h-9 rounded-full"
-                                  />
-                                </div>
-                                <SelectItem value="none">No brand</SelectItem>
-                                <SelectItem value="__create__">
-                                  <span className="text-emerald-600">+ Create new brand</span>
-                                </SelectItem>
-                                {brandLoading && (
-                                  <div className="px-3 py-2 text-xs text-slate-500">
-                                    Loading...
-                                  </div>
-                                )}
-                                {brands.map((brand) => (
-                                  <SelectItem key={brand.id} value={brand.id}>
-                                    <div className="flex items-center gap-2">
-                                      {brand.logo_url ? (
-                                        <img
-                                          src={brand.logo_url}
-                                          alt={brand.name}
-                                          className="h-5 w-5 rounded-full object-cover"
-                                        />
-                                      ) : (
-                                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[10px]">
-                                          🏷️
-                                        </span>
-                                      )}
-                                      <span>{brand.name}</span>
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                                {!brandLoading && brands.length === 0 && (
-                                  <div className="px-3 py-2 text-xs text-slate-500">
-                                    No brands found
-                                  </div>
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        {/* Create new brand - inline expandable */}
-                        {brandCreateOpen && (
-                          <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
-                            <div className="flex items-center justify-between">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-emerald-500">
-                                New brand details
-                              </p>
-                              <button
-                                type="button"
-                                className="text-[11px] font-medium text-slate-400 hover:text-slate-600"
-                                onClick={() => {
-                                  setBrandCreateOpen(false);
-                                  setBrandName("");
-                                  setBrandWebsite("");
-                                }}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                            <Input
-                              value={brandName}
-                              onChange={(event) => setBrandName(event.target.value)}
-                              placeholder="Brand name"
-                              className="h-9 rounded-full text-sm"
-                            />
-                            <Input
-                              value={brandWebsite}
-                              onChange={(event) => setBrandWebsite(event.target.value)}
-                              placeholder="Website (optional)"
-                              className="h-9 rounded-full text-sm"
-                            />
-                            <div className="flex items-center gap-2">
-                              <label className="flex flex-1 cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-emerald-50/60 px-3 py-1.5 text-[11px] font-semibold text-emerald-700">
-                                <span>{brandUploading ? "Uploading..." : "Upload logo"}</span>
-                                <span className="text-emerald-500">Browse</span>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="sr-only"
-                                  onChange={(event) => {
-                                    const file = event.target.files?.[0];
-                                    if (!file) return;
-                                    setBrandUploading(true);
-                                    setBrandNotice(null);
-                                    setBrandUploadProgress(0);
-                                    fetchBrandLogoSignature()
-                                      .then(async (signature) => {
-                                        const formData = new FormData();
-                                        formData.append("file", file);
-                                        formData.append("api_key", signature.apiKey);
-                                        formData.append("timestamp", String(signature.timestamp));
-                                        formData.append("signature", signature.signature);
-                                        if (signature.uploadPreset) {
-                                          formData.append("upload_preset", signature.uploadPreset);
-                                        }
-                                        const data = await new Promise<{ secure_url?: string }>(
-                                          (resolve, reject) => {
-                                            const xhr = new XMLHttpRequest();
-                                            xhr.open(
-                                              "POST",
-                                              `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
-                                            );
-                                            xhr.upload.onprogress = (evt) => {
-                                              if (!evt.lengthComputable) return;
-                                              const pct = Math.round((evt.loaded / evt.total) * 100);
-                                              setBrandUploadProgress(pct);
-                                            };
-                                            xhr.onload = () => {
-                                              try {
-                                                resolve(JSON.parse(xhr.responseText));
-                                              } catch {
-                                                reject(new Error("Upload failed"));
-                                              }
-                                            };
-                                            xhr.onerror = () => reject(new Error("Upload failed"));
-                                            xhr.send(formData);
-                                          },
-                                        );
-                                        if (!data.secure_url) throw new Error("Upload failed");
-                                        setBrandLogoUrl(data.secure_url);
-                                        setBrandNotice("Logo added.");
-                                      })
-                                      .catch(() => setBrandNotice("Upload failed."))
-                                      .finally(() => setBrandUploading(false));
-                                  }}
-                                />
-                              </label>
-                            </div>
-                            {brandUploading && (
-                              <div className="h-1.5 w-full overflow-hidden rounded-full bg-emerald-100">
-                                <div
-                                  className="h-full rounded-full bg-emerald-400 transition-all"
-                                  style={{ width: `${brandUploadProgress}%` }}
-                                />
-                              </div>
-                            )}
-                            {brandNotice && (
-                              <p className="text-[11px] text-emerald-600">{brandNotice}</p>
-                            )}
-                            <Button
-                              type="button"
-                              className="w-full rounded-full bg-emerald-500 py-2 text-xs font-semibold text-white hover:bg-emerald-600"
-                              onClick={async () => {
-                                if (!brandName.trim()) {
-                                  setBrandNotice("Enter a brand name.");
-                                  return;
-                                }
-                                try {
-                                  const response = await createBrand({
-                                    name: brandName.trim(),
-                                    websiteUrl: brandWebsite.trim() || undefined,
-                                    logoUrl: brandLogoUrl ?? undefined,
-                                  });
-                                  setBrands((prev) => [response.brand, ...prev]);
-                                  setDraft({
-                                    ...draft,
-                                    brandId: response.brand.id,
-                                    brand: response.brand.name,
-                                  });
-                                  setBrandLogoUrl(response.brand.logo_url ?? null);
-                                  setBrandCreateOpen(false);
-                                  setBrandName("");
-                                  setBrandWebsite("");
-                                  setBrandNotice(null);
-                                } catch {
-                                  setBrandNotice("Unable to create brand.");
-                                }
-                              }}
-                            >
-                              Save brand
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
                       Base serving size
@@ -1659,6 +1436,13 @@ export const FoodDetailSheet = ({
                     className="w-full rounded-full bg-aura-primary py-5 text-sm font-semibold text-white"
                     onClick={async () => {
                       if (!draft || !canSave) return;
+                      const safeDraft = {
+                        ...draft,
+                        kcal: typeof draft.kcal === "number" ? draft.kcal : 0,
+                        carbs: typeof draft.carbs === "number" ? draft.carbs : 0,
+                        protein: typeof draft.protein === "number" ? draft.protein : 0,
+                        fat: typeof draft.fat === "number" ? draft.fat : 0,
+                      };
                       if (adminEditing && isAdmin && onUpdateMaster) {
                         setSavingMaster(true);
                         const nextMicros = { ...(food.micronutrients ?? {}) } as Record<
@@ -1687,8 +1471,8 @@ export const FoodDetailSheet = ({
                           await onUpdateMaster(
                             food,
                             {
-                              ...draft,
-                              brandId: draft.brandId,
+                              ...safeDraft,
+                              brandId: safeDraft.brandId,
                             },
                             nextMicros,
                           );
@@ -1708,7 +1492,7 @@ export const FoodDetailSheet = ({
                           setSavingMaster(false);
                         }
                       } else {
-                        onUpdateFood(food, draft);
+                        onUpdateFood(food, safeDraft);
                         setEditing(false);
                       }
                     }}

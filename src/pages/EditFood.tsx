@@ -39,10 +39,10 @@ type NutritionDraft = {
   brandId?: string | null;
   portion: string;
   portionGrams: number | null;
-  kcal: number;
-  carbs: number;
-  protein: number;
-  fat: number;
+  kcal: number | "";
+  carbs: number | "";
+  protein: number | "";
+  fat: number | "";
   sodiumMg: number | null;
   fiberG: number | null;
   sugarG: number | null;
@@ -186,6 +186,8 @@ const EditFood = () => {
   const [brandNotice, setBrandNotice] = useState<string | null>(null);
   const [brandEditNotice, setBrandEditNotice] = useState<string | null>(null);
   const [adminEditing, setAdminEditing] = useState(isAdmin);
+  const [newImagePreview, setNewImagePreview] = useState<string | null>(null);
+  const [originalBrandLogoUrl, setOriginalBrandLogoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!currentFood) return;
@@ -203,16 +205,18 @@ const EditFood = () => {
       const value = micros[key];
       return typeof value === "string" ? value : "";
     };
+    const macros = currentFood.macros ?? {};
+    const m = macros as Record<string, number | undefined>;
     setDraft({
       name: currentFood.name,
       brand: currentFood.brand ?? "",
       brandId: currentFood.brandId ?? null,
       portion: currentFood.portionLabel ?? currentFood.portion,
       portionGrams: currentFood.portionGrams ?? null,
-      kcal: currentFood.kcal,
-      carbs: currentFood.macros.carbs,
-      protein: currentFood.macros.protein,
-      fat: currentFood.macros.fat,
+      kcal: Number(currentFood.kcal) || 0,
+      carbs: Number(m.carbs) || 0,
+      protein: Number(m.protein) || 0,
+      fat: Number(m.fat) || 0,
       sodiumMg: readMicro("sodium_mg"),
       fiberG: readMicro("fiber_g"),
       sugarG: readMicro("sugar_g"),
@@ -255,7 +259,9 @@ const EditFood = () => {
     if (!match) return;
     setBrandName(match.name ?? "");
     setBrandWebsite(match.website_url ?? "");
-    setBrandLogoUrl(match.logo_url ?? null);
+    const logo = match.logo_url ?? null;
+    setBrandLogoUrl(logo);
+    setOriginalBrandLogoUrl(logo);
   }, [adminEditing, brands, draft?.brandId]);
 
   useEffect(() => {
@@ -286,7 +292,7 @@ const EditFood = () => {
     if (!draft) return false;
     return (
       [draft.kcal, draft.carbs, draft.protein, draft.fat].every(
-        (value) => Number.isFinite(value) && value >= 0,
+        (value) => typeof value === "number" && Number.isFinite(value) && value >= 0,
       )
     );
   }, [draft]);
@@ -311,7 +317,10 @@ const EditFood = () => {
     }
     const numeric = value.trim() === "" ? null : Number(value);
     if (key === "kcal" || key === "carbs" || key === "protein" || key === "fat") {
-      setDraft({ ...draft, [key]: Number.isFinite(numeric) ? numeric : 0 });
+      setDraft({
+        ...draft,
+        [key]: Number.isFinite(numeric as number) ? (numeric as number) : "",
+      });
       return;
     }
     setDraft({
@@ -385,20 +394,43 @@ const EditFood = () => {
             <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
               Food image
             </p>
-            <label className="mt-3 flex cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-emerald-50/60 px-4 py-2 text-xs font-semibold text-emerald-700">
-              <span>{uploading ? "Uploading..." : "Upload new image"}</span>
-              <span className="text-emerald-500">Browse</span>
-              <input
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (!file || !currentFood) return;
-                  setUploading(true);
-                  setUploadNotice(null);
-                  fetchFoodImageSignature()
-                    .then(async (signature) => {
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              {currentFood.imageUrl && (
+                <div className="flex flex-col items-center gap-1">
+                  <p className="text-[10px] font-medium text-slate-500">Current</p>
+                  <img
+                    src={currentFood.imageUrl}
+                    alt={currentFood.name}
+                    className="h-16 w-16 shrink-0 rounded-xl object-cover shadow-sm"
+                  />
+                </div>
+              )}
+              {newImagePreview && (
+                <div className="flex flex-col items-center gap-1">
+                  <p className="text-[10px] font-medium text-emerald-600">New</p>
+                  <img
+                    src={newImagePreview}
+                    alt="New upload"
+                    className="h-16 w-16 shrink-0 rounded-xl object-cover shadow-sm ring-2 ring-emerald-400"
+                  />
+                </div>
+              )}
+              <label className="flex cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-emerald-50/60 px-4 py-2 text-xs font-semibold text-emerald-700">
+                <span>{uploading ? "Uploading..." : "Upload new image"}</span>
+                <span className="text-emerald-500">Browse</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (!file || !currentFood) return;
+                    const preview = URL.createObjectURL(file);
+                    setNewImagePreview(preview);
+                    setUploading(true);
+                    setUploadNotice(null);
+                    try {
+                      const signature = await fetchFoodImageSignature();
                       const formData = new FormData();
                       formData.append("file", file);
                       formData.append("api_key", signature.apiKey);
@@ -409,31 +441,27 @@ const EditFood = () => {
                       }
                       const response = await fetch(
                         `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
-                        {
-                          method: "POST",
-                          body: formData,
-                        },
+                        { method: "POST", body: formData },
                       );
-                      if (!response.ok) {
-                        throw new Error("Upload failed");
-                      }
-                      const data = await response.json();
-                      if (!data.secure_url) {
-                        throw new Error("Upload failed");
-                      }
+                      if (!response.ok) throw new Error("Upload failed");
+                      const data = (await response.json()) as { secure_url?: string };
+                      if (!data.secure_url) throw new Error("Upload failed");
                       await updateFoodImage(currentFood.id, data.secure_url);
                       setCurrentFood((prev) =>
                         prev ? { ...prev, imageUrl: data.secure_url } : prev,
                       );
                       setUploadNotice("Image updated.");
-                    })
-                    .catch(() => {
+                    } catch {
                       setUploadNotice("Upload failed.");
-                    })
-                    .finally(() => setUploading(false));
-                }}
-              />
-            </label>
+                    } finally {
+                      setNewImagePreview(null);
+                      URL.revokeObjectURL(preview);
+                      setUploading(false);
+                    }
+                  }}
+                />
+              </label>
+            </div>
             {uploadNotice && (
               <p className="mt-2 text-[11px] text-emerald-600">{uploadNotice}</p>
             )}
@@ -553,18 +581,17 @@ const EditFood = () => {
                     placeholder="Website (optional)"
                     className="h-10 rounded-full"
                   />
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-white text-xl shadow-[0_8px_20px_rgba(16,185,129,0.12)]">
-                      {brandLogoUrl ? (
+                  <div className="flex flex-wrap items-center gap-3">
+                    {brandLogoUrl && (
+                      <div className="flex flex-col items-center gap-1">
+                        <p className="text-[10px] font-medium text-emerald-600">Logo</p>
                         <img
                           src={brandLogoUrl}
                           alt="Brand logo"
-                          className="h-full w-full object-cover"
+                          className="h-12 w-12 shrink-0 rounded-full object-cover shadow-sm ring-2 ring-emerald-400"
                         />
-                      ) : (
-                        "🏷️"
-                      )}
-                    </div>
+                      </div>
+                    )}
                     <label className="flex flex-1 cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-white px-4 py-2 text-xs font-semibold text-emerald-700">
                       <span>{brandUploading ? "Uploading..." : "Upload logo"}</span>
                       <span className="text-emerald-500">Browse</span>
@@ -684,19 +711,28 @@ const EditFood = () => {
                     placeholder="Website (optional)"
                     className="h-10 rounded-full"
                   />
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-white text-xl shadow-[0_8px_20px_rgba(16,185,129,0.12)]">
-                      {brandLogoUrl ? (
+                  <div className="flex flex-wrap items-center gap-3">
+                    {originalBrandLogoUrl && (
+                      <div className="flex flex-col items-center gap-1">
+                        <p className="text-[10px] font-medium text-slate-500">Current</p>
+                        <img
+                          src={originalBrandLogoUrl}
+                          alt="Brand logo"
+                          className="h-12 w-12 shrink-0 rounded-full object-cover shadow-sm"
+                        />
+                      </div>
+                    )}
+                    {brandLogoUrl && brandLogoUrl !== originalBrandLogoUrl && (
+                      <div className="flex flex-col items-center gap-1">
+                        <p className="text-[10px] font-medium text-emerald-600">New</p>
                         <img
                           src={brandLogoUrl}
-                          alt="Brand logo"
-                          className="h-full w-full object-cover"
+                          alt="New logo"
+                          className="h-12 w-12 shrink-0 rounded-full object-cover shadow-sm ring-2 ring-emerald-400"
                         />
-                      ) : (
-                        "🏷️"
-                      )}
-                    </div>
-                    <label className="flex flex-1 cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-white px-4 py-2 text-xs font-semibold text-emerald-700">
+                      </div>
+                    )}
+                    <label className="flex cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-white px-4 py-2 text-xs font-semibold text-emerald-700">
                       <span>{brandUploading ? "Uploading..." : "Upload logo"}</span>
                       <span className="text-emerald-500">Browse</span>
                       <input
@@ -788,6 +824,7 @@ const EditFood = () => {
                             ...draft,
                             brand: response.brand.name,
                           });
+                          setOriginalBrandLogoUrl(response.brand.logo_url ?? null);
                           setBrandEditNotice("Brand updated.");
                         }
                       } catch {
@@ -1179,16 +1216,16 @@ const EditFood = () => {
               setOrDelete("cholesterol_mg", draft.cholesterolMg);
               setOrDelete("potassium_mg", draft.potassiumMg);
               setOrDelete("ingredients", draft.ingredients.trim() || null);
-              const updated = await updateFoodMaster(currentFood.id, {
+                const updated = await updateFoodMaster(currentFood.id, {
                 name: draft.name.trim() || currentFood.name,
                 brand: draft.brand.trim() || null,
                 brandId: draft.brandId ?? null,
                 portionLabel: draft.portion,
                 portionGrams: draft.portionGrams ?? null,
-                kcal: draft.kcal,
-                carbsG: draft.carbs,
-                proteinG: draft.protein,
-                fatG: draft.fat,
+                  kcal: typeof draft.kcal === "number" ? draft.kcal : 0,
+                  carbsG: typeof draft.carbs === "number" ? draft.carbs : 0,
+                  proteinG: typeof draft.protein === "number" ? draft.protein : 0,
+                  fatG: typeof draft.fat === "number" ? draft.fat : 0,
                 micronutrients: nextMicros,
               });
               if (updated) {
@@ -1199,12 +1236,12 @@ const EditFood = () => {
               }
               } else {
                 const updated = upsertOverride(currentFood, {
-                  kcal: draft.kcal,
+                  kcal: typeof draft.kcal === "number" ? draft.kcal : 0,
                   portion: draft.portion,
                   macros: {
-                    carbs: draft.carbs,
-                    protein: draft.protein,
-                    fat: draft.fat,
+                    carbs: typeof draft.carbs === "number" ? draft.carbs : 0,
+                    protein: typeof draft.protein === "number" ? draft.protein : 0,
+                    fat: typeof draft.fat === "number" ? draft.fat : 0,
                   },
                 });
                 setCurrentFood(updated);
