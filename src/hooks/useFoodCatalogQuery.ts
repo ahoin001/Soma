@@ -13,6 +13,7 @@ import type { FoodRecord } from "@/types/api";
 import {
   createFood as createFoodApi,
   ensureUser,
+  fetchFoodById as fetchFoodByIdApi,
   fetchFoodFavorites,
   fetchFoodHistory,
   fetchFoodByBarcode,
@@ -359,6 +360,16 @@ export const useFoodCatalogQuery = () => {
     }
   }, []);
 
+  // --- Fetch single food by ID (e.g. for editor to show fresh brand/data) ---
+  const getFoodById = useCallback(async (foodId: string): Promise<FoodItem | null> => {
+    try {
+      const response = await fetchFoodByIdApi(foodId);
+      return response.item ? toFoodItem(response.item) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   // --- Override Management ---
   const upsertOverride = useCallback(
     (food: FoodItem, override: FoodOverride) => {
@@ -469,6 +480,7 @@ export const useFoodCatalogQuery = () => {
         favoriteMutation.mutate({ foodId, favorite }),
       updateFoodMaster,
       updateFoodImage,
+      getFoodById,
       // Additional query state
       isSearching: searchQuery_.isFetching,
     }),
@@ -481,6 +493,7 @@ export const useFoodCatalogQuery = () => {
       searchQuery_.isFetching,
       searchFoods,
       lookupBarcode,
+      getFoodById,
       applyOverrides,
       upsertOverride,
       createFoodMutation.mutateAsync,

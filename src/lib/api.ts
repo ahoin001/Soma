@@ -336,6 +336,9 @@ export const fetchFoodImageSignature = async () =>
     uploadPreset: string | null;
   }>("/api/foods/image/signature");
 
+export const fetchFoodById = async (foodId: string) =>
+  apiFetch<{ item: FoodRecord | null }>(`/api/foods/${foodId}`);
+
 export const updateFoodImage = async (foodId: string, imageUrl: string) =>
   apiFetch<{ item: FoodRecord | null }>(`/api/foods/${foodId}/image`, {
     method: "PATCH",

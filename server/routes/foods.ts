@@ -391,6 +391,47 @@ router.get(
   }),
 );
 
+router.get(
+  "/:foodId",
+  asyncHandler(async (req, res) => {
+    const userId = getUserId(req);
+    const foodId = req.params.foodId;
+    const result = await query(
+      `
+      SELECT f.*, b.name AS brand_name, b.logo_url AS brand_logo_url
+      FROM foods f
+      LEFT JOIN brands b ON b.id = f.brand_id
+      WHERE f.id = $1
+      LIMIT 1;
+      `,
+      [foodId],
+    );
+    const row = result.rows[0];
+    if (!row) {
+      res.status(404).json({ item: null });
+      return;
+    }
+    const isAdmin = await (async () => {
+      const r = await query<{ email: string | null }>(
+        "SELECT email FROM users WHERE id = $1;",
+        [userId],
+      );
+      return r.rows[0]?.email === "ahoin001@gmail.com";
+    })();
+    if (isAdmin) {
+      res.setHeader("Cache-Control", "private, no-store");
+      res.json({ item: row });
+      return;
+    }
+    if (row.is_global || row.created_by_user_id === userId) {
+      res.setHeader("Cache-Control", "private, no-store");
+      res.json({ item: row });
+      return;
+    }
+    res.status(404).json({ item: null });
+  }),
+);
+
 router.patch(
   "/:foodId/image",
   asyncHandler(async (req, res) => {

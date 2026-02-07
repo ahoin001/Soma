@@ -21,6 +21,7 @@ import { useAppStore } from "@/state/AppStore";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { ChevronLeft } from "lucide-react";
+import { calculateMacroPercent } from "@/data/foodApi";
 import {
   createBrand,
   createFoodServing,
@@ -158,7 +159,7 @@ const EditFood = () => {
   const { foodCatalog } = useAppStore();
   const { email } = useAuth();
   const isAdmin = email?.toLowerCase() === "ahoin001@gmail.com";
-  const { upsertOverride, updateFoodMaster } = foodCatalog;
+  const { upsertOverride, updateFoodMaster, getFoodById } = foodCatalog;
   const state = (location.state ?? {}) as LocationState;
   const returnTo = state.returnTo ?? "/nutrition";
   const [currentFood, setCurrentFood] = useState<FoodItem | null>(
@@ -188,6 +189,18 @@ const EditFood = () => {
   const [adminEditing, setAdminEditing] = useState(isAdmin);
   const [newImagePreview, setNewImagePreview] = useState<string | null>(null);
   const [originalBrandLogoUrl, setOriginalBrandLogoUrl] = useState<string | null>(null);
+
+  // Refetch food by ID when editor opens so we always show fresh brand/data (avoids stale location.state)
+  useEffect(() => {
+    if (!currentFood?.id || !getFoodById) return;
+    let cancelled = false;
+    getFoodById(currentFood.id).then((fresh) => {
+      if (!cancelled && fresh) setCurrentFood(fresh);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentFood?.id, getFoodById]);
 
   useEffect(() => {
     if (!currentFood) return;
@@ -246,12 +259,28 @@ const EditFood = () => {
     const query = brandQuery.trim();
     const timer = window.setTimeout(() => {
       setBrandLoading(true);
-      fetchBrands(query, true, 100)
-        .then((response) => setBrands(response.items))
+      fetchBrands(query, false, 100)
+        .then((response) =>
+          setBrands((prev) => {
+            const next = response.items;
+            if (!currentFood?.brandId || !currentFood.brand) return next;
+            if (next.some((brand) => brand.id === currentFood.brandId)) return next;
+            return [
+              {
+                id: currentFood.brandId,
+                name: currentFood.brand,
+                website_url: null,
+                logo_url: currentFood.brandLogoUrl ?? null,
+                is_verified: false,
+              },
+              ...next,
+            ];
+          }),
+        )
         .finally(() => setBrandLoading(false));
     }, query ? 300 : 0);
     return () => window.clearTimeout(timer);
-  }, [adminEditing, brandQuery]);
+  }, [adminEditing, brandQuery, currentFood?.brand, currentFood?.brandId, currentFood?.brandLogoUrl]);
 
   useEffect(() => {
     if (!adminEditing || !draft?.brandId) return;
@@ -808,27 +837,66 @@ const EditFood = () => {
                         setBrandEditNotice("Enter a brand name.");
                         return;
                       }
+                      const previousFood = currentFood;
+                      const previousBrandLogoUrl = brandLogoUrl;
+                      const previousOriginalBrandLogoUrl = originalBrandLogoUrl;
+                      const optimisticFood: FoodItem = {
+                        ...currentFood,
+                        brand: brandName.trim(),
+                        brandId: draft.brandId ?? undefined,
+                        brandLogoUrl: brandLogoUrl ?? undefined,
+                      };
+                      setCurrentFood(optimisticFood);
+                      setDraft({ ...draft, brand: brandName.trim(), brandId: draft.brandId });
+                      setBrandEditNotice(null);
                       try {
                         const response = await updateBrand(draft.brandId, {
                           name: brandName.trim(),
                           websiteUrl: brandWebsite.trim() || null,
                           logoUrl: brandLogoUrl ?? null,
                         });
-                        if (response.brand) {
+                        const updatedBrand =
+                          response.brand ??
+                          brands.find((item) => item.id === draft.brandId) ??
+                          null;
+                        if (updatedBrand) {
                           setBrands((prev) =>
                             prev.map((item) =>
-                              item.id === response.brand.id ? response.brand : item,
+                              item.id === updatedBrand.id ? updatedBrand : item,
                             ),
                           );
-                          setDraft({
-                            ...draft,
-                            brand: response.brand.name,
-                          });
-                          setOriginalBrandLogoUrl(response.brand.logo_url ?? null);
+                          setCurrentFood((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  brand: updatedBrand.name,
+                                  brandId: updatedBrand.id,
+                                  brandLogoUrl: updatedBrand.logo_url ?? undefined,
+                                }
+                              : prev,
+                          );
+                          setDraft((d) => ({
+                            ...d,
+                            brand: updatedBrand.name,
+                            brandId: updatedBrand.id,
+                          }));
+                          setOriginalBrandLogoUrl(updatedBrand.logo_url ?? null);
                           setBrandEditNotice("Brand updated.");
+                          toast.success("Brand updated", {
+                            description: "Brand details saved successfully.",
+                          });
+                        } else {
+                          setBrandEditNotice("Brand updated.");
+                          toast.success("Brand updated");
                         }
                       } catch {
+                        setCurrentFood(previousFood);
+                        setBrandLogoUrl(previousBrandLogoUrl);
+                        setOriginalBrandLogoUrl(previousOriginalBrandLogoUrl);
                         setBrandEditNotice("Unable to update brand.");
+                        toast.error("Brand update failed", {
+                          description: "Please try again.",
+                        });
                       }
                     }}
                   >
@@ -1192,48 +1260,79 @@ const EditFood = () => {
             if (!draft || !canSave) return;
             if (saving) return;
             setSaving(true);
+            const previousFood = currentFood;
             try {
               if (adminEditing && isAdmin) {
-              const nextMicros = { ...(currentFood.micronutrients ?? {}) } as Record<
-                string,
-                number | string
-              >;
-              const setOrDelete = (
-                key: string,
-                value: number | string | null,
-              ) => {
-                if (value === null || value === "") {
+                const nextMicros = { ...(currentFood.micronutrients ?? {}) } as Record<
+                  string,
+                  number | string
+                >;
+                const setMicro = (
+                  key: string,
+                  value: number | string | null,
+                ) => {
+                  if (typeof value === "number" && Number.isFinite(value)) {
+                    nextMicros[key] = value;
+                    return;
+                  }
+                  if (typeof value === "string" && value.trim().length > 0) {
+                    nextMicros[key] = value.trim();
+                    return;
+                  }
                   delete nextMicros[key];
-                } else {
-                  nextMicros[key] = value;
+                };
+                setMicro("sodium_mg", draft.sodiumMg);
+                setMicro("fiber_g", draft.fiberG);
+                setMicro("sugar_g", draft.sugarG);
+                setMicro("saturated_fat_g", draft.saturatedFatG);
+                setMicro("trans_fat_g", draft.transFatG);
+                setMicro("cholesterol_mg", draft.cholesterolMg);
+                setMicro("potassium_mg", draft.potassiumMg);
+                setMicro("ingredients", draft.ingredients.trim() || null);
+                const kcal = typeof draft.kcal === "number" ? draft.kcal : 0;
+                const carbs = typeof draft.carbs === "number" ? draft.carbs : 0;
+                const protein = typeof draft.protein === "number" ? draft.protein : 0;
+                const fat = typeof draft.fat === "number" ? draft.fat : 0;
+                const macros = { carbs, protein, fat };
+                const optimistic: FoodItem = {
+                  ...currentFood,
+                  name: draft.name.trim() || currentFood.name,
+                  brand: draft.brand.trim() || undefined,
+                  brandId: draft.brandId ?? undefined,
+                  portionLabel: draft.portion,
+                  portionGrams: draft.portionGrams ?? undefined,
+                  portion: draft.portion,
+                  kcal,
+                  macros,
+                  macroPercent: calculateMacroPercent(macros),
+                  micronutrients: nextMicros,
+                };
+                setCurrentFood(optimistic);
+                try {
+                  const updated = await updateFoodMaster(currentFood.id, {
+                    name: draft.name.trim() || currentFood.name,
+                    brand: draft.brand.trim() || null,
+                    brandId: draft.brandId ?? null,
+                    portionLabel: draft.portion,
+                    portionGrams: draft.portionGrams ?? null,
+                    kcal,
+                    carbsG: carbs,
+                    proteinG: protein,
+                    fatG: fat,
+                    micronutrients: nextMicros,
+                  });
+                  if (updated) {
+                    setCurrentFood(updated);
+                    toast("Saved to database", {
+                      description: "Food details updated successfully.",
+                    });
+                  }
+                } catch {
+                  setCurrentFood(previousFood);
+                  toast.error("Save failed", {
+                    description: "Changes could not be saved. Please try again.",
+                  });
                 }
-              };
-              setOrDelete("sodium_mg", draft.sodiumMg);
-              setOrDelete("fiber_g", draft.fiberG);
-              setOrDelete("sugar_g", draft.sugarG);
-              setOrDelete("saturated_fat_g", draft.saturatedFatG);
-              setOrDelete("trans_fat_g", draft.transFatG);
-              setOrDelete("cholesterol_mg", draft.cholesterolMg);
-              setOrDelete("potassium_mg", draft.potassiumMg);
-              setOrDelete("ingredients", draft.ingredients.trim() || null);
-                const updated = await updateFoodMaster(currentFood.id, {
-                name: draft.name.trim() || currentFood.name,
-                brand: draft.brand.trim() || null,
-                brandId: draft.brandId ?? null,
-                portionLabel: draft.portion,
-                portionGrams: draft.portionGrams ?? null,
-                  kcal: typeof draft.kcal === "number" ? draft.kcal : 0,
-                  carbsG: typeof draft.carbs === "number" ? draft.carbs : 0,
-                  proteinG: typeof draft.protein === "number" ? draft.protein : 0,
-                  fatG: typeof draft.fat === "number" ? draft.fat : 0,
-                micronutrients: nextMicros,
-              });
-              if (updated) {
-                setCurrentFood(updated);
-                toast("Saved to database", {
-                  description: "Food details updated successfully.",
-                });
-              }
               } else {
                 const updated = upsertOverride(currentFood, {
                   kcal: typeof draft.kcal === "number" ? draft.kcal : 0,
