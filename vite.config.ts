@@ -35,6 +35,9 @@ export default defineConfig(() => ({
     minify: "esbuild",
     cssCodeSplit: true,
     sourcemap: false,
+    esbuild: {
+      drop: ["debugger"],
+    },
   },
   plugins: [
     dyadComponentTagger(),

@@ -359,10 +359,24 @@ router.get(
     const apiKey = process.env.CLOUDINARY_API_KEY;
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
     const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET ?? null;
-    if (!cloudName || !apiKey || !apiSecret) {
+    if (!cloudName || !apiKey) {
       const error = new Error("Cloudinary credentials are not configured.");
       (error as Error & { status?: number }).status = 500;
       throw error;
+    }
+    if (!apiSecret) {
+      if (!uploadPreset) {
+        const error = new Error("Cloudinary credentials are not configured.");
+        (error as Error & { status?: number }).status = 500;
+        throw error;
+      }
+      res.json({
+        apiKey,
+        cloudName,
+        uploadPreset,
+        unsigned: true,
+      });
+      return;
     }
     const timestamp = Math.floor(Date.now() / 1000);
     const params: string[] = [`timestamp=${timestamp}`];
@@ -371,7 +385,7 @@ router.get(
       .createHash("sha1")
       .update(`${params.join("&")}${apiSecret}`)
       .digest("hex");
-    res.json({ timestamp, signature, apiKey, cloudName, uploadPreset });
+    res.json({ timestamp, signature, apiKey, cloudName, uploadPreset, unsigned: false });
   }),
 );
 

@@ -88,7 +88,16 @@ export const ensureUser = async (displayName = "You") => {
   });
 };
 
-export const fetchCurrentUser = async () => {
+/**
+ * Timeout for auth check so the app doesn't hang on slow/cold API.
+ * Auth can be slow due to: API cold start (serverless), network RTT, or backend load.
+ * On timeout we return { user: null } so the app shows the auth screen instead of infinite loading.
+ */
+const AUTH_ME_TIMEOUT_MS = 4000;
+
+export const fetchCurrentUser = async (): Promise<{
+  user: { id: string; email: string | null; emailVerified?: boolean } | null;
+}> => {
   const userId = getUserId();
   const sessionToken = getSessionToken();
   const headers = new Headers();
@@ -98,10 +107,17 @@ export const fetchCurrentUser = async () => {
   if (sessionToken) {
     headers.set("Authorization", `Bearer ${sessionToken}`);
   }
-  const response = await fetch(buildApiUrl("/api/auth/me"), {
-    credentials: "include",
-    headers,
-  });
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(
+    () => controller.abort(),
+    AUTH_ME_TIMEOUT_MS,
+  );
+  try {
+    const response = await fetch(buildApiUrl("/api/auth/me"), {
+      credentials: "include",
+      headers,
+      signal: controller.signal,
+    });
     if (response.status === 401) {
       return { user: null };
     }
@@ -112,7 +128,15 @@ export const fetchCurrentUser = async () => {
     return (await response.json()) as {
       user: { id: string; email: string | null; emailVerified?: boolean } | null;
     };
-  };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { user: null };
+    }
+    throw err;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+};
 
 export const fetchUserProfile = async () =>
   apiFetch<{

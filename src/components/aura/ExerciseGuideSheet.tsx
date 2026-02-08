@@ -1122,9 +1122,10 @@ export const ExerciseGuideSheet = ({
                       setSaving(true);
                       setUploadStatus("Uploading video...");
                       fetch("/api/workouts/exercise-media/signature")
-                        .then((res) => {
+                        .then(async (res) => {
                           if (!res.ok) {
-                            throw new Error("Signature failed");
+                            const message = await res.text();
+                            throw new Error(message || "Signature failed");
                           }
                           return res.json();
                         })
@@ -1132,8 +1133,10 @@ export const ExerciseGuideSheet = ({
                           const formData = new FormData();
                           formData.append("file", file);
                           formData.append("api_key", signature.apiKey);
-                          formData.append("timestamp", String(signature.timestamp));
-                          formData.append("signature", signature.signature);
+                          if (!signature.unsigned && signature.timestamp && signature.signature) {
+                            formData.append("timestamp", String(signature.timestamp));
+                            formData.append("signature", signature.signature);
+                          }
                           if (signature.uploadPreset) {
                             formData.append("upload_preset", signature.uploadPreset);
                           }
