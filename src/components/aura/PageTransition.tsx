@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 
 type PageTransitionProps = {
   children: ReactNode;
+  /** Disable animations (e.g., back/gesture navigation) */
+  disabled?: boolean;
   /** Slightly more dramatic entrance when switching Nutrition ↔ Fitness */
   isExperienceSwitch?: boolean;
   transitionConfig?: {
@@ -61,12 +63,16 @@ export const PageTransition = forwardRef<HTMLDivElement, PageTransitionProps>(
   (
     {
       children,
+      disabled = false,
       isExperienceSwitch = false,
       transitionConfig,
       experienceTone = "nutrition",
     },
     ref,
   ) => {
+    if (disabled) {
+      return <div ref={ref}>{children}</div>;
+    }
     // ---- Dock tab / normal navigation: fast subtle fade ----
     if (!isExperienceSwitch) {
       return (

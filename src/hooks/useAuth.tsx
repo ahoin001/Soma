@@ -43,6 +43,11 @@ const AuthContext = createContext<AuthContextValue | null>(null);
  * Before this was a plain hook with local useState, so every component
  * calling useAuth() got its own copy starting at status:"loading",
  * making a fresh fetchCurrentUser() call and flashing a skeleton.
+ *
+ * Partial state (post-login): After login/register we set userId + email from
+ * the API result and form, then navigate immediately. A background refresh()
+ * syncs email/emailVerified from GET /me. Consumers must treat email as
+ * possibly null until refresh completes (use optional chaining / fallbacks).
  */
 // Restore auth from storage so the app shell can render immediately (no blocking network).
 const getInitialAuthState = (): AuthState => {
@@ -94,7 +99,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (result.user?.id) {
         setUserId(result.user.id);
         if (result.sessionToken) setSessionToken(result.sessionToken);
-        await refresh();
+        // Set state from result + form so we can navigate immediately; no second round-trip.
+        setState({
+          userId: result.user.id,
+          email: payload.email,
+          status: "ready",
+        });
+        void refresh(); // Background: sync email/emailVerified from server when ready
       }
     },
     [refresh],
@@ -106,7 +117,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (result.user?.id) {
         setUserId(result.user.id);
         if (result.sessionToken) setSessionToken(result.sessionToken);
-        await refresh();
+        // Set state from result + form so we can navigate immediately; skip redundant GET /me.
+        setState({
+          userId: result.user.id,
+          email: payload.email,
+          status: "ready",
+        });
+        void refresh(); // Background: sync email/emailVerified from server when ready
       }
     },
     [refresh],

@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { toast } from "sonner";
@@ -726,29 +727,46 @@ const Goals = () => {
                   {calculatedTargets.caloriesRange.min}–{calculatedTargets.caloriesRange.max} cal
                 </p>
               </div>
-              <div className="rounded-[18px] bg-emerald-500/90 px-4 py-4 text-white">
-                <p className="text-xs text-white/80">Suggested target</p>
-                <p className="text-lg font-semibold">
-                  {dynamicTargets?.calories ?? calculatedTargets.calories} cal
-                </p>
-                <p className="mt-2 text-xs text-white/80">
-                  Adjust the daily target if you want a faster or gentler pace.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="goal-kcal">Daily goal</Label>
-                <Input
-                  id="goal-kcal"
-                  value={kcalGoal}
-                  onChange={(event) => {
-                    setTargetsTouched(true);
-                    setKcalGoal(event.target.value);
-                  }}
-                  placeholder="e.g. 2100"
-                  inputMode="numeric"
-                  type="number"
-                  className="h-11 rounded-full"
-                />
+              <div className="space-y-4">
+                <div className="flex items-baseline justify-between gap-2">
+                  <Label htmlFor="goal-kcal-slider">Daily goal</Label>
+                  <span className="text-lg font-semibold tabular-nums text-emerald-900">
+                    {Math.round(
+                      Number.isFinite(Number(kcalGoal)) && Number(kcalGoal) > 0
+                        ? Number(kcalGoal)
+                        : dynamicTargets?.calories ?? calculatedTargets.calories ?? 0,
+                    ).toLocaleString()}{" "}
+                    cal
+                  </span>
+                </div>
+                <div className="px-1">
+                  <Slider
+                    id="goal-kcal-slider"
+                    min={calculatedTargets.caloriesRange.min}
+                    max={calculatedTargets.caloriesRange.max}
+                    step={50}
+                    value={[
+                      Math.min(
+                        Math.max(
+                          Number.isFinite(Number(kcalGoal)) && Number(kcalGoal) > 0
+                            ? Number(kcalGoal)
+                            : dynamicTargets?.calories ?? calculatedTargets.calories,
+                          calculatedTargets.caloriesRange.min,
+                        ),
+                        calculatedTargets.caloriesRange.max,
+                      ),
+                    ]}
+                    onValueChange={([value]) => {
+                      setTargetsTouched(true);
+                      setKcalGoal(String(Math.round(value)));
+                    }}
+                    className="touch-none"
+                  />
+                </div>
+                <div className="flex justify-between text-[11px] font-medium text-emerald-600/80">
+                  <span>{calculatedTargets.caloriesRange.min.toLocaleString()} cal</span>
+                  <span>{calculatedTargets.caloriesRange.max.toLocaleString()} cal</span>
+                </div>
               </div>
             </div>
           ) : (

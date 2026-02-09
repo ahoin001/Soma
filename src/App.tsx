@@ -196,6 +196,7 @@ const withSuspense = (element: JSX.Element) => (
 
 const AppRoutes = () => {
   const location = useLocation();
+  const navigationType = useNavigationType();
   const { experienceTransitionConfig } = useExperienceTransitionConfig();
   const { defaultHome } = useUserSettings();
 
@@ -241,6 +242,7 @@ const AppRoutes = () => {
       isExperienceSwitch={isExperienceSwitch}
       transitionConfig={experienceTransitionConfig}
       experienceTone={currentExperience}
+      disabled={navigationType === "POP"}
     >
       {element}
     </PageTransition>
