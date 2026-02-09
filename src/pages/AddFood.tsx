@@ -346,7 +346,7 @@ const AddFood = () => {
         return addedFoods;
       }
       if (activeTab === "recent") {
-        return recentFoods;
+        return applyOverrides(recentMealFoods);
       }
       if (activeTab === "search") {
         return recentFoods;
@@ -369,6 +369,7 @@ const AddFood = () => {
     favorites,
     history,
     recentFoods,
+    recentMealFoods,
     searchQuery,
   ]);
 

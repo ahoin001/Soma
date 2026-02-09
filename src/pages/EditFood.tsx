@@ -33,6 +33,7 @@ import {
   updateFoodImage,
 } from "@/lib/api";
 import type { BrandRecord } from "@/types/api";
+import { servingUnits } from "@/lib/schemas/food";
 
 type NutritionDraft = {
   name: string;
@@ -119,38 +120,13 @@ const normalizeUnit = (raw: string) => {
   if (unit.includes("can")) return "can";
   if (unit.includes("bottle")) return "bottle";
   if (unit.includes("bar")) return "bar";
+  if (unit.includes("egg")) return "egg";
+  if (unit.includes("container")) return "container";
+  if (unit.includes("apple")) return "apple";
+  if (unit.includes("bagel")) return "bagel";
+  if (unit.includes("banana")) return "banana";
   if (unit.includes("serving")) return "serving";
   return "serving";
-};
-
-const servingUnits = {
-  weight: [
-    { value: "g", label: "g" },
-    { value: "kg", label: "kg" },
-    { value: "oz", label: "oz" },
-    { value: "lb", label: "lb" },
-  ],
-  volume: [
-    { value: "ml", label: "ml" },
-    { value: "l", label: "l" },
-    { value: "tsp", label: "tsp" },
-    { value: "tbsp", label: "tbsp" },
-    { value: "fl oz", label: "fl oz" },
-    { value: "cup", label: "cup" },
-    { value: "pint", label: "pint" },
-    { value: "quart", label: "quart" },
-    { value: "gallon", label: "gallon" },
-  ],
-  count: [
-    { value: "bar", label: "bar" },
-    { value: "bottle", label: "bottle" },
-    { value: "can", label: "can" },
-    { value: "packet", label: "packet" },
-    { value: "piece", label: "piece" },
-    { value: "scoop", label: "scoop" },
-    { value: "serving", label: "serving" },
-    { value: "slice", label: "slice" },
-  ],
 };
 
 const EditFood = () => {
