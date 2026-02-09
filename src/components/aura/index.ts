@@ -21,7 +21,7 @@ export { ReplaceExerciseSheet } from "./ReplaceExerciseSheet";
 export { DateSwitcher } from "./DateSwitcher";
 export { CreateFoodSheet } from "./CreateFoodSheet";
 export { EditLogSheet } from "./EditLogSheet";
-export { FoodDetailSheet } from "./FoodDetailSheet";
+export { FoodDetailSheet, type FoodDetailSheetProps } from "./FoodDetailSheet";
 export { FoodList } from "./FoodList";
 export { FoodSearchSheet } from "./FoodSearchSheet";
 export { MacroPills } from "./MacroPills";

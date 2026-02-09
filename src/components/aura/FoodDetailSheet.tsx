@@ -33,7 +33,7 @@ import { useAppStore } from "@/state/AppStore";
 import { useUserSettings } from "@/state";
 import { servingUnits } from "@/lib/schemas/food";
 
-type FoodDetailSheetProps = {
+export type FoodDetailSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   food: FoodItem | null;
@@ -46,17 +46,18 @@ type FoodDetailSheetProps = {
       portionGrams?: number | null;
     }
   ) => Promise<void>;
-  onUpdateFood: (food: FoodItem, next: NutritionDraft) => void;
+  onUpdateFood: (food: FoodItem, next: import("@/types/nutrition").NutritionDraft) => void;
   onUpdateMaster?: (
     food: FoodItem,
-    next: NutritionDraft,
+    next: import("@/types/nutrition").NutritionDraft,
     micros: Record<string, number | string>,
   ) => Promise<void>;
   isFavorite?: boolean;
   onToggleFavorite?: (favorite: boolean) => void;
 };
 
-type NutritionDraft = {
+/** Form state: numeric inputs can be "" before blur/submit. */
+type NutritionDraftForm = {
   name: string;
   brand: string;
   brandId: string | null;
@@ -153,7 +154,7 @@ export const FoodDetailSheet = ({
   const [tracking, setTracking] = useState(false);
   const [editing, setEditing] = useState(false);
   const [adminEditing, setAdminEditing] = useState(false);
-  const [draft, setDraft] = useState<NutritionDraft | null>(null);
+  const [draft, setDraft] = useState<NutritionDraftForm | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [quantityInput, setQuantityInput] = useState("1");
   const [servingOptions, setServingOptions] = useState<ServingOption[]>([]);
@@ -398,7 +399,7 @@ export const FoodDetailSheet = ({
     return typeof raw === "string" ? raw : "";
   }, [food?.micronutrients]);
 
-  const handleDraftChange = (key: keyof NutritionDraft, value: string) => {
+  const handleDraftChange = (key: keyof NutritionDraftForm, value: string) => {
     if (!draft) return;
     if (key === "portion") {
       setDraft({ ...draft, portion: value });
@@ -1436,7 +1437,7 @@ export const FoodDetailSheet = ({
                     className="w-full rounded-full bg-aura-primary py-5 text-sm font-semibold text-white"
                     onClick={async () => {
                       if (!draft || !canSave) return;
-                      const safeDraft = {
+                      const safeDraft: import("@/types/nutrition").NutritionDraft = {
                         ...draft,
                         kcal: typeof draft.kcal === "number" ? draft.kcal : 0,
                         carbs: typeof draft.carbs === "number" ? draft.carbs : 0,
@@ -1470,10 +1471,7 @@ export const FoodDetailSheet = ({
                         try {
                           await onUpdateMaster(
                             food,
-                            {
-                              ...safeDraft,
-                              brandId: safeDraft.brandId,
-                            },
+                            { ...safeDraft, brandId: safeDraft.brandId ?? null },
                             nextMicros,
                           );
                           toast("Saved to database", {

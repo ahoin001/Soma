@@ -11,30 +11,12 @@ import { fuzzyFilter } from "@/lib/fuzzySearch";
 import { useSheetManager } from "@/hooks/useSheetManager";
 import { calculateMacroPercent } from "@/data/foodApi";
 import type { LogItem } from "@/types/log";
+import type { NutritionDraft } from "@/types/nutrition";
 import { ensureUser, fetchMealEntries } from "@/lib/api";
 
 type ActiveTab = "search" | "recent" | "liked" | "history";
 
 type LocationState = {
-};
-
-type NutritionDraft = {
-  name?: string;
-  brand?: string;
-  portion: string;
-  portionGrams?: number | null;
-  kcal: number;
-  carbs: number;
-  protein: number;
-  fat: number;
-  sodiumMg?: number | null;
-  fiberG?: number | null;
-  sugarG?: number | null;
-  saturatedFatG?: number | null;
-  transFatG?: number | null;
-  cholesterolMg?: number | null;
-  potassiumMg?: number | null;
-  ingredients?: string;
 };
 
 const AddFood = () => {

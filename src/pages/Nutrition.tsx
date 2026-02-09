@@ -7,6 +7,7 @@ import {
   DateSwitcher,
   EditLogSheet,
   FoodDetailSheet,
+  type FoodDetailSheetProps,
   MealLogPanel,
   QuickActionSheet,
   StepsCard,
@@ -38,26 +39,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, Sparkles } from "lucide-react";
 import { LoadingState } from "@/components/ui/loading-state";
 import { Skeleton } from "@/components/ui/skeleton";
-
-type NutritionDraft = {
-  name?: string;
-  brand?: string;
-  brandId?: string | null;
-  portion: string;
-  portionGrams?: number | null;
-  kcal: number;
-  carbs: number;
-  protein: number;
-  fat: number;
-  sodiumMg?: number | null;
-  fiberG?: number | null;
-  sugarG?: number | null;
-  saturatedFatG?: number | null;
-  transFatG?: number | null;
-  cholesterolMg?: number | null;
-  potassiumMg?: number | null;
-  ingredients?: string;
-};
+import type { NutritionDraft } from "@/types/nutrition";
 
 type ActiveSheet = "detail" | "quick" | "edit" | "admin" | null;
 
@@ -708,8 +690,8 @@ const Nutrition = () => {
         food={selectedFood}
         macros={macros}
         onTrack={handleTrack}
-        onUpdateFood={handleUpdateFood}
-        onUpdateMaster={handleUpdateMaster}
+        onUpdateFood={handleUpdateFood as FoodDetailSheetProps["onUpdateFood"]}
+        onUpdateMaster={handleUpdateMaster as FoodDetailSheetProps["onUpdateMaster"]}
         isFavorite={isFavorite}
         onToggleFavorite={(favorite) => {
           if (!selectedFood) return;
