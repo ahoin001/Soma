@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { AppShell, LiveSessionPanel } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/state/AppStore";
+import { toast } from "sonner";
 
 const formatSessionDate = (ms: number) =>
   new Intl.DateTimeFormat("en-US", {
@@ -15,6 +16,7 @@ const FitnessLog = () => {
   const navigate = useNavigate();
   const { fitnessPlanner } = useAppStore();
   const history = fitnessPlanner.history ?? [];
+  const latestSession = history[0] ?? null;
 
   return (
     <AppShell experience="fitness" onAddAction={() => navigate("/fitness")} safeAreaTop="extra">
@@ -66,6 +68,27 @@ const FitnessLog = () => {
               <p className="mt-1 text-sm font-medium text-white/90">
                 Last {Math.min(history.length, 20)} finished
               </p>
+              {latestSession ? (
+                <Button
+                  variant="outline"
+                  className="mt-3 w-full rounded-full border-white/20 text-white hover:bg-white/10"
+                  onClick={async () => {
+                    const summary = [
+                      "IronFlow Session Summary",
+                      formatSessionDate(latestSession.endedAt),
+                      `${latestSession.totalSets} sets · ${Math.round(latestSession.totalVolume)} kg`,
+                    ].join("\n");
+                    try {
+                      await navigator.clipboard.writeText(summary);
+                      toast("Session summary copied");
+                    } catch {
+                      toast("Unable to copy summary");
+                    }
+                  }}
+                >
+                  Copy latest session summary
+                </Button>
+              ) : null}
               <ul className="mt-3 space-y-2">
                 {history.slice(0, 20).map((session) => (
                   <li

@@ -671,6 +671,16 @@ const thumbnailCache = new Map<string, string | null>();
 
 const createId = () => `set_${Math.random().toString(36).slice(2, 9)}`;
 
+const formatRelativeTime = (timestamp: number) => {
+  const seconds = Math.round((Date.now() - timestamp) / 1000);
+  if (seconds < 30) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  return `${hours}h ago`;
+};
+
 const createDefaultSets = (unitUsed: "lb" | "kg") => [
   {
     id: createId(),
@@ -781,6 +791,7 @@ export const WorkoutSessionEditor = ({
   const [swipedSetId, setSwipedSetId] = useState<string | null>(null);
   const [noteOpenIds, setNoteOpenIds] = useState<Set<string>>(() => new Set());
   const [savePulse, setSavePulse] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [thumbnailMap, setThumbnailMap] = useState<Record<string, string | null>>({});
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -1062,6 +1073,7 @@ export const WorkoutSessionEditor = ({
     if (!onSave) return;
     setSavePulse(true);
     window.setTimeout(() => setSavePulse(false), 900);
+    setLastSavedAt(Date.now());
     onSave(
       exercises.map((exercise) => ({
         id: exercise.id,
@@ -1270,6 +1282,11 @@ export const WorkoutSessionEditor = ({
             <p className="text-xs text-white/60">
               {plan?.name ?? "Workout plan"} · {totalSets} sets
             </p>
+            {isEditMode && lastSavedAt ? (
+              <p className="mt-1 text-[11px] text-white/40">
+                Last saved {formatRelativeTime(lastSavedAt)}
+              </p>
+            ) : null}
           </div>
           <div className="flex items-center gap-2">
             {isEditMode && exercises.length > 1 ? (

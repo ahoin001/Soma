@@ -49,7 +49,7 @@ export const BarcodeScanSheet = ({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+      <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6">
         <div className="aura-sheet-body">
           <div className="text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">

@@ -107,11 +107,22 @@ const WorkoutDetails = () => {
           );
         }}
         onSave={async (nextExercises) => {
+          const previousExercises = activeWorkout.exercises;
           try {
             await updateWorkoutTemplate(activePlan.id, activeWorkout.id, {
               exercises: nextExercises,
             });
-            toast("Workout updated");
+            toast("Workout updated", {
+              action: {
+                label: "Undo",
+                onClick: () =>
+                  void updateWorkoutTemplate(activePlan.id, activeWorkout.id, {
+                    exercises: previousExercises,
+                  }).then(() => {
+                    toast("Changes reverted");
+                  }),
+              },
+            });
             navigate("/fitness");
           } catch {
             // handled in hook

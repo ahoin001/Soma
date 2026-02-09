@@ -5,8 +5,10 @@ import {
   SmartCoachCard,
   WeightLogSection,
 } from "@/components/aura/progress";
+import { EmptyState } from "@/components/ui/empty-state";
 import { buildDateRange } from "@/lib/progressChartUtils";
 import { useAppStore } from "@/state/AppStore";
+import { Scale } from "lucide-react";
 import { toast } from "sonner";
 import {
   useCaloriesByDate,
@@ -125,6 +127,20 @@ const Progress = () => {
                 : `Macro balance across the last ${trendRange} days.`}
           </p>
 
+          {entries.length === 0 && (
+            <EmptyState
+              icon={Scale}
+              title="Your trend will appear here"
+              description="Log your first weight to see your progress over time."
+              action={{
+                label: "Log weight",
+                onClick: () =>
+                  document.getElementById("weight-log")?.scrollIntoView({ behavior: "smooth" }),
+              }}
+              className="mt-4 rounded-[22px] border border-dashed border-emerald-200 bg-emerald-50/50 py-8"
+            />
+          )}
+
           <ProgressChartPanel
             activeChart={activeChart}
             onActiveChartChange={setActiveChart}
@@ -138,7 +154,8 @@ const Progress = () => {
             stats={stats}
           />
 
-          <WeightLogSection
+          <div id="weight-log">
+            <WeightLogSection
             weight={weight}
             onWeightChange={setWeight}
             date={date}
@@ -159,6 +176,7 @@ const Progress = () => {
             }
             onRemoveEntry={removeEntry}
           />
+          </div>
         </div>
 
         {guidance && (

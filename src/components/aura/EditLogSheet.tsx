@@ -163,7 +163,7 @@ export const EditLogSheet = ({
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
-      <DrawerContent className="relative rounded-t-[36px] border-none bg-aura-surface pb-[env(safe-area-inset-bottom)] overflow-hidden">
+      <DrawerContent className="relative rounded-t-[36px] border-none bg-aura-surface pb-6 overflow-hidden">
         {saving && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 text-sm font-semibold text-emerald-700 backdrop-blur">
             Saving changes...

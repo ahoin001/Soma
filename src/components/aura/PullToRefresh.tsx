@@ -21,6 +21,7 @@ export const PullToRefresh = ({
   const pullingRef = useRef(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [atTop, setAtTop] = useState(true);
 
   // Best practice: refetch active queries instead of full reload (preserves state, faster, smoother UX).
   const handleRefresh = useCallback(async () => {
@@ -42,6 +43,14 @@ export const PullToRefresh = ({
           },
     [experience],
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onScroll = () => setAtTop(window.scrollY <= 10);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -109,6 +118,7 @@ export const PullToRefresh = ({
     : progress >= 1
       ? "Release to refresh"
       : "Pull to refresh";
+  const showHint = atTop && !refreshing && pullDistance === 0;
 
   return (
     <div
@@ -122,7 +132,10 @@ export const PullToRefresh = ({
           "mt-[calc(var(--sat,0px)+6px)] flex items-center gap-3 rounded-full px-4 py-2 text-xs font-semibold shadow-[0_10px_24px_rgba(15,23,42,0.12)] backdrop-blur-sm",
           tone.ring,
         )}
-        style={{ opacity: refreshing || pullDistance > 0 ? 1 : 0 }}
+        style={{
+          opacity: refreshing || pullDistance > 0 ? 1 : showHint ? 0.5 : 0,
+          transition: "opacity 0.2s ease",
+        }}
       >
         <span className={cn("relative h-5 w-5", tone.text)}>
           <span className="absolute inset-0 rounded-full border border-current/40" />

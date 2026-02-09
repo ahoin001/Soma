@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import React, { type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -84,14 +84,18 @@ export function EmptyState({
   const renderIcon = () => {
     if (!icon) return null;
 
-    // If it's a Lucide icon component
-    if (typeof icon === "function") {
-      const IconComponent = icon as LucideIcon;
+    // Primitives and valid elements can be rendered as-is
+    if (React.isValidElement(icon) || typeof icon === "string" || typeof icon === "number") {
+      return icon;
+    }
+
+    // Lucide icon or other component (function or ForwardRef object with $$typeof)
+    const IconComponent = icon as React.ComponentType<{ className?: string }>;
+    if (typeof IconComponent === "function" || (typeof IconComponent === "object" && IconComponent != null && "$$typeof" in IconComponent)) {
       return <IconComponent className={cn(sizes.icon, "text-muted-foreground")} />;
     }
 
-    // If it's a custom ReactNode
-    return icon;
+    return null;
   };
 
   return (
@@ -125,7 +129,10 @@ export function EmptyState({
               size={size === "sm" ? "sm" : "default"}
               variant="default"
             >
-              {action.icon && <action.icon className="mr-2 h-4 w-4" />}
+              {action.icon ? (() => {
+                const ActionIcon = action.icon;
+                return <ActionIcon className="mr-2 h-4 w-4" />;
+              })() : null}
               {action.label}
             </Button>
           )}

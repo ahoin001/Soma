@@ -36,6 +36,8 @@ import { useExperienceTransitionConfig } from "@/state";
 import { useSheetManager } from "@/hooks/useSheetManager";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, Sparkles } from "lucide-react";
+import { LoadingState } from "@/components/ui/loading-state";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type NutritionDraft = {
   name?: string;
@@ -58,6 +60,51 @@ type NutritionDraft = {
 };
 
 type ActiveSheet = "detail" | "quick" | "edit" | "admin" | null;
+
+function NutritionPageSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-[420px] px-4 pb-10">
+      <div className="-mx-4">
+        <div
+          className="rounded-b-[40px] pb-8 pt-[calc(3rem+var(--sat,env(safe-area-inset-top)))]"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(236,253,245,0.98) 0%, rgba(209,250,229,0.9) 100%)",
+          }}
+        >
+          <div className="flex justify-center px-5">
+            <Skeleton className="h-24 w-24 rounded-full" />
+          </div>
+          <div className="mt-4 flex justify-center gap-4">
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-8 w-28" />
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 flex justify-center gap-2">
+        <Skeleton className="h-10 w-32 rounded-full" />
+      </div>
+      <Card className="mt-6 overflow-hidden rounded-[28px] border border-black/5 bg-white/85 px-5 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="mt-2 h-5 w-32" />
+          </div>
+          <Skeleton className="h-10 w-10 rounded-full" />
+        </div>
+        <div className="mt-4 space-y-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-[22px]" />
+          ))}
+        </div>
+      </Card>
+      <div className="mt-6 flex gap-3">
+        <Skeleton className="h-24 flex-1 rounded-[24px]" />
+        <Skeleton className="h-24 flex-1 rounded-[24px]" />
+      </div>
+    </div>
+  );
+}
 
 const headerStyleOptions: SegmentedOption[] = [
   { value: "immersive", label: "Immersive" },
@@ -121,6 +168,7 @@ const Nutrition = () => {
     setSelectedDate,
     removeLogItem,
     updateLogItem,
+    isLoading: nutritionLoading,
   } = nutrition;
   const meals = mealTypes.meals;
   const { favorites, history, refreshLists, setFavorite } = foodCatalog;
@@ -408,10 +456,15 @@ const Nutrition = () => {
         )}
       </AnimatePresence>
 
-      <div className="mx-auto w-full max-w-[420px] px-4 pb-10">
-        {/* Header extends to screen edges (-mx-4) for immersive gradient effect */}
-        <div className="-mx-4">
-          <DashboardHeader
+      <LoadingState
+        isLoading={nutritionLoading}
+        delay={150}
+        skeleton={<NutritionPageSkeleton />}
+      >
+        <div className="mx-auto w-full max-w-[420px] px-4 pb-10">
+          {/* Header extends to screen edges (-mx-4) for immersive gradient effect */}
+          <div className="-mx-4">
+            <DashboardHeader
             eaten={summary.eaten}
             steps={stepsSummary.steps}
             kcalLeft={summary.kcalLeft}
@@ -443,6 +496,7 @@ const Nutrition = () => {
           onRemoveItem={handleRemoveItem}
           animateTrigger={animateTrigger}
           pulseMealId={pulseMealId}
+          pulseTrigger={animateTrigger}
         />
         
         <StepsCard
@@ -645,7 +699,8 @@ const Nutrition = () => {
             )}
           </div>
         </Card>
-      </div>
+        </div>
+      </LoadingState>
 
       <FoodDetailSheet
         open={isDetailOpen}
@@ -692,7 +747,7 @@ const Nutrition = () => {
         open={activeSheet === "admin"}
         onOpenChange={(open) => (open ? openSheet("admin") : closeSheets())}
       >
-        <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6">
           <div className="px-5 pb-6 pt-3" data-vaul-no-drag>
             <p className="text-xs uppercase tracking-[0.3em] text-emerald-400">
               Admin

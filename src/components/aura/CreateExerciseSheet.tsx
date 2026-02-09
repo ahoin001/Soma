@@ -482,7 +482,7 @@ export const CreateExerciseSheet = ({
   onCreated,
 }: CreateExerciseSheetProps) => (
   <Drawer open={open} onOpenChange={onOpenChange}>
-    <DrawerContent className="rounded-t-[36px] border-none bg-slate-950 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-white">
+    <DrawerContent className="rounded-t-[36px] border-none bg-slate-950 pb-6 text-white">
       <CreateExerciseForm
         onCreated={onCreated}
         onCancel={() => onOpenChange(false)}

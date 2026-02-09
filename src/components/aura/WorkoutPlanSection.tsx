@@ -5,6 +5,20 @@ import type { WorkoutPlan, WorkoutTemplate } from "@/types/fitness";
 import { Clock, Folder, MoreHorizontal } from "lucide-react";
 import { motion } from "framer-motion";
 
+const WORKOUT_COLORS = [
+  "from-emerald-400/30 to-teal-400/30",
+  "from-sky-400/30 to-indigo-400/30",
+  "from-amber-400/30 to-orange-400/30",
+  "from-rose-400/30 to-pink-400/30",
+  "from-violet-400/30 to-fuchsia-400/30",
+  "from-lime-400/30 to-emerald-400/30",
+];
+
+const pickWorkoutColor = (name: string) => {
+  const seed = name.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return WORKOUT_COLORS[seed % WORKOUT_COLORS.length];
+};
+
 type WorkoutPlanSectionProps = {
   plans: WorkoutPlan[];
   expandedPlans: string[];
@@ -145,17 +159,25 @@ export const WorkoutPlanSection = ({
                     }}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-base font-semibold text-white">
-                          {workout.name}
-                        </p>
-                        <p className="mt-1 text-xs text-white/50">
-                          {workout.exercises
-                            .slice(0, 3)
-                            .map((exercise) => exercise.name)
-                            .join(", ")}
-                          {workout.exercises.length > 3 ? "…" : ""}
-                        </p>
+                      <div className="flex items-start gap-2">
+                        <div
+                          className={cn(
+                            "mt-1 h-3 w-3 rounded-full bg-gradient-to-br",
+                            pickWorkoutColor(workout.name),
+                          )}
+                        />
+                        <div>
+                          <p className="text-base font-semibold text-white">
+                            {workout.name}
+                          </p>
+                          <p className="mt-1 text-xs text-white/50">
+                            {workout.exercises
+                              .slice(0, 3)
+                              .map((exercise) => exercise.name)
+                              .join(", ")}
+                            {workout.exercises.length > 3 ? "…" : ""}
+                          </p>
+                        </div>
                       </div>
                       <Button
                         type="button"

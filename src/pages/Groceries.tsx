@@ -18,6 +18,7 @@ import {
   ShoppingBag,
   Wheat,
 } from "lucide-react";
+import { ListEmptyState } from "@/components/ui/empty-state";
 
 type MacroGroup = "protein" | "carbs" | "fats";
 type Category =
@@ -401,9 +402,11 @@ const Groceries = () => {
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {bagByBucket[value].length === 0 ? (
-                    <p className="text-xs text-slate-400">
-                      Add items to your bag.
-                    </p>
+                    <ListEmptyState
+                      itemName="items"
+                      className="w-full py-4 text-center"
+                      size="sm"
+                    />
                   ) : (
                     bagByBucket[value].map((item) => (
                       <button
@@ -509,9 +512,11 @@ const Groceries = () => {
                     ))}
                   </div>
                   {panelItems.length === 0 ? (
-                    <p className="mt-2 text-xs text-slate-400">
-                      Add your first item to start the list.
-                    </p>
+                    <ListEmptyState
+                      itemName="items"
+                      className="mt-2 w-full py-3"
+                      size="sm"
+                    />
                   ) : null}
                   <div className="mt-3 flex items-center gap-2">
                     <Input

@@ -19,6 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Dumbbell, Layers, LineChart, Timer, Wrench } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "@/state/AppStore";
 import type { Exercise } from "@/types/fitness";
@@ -157,6 +158,7 @@ const Fitness = () => {
   }, [activePlanForHud, lastWorkoutId]);
   const hasActiveSession = Boolean(fitnessPlanner.activeSession);
   const canAddToRoutine = Boolean(fitnessPlanner.activeRoutineId);
+  const activeRoutine = fitnessPlanner.activeRoutine;
 
   const sheet = params.get("sheet");
   const sheetExerciseId = params.get("exerciseId");
@@ -307,6 +309,15 @@ const Fitness = () => {
     }
   };
 
+  const handleQuickAdd = () => {
+    if (!activePlanForHud || !nextWorkout) return;
+    navigate(
+      `/fitness/exercises/add?planId=${encodeURIComponent(
+        activePlanForHud.id,
+      )}&workoutId=${encodeURIComponent(nextWorkout.id)}`,
+    );
+  };
+
   const handleCreatePlan = async () => {
     try {
       setCreating(true);
@@ -378,8 +389,48 @@ const Fitness = () => {
           />
         </div>
 
+        {hasActiveSession && activeRoutine ? (
+          <div className="mt-6 space-y-3">
+            <div className="rounded-[24px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-4 text-white">
+              <p className="text-xs uppercase tracking-[0.2em] text-emerald-200/80">
+                Session in progress
+              </p>
+              <p className="mt-1 text-lg font-semibold text-white">
+                {activeRoutine.name}
+              </p>
+              <p className="text-xs text-white/60">
+                Keep logging sets or finish when you are done.
+              </p>
+            </div>
+            <LiveSessionPanel
+              activeSession={fitnessPlanner.activeSession}
+              activeRoutine={activeRoutine}
+              onLogSet={fitnessPlanner.logSet}
+              onAdvanceExercise={handleAdvanceExercise}
+              onFinishSession={fitnessPlanner.finishSession}
+              unitUsed={fitnessPlanner.weightUnit ?? "lb"}
+            />
+          </div>
+        ) : null}
+
         <div>
           <section className="mt-8 space-y-6">
+          {!showEmptyState && nextWorkout && activePlanForHud ? (
+            <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+                Quick add
+              </p>
+              <p className="mt-1 text-sm text-white/70">
+                Add an exercise to {nextWorkout.name}.
+              </p>
+              <Button
+                className="mt-3 w-full rounded-full bg-white/10 text-white hover:bg-white/20"
+                onClick={handleQuickAdd}
+              >
+                Add exercise
+              </Button>
+            </div>
+          ) : null}
           {showEmptyState ? (
             <motion.div
               className="space-y-5"
@@ -387,66 +438,43 @@ const Fitness = () => {
               animate={shouldAnimate ? { opacity: 1, y: 0 } : undefined}
               transition={shouldAnimate ? { duration: 0.4, ease: "easeOut" } : undefined}
             >
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-white/40">
-                  Ready to build
-                </p>
-                <h2 className="mt-2 text-xl font-display font-semibold text-white">
-                  Create your first workout
-                </h2>
-                <p className="mt-1 text-sm text-white/60">
-                  Start with a workout, then organize it into folders when you are ready.
-                </p>
-              </div>
-              <motion.div
-                className="rounded-[28px] border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent px-5 py-6 text-center shadow-[0_25px_50px_rgba(0,0,0,0.35)]"
-                initial={shouldAnimate ? { opacity: 0, y: 8 } : false}
-                animate={shouldAnimate ? { opacity: 1, y: 0 } : undefined}
-                transition={
-                  shouldAnimate ? { duration: 0.4, delay: 0.05 } : undefined
-                }
-              >
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/70">
-                  <Dumbbell className="h-5 w-5" />
-                </div>
-                <p className="mt-4 text-sm text-white/70">
-                  No workouts yet. Create one and add exercises as you go.
-                </p>
-                <div className="mt-5 grid gap-2">
-                  <Button
-                    className="w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
-                    onClick={() => handleCreateWorkout(activePlanForHud?.id ?? null)}
-                    disabled={creating}
-                  >
-                    {creating ? "Creating workout..." : "Create workout"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full rounded-full border-white/20 text-white hover:bg-white/10"
-                    onClick={handleCreatePlan}
-                    disabled={creating}
-                  >
-                    {creating ? "Creating folder..." : "Create folder"}
-                  </Button>
-                  {isAdmin ? (
-                    <Button
-                      variant="secondary"
-                      className="w-full rounded-full bg-white/15 text-white hover:bg-white/25"
-                      onClick={() => navigate("/fitness/admin/exercises")}
-                    >
-                      <Wrench className="h-4 w-4" />
-                      Manage thumbnails
-                    </Button>
-                  ) : null}
+              <EmptyState
+                icon={Dumbbell}
+                title="Create your first workout"
+                description="Start with a workout, then organize it into folders when you are ready."
+                action={{
+                  label: creating ? "Creating workout..." : "Create workout",
+                  onClick: () => handleCreateWorkout(activePlanForHud?.id ?? null),
+                  icon: Dumbbell,
+                }}
+                secondaryAction={{
+                  label: creating ? "Creating folder..." : "Create folder",
+                  onClick: () => handleCreatePlan(),
+                }}
+                className="rounded-[28px] border border-white/10 bg-white/5 py-8 [&_.text-foreground]:!text-white [&_.text-muted-foreground]:!text-white/70"
+                size="lg"
+              />
+              <div className="flex flex-wrap justify-center gap-2">
+                {isAdmin ? (
                   <Button
                     variant="secondary"
-                    className="w-full rounded-full bg-white/15 text-white hover:bg-white/25"
-                    onClick={() => navigate("/fitness/exercises/create")}
+                    size="sm"
+                    className="rounded-full border-white/20 text-white hover:bg-white/10"
+                    onClick={() => navigate("/fitness/admin/exercises")}
                   >
-                    Create exercise
+                    <Wrench className="mr-2 h-4 w-4" />
+                    Manage thumbnails
                   </Button>
-                </div>
-              </motion.div>
+                ) : null}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full border-white/20 text-white hover:bg-white/10"
+                  onClick={() => navigate("/fitness/exercises/create")}
+                >
+                  Create exercise
+                </Button>
+              </div>
             </motion.div>
           ) : (
             <>

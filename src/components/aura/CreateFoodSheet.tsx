@@ -876,7 +876,7 @@ export const CreateFoodSheet = ({
   onCreate,
 }: CreateFoodSheetProps) => (
   <Drawer open={open} onOpenChange={onOpenChange}>
-    <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+    <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6">
       <CreateFoodForm onCreate={onCreate} onComplete={() => onOpenChange(false)} />
     </DrawerContent>
   </Drawer>

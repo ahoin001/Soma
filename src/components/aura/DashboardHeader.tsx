@@ -128,7 +128,7 @@ export const DashboardHeader = ({
             className="relative flex h-60 w-60 items-center justify-center"
             variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}
           >
-            <CalorieGauge value={consumed} goal={goal} />
+            <CalorieGauge value={consumed} goal={goal} celebrateTrigger={animateTrigger} />
             <motion.div
               className="absolute flex flex-col items-center text-center"
               variants={{ hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }}

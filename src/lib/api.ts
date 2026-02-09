@@ -549,6 +549,33 @@ export const fetchTrainingAnalytics = async (weeks = 8) =>
     items: Array<{ week_start: string; volume: number; total_sets: number }>;
   }>(`/api/analytics/training?weeks=${encodeURIComponent(String(weeks))}`);
 
+export const fetchExerciseAnalytics = async (exerciseId: number, days = 84) =>
+  apiFetch<{
+    days: number;
+    items: Array<{
+      day: string;
+      total_sets: number;
+      total_volume_kg: number;
+      max_weight_kg: number;
+      est_one_rm_kg: number;
+    }>;
+  }>(
+    `/api/analytics/exercise?exerciseId=${encodeURIComponent(
+      String(exerciseId),
+    )}&days=${encodeURIComponent(String(days))}`,
+  );
+
+export const fetchMuscleAnalytics = async (days = 84) =>
+  apiFetch<{
+    days: number;
+    items: Array<{
+      day: string;
+      muscle: string;
+      total_sets: number;
+      total_volume_kg: number;
+    }>;
+  }>(`/api/analytics/muscles?days=${encodeURIComponent(String(days))}`);
+
 export const fetchWeightLogs = async (options?: {
   start?: string;
   end?: string;

@@ -12,6 +12,7 @@ import { AnimatedNumber } from "./AnimatedNumber";
 import { AnimatePresence, motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { forwardRef, useMemo, useState } from "react";
+import { ListEmptyState } from "@/components/ui/empty-state";
 
 export type MealLogPanelProps = {
   meals: Meal[];
@@ -22,6 +23,8 @@ export type MealLogPanelProps = {
   onRemoveItem?: (item: LogItem) => void;
   animateTrigger?: number;
   pulseMealId?: string;
+  /** When this changes, the completion ring plays a brief pulse (e.g. after logging). */
+  pulseTrigger?: number;
 };
 
 export const MealLogPanel = ({
@@ -32,6 +35,7 @@ export const MealLogPanel = ({
   onEditItem,
   animateTrigger,
   pulseMealId,
+  pulseTrigger,
 }: MealLogPanelProps) => {
   const [openMeals, setOpenMeals] = useState<Record<string, boolean>>({});
   const logMap = useMemo(() => {
@@ -60,7 +64,7 @@ export const MealLogPanel = ({
             Add and review
           </h3>
         </div>
-        <CompletionRing value={completion} label={`${completion}%`} />
+        <CompletionRing value={completion} label={`${completion}%`} pulseTrigger={pulseTrigger} />
       </div>
 
       <div className="mt-4 space-y-3">
@@ -179,9 +183,11 @@ export const MealLogPanel = ({
                       animateOnMount={Boolean(animateTrigger)}
                     />
                     {!itemCount && (
-                      <div className="rounded-[16px] border border-dashed border-emerald-200/80 bg-white/70 px-4 py-4 text-xs text-slate-500/90">
-                        No items logged yet. Tap add to start tracking.
-                      </div>
+                      <ListEmptyState
+                        itemName="items"
+                        onAdd={() => onAddMeal(meal)}
+                        className="rounded-[16px] border border-dashed border-emerald-200/80 bg-emerald-50/50 py-6"
+                      />
                     )}
                   </div>
                 </motion.div>
@@ -442,13 +448,30 @@ const MealSummary = ({ items, pulse }: { items: LogItem[]; pulse?: boolean }) =>
   );
 };
 
-const CompletionRing = ({ value, label }: { value: number; label: string }) => {
+const CompletionRing = ({
+  value,
+  label,
+  pulseTrigger,
+}: {
+  value: number;
+  label: string;
+  pulseTrigger?: number;
+}) => {
   const radius = 16;
   const circumference = 2 * Math.PI * radius;
   const dash = (Math.min(value, 100) / 100) * circumference;
 
   return (
-    <div className="flex items-center gap-2">
+    <motion.div
+      className="flex items-center gap-2"
+      key={pulseTrigger ?? "static"}
+      animate={
+        pulseTrigger != null && pulseTrigger > 0
+          ? { scale: [1, 1.15, 1] }
+          : undefined
+      }
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+    >
       <svg viewBox="0 0 40 40" className="h-10 w-10 -rotate-90">
         <circle
           cx="20"
@@ -472,6 +495,6 @@ const CompletionRing = ({ value, label }: { value: number; label: string }) => {
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-[11px] font-semibold text-emerald-700">
         {label}
       </div>
-    </div>
+    </motion.div>
   );
 };

@@ -4,12 +4,14 @@ import { motion } from "framer-motion";
 type CalorieGaugeProps = {
   value: number;
   goal: number;
+  /** When this value changes, a brief celebration pulse is played (e.g. after logging food). */
+  celebrateTrigger?: number;
 };
 
 const lerp = (from: number, to: number, progress: number) =>
   Math.round(from + (to - from) * progress);
 
-export const CalorieGauge = ({ value, goal }: CalorieGaugeProps) => {
+export const CalorieGauge = ({ value, goal, celebrateTrigger }: CalorieGaugeProps) => {
   const radius = 120;
   const stroke = 12;
   const normalizedRadius = radius - stroke * 2;
@@ -28,7 +30,9 @@ export const CalorieGauge = ({ value, goal }: CalorieGaugeProps) => {
   const glowColor = `rgba(${strokeColor.r}, ${strokeColor.g}, ${strokeColor.b}, ${glowStrength})`;
   const strokeRgb = `rgb(${strokeColor.r}, ${strokeColor.g}, ${strokeColor.b})`;
   const prevValueRef = useRef<number | null>(null);
+  const prevCelebrateRef = useRef<number | undefined>(undefined);
   const [pulseKey, setPulseKey] = useState(0);
+  const [celebrateKey, setCelebrateKey] = useState(0);
   const reducedShadow = useMemo(
     () =>
       `drop-shadow(0 20px 38px rgba(${strokeColor.r}, ${strokeColor.g}, ${strokeColor.b}, ${
@@ -48,12 +52,18 @@ export const CalorieGauge = ({ value, goal }: CalorieGaugeProps) => {
     }
   }, [value]);
 
+  useEffect(() => {
+    if (celebrateTrigger === undefined || celebrateTrigger === prevCelebrateRef.current) return;
+    prevCelebrateRef.current = celebrateTrigger;
+    setCelebrateKey((k) => k + 1);
+  }, [celebrateTrigger]);
+
   return (
     <motion.div
-      key={pulseKey}
+      key={celebrateKey > 0 ? `celebrate-${celebrateKey}` : pulseKey}
       className="h-full w-full"
-      animate={{ scale: [1, 1.04, 1] }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      animate={{ scale: [1, 1.07, 1] }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
     >
       <svg
         viewBox="0 0 260 260"
