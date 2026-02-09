@@ -31,6 +31,7 @@ import {
   fetchFoodImageSignature,
 } from "@/lib/api";
 import { useAppStore } from "@/state/AppStore";
+import { CREATE_FOOD_DRAFT_KEY } from "@/lib/storageKeys";
 import {
   createFoodSchema,
   createFoodDefaults,
@@ -74,13 +75,10 @@ type CreateFoodFormProps = {
   onComplete?: (created?: FoodItem) => void;
 };
 
-// Draft storage key
-const DRAFT_STORAGE_KEY = "aurafit-create-food-draft-v1";
-
 // Load draft from localStorage
 const loadDraft = (): Partial<CreateFoodFormValues> => {
   if (typeof window === "undefined") return {};
-  const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+  const raw = window.localStorage.getItem(CREATE_FOOD_DRAFT_KEY);
   if (!raw) return {};
   try {
     return JSON.parse(raw) as Partial<CreateFoodFormValues>;
@@ -186,7 +184,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
       
       draftTimerRef.current = window.setTimeout(() => {
         lastSavedDraft.current = serialized;
-        window.localStorage.setItem(DRAFT_STORAGE_KEY, serialized);
+        window.localStorage.setItem(CREATE_FOOD_DRAFT_KEY, serialized);
         setDraftSaved(true);
         
         if (draftSavedTimerRef.current) {
@@ -276,7 +274,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
 
       // Clear draft
       if (typeof window !== "undefined") {
-        window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+        window.localStorage.removeItem(CREATE_FOOD_DRAFT_KEY);
       }
 
       onComplete?.(created);
@@ -326,7 +324,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
               onClick={() => {
                 reset(createFoodDefaults);
                 if (typeof window !== "undefined") {
-                  window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+                  window.localStorage.removeItem(CREATE_FOOD_DRAFT_KEY);
                 }
                 lastSavedDraft.current = "";
                 setShowDraftLoaded(false);
@@ -350,7 +348,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
               onClick={() => {
                 reset(createFoodDefaults);
                 if (typeof window !== "undefined") {
-                  window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+                  window.localStorage.removeItem(CREATE_FOOD_DRAFT_KEY);
                 }
                 lastSavedDraft.current = "";
                 setShowDraftLoaded(false);

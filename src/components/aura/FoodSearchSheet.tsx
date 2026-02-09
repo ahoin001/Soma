@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { BarcodeScanSheet } from "./BarcodeScanSheet";
 import { CreateFoodSheet } from "./CreateFoodSheet";
 import { FoodSearchContent } from "./FoodSearchContent";
+import { SHEET_FOOD_SEARCH_KEY } from "@/lib/storageKeys";
 import { useSheetManager } from "@/hooks/useSheetManager";
 
 type FoodSearchSheetProps = {
@@ -98,7 +99,7 @@ const FoodSearchSheetContent = ({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const { activeSheet, openSheet, closeSheets } = useSheetManager<
     "barcode" | "create"
-  >(null, { storageKey: "aurafit-sheet:food-search", persist: true });
+  >(null, { storageKey: SHEET_FOOD_SEARCH_KEY, persist: true });
   const [lastBrowseTab, setLastBrowseTab] = useState<"recent" | "liked" | "history">(
     activeTab === "search" ? "recent" : activeTab,
   );

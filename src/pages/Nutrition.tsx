@@ -39,6 +39,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, Sparkles } from "lucide-react";
 import { LoadingState } from "@/components/ui/loading-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { HEADER_STYLE_KEY, SHEET_NUTRITION_KEY } from "@/lib/storageKeys";
 import type { NutritionDraft } from "@/types/nutrition";
 
 type ActiveSheet = "detail" | "quick" | "edit" | "admin" | null;
@@ -102,7 +103,7 @@ const homeOptions: SegmentedOption[] = [
 const Nutrition = () => {
   const { activeSheet, openSheet, closeSheets, setActiveSheet } =
     useSheetManager<Exclude<ActiveSheet, null>>(null, {
-      storageKey: "aurafit-sheet:nutrition",
+      storageKey: SHEET_NUTRITION_KEY,
       persist: true,
     });
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
@@ -117,7 +118,7 @@ const Nutrition = () => {
     useExperienceTransitionConfig();
   const [headerStyle, setHeaderStyle] = useState<"immersive" | "card" | "media">(() => {
     if (typeof window === "undefined") return "immersive";
-    const saved = window.localStorage.getItem("aurafit-header-style");
+    const saved = window.localStorage.getItem(HEADER_STYLE_KEY);
     return saved === "card" || saved === "media" ? saved : "immersive";
   });
   const locationState = location.state as { justLoggedIn?: boolean; isNewUser?: boolean } | null;
@@ -219,7 +220,7 @@ const Nutrition = () => {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem("aurafit-header-style", headerStyle);
+    window.localStorage.setItem(HEADER_STYLE_KEY, headerStyle);
   }, [headerStyle]);
 
   useEffect(() => {

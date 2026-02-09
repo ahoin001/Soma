@@ -6,9 +6,8 @@ import type {
   MealEntryRecord,
   MealTypeRecord,
 } from "@/types/api";
+import { SESSION_TOKEN_KEY, USER_ID_KEY } from "@/lib/storageKeys";
 
-const USER_ID_KEY = "aurafit-user-id";
-const SESSION_TOKEN_KEY = "aurafit-session-token";
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
 export const getSessionToken = () =>

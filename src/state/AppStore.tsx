@@ -14,6 +14,12 @@ import { useExerciseLibrary } from "@/hooks/useExerciseLibrary";
 import { useFitnessPlanner } from "@/hooks/useFitnessPlanner";
 import { useMealTypes } from "@/hooks/useMealTypes";
 import { useWorkoutPlans } from "@/hooks/useWorkoutPlans";
+import {
+  DEBUG_KEY,
+  FOOD_IMAGES_KEY,
+  USER_PROFILE_KEY,
+  WORKOUT_DRAFTS_KEY_V2,
+} from "@/lib/storageKeys";
 import type { WorkoutPlan, WorkoutTemplate } from "@/types/fitness";
 
 type UserProfile = {
@@ -67,9 +73,6 @@ type AppStore = {
 
 const AppStoreContext = createContext<AppStore | null>(null);
 
-const USER_PROFILE_KEY = "aurafit-user-profile-v1";
-const WORKOUT_DRAFTS_KEY_V2 = "ironflow-workout-drafts-v2";
-
 type WorkoutDraft = {
   exercises: WorkoutTemplate["exercises"];
   baseSignature: string;
@@ -102,7 +105,7 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
   });
   const [showFoodImages, setShowFoodImages] = useState(() => {
     if (typeof window === "undefined") return true;
-    const stored = window.localStorage.getItem("aurafit-show-food-images");
+    const stored = window.localStorage.getItem(FOOD_IMAGES_KEY);
     return stored ? stored === "true" : true;
   });
   const mealTypes = useMealTypes();
@@ -234,10 +237,7 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      "aurafit-show-food-images",
-      String(showFoodImages),
-    );
+    window.localStorage.setItem(FOOD_IMAGES_KEY, String(showFoodImages));
   }, [showFoodImages]);
 
   useEffect(() => {
@@ -309,7 +309,7 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
         } else if (import.meta.env.DEV) {
           const enabled =
             typeof window !== "undefined" &&
-            window.localStorage.getItem("aurafit-debug") === "true";
+            window.localStorage.getItem(DEBUG_KEY) === "true";
           if (enabled) {
             console.info("[AuraFit] missing nutrition settings on hydrate");
           }
@@ -324,7 +324,7 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
         if (import.meta.env.DEV) {
           const enabled =
             typeof window !== "undefined" &&
-            window.localStorage.getItem("aurafit-debug") === "true";
+            window.localStorage.getItem(DEBUG_KEY) === "true";
           if (enabled) {
             const kcal = Number(nutritionSummary.settings?.kcal_goal ?? Number.NaN);
             const invalidKcal = !Number.isFinite(kcal) || kcal <= 0;

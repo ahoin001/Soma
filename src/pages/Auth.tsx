@@ -1,93 +1,38 @@
-import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/hooks/useAuth";
-import { requestPasswordReset, resetPassword } from "@/lib/api";
+import { useAuthForm } from "@/hooks/useAuthForm";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 const Auth = () => {
-  const { register, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [mode, setMode] = useState<"login" | "register" | "reset">("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [token, setToken] = useState("");
-  const [notice, setNotice] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading">("idle");
-  const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = useMemo(() => {
-    if (mode === "register") return email.trim().length > 3 && password.length >= 8;
-    if (mode === "login") return email.trim().length > 3 && password.length >= 8;
-    if (mode === "reset") {
-      if (token.trim()) return password.length >= 8;
-      return email.trim().length > 3;
-    }
-    return false;
-  }, [email, password, token, mode]);
-
-  const handleSuccess = (isNewUser = false) => {
+  const handleSuccess = (isNewUser: boolean) => {
     const from = (location.state as { from?: string } | undefined)?.from;
     const destination = from && from !== "/auth" ? from : "/nutrition";
     navigate(destination, { replace: true, state: { justLoggedIn: true, isNewUser } });
   };
 
-  const handleSubmit = async () => {
-    if (!canSubmit) return;
-    setStatus("loading");
-    setError(null);
-    try {
-      setNotice(null);
-      if (mode === "register") {
-        await register({ email, password, displayName: displayName.trim() || undefined });
-        handleSuccess(true);
-      } else if (mode === "login") {
-        await login({ email, password });
-        handleSuccess(false);
-      } else if (mode === "reset") {
-        if (!token.trim()) {
-          const result = await requestPasswordReset({ email });
-          if (result.resetToken) setToken(result.resetToken);
-          setNotice("If the account exists, a reset link was sent.");
-        } else {
-          await resetPassword({ token, newPassword: password });
-          setNotice("Password reset. You can sign in now.");
-          setMode("login");
-        }
-      }
-    } catch (err) {
-      let message = "Something went wrong. Please try again.";
-      if (err instanceof Error) {
-        const raw = err.message;
-        // Parse JSON error responses from API
-        try {
-          const parsed = JSON.parse(raw);
-          if (parsed.error) {
-            message = parsed.error;
-          }
-        } catch {
-          // Not JSON, try to extract meaningful messages
-          if (raw.includes("No account found")) {
-            message = "No account found with this email. Would you like to create one?";
-          } else if (raw.includes("Incorrect password")) {
-            message = "Incorrect password. Please try again.";
-          } else if (raw.includes("already exists") || raw.includes("duplicate")) {
-            message = "An account with this email already exists. Try signing in instead.";
-          } else if (raw.includes("network") || raw.includes("fetch")) {
-            message = "Unable to connect. Please check your internet connection.";
-          } else if (raw) {
-            message = raw;
-          }
-        }
-      }
-      setError(message);
-    } finally {
-      setStatus("idle");
-    }
-  };
+  const {
+    mode,
+    setMode,
+    setModeAndClear,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    displayName,
+    setDisplayName,
+    token,
+    setToken,
+    notice,
+    status,
+    error,
+    clearError,
+    canSubmit,
+    handleSubmit,
+  } = useAuthForm({ onSuccess: handleSuccess });
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-emerald-100 via-emerald-50 to-white">
@@ -117,9 +62,9 @@ const Auth = () => {
                 </label>
                 <Input
                   value={displayName}
-                  onChange={(event) => {
-                    setDisplayName(event.target.value);
-                    if (error) setError(null);
+                  onChange={(e) => {
+                    setDisplayName(e.target.value);
+                    clearError();
                   }}
                   placeholder="Your name"
                   className="rounded-full"
@@ -132,9 +77,9 @@ const Auth = () => {
               </label>
               <Input
                 value={email}
-                onChange={(event) => {
-                  setEmail(event.target.value);
-                  if (error) setError(null);
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  clearError();
                 }}
                 placeholder="name@email.com"
                 type="email"
@@ -148,9 +93,9 @@ const Auth = () => {
                 </label>
                 <Input
                   value={password}
-                  onChange={(event) => {
-                    setPassword(event.target.value);
-                    if (error) setError(null);
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    clearError();
                   }}
                   placeholder="Minimum 8 characters"
                   type="password"
@@ -165,9 +110,9 @@ const Auth = () => {
                 </label>
                 <Input
                   value={token}
-                  onChange={(event) => {
-                    setToken(event.target.value);
-                    if (error) setError(null);
+                  onChange={(e) => {
+                    setToken(e.target.value);
+                    clearError();
                   }}
                   placeholder="Paste token from email"
                   className="rounded-full"
@@ -206,11 +151,7 @@ const Auth = () => {
             <button
               type="button"
               className="w-full text-xs text-emerald-600"
-              onClick={() => {
-                setMode(mode === "register" ? "login" : "register");
-                setError(null);
-                setNotice(null);
-              }}
+              onClick={() => setModeAndClear(mode === "register" ? "login" : "register")}
             >
               {mode === "register"
                 ? "Already have an account? Sign in"
@@ -218,14 +159,7 @@ const Auth = () => {
             </button>
             {mode === "login" && (
               <div className="flex items-center justify-between text-[11px] text-slate-400">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode("reset");
-                    setError(null);
-                    setNotice(null);
-                  }}
-                >
+                <button type="button" onClick={() => setModeAndClear("reset")}>
                   Forgot password?
                 </button>
               </div>
@@ -234,11 +168,7 @@ const Auth = () => {
               <button
                 type="button"
                 className="w-full text-xs text-slate-500"
-                onClick={() => {
-                  setMode("login");
-                  setError(null);
-                  setNotice(null);
-                }}
+                onClick={() => setModeAndClear("login")}
               >
                 Back to sign in
               </button>

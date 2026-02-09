@@ -15,8 +15,7 @@ import {
 import { calculateDynamicTargets, calculateTargets } from "@/lib/nutritionTargets";
 import { useAppStore } from "@/state/AppStore";
 import { useAuth } from "@/hooks/useAuth";
-
-const STORAGE_KEY = "aurafit-onboarded-v1";
+import { ONBOARDED_KEY } from "@/lib/storageKeys";
 
 const toLocalDate = (date: Date) => date.toISOString().slice(0, 10);
 
@@ -61,7 +60,7 @@ export const OnboardingDialog = ({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const seen = window.localStorage.getItem(STORAGE_KEY);
+    const seen = window.localStorage.getItem(ONBOARDED_KEY);
     setHasSeen(Boolean(seen));
   }, []);
 
@@ -73,7 +72,7 @@ export const OnboardingDialog = ({
 
     if (hasGoal || hasMacroTargets) {
       if (typeof window !== "undefined" && !hasSeen) {
-        window.localStorage.setItem(STORAGE_KEY, "true");
+        window.localStorage.setItem(ONBOARDED_KEY, "true");
         setHasSeen(true);
       }
       setOpen(false);
@@ -227,7 +226,7 @@ export const OnboardingDialog = ({
     });
 
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, "true");
+      window.localStorage.setItem(ONBOARDED_KEY, "true");
       setHasSeen(true);
     }
     onComplete?.();
@@ -266,7 +265,7 @@ export const OnboardingDialog = ({
             type="button"
             className="rounded-full bg-white/80 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-[0_8px_20px_rgba(16,185,129,0.15)]"
             onClick={() => {
-              window.localStorage.setItem(STORAGE_KEY, "true");
+              window.localStorage.setItem(ONBOARDED_KEY, "true");
               setHasSeen(true);
               setOpen(false);
             }}

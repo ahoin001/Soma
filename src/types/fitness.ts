@@ -19,6 +19,33 @@ export type WorkoutExerciseEntry = {
   customVideoName?: string;
 };
 
+/**
+ * Editable set row (weight, reps, etc.) used in workout session UI.
+ * WorkoutSessionSheet uses base fields; WorkoutSessionEditor also uses rpe, restSeconds.
+ */
+export type EditableSet = {
+  id: string;
+  weight: string;
+  reps: string;
+  previous: string;
+  rpe?: string;
+  restSeconds?: string;
+};
+
+/**
+ * Editable exercise with sets, used in workout session UI.
+ * WorkoutSessionSheet uses id, name, sets; WorkoutSessionEditor also uses note, steps, guideUrl, customVideoName.
+ */
+export type EditableExercise = {
+  id: string;
+  name: string;
+  sets: EditableSet[];
+  note?: string;
+  steps?: string[];
+  guideUrl?: string;
+  customVideoName?: string;
+};
+
 export type WorkoutTemplate = {
   id: string;
   name: string;

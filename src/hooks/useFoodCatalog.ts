@@ -27,17 +27,9 @@ import {
   updateFoodImage as updateFoodImageApi,
   updateFoodMaster as updateFoodMasterApi,
 } from "@/lib/api";
-
-type CacheEntry<T> = {
-  updatedAt: number;
-  value: T;
-};
-
-type FoodOverride = {
-  kcal: number;
-  portion: string;
-  macros: Record<MacroKey, number>;
-};
+import { FOOD_CACHE_KEY } from "@/lib/storageKeys";
+import type { CacheEntry } from "@/types/cache";
+import type { FoodOverride } from "@/types/nutrition";
 
 type FoodCache = {
   searches: Record<string, CacheEntry<FoodItem[]>>;
@@ -45,7 +37,7 @@ type FoodCache = {
   overrides: Record<string, FoodOverride>;
 };
 
-const CACHE_KEY = "aura-food-cache-v2";
+const CACHE_KEY = FOOD_CACHE_KEY;
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 
 const emptyCache: FoodCache = {

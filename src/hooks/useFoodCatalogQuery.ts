@@ -24,16 +24,7 @@ import {
 } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { queueMutation } from "@/lib/offlineQueue";
-
-// ============================================================================
-// Types
-// ============================================================================
-
-type FoodOverride = {
-  kcal: number;
-  portion: string;
-  macros: Record<MacroKey, number>;
-};
+import type { FoodOverride } from "@/types/nutrition";
 
 // ============================================================================
 // Helpers
@@ -139,12 +130,12 @@ const applyOverride = (food: FoodItem, override?: FoodOverride): FoodItem => {
 // Local Overrides Storage
 // ============================================================================
 
-const OVERRIDES_KEY = "aura-food-overrides-v1";
+import { FOOD_OVERRIDES_KEY } from "@/lib/storageKeys";
 
 const loadOverrides = (): Record<string, FoodOverride> => {
   if (typeof window === "undefined") return {};
   try {
-    const raw = window.localStorage.getItem(OVERRIDES_KEY);
+    const raw = window.localStorage.getItem(FOOD_OVERRIDES_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -153,7 +144,7 @@ const loadOverrides = (): Record<string, FoodOverride> => {
 
 const saveOverrides = (overrides: Record<string, FoodOverride>) => {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides));
+  window.localStorage.setItem(FOOD_OVERRIDES_KEY, JSON.stringify(overrides));
 };
 
 // ============================================================================

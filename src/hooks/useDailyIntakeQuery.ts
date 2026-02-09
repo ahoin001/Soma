@@ -28,29 +28,12 @@ import type { LogItem, LogSection } from "@/types/log";
 import { queryKeys } from "@/lib/queryKeys";
 import { queueMutation } from "@/lib/offlineQueue";
 import { computeLogSections, computeTotals, toLocalDate } from "@/lib/nutritionData";
-
-// ============================================================================
-// Types
-// ============================================================================
-
-type Summary = {
-  eaten: number;
-  burned: number;
-  kcalLeft: number;
-  goal: number;
-};
-
-type SyncState = "idle" | "syncing";
+import type { LastLog, Summary, SyncState } from "@/types/nutrition";
 
 type NutritionData = {
   summary: Summary;
   macros: MacroTarget[];
   logSections: LogSection[];
-};
-
-type LastLog = {
-  food: FoodItem;
-  itemId?: string;
 };
 
 // ============================================================================

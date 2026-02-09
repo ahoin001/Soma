@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 
+import { SHEET_DEBUG_KEY } from "@/lib/storageKeys";
 import { cn } from "@/lib/utils";
 import { lockScroll, unlockScroll } from "@/lib/scrollLock";
 
@@ -102,7 +103,7 @@ const DrawerContent = React.forwardRef<
 
   React.useEffect(() => {
     if (!import.meta.env.DEV || typeof window === "undefined") return;
-    const enabled = window.localStorage.getItem("aurafit-sheet-debug") === "true";
+    const enabled = window.localStorage.getItem(SHEET_DEBUG_KEY) === "true";
     if (!enabled) return;
     const log = (label: string) => {
       const rect = contentRef.current?.getBoundingClientRect();

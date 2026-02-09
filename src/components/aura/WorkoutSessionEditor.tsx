@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type {
+  EditableExercise,
+  EditableSet,
   WorkoutExerciseEntry,
   WorkoutPlan,
   WorkoutTemplate,
@@ -39,6 +41,7 @@ import {
   fetchExerciseByName,
   upsertActivityGoals,
 } from "@/lib/api";
+import { ADVANCED_LOGGING_KEY, workoutLastSetsKey } from "@/lib/storageKeys";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -58,25 +61,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
-type EditableSet = {
-  id: string;
-  weight: string;
-  reps: string;
-  previous: string;
-  rpe?: string;
-  restSeconds?: string;
-};
-
-type EditableExercise = {
-  id: string;
-  name: string;
-  sets: EditableSet[];
-  note: string;
-  steps?: string[];
-  guideUrl?: string;
-  customVideoName?: string;
-};
 
 const isInteractiveTarget = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) return false;
@@ -842,7 +826,7 @@ export const WorkoutSessionEditor = ({
     }
     const storedRaw =
       typeof window !== "undefined"
-        ? window.localStorage.getItem(`ironflow-workout-last-sets:${workout.id}`)
+        ? window.localStorage.getItem(workoutLastSetsKey(workout.id))
         : null;
     const stored =
       storedRaw && mode === "session"
@@ -888,7 +872,7 @@ export const WorkoutSessionEditor = ({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem("ironflow-advanced-logging");
+    const stored = window.localStorage.getItem(ADVANCED_LOGGING_KEY);
     if (stored) {
       setAdvancedLogging(stored === "true");
     }
@@ -897,7 +881,7 @@ export const WorkoutSessionEditor = ({
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(
-      "ironflow-advanced-logging",
+      ADVANCED_LOGGING_KEY,
       advancedLogging ? "true" : "false",
     );
   }, [advancedLogging]);
@@ -1127,7 +1111,7 @@ export const WorkoutSessionEditor = ({
       }));
     });
     window.localStorage.setItem(
-      `ironflow-workout-last-sets:${workout.id}`,
+      workoutLastSetsKey(workout.id),
       JSON.stringify(payload),
     );
   };

@@ -1,17 +1,14 @@
 import { useCallback, useMemo, useState } from "react";
 import type { Exercise, ExerciseSearchStatus } from "@/types/fitness";
+import { EXERCISE_CACHE_KEY } from "@/lib/storageKeys";
 import { ensureUser, searchExercises } from "@/lib/api";
-
-type CacheEntry<T> = {
-  updatedAt: number;
-  value: T;
-};
+import type { CacheEntry } from "@/types/cache";
 
 type ExerciseCache = {
   searches: Record<string, CacheEntry<Exercise[]>>;
 };
 
-const CACHE_KEY = "ironflow-exercise-cache-v1";
+const CACHE_KEY = EXERCISE_CACHE_KEY;
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 const PAGE_LIMIT = 50;
 

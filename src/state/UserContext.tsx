@@ -23,6 +23,11 @@ import {
   fetchNutritionSummary,
   fetchUserProfile,
 } from "@/lib/api";
+import {
+  DEFAULT_HOME_KEY,
+  FOOD_IMAGES_KEY,
+  USER_PROFILE_KEY,
+} from "@/lib/storageKeys";
 
 // ============================================================================
 // Types
@@ -58,14 +63,6 @@ type UserContextValue = {
   // Hydration state
   isHydrated: boolean;
 };
-
-// ============================================================================
-// Storage Keys
-// ============================================================================
-
-const USER_PROFILE_KEY = "aurafit-user-profile-v1";
-const FOOD_IMAGES_KEY = "aurafit-show-food-images";
-const DEFAULT_HOME_KEY = "aurafit-default-home";
 
 // ============================================================================
 // Default Values

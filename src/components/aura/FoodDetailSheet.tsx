@@ -28,10 +28,18 @@ import {
   createFoodServing,
   fetchFoodServings,
 } from "@/lib/api";
+import {
+  getServingOptions,
+  hasServingOptions,
+  normalizeUnit,
+  setServingOptions,
+  type ServingOption,
+} from "@/lib/servingCache";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppStore } from "@/state/AppStore";
 import { useUserSettings } from "@/state";
 import { servingUnits } from "@/lib/schemas/food";
+import type { NutritionDraftForm } from "@/types/nutrition";
 
 export type FoodDetailSheetProps = {
   open: boolean;
@@ -56,69 +64,9 @@ export type FoodDetailSheetProps = {
   onToggleFavorite?: (favorite: boolean) => void;
 };
 
-/** Form state: numeric inputs can be "" before blur/submit. */
-type NutritionDraftForm = {
-  name: string;
-  brand: string;
-  brandId: string | null;
-  portion: string;
-  portionGrams: number | null;
-  kcal: number | "";
-  carbs: number | "";
-  protein: number | "";
-  fat: number | "";
-  sodiumMg: number | null;
-  fiberG: number | null;
-  sugarG: number | null;
-  saturatedFatG: number | null;
-  transFatG: number | null;
-  cholesterolMg: number | null;
-  potassiumMg: number | null;
-  ingredients: string;
-};
-
-type ServingOption = {
-  id: string;
-  label: string;
-  grams?: number | null;
-  kind: "serving" | "weight" | "custom";
-};
-
-const servingCache = new Map<string, ServingOption[]>();
-const servingCacheKey = "aurafit-serving-cache-v1";
-const isBrowser = typeof window !== "undefined";
-
-const loadServingCache = () => {
-  if (!isBrowser) return;
-  try {
-    const raw = window.localStorage.getItem(servingCacheKey);
-    if (!raw) return;
-    const parsed = JSON.parse(raw) as Record<string, ServingOption[]>;
-    Object.entries(parsed).forEach(([foodId, options]) => {
-      if (Array.isArray(options)) {
-        servingCache.set(foodId, options);
-      }
-    });
-  } catch {
-    // ignore cache errors
-  }
-};
-
-const persistServingCache = () => {
-  if (!isBrowser) return;
-  try {
-    const payload = Object.fromEntries(servingCache.entries());
-    window.localStorage.setItem(servingCacheKey, JSON.stringify(payload));
-  } catch {
-    // ignore cache errors
-  }
-};
-
-loadServingCache();
-
 export const preloadFoodDetail = async (foodId: string) => {
   if (!foodId) return;
-  if (servingCache.has(foodId)) return;
+  if (hasServingOptions(foodId)) return;
   try {
     const response = await fetchFoodServings(foodId);
     const extra = response.servings
@@ -130,8 +78,7 @@ export const preloadFoodDetail = async (foodId: string) => {
         kind: "custom" as const,
       }));
     if (extra.length) {
-      servingCache.set(foodId, extra);
-      persistServingCache();
+      setServingOptions(foodId, extra);
     }
   } catch {
     // ignore preload failures
@@ -157,7 +104,7 @@ export const FoodDetailSheet = ({
   const [draft, setDraft] = useState<NutritionDraftForm | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [quantityInput, setQuantityInput] = useState("1");
-  const [servingOptions, setServingOptions] = useState<ServingOption[]>([]);
+  const [servingOptions, setServingOptionsState] = useState<ServingOption[]>([]);
   const [selectedServingId, setSelectedServingId] = useState<string>("grams");
   const [baseServingAmount, setBaseServingAmount] = useState("1");
   const [baseServingUnit, setBaseServingUnit] = useState("serving");
@@ -200,7 +147,7 @@ export const FoodDetailSheet = ({
       setDraft(null);
       setQuantity(1);
       setQuantityInput("1");
-      setServingOptions([]);
+      setServingOptionsState([]);
       setSelectedServingId("grams");
       setBaseServingAmount("1");
       setBaseServingUnit("serving");
@@ -274,7 +221,7 @@ export const FoodDetailSheet = ({
       grams: 28.3495,
       kind: "weight",
     });
-    setServingOptions(options);
+    setServingOptionsState(options);
     setSelectedServingId(options[0]?.id ?? "grams");
     setImageUrl(food.imageUrl ?? null);
     setBrandLogoUrl(food.brandLogoUrl ?? null);
@@ -294,9 +241,9 @@ export const FoodDetailSheet = ({
       }
     }
     setUploadNotice(null);
-    const cachedServings = servingCache.get(food.id);
-    if (cachedServings?.length) {
-      setServingOptions((prev) => {
+    const cachedServings = getServingOptions(food.id);
+    if (cachedServings.length) {
+      setServingOptionsState((prev) => {
         const merged = [...prev, ...cachedServings];
         const seen = new Set<string>();
         return merged.filter((option) => {
@@ -318,9 +265,8 @@ export const FoodDetailSheet = ({
             kind: "custom" as const,
           }));
         if (extra.length) {
-          servingCache.set(food.id, extra);
-          persistServingCache();
-          setServingOptions((prev) => {
+          setServingOptions(food.id, extra);
+          setServingOptionsState((prev) => {
             const merged = [...prev, ...extra];
             const seen = new Set<string>();
             return merged.filter((option) => {
@@ -440,32 +386,6 @@ export const FoodDetailSheet = ({
     () => servingOptions.filter((option) => option.kind === "custom"),
     [servingOptions],
   );
-
-  const normalizeUnit = (raw: string) => {
-    const unit = raw.trim().toLowerCase();
-    if (!unit) return "serving";
-    if (unit.startsWith("g") || unit.includes("gram")) return "g";
-    if (unit.includes("kg") || unit.includes("kilogram")) return "kg";
-    if (unit.includes("ml") || unit.includes("milliliter")) return "ml";
-    if (unit === "l" || unit.includes("liter")) return "l";
-    if (unit.includes("fl oz") || unit.includes("fluid ounce")) return "fl oz";
-    if (unit.includes("cup")) return "cup";
-    if (unit.includes("pint")) return "pint";
-    if (unit.includes("quart")) return "quart";
-    if (unit.includes("gallon")) return "gallon";
-    if (unit.includes("tbsp") || unit.includes("tablespoon")) return "tbsp";
-    if (unit.includes("tsp") || unit.includes("teaspoon")) return "tsp";
-    if (unit.includes("oz") || unit.includes("ounce")) return "oz";
-    if (unit.includes("lb") || unit.includes("pound")) return "lb";
-    if (unit.includes("slice")) return "slice";
-    if (unit.includes("piece") || unit.includes("pc")) return "piece";
-    if (unit.includes("packet") || unit.includes("pack")) return "packet";
-    if (unit.includes("can")) return "can";
-    if (unit.includes("bottle")) return "bottle";
-    if (unit.includes("bar")) return "bar";
-    if (unit.includes("serving")) return "serving";
-    return "serving";
-  };
 
   const parseNumber = (raw: string) => {
     const cleaned = raw.trim();
@@ -1178,7 +1098,7 @@ export const FoodDetailSheet = ({
                               label,
                               grams,
                             });
-                            setServingOptions((prev) => [
+                            setServingOptionsState((prev) => [
                               ...prev,
                               {
                                 id: response.serving.id,

@@ -11,6 +11,7 @@ import { fuzzyFilter } from "@/lib/fuzzySearch";
 import { useSheetManager } from "@/hooks/useSheetManager";
 import { calculateMacroPercent } from "@/data/foodApi";
 import type { LogItem } from "@/types/log";
+import { CREATED_FOOD_KEY, SHEET_ADD_FOOD_KEY } from "@/lib/storageKeys";
 import type { NutritionDraft } from "@/types/nutrition";
 import { ensureUser, fetchMealEntries } from "@/lib/api";
 
@@ -39,7 +40,7 @@ const AddFood = () => {
   const [recentMealFoods, setRecentMealFoods] = useState<FoodItem[]>([]);
   const recentRequestRef = useRef(0);
   const { activeSheet, openSheet, closeSheets } = useSheetManager<"detail" | "edit">(null, {
-    storageKey: "aurafit-sheet:add-food",
+    storageKey: SHEET_ADD_FOOD_KEY,
     persist: true,
   });
   const isEditOpen = activeSheet === "edit" && Boolean(editItem);
@@ -305,16 +306,16 @@ const AddFood = () => {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const raw = window.localStorage.getItem("aurafit-created-food");
+    const raw = window.localStorage.getItem(CREATED_FOOD_KEY);
     if (!raw) return;
     try {
       const parsed = JSON.parse(raw) as { food?: FoodItem };
       if (!parsed.food) return;
       setSelectedFood(parsed.food);
       openSheet("detail");
-      window.localStorage.removeItem("aurafit-created-food");
+      window.localStorage.removeItem(CREATED_FOOD_KEY);
     } catch {
-      window.localStorage.removeItem("aurafit-created-food");
+      window.localStorage.removeItem(CREATED_FOOD_KEY);
     }
   }, []);
 

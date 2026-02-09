@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "@/state/AppStore";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { logDraftKey } from "@/lib/storageKeys";
 import { calculateMacroPercent } from "@/data/foodApi";
 
 type EditLogSheetProps = {
@@ -39,7 +40,7 @@ export const EditLogSheet = ({
 
   useEffect(() => {
     if (!open) return;
-    const key = item ? `aurafit-log-draft:${item.id}` : null;
+    const key = item ? logDraftKey(item.id) : null;
     if (key && typeof window !== "undefined") {
       const stored = window.localStorage.getItem(key);
       if (stored) {
@@ -69,7 +70,7 @@ export const EditLogSheet = ({
     if (draftTimerRef.current) {
       window.clearTimeout(draftTimerRef.current);
     }
-    const key = `aurafit-log-draft:${item.id}`;
+    const key = logDraftKey(item.id);
     draftTimerRef.current = window.setTimeout(() => {
       window.localStorage.setItem(key, String(multiplier));
     }, 200);

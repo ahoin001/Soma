@@ -17,6 +17,7 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
+import { EXPERIENCE_TRANSITION_CONFIG_KEY } from "@/lib/storageKeys";
 
 // ============================================================================
 // Types
@@ -54,12 +55,6 @@ type UIContextValue = {
     radiusPct?: number;
   }) => void;
 };
-
-// ============================================================================
-// Storage Keys
-// ============================================================================
-
-const EXPERIENCE_TRANSITION_CONFIG_KEY = "aurafit-experience-transition-config-v1";
 
 // ============================================================================
 // Context

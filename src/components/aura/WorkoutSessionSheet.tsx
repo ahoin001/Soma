@@ -2,22 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { WorkoutExerciseEntry, WorkoutPlan, WorkoutTemplate } from "@/types/fitness";
+import type {
+  EditableExercise,
+  EditableSet,
+  WorkoutExerciseEntry,
+  WorkoutPlan,
+  WorkoutTemplate,
+} from "@/types/fitness";
 import { ArrowDown, ArrowUp, MoreHorizontal, Plus } from "lucide-react";
 import { ReplaceExerciseSheet } from "./ReplaceExerciseSheet";
-
-type EditableSet = {
-  id: string;
-  weight: string;
-  reps: string;
-  previous: string;
-};
-
-type EditableExercise = {
-  id: string;
-  name: string;
-  sets: EditableSet[];
-};
 
 const createId = () => `set_${Math.random().toString(36).slice(2, 9)}`;
 

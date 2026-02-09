@@ -63,7 +63,7 @@ const activityOptions: Array<{
   },
 ];
 
-const GOALS_DRAFT_KEY = "aurafit-goals-draft-v1";
+import { GOALS_DRAFT_KEY } from "@/lib/storageKeys";
 
 const cmToImperial = (cm: number) => {
   const totalInches = cm / 2.54;

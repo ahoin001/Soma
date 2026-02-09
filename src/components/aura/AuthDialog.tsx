@@ -1,9 +1,7 @@
-import { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
-import { requestPasswordReset, resetPassword } from "@/lib/api";
+import { useAuthForm } from "@/hooks/useAuthForm";
 
 type AuthDialogProps = {
   open: boolean;
@@ -11,57 +9,26 @@ type AuthDialogProps = {
 };
 
 export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
-  const { register, login } = useAuth();
-  const [mode, setMode] = useState<"login" | "register" | "reset">("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [token, setToken] = useState("");
-  const [notice, setNotice] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading">("idle");
-  const [error, setError] = useState<string | null>(null);
-
-  const canSubmit = useMemo(() => {
-    if (mode === "register") return email.trim().length > 3 && password.length >= 8;
-    if (mode === "login") return email.trim().length > 3 && password.length >= 8;
-    if (mode === "reset") {
-      if (token.trim()) return password.length >= 8;
-      return email.trim().length > 3;
-    }
-    return false;
-  }, [email, password, token, mode]);
-
-  const handleSubmit = async () => {
-    if (!canSubmit) return;
-    setStatus("loading");
-    setError(null);
-    try {
-      setNotice(null);
-      if (mode === "register") {
-        await register({ email, password, displayName: displayName.trim() || undefined });
-      } else if (mode === "login") {
-        await login({ email, password });
-      } else if (mode === "reset") {
-        if (!token.trim()) {
-          const result = await requestPasswordReset({ email });
-          if (result.resetToken) setToken(result.resetToken);
-          setNotice("If the account exists, a reset link was sent.");
-        } else {
-          await resetPassword({ token, newPassword: password });
-          setNotice("Password reset. You can sign in now.");
-          setMode("login");
-        }
-      }
-      if (mode === "login" || mode === "register") {
-        onClose?.();
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unable to sign in.";
-      setError(message);
-    } finally {
-      setStatus("idle");
-    }
-  };
+  const {
+    mode,
+    setModeAndClear,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    displayName,
+    setDisplayName,
+    token,
+    setToken,
+    notice,
+    status,
+    error,
+    clearError,
+    canSubmit,
+    handleSubmit,
+  } = useAuthForm({
+    onSuccess: () => onClose?.(),
+  });
 
   return (
     <Dialog
@@ -88,7 +55,10 @@ export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
               </label>
               <Input
                 value={displayName}
-                onChange={(event) => setDisplayName(event.target.value)}
+                onChange={(e) => {
+                  setDisplayName(e.target.value);
+                  clearError();
+                }}
                 placeholder="Your name"
                 className="rounded-full"
               />
@@ -96,31 +66,37 @@ export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
           )}
           {(mode === "login" || mode === "register" || mode === "reset") && (
             <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-              Email
-            </label>
-            <Input
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="name@email.com"
-              type="email"
-              className="rounded-full"
-            />
-          </div>
+              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Email
+              </label>
+              <Input
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  clearError();
+                }}
+                placeholder="name@email.com"
+                type="email"
+                className="rounded-full"
+              />
+            </div>
           )}
           {(mode === "login" || mode === "register" || (mode === "reset" && token.trim())) && (
             <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-              {mode === "reset" ? "New password" : "Password"}
-            </label>
-            <Input
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Minimum 8 characters"
-              type="password"
-              className="rounded-full"
-            />
-          </div>
+              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                {mode === "reset" ? "New password" : "Password"}
+              </label>
+              <Input
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  clearError();
+                }}
+                placeholder="Minimum 8 characters"
+                type="password"
+                className={`rounded-full ${error ? "border-rose-300 focus-visible:ring-rose-200" : ""}`}
+              />
+            </div>
           )}
           {mode === "reset" && (
             <div className="space-y-2">
@@ -129,7 +105,10 @@ export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
               </label>
               <Input
                 value={token}
-                onChange={(event) => setToken(event.target.value)}
+                onChange={(e) => {
+                  setToken(e.target.value);
+                  clearError();
+                }}
                 placeholder="Paste token from email"
                 className="rounded-full"
               />
@@ -139,7 +118,7 @@ export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
           {notice && <p className="text-xs text-emerald-600">{notice}</p>}
           <Button
             type="button"
-            className="w-full rounded-full bg-aura-primary py-5 text-sm font-semibold text-white"
+            className="w-full rounded-full bg-aura-primary py-5 text-sm font-semibold text-white disabled:opacity-70"
             onClick={handleSubmit}
             disabled={!canSubmit || status === "loading"}
           >
@@ -165,9 +144,7 @@ export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
           <button
             type="button"
             className="w-full text-xs text-emerald-600"
-            onClick={() =>
-              setMode(mode === "register" ? "login" : "register")
-            }
+            onClick={() => setModeAndClear(mode === "register" ? "login" : "register")}
           >
             {mode === "register"
               ? "Already have an account? Sign in"
@@ -175,7 +152,7 @@ export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
           </button>
           {mode === "login" && (
             <div className="flex items-center justify-between text-[11px] text-slate-400">
-              <button type="button" onClick={() => setMode("reset")}>
+              <button type="button" onClick={() => setModeAndClear("reset")}>
                 Forgot password?
               </button>
             </div>
@@ -184,7 +161,7 @@ export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
             <button
               type="button"
               className="w-full text-xs text-slate-500"
-              onClick={() => setMode("login")}
+              onClick={() => setModeAndClear("login")}
             >
               Back to sign in
             </button>

@@ -1,6 +1,7 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { BarcodeScanSheet } from "@/components/aura/BarcodeScanSheet";
 import { AppShell } from "@/components/aura";
+import { CREATED_FOOD_KEY } from "@/lib/storageKeys";
 import { useAppStore } from "@/state/AppStore";
 import { toast } from "sonner";
 
@@ -15,7 +16,7 @@ const ScanBarcode = () => {
     if (fetched) {
       if (typeof window !== "undefined") {
         window.localStorage.setItem(
-          "aurafit-created-food",
+          CREATED_FOOD_KEY,
           JSON.stringify({ food: fetched }),
         );
       }

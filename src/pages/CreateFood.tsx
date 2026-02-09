@@ -1,6 +1,7 @@
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell } from "@/components/aura";
 import { CreateFoodForm } from "@/components/aura/CreateFoodSheet";
+import { CREATED_FOOD_KEY } from "@/lib/storageKeys";
 import { useAppStore } from "@/state/AppStore";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
@@ -37,7 +38,7 @@ const CreateFood = () => {
           onComplete={(created) => {
             if (typeof window !== "undefined" && created) {
               window.localStorage.setItem(
-                "aurafit-created-food",
+                CREATED_FOOD_KEY,
                 JSON.stringify({ food: created }),
               );
             }

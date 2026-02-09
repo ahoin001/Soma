@@ -33,101 +33,10 @@ import {
   updateFoodImage,
 } from "@/lib/api";
 import type { BrandRecord } from "@/types/api";
+import { getServingOptions, normalizeUnit, setServingOptions, type ServingOption } from "@/lib/servingCache";
 import { servingUnits } from "@/lib/schemas/food";
-
-type NutritionDraft = {
-  name: string;
-  brand: string;
-  brandId?: string | null;
-  portion: string;
-  portionGrams: number | null;
-  kcal: number | "";
-  carbs: number | "";
-  protein: number | "";
-  fat: number | "";
-  sodiumMg: number | null;
-  fiberG: number | null;
-  sugarG: number | null;
-  saturatedFatG: number | null;
-  transFatG: number | null;
-  cholesterolMg: number | null;
-  potassiumMg: number | null;
-  ingredients: string;
-};
-
-type LocationState = {
-  food?: FoodItem;
-  returnTo?: string;
-};
-
-type ServingOption = {
-  id: string;
-  label: string;
-  grams: number;
-};
-
-const servingCache = new Map<string, ServingOption[]>();
-const servingCacheKey = "aurafit-serving-cache-v1";
-const isBrowser = typeof window !== "undefined";
-
-const loadServingCache = () => {
-  if (!isBrowser) return;
-  try {
-    const raw = window.localStorage.getItem(servingCacheKey);
-    if (!raw) return;
-    const parsed = JSON.parse(raw) as Record<string, ServingOption[]>;
-    Object.entries(parsed).forEach(([foodId, options]) => {
-      if (Array.isArray(options)) {
-        servingCache.set(foodId, options);
-      }
-    });
-  } catch {
-    // ignore cache errors
-  }
-};
-
-const persistServingCache = () => {
-  if (!isBrowser) return;
-  try {
-    const payload = Object.fromEntries(servingCache.entries());
-    window.localStorage.setItem(servingCacheKey, JSON.stringify(payload));
-  } catch {
-    // ignore cache errors
-  }
-};
-
-loadServingCache();
-
-const normalizeUnit = (raw: string) => {
-  const unit = raw.trim().toLowerCase();
-  if (!unit) return "serving";
-  if (unit.startsWith("g") || unit.includes("gram")) return "g";
-  if (unit.includes("kg") || unit.includes("kilogram")) return "kg";
-  if (unit.includes("ml") || unit.includes("milliliter")) return "ml";
-  if (unit === "l" || unit.includes("liter")) return "l";
-  if (unit.includes("fl oz") || unit.includes("fluid ounce")) return "fl oz";
-  if (unit.includes("cup")) return "cup";
-  if (unit.includes("pint")) return "pint";
-  if (unit.includes("quart")) return "quart";
-  if (unit.includes("gallon")) return "gallon";
-  if (unit.includes("tbsp") || unit.includes("tablespoon")) return "tbsp";
-  if (unit.includes("tsp") || unit.includes("teaspoon")) return "tsp";
-  if (unit.includes("oz") || unit.includes("ounce")) return "oz";
-  if (unit.includes("lb") || unit.includes("pound")) return "lb";
-  if (unit.includes("slice")) return "slice";
-  if (unit.includes("piece") || unit.includes("pc")) return "piece";
-  if (unit.includes("packet") || unit.includes("pack")) return "packet";
-  if (unit.includes("can")) return "can";
-  if (unit.includes("bottle")) return "bottle";
-  if (unit.includes("bar")) return "bar";
-  if (unit.includes("egg")) return "egg";
-  if (unit.includes("container")) return "container";
-  if (unit.includes("apple")) return "apple";
-  if (unit.includes("bagel")) return "bagel";
-  if (unit.includes("banana")) return "banana";
-  if (unit.includes("serving")) return "serving";
-  return "serving";
-};
+import type { EditFoodLocationState } from "@/types/navigation";
+import type { NutritionDraftForm } from "@/types/nutrition";
 
 const EditFood = () => {
   const navigate = useNavigate();
@@ -136,12 +45,12 @@ const EditFood = () => {
   const { email } = useAuth();
   const isAdmin = email?.toLowerCase() === "ahoin001@gmail.com";
   const { upsertOverride, updateFoodMaster, getFoodById } = foodCatalog;
-  const state = (location.state ?? {}) as LocationState;
+  const state = (location.state ?? {}) as EditFoodLocationState;
   const returnTo = state.returnTo ?? "/nutrition";
   const [currentFood, setCurrentFood] = useState<FoodItem | null>(
     state.food ?? null,
   );
-  const [draft, setDraft] = useState<NutritionDraft | null>(null);
+  const [draft, setDraft] = useState<NutritionDraftForm | null>(null);
   const [baseServingAmount, setBaseServingAmount] = useState("1");
   const [baseServingUnit, setBaseServingUnit] = useState("serving");
   const [newServingAmount, setNewServingAmount] = useState("");
@@ -271,8 +180,8 @@ const EditFood = () => {
 
   useEffect(() => {
     if (!currentFood) return;
-    const cached = servingCache.get(currentFood.id);
-    if (cached?.length) {
+    const cached = getServingOptions(currentFood.id);
+    if (cached.length) {
       setCustomServings(cached);
     }
     fetchFoodServings(currentFood.id)
@@ -286,8 +195,7 @@ const EditFood = () => {
           }));
         setCustomServings(extra);
         if (extra.length) {
-          servingCache.set(currentFood.id, extra);
-          persistServingCache();
+          setServingOptions(currentFood.id, extra);
         }
       })
       .catch(() => {});
@@ -302,7 +210,7 @@ const EditFood = () => {
     );
   }, [draft]);
 
-  const handleDraftChange = (key: keyof NutritionDraft, value: string) => {
+  const handleDraftChange = (key: keyof NutritionDraftForm, value: string) => {
     if (!draft) return;
     if (key === "portion") {
       setDraft({ ...draft, portion: value });

@@ -27,22 +27,7 @@ import {
   upsertNutritionTargets,
 } from "@/lib/api";
 import type { LogItem, LogSection } from "@/types/log";
-
-type Summary = {
-  eaten: number;
-  burned: number;
-  kcalLeft: number;
-  goal: number;
-};
-
-type SyncState = "idle" | "syncing";
-
-type LastLog = {
-  food: FoodItem;
-  previousSummary: Summary;
-  previousMacros: MacroTarget[];
-  itemId?: string;
-};
+import type { LastLog, Summary, SyncState } from "@/types/nutrition";
 
 const cloneMacros = (macros: MacroTarget[]) =>
   macros.map((macro) => ({ ...macro }));

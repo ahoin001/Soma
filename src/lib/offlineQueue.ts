@@ -44,7 +44,9 @@ type MutationHandler = (payload: unknown) => Promise<void>;
 // IndexedDB Setup
 // ============================================================================
 
-const DB_NAME = "aurafit-offline";
+import { OFFLINE_DB_NAME } from "./storageKeys";
+
+const DB_NAME = OFFLINE_DB_NAME;
 const DB_VERSION = 1;
 const STORE_NAME = "pending-mutations";
 

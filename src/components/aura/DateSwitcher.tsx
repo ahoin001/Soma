@@ -9,6 +9,7 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { SHEET_CALENDAR_KEY } from "@/lib/storageKeys";
 import { useSheetManager } from "@/hooks/useSheetManager";
 
 const isSameDay = (left: Date, right: Date) =>
@@ -37,7 +38,7 @@ type DateSwitcherProps = {
 export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
   const { activeSheet, openSheet, closeSheets } = useSheetManager<"calendar">(
     null,
-    { storageKey: "aurafit-sheet:calendar", persist: true },
+    { storageKey: SHEET_CALENDAR_KEY, persist: true },
   );
   const [selectedDate, setSelectedDate] = useState(value ?? new Date());
   const label = useMemo(() => {
