@@ -1,7 +1,7 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { query, withTransaction } from "../db.js";
-import { asyncHandler, getUserId } from "../utils.js";
+import { query, withTransaction } from "../db";
+import { asyncHandler, getUserId } from "../utils";
 
 const router = Router();
 
@@ -40,7 +40,7 @@ const getExerciseOwner = async (exerciseId: number) => {
 
 router.get(
   "/search",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const queryValue = z.string().min(1).parse(req.query.query);
     const scope = req.query.scope === "mine" ? "mine" : "all";
     const userId = scope === "mine" ? getUserId(req) : req.header("x-user-id") ?? null;
@@ -74,7 +74,7 @@ router.get(
 
 router.get(
   "/by-name",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const name = z.string().min(1).parse(req.query.name);
     const userId = req.header("x-user-id") ?? null;
     const admin = userId ? await isAdminUser(userId) : false;
@@ -101,7 +101,7 @@ router.get(
 
 router.post(
   "/",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = z
       .object({
@@ -144,7 +144,7 @@ router.post(
 
 router.get(
   "/admin",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const admin = await isAdminUser(userId);
     if (!admin) {
@@ -178,7 +178,7 @@ router.get(
 
 router.get(
   "/:exerciseId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const exerciseId = z.coerce.number().int().parse(req.params.exerciseId);
     const userId = req.header("x-user-id") ?? null;
     const admin = userId ? await isAdminUser(userId) : false;
@@ -203,7 +203,7 @@ router.get(
 
 router.patch(
   "/:exerciseId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const exerciseId = z.coerce.number().int().parse(req.params.exerciseId);
     const admin = await isAdminUser(userId);
@@ -255,7 +255,7 @@ router.patch(
 
 router.delete(
   "/:exerciseId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     await ensureAdmin(userId);
     const exerciseId = z.coerce.number().int().parse(req.params.exerciseId);

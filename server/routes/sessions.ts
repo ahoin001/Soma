@@ -1,7 +1,7 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { withTransaction } from "../db.js";
-import { asyncHandler, getUserId } from "../utils.js";
+import { withTransaction } from "../db";
+import { asyncHandler, getUserId } from "../utils";
 
 const router = Router();
 
@@ -13,7 +13,7 @@ const startSessionSchema = z.object({
 
 router.post(
   "/",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = startSessionSchema.parse(req.body);
     if (!payload.routineId && !payload.templateId) {
@@ -38,7 +38,7 @@ router.post(
 
 router.post(
   "/:sessionId/finish",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const sessionId = req.params.sessionId;
     const finishedAt =
       typeof req.body?.endedAt === "string" ? req.body.endedAt : null;
@@ -69,7 +69,7 @@ const logSetSchema = z.object({
 
 router.post(
   "/:sessionId/sets",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const payload = logSetSchema.parse(req.body);
     const unitUsed = payload.unitUsed ?? "lb";
     const weightKg =

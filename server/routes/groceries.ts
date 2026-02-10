@@ -1,13 +1,13 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { query } from "../db.js";
-import { asyncHandler, getUserId } from "../utils.js";
+import { query } from "../db";
+import { asyncHandler, getUserId } from "../utils";
 
 const router = Router();
 
 router.get(
   "/",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const result = await query(
       `
@@ -31,7 +31,7 @@ const createItemSchema = z.object({
 
 router.post(
   "/",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = createItemSchema.parse(req.body);
 
@@ -72,7 +72,7 @@ router.post(
 
 router.delete(
   "/:itemId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const itemId = req.params.itemId;
     await query(

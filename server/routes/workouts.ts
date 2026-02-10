@@ -1,8 +1,8 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import crypto from "node:crypto";
 import { z } from "zod";
-import { query, withTransaction } from "../db.js";
-import { asyncHandler, getUserId } from "../utils.js";
+import { query, withTransaction } from "../db";
+import { asyncHandler, getUserId } from "../utils";
 
 const router = Router();
 
@@ -41,7 +41,7 @@ const createPlanSchema = z.object({
 
 router.post(
   "/plans",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = createPlanSchema.parse(req.body);
     const result = await withTransaction((client) =>
@@ -60,7 +60,7 @@ router.post(
 
 router.get(
   "/plans",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const result = await withTransaction(async (client) => {
       const plans = await client.query(
@@ -108,7 +108,7 @@ router.get(
 
 router.patch(
   "/plans/:planId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const planId = req.params.planId;
     const payload = z
@@ -134,7 +134,7 @@ router.patch(
 
 router.delete(
   "/plans/:planId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const planId = req.params.planId;
     await withTransaction((client) =>
@@ -159,7 +159,7 @@ const createTemplateSchema = z.object({
 
 router.post(
   "/templates",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const payload = createTemplateSchema.parse(req.body);
     const result = await withTransaction((client) =>
       client.query(
@@ -177,7 +177,7 @@ router.post(
 
 router.patch(
   "/templates/:templateId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const templateId = req.params.templateId;
     const payload = z
       .object({ name: z.string().min(1).optional(), sortOrder: z.number().int().optional() })
@@ -202,7 +202,7 @@ router.patch(
 
 router.delete(
   "/templates/:templateId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const templateId = req.params.templateId;
     await withTransaction(async (client) => {
       await client.query(
@@ -219,7 +219,7 @@ router.delete(
 
 router.post(
   "/templates/:templateId/complete",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const templateId = req.params.templateId;
     const result = await withTransaction((client) =>
       client.query(
@@ -249,7 +249,7 @@ const exerciseSchema = z.object({
 
 router.put(
   "/templates/:templateId/exercises",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const templateId = req.params.templateId;
     const payload = z.object({ exercises: z.array(exerciseSchema) }).parse(req.body);
@@ -331,7 +331,7 @@ const exerciseOverrideSchema = z.object({
 
 router.get(
   "/exercise-media",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const exerciseName = z.string().min(1).parse(req.query.exerciseName);
     const userId = req.query.userId ? String(req.query.userId) : null;
     const params: unknown[] = [exerciseName];
@@ -391,7 +391,7 @@ router.get(
 
 router.post(
   "/exercise-media",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userIdHeader = getUserId(req);
     const payload = exerciseMediaSchema.parse(req.body);
     const isPrimary = payload.isPrimary ?? false;
@@ -447,7 +447,7 @@ router.post(
 
 router.patch(
   "/exercise-media/:mediaId/primary",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const mediaId = z.string().uuid().parse(req.params.mediaId);
     const payload = exerciseMediaOwnerSchema.parse(req.body);
     const result = await withTransaction(async (client) => {
@@ -494,7 +494,7 @@ router.patch(
 
 router.delete(
   "/exercise-media/:mediaId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const mediaId = z.string().uuid().parse(req.params.mediaId);
     const payload = exerciseMediaOwnerSchema.parse(req.body);
     const result = await query(
@@ -516,7 +516,7 @@ router.delete(
 
 router.get(
   "/exercise-overrides",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const exerciseName = z.string().min(1).parse(req.query.exerciseName);
     const userId = z.string().uuid().parse(req.query.userId);
     const result = await query(
@@ -534,7 +534,7 @@ router.get(
 
 router.post(
   "/exercise-overrides",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const payload = exerciseOverrideSchema.parse(req.body);
     const result = await query(
       `

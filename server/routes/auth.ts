@@ -3,8 +3,8 @@ import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import type { Request, Response } from "express";
-import { queryOne, withTransaction } from "../db.js";
-import { asyncHandler } from "../utils.js";
+import { queryOne, withTransaction } from "../db";
+import { asyncHandler } from "../utils";
 
 const router = Router();
 
@@ -95,7 +95,7 @@ const verifySchema = z.object({
 
 router.post(
   "/register",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const payload = authSchema.parse(req.body);
     const existing = await queryOne<{ user_id: string }>(
       "SELECT user_id FROM user_auth_local WHERE email = $1;",
@@ -157,7 +157,7 @@ router.post(
 
 router.post(
   "/login",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const payload = authSchema.pick({ email: true, password: true }).parse(req.body);
     const record = await queryOne<{
       user_id: string;
@@ -188,7 +188,7 @@ router.post(
 
 router.post(
   "/logout",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const cookieToken = req.cookies?.[SESSION_COOKIE] as string | undefined;
     const bearerToken = req.header("Authorization")?.replace(/^Bearer\s+/i, "").trim();
     const token = cookieToken ?? bearerToken;
@@ -205,7 +205,7 @@ router.post(
 
 router.get(
   "/me",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = (req as Request & { userId?: string }).userId;
     if (!userId) {
       res.status(401).json({ user: null });
@@ -227,7 +227,7 @@ router.get(
 
 router.post(
   "/request-password-reset",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const payload = emailSchema.parse(req.body);
     const record = await queryOne<{ user_id: string }>(
       "SELECT user_id FROM user_auth_local WHERE email = $1;",
@@ -248,7 +248,7 @@ router.post(
 
 router.post(
   "/reset-password",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const payload = resetSchema.parse(req.body);
     const tokenHash = hashToken(payload.token);
     const record = await queryOne<{
@@ -286,7 +286,7 @@ router.post(
 
 router.post(
   "/request-email-verification",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = (req as Request & { userId?: string }).userId ?? null;
     const emailPayload = req.body?.email ? emailSchema.parse(req.body) : null;
     const record =
@@ -316,7 +316,7 @@ router.post(
 
 router.post(
   "/verify-email",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const payload = verifySchema.parse(req.body);
     const tokenHash = hashToken(payload.token);
     const record = await queryOne<{

@@ -1,7 +1,7 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { withTransaction } from "../db.js";
-import { asyncHandler, getUserId } from "../utils.js";
+import { withTransaction } from "../db";
+import { asyncHandler, getUserId } from "../utils";
 
 const router = Router();
 
@@ -38,7 +38,7 @@ const toKg = (value: number, unit: "lb" | "kg") =>
 
 router.get(
   "/routines",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const result = await withTransaction(async (client) => {
       const routines = await client.query(
@@ -69,7 +69,7 @@ router.get(
 
 router.post(
   "/routines",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = z.object({ name: z.string().min(1) }).parse(req.body);
     const result = await withTransaction((client) =>
@@ -88,7 +88,7 @@ router.post(
 
 router.patch(
   "/routines/:routineId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const routineId = req.params.routineId;
     const payload = z.object({ name: z.string().min(1) }).parse(req.body);
@@ -109,7 +109,7 @@ router.patch(
 
 router.delete(
   "/routines/:routineId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const routineId = req.params.routineId;
     await withTransaction((client) =>
@@ -128,7 +128,7 @@ router.delete(
 
 router.post(
   "/routines/:routineId/exercises",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const routineId = req.params.routineId;
     const payload = z
@@ -159,7 +159,7 @@ router.post(
 
 router.patch(
   "/routines/:routineId/exercises/:routineExerciseId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const routineExerciseId = req.params.routineExerciseId;
     const payload = z
@@ -188,7 +188,7 @@ router.patch(
 
 router.delete(
   "/routines/:routineId/exercises/:routineExerciseId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const routineExerciseId = req.params.routineExerciseId;
     await withTransaction((client) =>
@@ -207,7 +207,7 @@ router.delete(
 
 router.get(
   "/sessions/active",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const result = await withTransaction(async (client) => {
       const session = await client.query(
@@ -250,7 +250,7 @@ router.get(
 
 router.get(
   "/sessions/history",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const result = await withTransaction((client) =>
       client.query(
@@ -278,7 +278,7 @@ router.get(
 
 router.post(
   "/sessions",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = z
       .object({
@@ -343,7 +343,7 @@ router.post(
 
 router.post(
   "/sessions/:sessionId/sets",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const sessionId = req.params.sessionId;
     const payload = z
       .object({
@@ -394,7 +394,7 @@ router.post(
 
 router.post(
   "/sessions/:sessionId/finish",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const sessionId = req.params.sessionId;
     const result = await withTransaction(async (client) => {
       const session = await client.query(

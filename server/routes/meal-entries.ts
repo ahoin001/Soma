@@ -1,8 +1,8 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { withTransaction } from "../db.js";
-import { asyncHandler, getUserId } from "../utils.js";
-import { createCache } from "../cache.js";
+import { withTransaction } from "../db";
+import { asyncHandler, getUserId } from "../utils";
+import { createCache } from "../cache";
 
 const router = Router();
 const dayCache = createCache<{ entries: unknown[]; items: unknown[] }>({
@@ -44,7 +44,7 @@ const updateItemSchema = z.object({
 
 router.post(
   "/",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = createEntrySchema.parse(req.body);
 
@@ -143,7 +143,7 @@ router.post(
 
 router.get(
   "/",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const localDate = typeof req.query.localDate === "string" ? req.query.localDate : null;
     if (!localDate) {
@@ -210,7 +210,7 @@ router.get(
 
 router.patch(
   "/items/:itemId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const itemId = req.params.itemId;
     const payload = updateItemSchema.parse(req.body);
@@ -256,7 +256,7 @@ router.patch(
 
 router.delete(
   "/items/:itemId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const itemId = req.params.itemId;
     const result = await withTransaction((client) =>

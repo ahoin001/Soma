@@ -1,7 +1,7 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { withTransaction } from "../db.js";
-import { asyncHandler, getUserId } from "../utils.js";
+import { withTransaction } from "../db";
+import { asyncHandler, getUserId } from "../utils";
 
 const router = Router();
 
@@ -14,7 +14,7 @@ const weightSchema = z.object({
 
 router.post(
   "/weight",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = weightSchema.parse(req.body);
     const result = await withTransaction((client) =>
@@ -35,7 +35,7 @@ router.post(
 
 router.get(
   "/weight/latest",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const result = await withTransaction((client) =>
       client.query(
@@ -55,7 +55,7 @@ router.get(
 
 router.get(
   "/weight",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const start = typeof req.query.start === "string" ? req.query.start : null;
     const end = typeof req.query.end === "string" ? req.query.end : null;
@@ -83,7 +83,7 @@ router.get(
 
 router.delete(
   "/weight",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const localDate = typeof req.query.localDate === "string" ? req.query.localDate : null;
     if (!localDate) {
@@ -105,7 +105,7 @@ router.delete(
 
 router.get(
   "/goals",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const result = await withTransaction((client) =>
       client.query(
@@ -123,7 +123,7 @@ router.get(
 
 router.post(
   "/goals",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = z
       .object({
@@ -161,7 +161,7 @@ const waterSchema = z.object({
 
 router.post(
   "/water",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = waterSchema.parse(req.body);
     const result = await withTransaction((client) =>
@@ -185,7 +185,7 @@ const waterSetTotalSchema = z.object({
   source: z.string().optional(),
 });
 
-const setWaterTotal = asyncHandler(async (req, res) => {
+const setWaterTotal = asyncHandler(async (req: Request, res: Response) => {
   const userId = getUserId(req);
   const payload = waterSetTotalSchema.parse(req.body);
   const result = await withTransaction(async (client) => {
@@ -216,7 +216,7 @@ router.post("/water/total", setWaterTotal);
 
 router.get(
   "/water",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const localDate =
       typeof req.query.localDate === "string" ? req.query.localDate : null;
@@ -244,7 +244,7 @@ const stepsSchema = z.object({
 
 router.post(
   "/steps",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = stepsSchema.parse(req.body);
     const result = await withTransaction((client) =>
@@ -265,7 +265,7 @@ router.post(
 
 router.get(
   "/steps",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const localDate =
       typeof req.query.localDate === "string" ? req.query.localDate : null;

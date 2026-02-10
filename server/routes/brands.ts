@@ -1,8 +1,8 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import crypto from "node:crypto";
 import { z } from "zod";
-import { query } from "../db.js";
-import { asyncHandler, getUserId } from "../utils.js";
+import { query } from "../db";
+import { asyncHandler, getUserId } from "../utils";
 
 const router = Router();
 
@@ -29,7 +29,7 @@ const isAdminUser = async (userId: string) => {
 
 router.get(
   "/",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
     const limitRaw = typeof req.query.limit === "string" ? req.query.limit : "";
     const limit = Math.min(Math.max(Number(limitRaw || 50), 1), 200);
@@ -64,7 +64,7 @@ router.get(
 
 router.post(
   "/",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = brandSchema.parse(req.body);
     const admin = await isAdminUser(userId);
@@ -94,7 +94,7 @@ router.post(
 
 router.patch(
   "/:brandId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const admin = await isAdminUser(userId);
     if (!admin) {
@@ -129,7 +129,7 @@ router.patch(
 
 router.get(
   "/logo/signature",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const admin = await isAdminUser(userId);
     if (!admin) {

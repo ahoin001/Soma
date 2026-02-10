@@ -1,6 +1,6 @@
-import { Router } from "express";
-import { withTransaction } from "../db.js";
-import { asyncHandler, getUserId } from "../utils.js";
+import { Router, type Request, type Response } from "express";
+import { withTransaction } from "../db";
+import { asyncHandler, getUserId } from "../utils";
 
 const router = Router();
 
@@ -13,7 +13,7 @@ const defaultMeals = [
 
 router.post(
   "/ensure",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     await withTransaction(async (client) => {
       for (const meal of defaultMeals) {
@@ -33,7 +33,7 @@ router.post(
 
 router.get(
   "/",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const result = await withTransaction((client) =>
       client.query(

@@ -1,9 +1,9 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import crypto from "node:crypto";
-import { query } from "../db.js";
-import { asyncHandler, getUserId } from "../utils.js";
-import { createCache } from "../cache.js";
+import { query } from "../db";
+import { asyncHandler, getUserId } from "../utils";
+import { createCache } from "../cache";
 
 const router = Router();
 const searchCache = createCache<{ items?: unknown[]; item?: unknown | null }>({
@@ -17,7 +17,7 @@ const listCache = createCache<{ items: unknown[] }>({
 
 router.get(
   "/search",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
     const limitRaw = typeof req.query.limit === "string" ? req.query.limit : "";
     const limit = Math.min(Math.max(Number(limitRaw || 20), 1), 50);
@@ -79,7 +79,7 @@ router.get(
 
 router.get(
   "/barcode/:code",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const code = req.params.code;
     const userId = req.header("x-user-id") ?? null;
     const cacheKey = `foods:barcode:${userId ?? "anon"}:${code}`;
@@ -122,7 +122,7 @@ router.get(
 
 router.get(
   "/favorites",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const cacheKey = `foods:favorites:${userId}`;
     const cached = listCache.get(cacheKey);
@@ -152,7 +152,7 @@ router.get(
 
 router.post(
   "/favorites",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const body = z
       .object({ foodId: z.string().uuid(), favorite: z.boolean() })
@@ -184,7 +184,7 @@ router.post(
 
 router.get(
   "/history",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const limitRaw = typeof req.query.limit === "string" ? req.query.limit : "";
     const limit = Math.min(Math.max(Number(limitRaw || 20), 1), 100);
@@ -217,7 +217,7 @@ router.get(
 
 router.get(
   "/:foodId/servings",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const foodId = req.params.foodId;
     const result = await query(
       `
@@ -239,7 +239,7 @@ const createServingSchema = z.object({
 
 router.post(
   "/:foodId/servings",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     getUserId(req);
     const foodId = req.params.foodId;
     const payload = createServingSchema.parse(req.body);
@@ -273,7 +273,7 @@ const createFoodSchema = z.object({
 
 router.post(
   "/",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = createFoodSchema.parse(req.body);
     const result = await query(
@@ -369,7 +369,7 @@ const assertAdmin = async (userId: string) => {
 
 router.get(
   "/image/signature",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     getUserId(req);
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;
@@ -393,7 +393,7 @@ router.get(
 
 router.get(
   "/:foodId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const foodId = req.params.foodId;
     const result = await query(
@@ -434,7 +434,7 @@ router.get(
 
 router.patch(
   "/:foodId/image",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     await assertAdmin(userId);
     const payload = imageSchema.parse(req.body);
@@ -456,7 +456,7 @@ router.patch(
 
 router.patch(
   "/:foodId",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     await assertAdmin(userId);
     const payload = updateFoodSchema.parse(req.body);

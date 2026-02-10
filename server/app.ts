@@ -1,24 +1,23 @@
 import "dotenv/config";
-import express from "express";
-import type { NextFunction, Request, Response } from "express";
+import express, { type NextFunction, type Request, type Response } from "express";
 import crypto from "node:crypto";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import foodsRouter from "./routes/foods.js";
-import groceriesRouter from "./routes/groceries.js";
-import mealEntriesRouter from "./routes/meal-entries.js";
-import mealTypesRouter from "./routes/meal-types.js";
-import nutritionRouter from "./routes/nutrition.js";
-import exercisesRouter from "./routes/exercises.js";
-import fitnessRouter from "./routes/fitness.js";
-import analyticsRouter from "./routes/analytics.js";
-import authRouter from "./routes/auth.js";
-import brandsRouter from "./routes/brands.js";
-import { queryOne } from "./db.js";
-import workoutsRouter from "./routes/workouts.js";
-import sessionsRouter from "./routes/sessions.js";
-import trackingRouter from "./routes/tracking.js";
-import usersRouter from "./routes/users.js";
+import foodsRouter from "./routes/foods";
+import groceriesRouter from "./routes/groceries";
+import mealEntriesRouter from "./routes/meal-entries";
+import mealTypesRouter from "./routes/meal-types";
+import nutritionRouter from "./routes/nutrition";
+import exercisesRouter from "./routes/exercises";
+import fitnessRouter from "./routes/fitness";
+import analyticsRouter from "./routes/analytics";
+import authRouter from "./routes/auth";
+import brandsRouter from "./routes/brands";
+import { queryOne } from "./db";
+import workoutsRouter from "./routes/workouts";
+import sessionsRouter from "./routes/sessions";
+import trackingRouter from "./routes/tracking";
+import usersRouter from "./routes/users";
 
 const app = express();
 const isProduction = process.env.NODE_ENV === "production";
@@ -72,16 +71,20 @@ app.use(async (req, _res, next) => {
     .createHash("sha256")
     .update(token)
     .digest("hex");
-  const session = await queryOne<{ user_id: string }>(
-    `
-    SELECT user_id
-    FROM user_sessions
-    WHERE token_hash = $1 AND expires_at > now();
-    `,
-    [tokenHash],
-  );
-  if (session) {
-    (req as typeof req & { userId?: string }).userId = session.user_id;
+  try {
+    const session = await queryOne<{ user_id: string }>(
+      `
+      SELECT user_id
+      FROM user_sessions
+      WHERE token_hash = $1 AND expires_at > now();
+      `,
+      [tokenHash],
+    );
+    if (session) {
+      (req as typeof req & { userId?: string }).userId = session.user_id;
+    }
+  } catch {
+    // DB unavailable or not configured; continue without userId
   }
   next();
 });

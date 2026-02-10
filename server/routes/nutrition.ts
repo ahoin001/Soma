@@ -1,13 +1,13 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { withTransaction } from "../db.js";
-import { asyncHandler, getUserId } from "../utils.js";
+import { withTransaction } from "../db";
+import { asyncHandler, getUserId } from "../utils";
 
 const router = Router();
 
 router.get(
   "/summary",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const localDate = typeof req.query.localDate === "string" ? req.query.localDate : null;
     if (!localDate) {
@@ -78,7 +78,7 @@ router.get(
 
 router.get(
   "/weekly",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const start = typeof req.query.start === "string" ? req.query.start : null;
     if (!start) {
@@ -116,7 +116,7 @@ router.get(
 
 router.get(
   "/streak",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const result = await withTransaction((client) =>
       client.query(
@@ -171,7 +171,7 @@ const targetsSchema = z.object({
 
 router.post(
   "/targets",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = targetsSchema.parse(req.body);
 
@@ -206,7 +206,7 @@ router.post(
 
 router.get(
   "/settings",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const result = await withTransaction((client) =>
       client.query(
@@ -224,7 +224,7 @@ router.get(
 
 router.post(
   "/settings",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = z
       .object({

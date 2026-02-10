@@ -1,13 +1,13 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { withTransaction } from "../db.js";
-import { asyncHandler, getUserId } from "../utils.js";
+import { withTransaction } from "../db";
+import { asyncHandler, getUserId } from "../utils";
 
 const router = Router();
 
 router.get(
   "/nutrition",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const days = z.coerce.number().int().min(7).max(90).parse(req.query.days ?? 28);
 
@@ -49,7 +49,7 @@ router.get(
 
 router.get(
   "/training",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const weeks = z.coerce.number().int().min(4).max(26).parse(req.query.weeks ?? 8);
 
@@ -88,7 +88,7 @@ router.get(
 
 router.get(
   "/exercise",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const exerciseId = z.coerce.number().int().parse(req.query.exerciseId);
     const days = z.coerce.number().int().min(7).max(180).parse(req.query.days ?? 84);
@@ -125,7 +125,7 @@ router.get(
 
 router.get(
   "/muscles",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const days = z.coerce.number().int().min(7).max(180).parse(req.query.days ?? 84);
 

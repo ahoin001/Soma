@@ -1,7 +1,7 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { query } from "../db.js";
-import { asyncHandler, getUserId } from "../utils.js";
+import { query } from "../db";
+import { asyncHandler, getUserId } from "../utils";
 
 const router = Router();
 
@@ -20,7 +20,7 @@ const profileSchema = z.object({
 
 router.post(
   "/ensure",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = ensureSchema.safeParse(req.body);
     const email = payload.success ? payload.data.email ?? null : null;
@@ -45,7 +45,7 @@ router.post(
 
 router.get(
   "/me",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const result = await query(
       "SELECT id, email, created_at FROM users WHERE id = $1;",
@@ -57,7 +57,7 @@ router.get(
 
 router.get(
   "/profile",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const result = await query(
       `
@@ -80,7 +80,7 @@ router.get(
 
 router.post(
   "/profile",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const payload = profileSchema.parse(req.body);
 
