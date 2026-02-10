@@ -74,6 +74,7 @@ import Nutrition from "./pages/Nutrition";
 import Progress from "./pages/Progress";
 import Goals from "./pages/Goals";
 import Groceries from "./pages/Groceries";
+import Guides from "./pages/Guides";
 import AddFood from "./pages/AddFood";
 import Fitness from "./pages/Fitness";
 import FitnessRoutines from "./pages/FitnessRoutines";
@@ -269,7 +270,8 @@ const AppRoutes = () => {
         <Route path="/nutrition" element={transition(<Nutrition />)} />
         <Route path="/nutrition/progress" element={transition(<Progress />)} />
         <Route path="/nutrition/goals" element={transition(<Goals />)} />
-        <Route path="/nutrition/groceries" element={transition(<Groceries />)} />
+        <Route path="/nutrition/guides" element={transition(<Guides />)} />
+        <Route path="/nutrition/groceries" element={transition(<Guides />)} />
         <Route path="/nutrition/add-food" element={transition(<AddFood />)} />
 
         {/* ── Nutrition secondary (lazy) ── */}

@@ -1009,53 +1009,73 @@ const EditFood = () => {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
                 Calories
               </p>
-              <Input
-                type="number"
-                min={0}
-                inputMode="numeric"
-                value={draft.kcal}
-                onChange={(event) => handleDraftChange("kcal", event.target.value)}
-                className="mt-1 h-10 rounded-full"
-              />
+              <div className="relative mt-1">
+                <Input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={draft.kcal}
+                  onChange={(event) => handleDraftChange("kcal", event.target.value)}
+                  className="h-10 rounded-full pr-12"
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  kcal
+                </span>
+              </div>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                Carbs (g)
+                Carbs
               </p>
-              <Input
-                type="number"
-                min={0}
-                inputMode="numeric"
-                value={draft.carbs}
-                onChange={(event) => handleDraftChange("carbs", event.target.value)}
-                className="mt-1 h-10 rounded-full"
-              />
+              <div className="relative mt-1">
+                <Input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={draft.carbs}
+                  onChange={(event) => handleDraftChange("carbs", event.target.value)}
+                  className="h-10 rounded-full pr-8"
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  g
+                </span>
+              </div>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                Protein (g)
+                Protein
               </p>
-              <Input
-                type="number"
-                min={0}
-                inputMode="numeric"
-                value={draft.protein}
-                onChange={(event) => handleDraftChange("protein", event.target.value)}
-                className="mt-1 h-10 rounded-full"
-              />
+              <div className="relative mt-1">
+                <Input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={draft.protein}
+                  onChange={(event) => handleDraftChange("protein", event.target.value)}
+                  className="h-10 rounded-full pr-8"
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  g
+                </span>
+              </div>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                Fat (g)
+                Fat
               </p>
-              <Input
-                type="number"
-                min={0}
-                inputMode="numeric"
-                value={draft.fat}
-                onChange={(event) => handleDraftChange("fat", event.target.value)}
-                className="mt-1 h-10 rounded-full"
-              />
+              <div className="relative mt-1">
+                <Input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={draft.fat}
+                  onChange={(event) => handleDraftChange("fat", event.target.value)}
+                  className="h-10 rounded-full pr-8"
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  g
+                </span>
+              </div>
             </div>
           </div>
         </Card>
@@ -1066,75 +1086,143 @@ const EditFood = () => {
               Micronutrients
             </p>
             <div className="mt-3 grid grid-cols-2 gap-3">
-              <Input
-                type="number"
-                min={0}
-                value={draft.sodiumMg ?? ""}
-                onChange={(event) => handleDraftChange("sodiumMg", event.target.value)}
-                placeholder="Sodium (mg)"
-                className="h-10 rounded-full"
-              />
-              <Input
-                type="number"
-                min={0}
-                value={draft.fiberG ?? ""}
-                onChange={(event) => handleDraftChange("fiberG", event.target.value)}
-                placeholder="Fiber (g)"
-                className="h-10 rounded-full"
-              />
-              <Input
-                type="number"
-                min={0}
-                value={draft.sugarG ?? ""}
-                onChange={(event) => handleDraftChange("sugarG", event.target.value)}
-                placeholder="Sugar (g)"
-                className="h-10 rounded-full"
-              />
-              <Input
-                type="number"
-                min={0}
-                value={draft.saturatedFatG ?? ""}
-                onChange={(event) =>
-                  handleDraftChange("saturatedFatG", event.target.value)
-                }
-                placeholder="Sat fat (g)"
-                className="h-10 rounded-full"
-              />
-              <Input
-                type="number"
-                min={0}
-                value={draft.transFatG ?? ""}
-                onChange={(event) => handleDraftChange("transFatG", event.target.value)}
-                placeholder="Trans fat (g)"
-                className="h-10 rounded-full"
-              />
-              <Input
-                type="number"
-                min={0}
-                value={draft.cholesterolMg ?? ""}
-                onChange={(event) =>
-                  handleDraftChange("cholesterolMg", event.target.value)
-                }
-                placeholder="Cholesterol (mg)"
-                className="h-10 rounded-full"
-              />
-              <Input
-                type="number"
-                min={0}
-                value={draft.potassiumMg ?? ""}
-                onChange={(event) =>
-                  handleDraftChange("potassiumMg", event.target.value)
-                }
-                placeholder="Potassium (mg)"
-                className="h-10 rounded-full"
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Sodium
+                </p>
+                <div className="relative mt-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={draft.sodiumMg ?? ""}
+                    onChange={(event) => handleDraftChange("sodiumMg", event.target.value)}
+                    className="h-10 rounded-full pr-10"
+                  />
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                    mg
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Fiber
+                </p>
+                <div className="relative mt-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={draft.fiberG ?? ""}
+                    onChange={(event) => handleDraftChange("fiberG", event.target.value)}
+                    className="h-10 rounded-full pr-8"
+                  />
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                    g
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Sugar
+                </p>
+                <div className="relative mt-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={draft.sugarG ?? ""}
+                    onChange={(event) => handleDraftChange("sugarG", event.target.value)}
+                    className="h-10 rounded-full pr-8"
+                  />
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                    g
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Saturated fat
+                </p>
+                <div className="relative mt-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={draft.saturatedFatG ?? ""}
+                    onChange={(event) =>
+                      handleDraftChange("saturatedFatG", event.target.value)
+                    }
+                    className="h-10 rounded-full pr-8"
+                  />
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                    g
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Trans fat
+                </p>
+                <div className="relative mt-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={draft.transFatG ?? ""}
+                    onChange={(event) => handleDraftChange("transFatG", event.target.value)}
+                    className="h-10 rounded-full pr-8"
+                  />
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                    g
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Cholesterol
+                </p>
+                <div className="relative mt-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={draft.cholesterolMg ?? ""}
+                    onChange={(event) =>
+                      handleDraftChange("cholesterolMg", event.target.value)
+                    }
+                    className="h-10 rounded-full pr-10"
+                  />
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                    mg
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Potassium
+                </p>
+                <div className="relative mt-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={draft.potassiumMg ?? ""}
+                    onChange={(event) =>
+                      handleDraftChange("potassiumMg", event.target.value)
+                    }
+                    className="h-10 rounded-full pr-10"
+                  />
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                    mg
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Ingredients
+              </p>
+              <Textarea
+                value={draft.ingredients}
+                onChange={(event) => handleDraftChange("ingredients", event.target.value)}
+                placeholder="List ingredients..."
+                className="mt-1 min-h-[90px] rounded-[18px]"
               />
             </div>
-            <Textarea
-              value={draft.ingredients}
-              onChange={(event) => handleDraftChange("ingredients", event.target.value)}
-              placeholder="Ingredients"
-              className="mt-3 min-h-[90px] rounded-[18px]"
-            />
           </Card>
         )}
 

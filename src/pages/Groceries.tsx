@@ -179,7 +179,12 @@ const GroceryPanel = ({
   </div>
 );
 
-const Groceries = () => {
+const GROCERIES_PADDING = { paddingTop: "calc(1.5rem + var(--sat, env(safe-area-inset-top)))" };
+
+type GroceriesContentProps = { showHeader?: boolean };
+
+/** Groceries tab content (used inside Guides or as standalone page). */
+export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) => {
   const [advanced, setAdvanced] = useState(false);
   const [query, setQuery] = useState("");
   const [useDatabase, setUseDatabase] = useState(false);
@@ -314,9 +319,8 @@ const Groceries = () => {
   };
 
   return (
-    <AppShell experience="nutrition">
-      {/* pt includes safe-area for immersive edge-to-edge display */}
-      <div className="mx-auto w-full max-w-[420px] px-4 pb-10" style={{ paddingTop: "calc(1.5rem + var(--sat, env(safe-area-inset-top)))" }}>
+    <div className="mx-auto w-full max-w-[420px] px-4 pb-10" style={GROCERIES_PADDING}>
+      {showHeader && (
         <div className="rounded-[28px] bg-gradient-to-br from-emerald-200 via-emerald-100 to-white px-5 py-6 shadow-[0_18px_40px_rgba(16,185,129,0.18)]">
           <p className="text-xs uppercase tracking-[0.2em] text-emerald-500">
             Groceries
@@ -328,8 +332,9 @@ const Groceries = () => {
             Stock your staples, rotations, and special treats in one easy view.
           </p>
         </div>
+      )}
 
-        <div className="mt-6 flex items-center justify-between rounded-[24px] border border-emerald-100 bg-white px-4 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
+      <div className={`${showHeader ? "mt-6" : "mt-4"} flex items-center justify-between rounded-[24px] border border-emerald-100 bg-white px-4 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.06)]`}>
           <div>
             <p className="text-sm font-semibold text-slate-800">Advanced</p>
             <p className="text-xs text-slate-500">
@@ -613,9 +618,14 @@ const Groceries = () => {
             })}
           </div>
         )}
-      </div>
-    </AppShell>
+    </div>
   );
 };
+
+const Groceries = () => (
+  <AppShell experience="nutrition">
+    <GroceriesContent />
+  </AppShell>
+);
 
 export default Groceries;

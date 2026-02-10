@@ -579,31 +579,71 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
             />
           </div>
         </div>
-        <Input
-          {...register("kcal")}
-          placeholder="Calories (cal)"
-          className={`rounded-full ${errors.kcal ? "border-red-300" : ""}`}
-          inputMode="numeric"
-        />
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+            Calories
+          </p>
+          <div className="relative mt-1">
+            <Input
+              {...register("kcal")}
+              placeholder="0"
+              className={`h-10 rounded-full pr-12 ${errors.kcal ? "border-red-300" : ""}`}
+              inputMode="numeric"
+            />
+            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+              kcal
+            </span>
+          </div>
+        </div>
         <div className="grid grid-cols-3 gap-2">
-          <Input
-            {...register("carbs")}
-            placeholder="Carbs (g)"
-            className={`rounded-full ${errors.carbs ? "border-red-300" : ""}`}
-            inputMode="numeric"
-          />
-          <Input
-            {...register("protein")}
-            placeholder="Protein (g)"
-            className={`rounded-full ${errors.protein ? "border-red-300" : ""}`}
-            inputMode="numeric"
-          />
-          <Input
-            {...register("fat")}
-            placeholder="Fat (g)"
-            className={`rounded-full ${errors.fat ? "border-red-300" : ""}`}
-            inputMode="numeric"
-          />
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Carbs
+            </p>
+            <div className="relative mt-1">
+              <Input
+                {...register("carbs")}
+                placeholder="0"
+                className={`h-10 rounded-full pr-8 ${errors.carbs ? "border-red-300" : ""}`}
+                inputMode="numeric"
+              />
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                g
+              </span>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Protein
+            </p>
+            <div className="relative mt-1">
+              <Input
+                {...register("protein")}
+                placeholder="0"
+                className={`h-10 rounded-full pr-8 ${errors.protein ? "border-red-300" : ""}`}
+                inputMode="numeric"
+              />
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                g
+              </span>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Fat
+            </p>
+            <div className="relative mt-1">
+              <Input
+                {...register("fat")}
+                placeholder="0"
+                className={`h-10 rounded-full pr-8 ${errors.fat ? "border-red-300" : ""}`}
+                inputMode="numeric"
+              />
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                g
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -763,97 +803,137 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-3 space-y-3 rounded-[24px] border border-black/5 bg-white p-4 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="relative">
-              <Input
-                {...register("sodium")}
-                placeholder="Sodium"
-                className="rounded-full pr-10"
-                inputMode="numeric"
-                type="number"
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
-                mg
-              </span>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Sodium
+              </p>
+              <div className="relative mt-1">
+                <Input
+                  {...register("sodium")}
+                  placeholder="0"
+                  className="h-10 rounded-full pr-10"
+                  inputMode="numeric"
+                  type="number"
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  mg
+                </span>
+              </div>
             </div>
-            <div className="relative">
-              <Input
-                {...register("potassium")}
-                placeholder="Potassium"
-                className="rounded-full pr-10"
-                inputMode="numeric"
-                type="number"
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
-                mg
-              </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Potassium
+              </p>
+              <div className="relative mt-1">
+                <Input
+                  {...register("potassium")}
+                  placeholder="0"
+                  className="h-10 rounded-full pr-10"
+                  inputMode="numeric"
+                  type="number"
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  mg
+                </span>
+              </div>
             </div>
-            <div className="relative">
-              <Input
-                {...register("fiber")}
-                placeholder="Fiber"
-                className="rounded-full pr-8"
-                inputMode="numeric"
-                type="number"
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
-                g
-              </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Fiber
+              </p>
+              <div className="relative mt-1">
+                <Input
+                  {...register("fiber")}
+                  placeholder="0"
+                  className="h-10 rounded-full pr-8"
+                  inputMode="numeric"
+                  type="number"
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  g
+                </span>
+              </div>
             </div>
-            <div className="relative">
-              <Input
-                {...register("satFat")}
-                placeholder="Saturated fat"
-                className="rounded-full pr-8"
-                inputMode="numeric"
-                type="number"
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
-                g
-              </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Saturated fat
+              </p>
+              <div className="relative mt-1">
+                <Input
+                  {...register("satFat")}
+                  placeholder="0"
+                  className="h-10 rounded-full pr-8"
+                  inputMode="numeric"
+                  type="number"
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  g
+                </span>
+              </div>
             </div>
-            <div className="relative">
-              <Input
-                {...register("sugar")}
-                placeholder="Sugar"
-                className="rounded-full pr-8"
-                inputMode="numeric"
-                type="number"
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
-                g
-              </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Sugar
+              </p>
+              <div className="relative mt-1">
+                <Input
+                  {...register("sugar")}
+                  placeholder="0"
+                  className="h-10 rounded-full pr-8"
+                  inputMode="numeric"
+                  type="number"
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  g
+                </span>
+              </div>
             </div>
-            <div className="relative">
-              <Input
-                {...register("transFat")}
-                placeholder="Trans fat"
-                className="rounded-full pr-8"
-                inputMode="numeric"
-                type="number"
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
-                g
-              </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Trans fat
+              </p>
+              <div className="relative mt-1">
+                <Input
+                  {...register("transFat")}
+                  placeholder="0"
+                  className="h-10 rounded-full pr-8"
+                  inputMode="numeric"
+                  type="number"
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  g
+                </span>
+              </div>
             </div>
-            <div className="relative">
-              <Input
-                {...register("cholesterol")}
-                placeholder="Cholesterol"
-                className="rounded-full pr-10"
-                inputMode="numeric"
-                type="number"
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
-                mg
-              </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Cholesterol
+              </p>
+              <div className="relative mt-1">
+                <Input
+                  {...register("cholesterol")}
+                  placeholder="0"
+                  className="h-10 rounded-full pr-10"
+                  inputMode="numeric"
+                  type="number"
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  mg
+                </span>
+              </div>
             </div>
           </div>
-          <Textarea
-            {...register("ingredients")}
-            placeholder="Ingredients (optional)"
-            className="min-h-[96px] rounded-[18px]"
-          />
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Ingredients
+            </p>
+            <Textarea
+              {...register("ingredients")}
+              placeholder="Optional"
+              className="mt-1 min-h-[96px] rounded-[18px]"
+            />
+          </div>
         </CollapsibleContent>
       </Collapsible>
 

@@ -5,7 +5,6 @@ import {
   Layers,
   LineChart,
   Plus,
-  ShoppingBag,
   Target,
   Timer,
 } from "lucide-react";
@@ -111,10 +110,10 @@ export const BottomNav = ({ experience, onAddAction }: BottomNavProps) => {
               active={path.startsWith("/nutrition/progress")}
             />
             <NavButton
-              icon={ShoppingBag}
-              label="Groceries"
-              to="/nutrition/groceries"
-              active={path.startsWith("/nutrition/groceries")}
+              icon={BookOpen}
+              label="Guides"
+              to="/nutrition/guides"
+              active={path.startsWith("/nutrition/guides") || path.startsWith("/nutrition/groceries")}
             />
           </>
         ) : (
