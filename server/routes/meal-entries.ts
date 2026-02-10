@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
-import { withTransaction } from "../db";
-import { asyncHandler, getUserId } from "../utils";
-import { createCache } from "../cache";
+import { withTransaction } from "../db.js";
+import { asyncHandler, getUserId } from "../utils.js";
+import { createCache } from "../cache.js";
 
 const router = Router();
 const dayCache = createCache<{ entries: unknown[]; items: unknown[] }>({

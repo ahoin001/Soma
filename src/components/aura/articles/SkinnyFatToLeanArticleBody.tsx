@@ -22,6 +22,37 @@ export function SkinnyFatToLeanArticleBody() {
       <p className="mt-2 text-sm leading-relaxed text-slate-700">
         Not everyone “skinny fat” is in the same situation. How you got here and where you carry fat both matter for choosing a realistic plan.
       </p>
+      <figure className="my-4 rounded-lg border border-slate-200 bg-slate-50/80 p-4" aria-hidden>
+        <svg viewBox="0 0 320 140" className="w-full max-w-sm mx-auto" role="img" aria-label="Four skinny fat types">
+          <title>Four skinny fat types: never-trained, former dieter, apple shape, skinny on scale</title>
+          {/* Type 1 */}
+          <rect x="8" y="8" width="72" height="52" rx="6" fill="white" stroke="#94a3b8" strokeWidth="1.5" />
+          <text x="44" y="28" textAnchor="middle" fill="#334155" fontSize="10" style={{ fontWeight: 600 }}>1</text>
+          <text x="44" y="42" textAnchor="middle" fill="#475569" fontSize="8">Never-trained</text>
+          <text x="44" y="54" textAnchor="middle" fill="#64748b" fontSize="8">sedentary</text>
+          {/* Type 2 */}
+          <rect x="88" y="8" width="72" height="52" rx="6" fill="white" stroke="#94a3b8" strokeWidth="1.5" />
+          <text x="124" y="28" textAnchor="middle" fill="#334155" fontSize="10" style={{ fontWeight: 600 }}>2</text>
+          <text x="124" y="42" textAnchor="middle" fill="#475569" fontSize="8">Former</text>
+          <text x="124" y="54" textAnchor="middle" fill="#64748b" fontSize="8">dieter</text>
+          {/* Type 3 */}
+          <rect x="168" y="8" width="72" height="52" rx="6" fill="white" stroke="#94a3b8" strokeWidth="1.5" />
+          <text x="204" y="28" textAnchor="middle" fill="#334155" fontSize="10" style={{ fontWeight: 600 }}>3</text>
+          <text x="204" y="42" textAnchor="middle" fill="#475569" fontSize="8">Apple shape</text>
+          <text x="204" y="54" textAnchor="middle" fill="#64748b" fontSize="8">thin limbs, soft mid</text>
+          {/* Type 4 */}
+          <rect x="248" y="8" width="64" height="52" rx="6" fill="white" stroke="#94a3b8" strokeWidth="1.5" />
+          <text x="280" y="28" textAnchor="middle" fill="#334155" fontSize="10" style={{ fontWeight: 600 }}>4</text>
+          <text x="280" y="42" textAnchor="middle" fill="#475569" fontSize="8">Skinny on</text>
+          <text x="280" y="54" textAnchor="middle" fill="#64748b" fontSize="8">scale, soft mirror</text>
+          {/* Simple body silhouettes hint */}
+          <rect x="24" y="72" width="40" height="56" rx="20" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+          <rect x="104" y="72" width="40" height="56" rx="20" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+          <rect x="184" y="72" width="40" height="56" rx="20" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+          <rect x="264" y="72" width="40" height="56" rx="20" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
+        </svg>
+        <figcaption className="mt-2 text-xs text-slate-500 text-center">The four main skinny fat types and how they differ.</figcaption>
+      </figure>
 
       <h3 className="mt-4 text-base font-semibold text-slate-800">Type 1: The never-trained, sedentary skinny fat</h3>
       <p className="mt-1 text-sm leading-relaxed text-slate-700">
@@ -66,7 +97,7 @@ export function SkinnyFatToLeanArticleBody() {
 
       <h2 className="mt-6 text-lg font-semibold text-slate-900">What the research says: nutrition</h2>
       <ul className="my-3 list-disc space-y-1 pl-5 text-sm text-slate-700">
-        <li><strong>Protein:</strong> Meta-analyses (e.g. Morton et al.) suggest <strong>~1.6 g per kg body weight</strong> is enough for most people to maximize muscle gain; some benefit up to ~2.2 g/kg when in a deficit or older. For a 70 kg person, that’s about 110–155 g protein per day. Spread across 3–4 meals or more.</li>
+        <li><strong>Protein:</strong> Meta-analyses (e.g. Morton et al.) suggest <strong>~0.7 g per lb body weight</strong> (1.6 g per kg) is enough for most people to maximize muscle gain; some benefit up to ~1 g per lb (2.2 g/kg) when in a deficit or older. For a 154 lb (70 kg) person, that’s about 110–155 g protein per day. Spread across 3–4 meals or more.</li>
         <li><strong>Calories:</strong> For <strong>recomp</strong> (gain muscle, lose or maintain fat): eat at or very close to <strong>maintenance</strong>. For <strong>fat loss</strong> while preserving muscle: <strong>small deficit</strong> (e.g. 200–400 kcal/day). For <strong>muscle gain</strong> when already lean enough: <strong>slow surplus</strong> (+100–300 kcal) to limit fat gain. Large surpluses mostly add fat; large deficits cost muscle when you’re not brand-new to training.</li>
         <li><strong>Minimum effective dose:</strong> Consistency and adequacy beat perfection. Hit protein and calorie targets most days; whole foods and enough fiber support health and adherence.</li>
       </ul>
@@ -85,8 +116,8 @@ export function SkinnyFatToLeanArticleBody() {
         Building muscle is slow. Fat loss can be faster but should be controlled to preserve muscle.
       </p>
       <ul className="my-3 list-disc space-y-1 pl-5 text-sm text-slate-700">
-        <li><strong>Muscle gain:</strong> In a proper surplus or recomp, beginners might gain ~0.5–1 kg of muscle per month in the first 6–12 months; progress slows as you advance. After years of training, monthly gains are much smaller.</li>
-        <li><strong>Fat loss:</strong> 0.25–0.5 kg per week (about 1–2 kg per month) is a sustainable, muscle-sparing rate for most. Faster loss usually means more muscle loss and harder adherence.</li>
+        <li><strong>Muscle gain:</strong> In a proper surplus or recomp, beginners might gain ~1–2 lb (0.5–1 kg) of muscle per month in the first 6–12 months; progress slows as you advance. After years of training, monthly gains are much smaller.</li>
+        <li><strong>Fat loss:</strong> 0.5–1 lb (0.25–0.5 kg) per week, or about 2–4 lb (1–2 kg) per month, is a sustainable, muscle-sparing rate for most. Faster loss usually means more muscle loss and harder adherence.</li>
         <li><strong>Recomp:</strong> Scale weight might stay similar while you look noticeably better over 4–8 months—fat down, muscle up. Recomp is most effective in beginners and those returning after a long layoff.</li>
         <li><strong>Visible “transformation”:</strong> 6–12 months of consistent training and nutrition is a realistic window for a clearly leaner, more muscular look. 12–24+ months for a dramatic change. No shortcut replaces time and consistency.</li>
       </ul>

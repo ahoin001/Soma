@@ -1,10 +1,10 @@
 import "dotenv/config";
-import { pool } from "./db";
+import { pool } from "./db.js";
 import {
   dedupeFoodInserts,
   fetchUsdaFoods,
   upsertGlobalFoods,
-} from "./services/foodProviders";
+} from "./services/foodProviders.js";
 
 const staples = [
   "chicken breast",

@@ -4,7 +4,8 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { GroceriesContent } from "./Groceries";
 import { guideArticles } from "@/data/guideArticles";
 import { cn } from "@/lib/utils";
-import { BookOpen, ChevronDown, ShoppingBag } from "lucide-react";
+import { BookOpen, ChevronDown, ShoppingBag, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type TabId = "groceries" | "articles";
 
@@ -58,6 +59,20 @@ const Guides = () => {
         </div>
 
         {tab === "groceries" && <GroceriesContent showHeader={false} />}
+
+        {tab === "articles" && expandedId && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            onClick={() => setExpandedId(null)}
+            className="fixed left-1/2 z-50 h-12 w-12 -translate-x-1/2 rounded-full shadow-lg"
+            style={{ bottom: "calc(5rem + var(--sab, env(safe-area-inset-bottom)))" }}
+            aria-label="Close article"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        )}
 
         {tab === "articles" && (
           <div className="mt-6 space-y-4">

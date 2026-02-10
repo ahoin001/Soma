@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
 import crypto from "node:crypto";
-import { query } from "../db";
-import { asyncHandler, getUserId } from "../utils";
-import { createCache } from "../cache";
+import { query } from "../db.js";
+import { asyncHandler, getUserId } from "../utils.js";
+import { createCache } from "../cache.js";
 
 const router = Router();
 const searchCache = createCache<{ items?: unknown[]; item?: unknown | null }>({

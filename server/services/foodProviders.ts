@@ -1,4 +1,4 @@
-import { query } from "../db";
+import { query } from "../db.js";
 
 const USDA_API_KEY = process.env.USDA_API_KEY ?? "";
 

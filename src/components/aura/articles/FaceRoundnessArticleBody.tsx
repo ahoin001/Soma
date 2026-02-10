@@ -100,6 +100,14 @@ export function FaceRoundnessArticleBody() {
       <p className="text-[15px] leading-relaxed text-slate-600">
         Face roundness usually comes from two different things: <strong>actual fat on the face</strong> (from overall body fat) and <strong>puffiness</strong> (water retention, inflammation). They look similar but respond to different levers. No single change “fixes” your face—realistic results come from a mix of habits.
       </p>
+      <figure className="my-4">
+        <img
+          src="/guides/face-roundness-drivers.png"
+          alt="Diagram: two drivers of face roundness — facial fat from body fat vs puffiness from water retention"
+          className="max-w-full rounded-lg border border-slate-200"
+        />
+        <figcaption className="mt-1 text-xs text-slate-500">Two main drivers: fat vs puffiness.</figcaption>
+      </figure>
       <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
         <strong>How to read the scores below:</strong> We rate each factor on (1) <strong>facial fat</strong> — how much it affects actual fat on the face — and (2) <strong>puffiness</strong> — how much it affects water retention/bloat. 10 = this factor can drive a lot of that type of roundness when it’s off. Scores do <em>not</em> mean “fix this and you’re 90% done”; they help you see which levers affect which part of the problem. “Realistic if you fix only this” sets expectations for what changing that one thing typically does.
       </div>
@@ -120,7 +128,7 @@ export function FaceRoundnessArticleBody() {
         <li>Weigh yourself weekly under similar conditions to track trends, not day-to-day bloat.</li>
       </ul>
       <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-        <strong>Suggestions:</strong> Aim for a deficit of about 200–400 kcal/day for steady loss. Protein: ~0.8–1.2 g per kg body weight to preserve muscle and curb hunger.
+        <strong>Suggestions:</strong> Aim for a deficit of about 200–400 kcal/day for steady loss. Protein: ~0.35–0.55 g per lb body weight (0.8–1.2 g per kg) to preserve muscle and curb hunger.
       </p>
 
       <h2 className="mt-6 text-lg font-semibold text-slate-900">2. Sodium and water retention</h2>

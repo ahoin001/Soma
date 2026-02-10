@@ -1,8 +1,8 @@
 import { Router } from "express";
 import crypto from "node:crypto";
 import { z } from "zod";
-import { query } from "../db";
-import { asyncHandler, getUserId } from "../utils";
+import { query } from "../db.js";
+import { asyncHandler, getUserId } from "../utils.js";
 
 const router = Router();
 

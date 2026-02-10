@@ -14,7 +14,7 @@ export const asyncHandler =
 
 export const getUserId = (req: Request) => {
   const authId = (req as Request & { userId?: string }).userId;
-  const headerId = req.header("x-user-id");
+  const headerId = req.get("x-user-id");
   const userId = authId ?? headerId;
   if (!userId) {
     const error = new Error("Unauthorized.");

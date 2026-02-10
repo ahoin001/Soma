@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { query, withTransaction } from "../db";
-import { asyncHandler, getUserId } from "../utils";
+import { query, withTransaction } from "../db.js";
+import { asyncHandler, getUserId } from "../utils.js";
 
 const router = Router();
 

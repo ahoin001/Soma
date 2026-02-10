@@ -3,8 +3,8 @@ import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import type { Request, Response } from "express";
-import { queryOne, withTransaction } from "../db";
-import { asyncHandler } from "../utils";
+import { queryOne, withTransaction } from "../db.js";
+import { asyncHandler } from "../utils.js";
 
 const router = Router();
 
@@ -58,13 +58,13 @@ const createSession = async (userId: string, req: Request, res: Response): Promi
         userId,
         tokenHash,
         expiresAt,
-        req.header("user-agent") ?? null,
-        req.ip ?? null,
+        req.get("user-agent") ?? null,
+        (req as Request & { ip?: string }).ip ?? req.socket?.remoteAddress ?? null,
       ],
     ),
   );
 
-  res.cookie(SESSION_COOKIE, token, {
+  (res as Response & { cookie: (name: string, value: string, options?: object) => Response }).cookie(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: cookieSameSite,
     secure: cookieSecure,

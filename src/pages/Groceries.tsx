@@ -48,23 +48,25 @@ type BagItem = {
 };
 
 const groceryItems: GroceryItem[] = [
-  { id: "chicken-breast", name: "Chicken breast", macro: "protein", category: "poultry" },
-  { id: "turkey-slices", name: "Turkey slices", macro: "protein", category: "meats" },
-  { id: "salmon", name: "Salmon fillet", macro: "protein", category: "seafood" },
-  { id: "tofu", name: "Tofu", macro: "protein", category: "legumes" },
-  { id: "greek-yogurt", name: "Greek yogurt", macro: "protein", category: "dairy" },
+  // Protein
+  { id: "poultry", name: "Poultry (chicken, turkey, etc.)", macro: "protein", category: "poultry" },
+  { id: "beef", name: "Beef (steak, roast, etc.)", macro: "protein", category: "meats" },
+  { id: "pork", name: "Pork (chops, tenderloin, bacon, etc.)", macro: "protein", category: "meats" },
+  { id: "fish", name: "Fish (salmon, trout, cod, tuna, etc.)", macro: "protein", category: "seafood" },
+  { id: "shellfish", name: "Shellfish (shrimp, scallops, etc.)", macro: "protein", category: "seafood" },
+  { id: "dairy-protein", name: "Dairy (milk, greek yogurt)", macro: "protein", category: "dairy" },
   { id: "eggs", name: "Eggs", macro: "protein", category: "dairy" },
-  { id: "brown-rice", name: "Brown rice", macro: "carbs", category: "grains" },
-  { id: "oats", name: "Rolled oats", macro: "carbs", category: "grains" },
-  { id: "sweet-potato", name: "Sweet potato", macro: "carbs", category: "veggies" },
-  { id: "bananas", name: "Bananas", macro: "carbs", category: "fruits" },
-  { id: "spinach", name: "Spinach", macro: "carbs", category: "veggies" },
-  { id: "black-beans", name: "Black beans", macro: "carbs", category: "legumes" },
+  { id: "whey-protein", name: "Whey protein", macro: "protein", category: "dairy" },
+  // Fats
   { id: "avocado", name: "Avocado", macro: "fats", category: "fats" },
-  { id: "olive-oil", name: "Olive oil", macro: "fats", category: "fats" },
-  { id: "almonds", name: "Almonds", macro: "fats", category: "fats" },
-  { id: "chia-seeds", name: "Chia seeds", macro: "fats", category: "fats" },
-  { id: "peanut-butter", name: "Peanut butter", macro: "fats", category: "fats" },
+  { id: "nuts-peanut-butter", name: "Nuts / peanut butter", macro: "fats", category: "fats" },
+  { id: "butter-oils", name: "Butter, olive oil, coconut oil", macro: "fats", category: "fats" },
+  // Carbs
+  { id: "vegetables", name: "Vegetables", macro: "carbs", category: "veggies" },
+  { id: "fruits", name: "Fruits", macro: "carbs", category: "fruits" },
+  { id: "rice", name: "Rice", macro: "carbs", category: "grains" },
+  { id: "sweet-potatoes", name: "Sweet potatoes", macro: "carbs", category: "veggies" },
+  { id: "pasta", name: "Pasta", macro: "carbs", category: "grains" },
 ];
 
 const bucketConfig: Record<BagBucket, { label: string; tone: string }> = {
