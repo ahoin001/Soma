@@ -41,14 +41,16 @@ const AuthContext = createContext<AuthContextValue | null>(null);
  * AuthProvider - wraps the app so auth state is resolved ONCE and
  * shared by every consumer via context.
  *
- * Before this was a plain hook with local useState, so every component
- * calling useAuth() got its own copy starting at status:"loading",
- * making a fresh fetchCurrentUser() call and flashing a skeleton.
+ * PWA session persistence: We keep the user logged in by storing session token
+ * and userId in localStorage (survives app close, tab close, PWA restart). The
+ * server session duration is configurable (SESSION_DAYS, default 90). On 401 we
+ * clear token and userId so the app does not show stale "logged in" state. On
+ * logout we clear both token and userId. The service worker must not cache /api
+ * or clear storage; see vite.config workbox navigateFallbackDenylist.
  *
  * Partial state (post-login): After login/register we set userId + email from
  * the API result and form, then navigate immediately. A background refresh()
- * syncs email/emailVerified from GET /me. Consumers must treat email as
- * possibly null until refresh completes (use optional chaining / fallbacks).
+ * syncs email/emailVerified from GET /me.
  */
 // Restore auth from storage so the app shell can render immediately (no blocking network).
 const getInitialAuthState = (): AuthState => {

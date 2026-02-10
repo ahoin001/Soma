@@ -570,26 +570,25 @@ const AppPrefetch = () => {
     // Start critical immediately (0ms) so home page has data as soon as possible.
     void runCriticalPrefetch();
 
-    // Schedule background after critical gets a head start; use requestIdleCallback when available.
+    // Schedule background when idle so critical path stays fast; fallback to setTimeout if no requestIdleCallback.
     const scheduleBackground = () => {
       if (cancelled) return;
       void runBackgroundPrefetch();
     };
-    const idleId =
-      typeof requestIdleCallback !== "undefined"
-        ? requestIdleCallback(scheduleBackground, { timeout: 300 })
-        : null;
-    const timerId = window.setTimeout(
-      scheduleBackground,
-      typeof requestIdleCallback !== "undefined" ? 400 : 100,
-    );
+    let idleId: number | null = null;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    if (typeof requestIdleCallback !== "undefined") {
+      idleId = requestIdleCallback(scheduleBackground, { timeout: 300 });
+    } else {
+      timerId = window.setTimeout(scheduleBackground, 100);
+    }
 
     return () => {
       cancelled = true;
       if (idleId != null && typeof cancelIdleCallback !== "undefined") {
         cancelIdleCallback(idleId);
       }
-      window.clearTimeout(timerId);
+      if (timerId != null) window.clearTimeout(timerId);
     };
   }, [auth.status, auth.userId, defaultHome, queryClient]);
 

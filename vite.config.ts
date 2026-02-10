@@ -61,6 +61,7 @@ export default defineConfig(() => ({
       workbox: {
         // Use index.html so refresh/failed document requests load the app; only show offline.html when truly uncached
         navigateFallback: "/index.html",
+        // Never serve API or static assets from the SPA. Auth uses localStorage + Bearer; do not cache /api.
         navigateFallbackDenylist: [/^\/api\//, /\/[^/?]+\.[^/]+$/],
         runtimeCaching: [
           {
