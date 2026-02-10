@@ -20,11 +20,22 @@ export function useNutritionTrend(dateKeys: string[]) {
           try {
             const summary = await fetchNutritionSummary(dateKey);
             const t = summary.totals;
+            const m = summary.micros;
             const payload: NutritionTrend = {
               kcal: Number(t?.kcal ?? 0),
               carbs: Number(t?.carbs_g ?? 0),
               protein: Number(t?.protein_g ?? 0),
               fat: Number(t?.fat_g ?? 0),
+              micros: m
+                ? {
+                    sodium_mg: Number(m.sodium_mg ?? 0),
+                    fiber_g: Number(m.fiber_g ?? 0),
+                    sugar_g: Number(m.sugar_g ?? 0),
+                    potassium_mg: Number(m.potassium_mg ?? 0),
+                    cholesterol_mg: Number(m.cholesterol_mg ?? 0),
+                    saturated_fat_g: Number(m.saturated_fat_g ?? 0),
+                  }
+                : undefined,
             };
             return [dateKey, payload] as const;
           } catch {

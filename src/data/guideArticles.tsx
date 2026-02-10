@@ -3,6 +3,7 @@
  */
 import type { ReactNode } from "react";
 import { FaceRoundnessArticleBody } from "@/components/aura/articles/FaceRoundnessArticleBody";
+import { RecompArticleBody } from "@/components/aura/articles/RecompArticleBody";
 import { SkinnyFatToLeanArticleBody } from "@/components/aura/articles/SkinnyFatToLeanArticleBody";
 
 export type GuideArticle = {
@@ -29,5 +30,13 @@ export const guideArticles: GuideArticle[] = [
       "Types of skinny fat, what research says about building muscle and losing fat, and realistic approaches so you know what to expect.",
     category: "Fitness",
     body: <SkinnyFatToLeanArticleBody />,
+  },
+  {
+    id: "recomp-guide",
+    title: "Body Recomp: One-Stop Guide for Skinny Fat",
+    description:
+      "Pros and cons, best practices, and a personalized calculator so you know exactly how to approach recomp—maintenance calories, protein, and training.",
+    category: "Fitness",
+    body: <RecompArticleBody />,
   },
 ];

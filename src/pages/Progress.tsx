@@ -26,8 +26,11 @@ const Progress = () => {
   const [activeWeightDate, setActiveWeightDate] = useState<string | null>(null);
   const [trendRange, setTrendRange] = useState<7 | 14 | 30>(14);
   const [activeChart, setActiveChart] = useState<
-    "weight" | "calories" | "macros"
+    "weight" | "calories" | "macros" | "micros"
   >("weight");
+  const [selectedMicro, setSelectedMicro] = useState<
+    keyof import("@/types/progress").NutritionTrendMicros
+  >("sodium_mg");
 
   const { userProfile, nutrition } = useAppStore();
 
@@ -86,6 +89,15 @@ const Progress = () => {
     [rangeDates, nutritionTrend],
   );
 
+  const microEntries = useMemo(
+    () =>
+      rangeDates.map((dateKey) => ({
+        date: dateKey,
+        value: nutritionTrend[dateKey]?.micros?.[selectedMicro] ?? null,
+      })),
+    [rangeDates, nutritionTrend, selectedMicro],
+  );
+
   const saveEntry = async () => {
     const numeric = Number(weight);
     if (!Number.isFinite(numeric) || numeric <= 0) return;
@@ -117,14 +129,18 @@ const Progress = () => {
               ? "Weight trend"
               : activeChart === "calories"
                 ? "Calorie trend"
-                : "Macro trend"}
+                : activeChart === "macros"
+                  ? "Macro trend"
+                  : "Micro trend"}
           </h1>
           <p className="mt-1 text-sm text-emerald-700/70">
             {activeChart === "weight"
               ? "Log any time. The chart adapts to gaps."
               : activeChart === "calories"
                 ? `Daily intake over the last ${trendRange} days.`
-                : `Macro balance across the last ${trendRange} days.`}
+                : activeChart === "macros"
+                  ? `Macro balance across the last ${trendRange} days.`
+                  : `Micronutrients over the last ${trendRange} days.`}
           </p>
 
           {entries.length === 0 && (
@@ -151,6 +167,9 @@ const Progress = () => {
             onActiveWeightDateChange={setActiveWeightDate}
             caloriesEntries={caloriesTrendEntries}
             macroSeries={macroSeries}
+            microEntries={microEntries}
+            selectedMicro={selectedMicro}
+            onSelectedMicroChange={setSelectedMicro}
             stats={stats}
           />
 

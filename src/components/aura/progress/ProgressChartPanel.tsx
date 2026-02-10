@@ -2,6 +2,13 @@ import {
   SegmentedControl,
   type SegmentedOption,
 } from "@/components/ui/segmented-control";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatShortDate } from "@/lib/progressChartUtils";
 import type {
   MacroSeriesItem,
@@ -9,14 +16,26 @@ import type {
   WeightEntry,
   WeightStats,
 } from "@/types/progress";
+import type { NutritionTrendMicros } from "@/types/progress";
 import { CaloriesChart } from "./CaloriesChart";
 import { MacroChart } from "./MacroChart";
+import { MicroChart } from "./MicroChart";
 import { WeightChart } from "./WeightChart";
 
 const CHART_OPTIONS: SegmentedOption[] = [
   { value: "weight", label: "Weight" },
   { value: "calories", label: "Calories" },
   { value: "macros", label: "Macros" },
+  { value: "micros", label: "Micros" },
+];
+
+export const MICRO_OPTIONS: { key: keyof NutritionTrendMicros; label: string; unit: string }[] = [
+  { key: "sodium_mg", label: "Sodium", unit: "mg" },
+  { key: "fiber_g", label: "Fiber", unit: "g" },
+  { key: "sugar_g", label: "Sugar", unit: "g" },
+  { key: "potassium_mg", label: "Potassium", unit: "mg" },
+  { key: "cholesterol_mg", label: "Cholesterol", unit: "mg" },
+  { key: "saturated_fat_g", label: "Saturated fat", unit: "g" },
 ];
 
 const RANGE_OPTIONS: SegmentedOption[] = [
@@ -25,7 +44,7 @@ const RANGE_OPTIONS: SegmentedOption[] = [
   { value: "30", label: "30d" },
 ];
 
-type ChartType = "weight" | "calories" | "macros";
+type ChartType = "weight" | "calories" | "macros" | "micros";
 
 type ProgressChartPanelProps = {
   activeChart: ChartType;
@@ -37,6 +56,9 @@ type ProgressChartPanelProps = {
   onActiveWeightDateChange: (date: string | null) => void;
   caloriesEntries: TrendEntry[];
   macroSeries: MacroSeriesItem[];
+  microEntries: TrendEntry[];
+  selectedMicro: keyof NutritionTrendMicros;
+  onSelectedMicroChange: (key: keyof NutritionTrendMicros) => void;
   stats: WeightStats | null;
 };
 
@@ -50,8 +72,12 @@ export const ProgressChartPanel = ({
   onActiveWeightDateChange,
   caloriesEntries,
   macroSeries,
+  microEntries,
+  selectedMicro,
+  onSelectedMicroChange,
   stats,
 }: ProgressChartPanelProps) => {
+  const selectedMicroOption = MICRO_OPTIONS.find((o) => o.key === selectedMicro) ?? MICRO_OPTIONS[0];
   return (
     <>
       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -124,6 +150,37 @@ export const ProgressChartPanel = ({
                   {macro.label}
                 </span>
               ))}
+            </div>
+          </>
+        )}
+        {activeChart === "micros" && (
+          <>
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-xs text-slate-600">Show:</span>
+              <Select
+                value={selectedMicro}
+                onValueChange={(v) => onSelectedMicroChange(v as keyof NutritionTrendMicros)}
+              >
+                <SelectTrigger className="h-9 w-[140px] rounded-full border-emerald-200 bg-white text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MICRO_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.key} value={opt.key}>
+                      {opt.label} ({opt.unit})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <MicroChart
+              entries={microEntries}
+              label={selectedMicroOption.label}
+              unit={selectedMicroOption.unit}
+            />
+            <div className="mt-4 flex items-center justify-between text-[11px] text-emerald-600/70">
+              <span>{selectedMicroOption.label} ({selectedMicroOption.unit})</span>
+              <span>Last {trendRange} days</span>
             </div>
           </>
         )}

@@ -486,10 +486,20 @@ export const updateMealEntryItem = async (
     body: JSON.stringify(payload),
   });
 
+export type NutritionSummaryMicros = {
+  sodium_mg?: number;
+  fiber_g?: number;
+  sugar_g?: number;
+  potassium_mg?: number;
+  cholesterol_mg?: number;
+  saturated_fat_g?: number;
+};
+
 export const fetchNutritionSummary = async (localDate: string) =>
   apiFetch<{
     localDate: string;
     totals: { kcal: number; carbs_g: number; protein_g: number; fat_g: number };
+    micros?: NutritionSummaryMicros | null;
     targets: {
       kcal_goal: number | null;
       carbs_g: number | null;

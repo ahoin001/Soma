@@ -30,6 +30,22 @@ router.get(
         [userId, localDate],
       );
 
+      const micros = await client.query(
+        `
+        SELECT
+          COALESCE(SUM((item.micronutrients->>'sodium_mg')::numeric), 0) AS sodium_mg,
+          COALESCE(SUM((item.micronutrients->>'fiber_g')::numeric), 0) AS fiber_g,
+          COALESCE(SUM((item.micronutrients->>'sugar_g')::numeric), 0) AS sugar_g,
+          COALESCE(SUM((item.micronutrients->>'potassium_mg')::numeric), 0) AS potassium_mg,
+          COALESCE(SUM((item.micronutrients->>'cholesterol_mg')::numeric), 0) AS cholesterol_mg,
+          COALESCE(SUM((item.micronutrients->>'saturated_fat_g')::numeric), 0) AS saturated_fat_g
+        FROM meal_entry_items item
+        JOIN meal_entries ON meal_entries.id = item.meal_entry_id
+        WHERE meal_entries.user_id = $1 AND meal_entries.local_date = $2;
+        `,
+        [userId, localDate],
+      );
+
       const targets = await client.query(
         `
         SELECT kcal_goal, carbs_g, protein_g, fat_g
@@ -50,6 +66,7 @@ router.get(
 
       return {
         totals: totals.rows[0],
+        micros: micros.rows[0] ?? null,
         targets: targets.rows[0] ?? null,
         settings: settings.rows[0] ?? null,
       };

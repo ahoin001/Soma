@@ -48,19 +48,36 @@ type BagItem = {
 };
 
 const groceryItems: GroceryItem[] = [
-  // Protein
-  { id: "poultry", name: "Poultry (chicken, turkey, etc.)", macro: "protein", category: "poultry" },
-  { id: "beef", name: "Beef (steak, roast, etc.)", macro: "protein", category: "meats" },
-  { id: "pork", name: "Pork (chops, tenderloin, bacon, etc.)", macro: "protein", category: "meats" },
-  { id: "fish", name: "Fish (salmon, trout, cod, tuna, etc.)", macro: "protein", category: "seafood" },
-  { id: "shellfish", name: "Shellfish (shrimp, scallops, etc.)", macro: "protein", category: "seafood" },
-  { id: "dairy-protein", name: "Dairy (milk, greek yogurt)", macro: "protein", category: "dairy" },
+  // Protein — Poultry
+  { id: "chicken", name: "Chicken", macro: "protein", category: "poultry" },
+  { id: "turkey", name: "Turkey", macro: "protein", category: "poultry" },
+  // Protein — Meats
+  { id: "beef-steak", name: "Beef steak", macro: "protein", category: "meats" },
+  { id: "ground-beef", name: "Ground beef", macro: "protein", category: "meats" },
+  { id: "pork-chops", name: "Pork chops", macro: "protein", category: "meats" },
+  { id: "pork-tenderloin", name: "Pork tenderloin", macro: "protein", category: "meats" },
+  { id: "bacon", name: "Bacon", macro: "protein", category: "meats" },
+  // Protein — Seafood
+  { id: "salmon", name: "Salmon", macro: "protein", category: "seafood" },
+  { id: "trout", name: "Trout", macro: "protein", category: "seafood" },
+  { id: "cod", name: "Cod", macro: "protein", category: "seafood" },
+  { id: "tuna", name: "Tuna", macro: "protein", category: "seafood" },
+  { id: "shrimp", name: "Shrimp", macro: "protein", category: "seafood" },
+  { id: "scallops", name: "Scallops", macro: "protein", category: "seafood" },
+  // Protein — Dairy
+  { id: "milk-2percent", name: "2% milk", macro: "protein", category: "dairy" },
+  { id: "milk-whole", name: "Whole milk", macro: "protein", category: "dairy" },
+  { id: "greek-yogurt", name: "Greek yogurt", macro: "protein", category: "dairy" },
+  { id: "cottage-cheese", name: "Cottage cheese", macro: "protein", category: "dairy" },
   { id: "eggs", name: "Eggs", macro: "protein", category: "dairy" },
   { id: "whey-protein", name: "Whey protein", macro: "protein", category: "dairy" },
   // Fats
   { id: "avocado", name: "Avocado", macro: "fats", category: "fats" },
-  { id: "nuts-peanut-butter", name: "Nuts / peanut butter", macro: "fats", category: "fats" },
-  { id: "butter-oils", name: "Butter, olive oil, coconut oil", macro: "fats", category: "fats" },
+  { id: "nuts", name: "Nuts", macro: "fats", category: "fats" },
+  { id: "peanut-butter", name: "Peanut butter", macro: "fats", category: "fats" },
+  { id: "butter", name: "Butter", macro: "fats", category: "fats" },
+  { id: "olive-oil", name: "Olive oil", macro: "fats", category: "fats" },
+  { id: "coconut-oil", name: "Coconut oil", macro: "fats", category: "fats" },
   // Carbs
   { id: "vegetables", name: "Vegetables", macro: "carbs", category: "veggies" },
   { id: "fruits", name: "Fruits", macro: "carbs", category: "fruits" },
