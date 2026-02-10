@@ -122,6 +122,73 @@ export function SkinnyFatToLeanArticleBody() {
         <li><strong>Visible “transformation”:</strong> 6–12 months of consistent training and nutrition is a realistic window for a clearly leaner, more muscular look. 12–24+ months for a dramatic change. No shortcut replaces time and consistency.</li>
       </ul>
 
+      <h2 className="mt-6 text-lg font-semibold text-slate-900">Margin for error: what to prioritize</h2>
+      <p className="mt-2 text-sm leading-relaxed text-slate-700">
+        You don’t need to be perfect every day. Some levers have real wiggle room; others don’t. Knowing the difference helps you <strong>prioritize what to get right</strong> and relax about the rest—so you stay consistent instead of burning out.
+      </p>
+
+      <h3 className="mt-4 text-base font-semibold text-slate-800">Calories: a little vs too far</h3>
+      <p className="mt-1 text-sm leading-relaxed text-slate-700">
+        <strong>Small margin (OK):</strong> Being a bit over or under your target on a given day (e.g. ±200–300 kcal) usually doesn’t derail recomp or a slow bulk/cut. Weekly average matters more than daily perfection. Occasional higher-calorie days can even help adherence and performance.
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-slate-700">
+        <strong>Too far over:</strong> Consistently eating well above maintenance (e.g. +500 kcal or more every day) adds mostly fat, not muscle, and can undo a recomp or cut. If the scale and mirror are moving the wrong way, dial back.
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-slate-700">
+        <strong>Too far under:</strong> Big deficits (e.g. −500 kcal or more daily) cost muscle and energy, especially when you’re not brand-new to training. You’ll look smaller and softer, not leaner. Prioritize a modest deficit and enough protein instead.
+      </p>
+      <p className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        <strong>Prioritize:</strong> Get your <em>average</em> in the right zone (maintenance for recomp, small deficit for fat loss, small surplus for muscle gain). Don’t stress over single days; avoid consistently overshooting or undershooting by a lot.
+      </p>
+
+      <h3 className="mt-4 text-base font-semibold text-slate-800">Protein: non-negotiable range</h3>
+      <p className="mt-1 text-sm leading-relaxed text-slate-700">
+        <strong>Small margin (OK):</strong> Hitting ~0.6–0.8 g per lb (1.3–1.8 g per kg) most days is enough for most people. A day here and there a bit under won’t ruin progress.
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-slate-700">
+        <strong>Too low:</strong> Consistently under ~0.5 g per lb (1.1 g per kg) when recomping or in a deficit limits muscle gain and increases muscle loss. This is one of the highest-impact levers—worth getting right most of the time.
+      </p>
+      <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs text-slate-700">
+        <strong>Prioritize:</strong> Hit your protein target (e.g. 0.7 g per lb) on most days. If you only optimize one thing, make it protein when you’re trying to build or preserve muscle.
+      </p>
+
+      <h3 className="mt-4 text-base font-semibold text-slate-800">Training intensity: enough stimulus, not burnout</h3>
+      <p className="mt-1 text-sm leading-relaxed text-slate-700">
+        <strong>Small margin (OK):</strong> Not every set needs to be to absolute failure. Leaving 1–2 reps in reserve on some exercises is fine and can improve recovery. Missing a single workout or having an “easy” day here and there won’t stop progress.
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-slate-700">
+        <strong>Too easy:</strong> If you never push close to failure or add weight/reps over time, you won’t give your muscles a reason to grow. Progressive overload (doing more over time) is required.
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-slate-700">
+        <strong>Too hard:</strong> Training to failure every set, every day, with no deloads or rest, leads to burnout, injury, or stalled progress. Recovery is when muscle actually adapts.
+      </p>
+      <p className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        <strong>Prioritize:</strong> Show up 3–4× per week, push with progressive overload (add weight or reps over time), and include rest days. Consistency and gradual progression beat heroic single sessions.
+      </p>
+
+      <h3 className="mt-4 text-base font-semibold text-slate-800">Sleep: big lever for recovery and results</h3>
+      <p className="mt-1 text-sm leading-relaxed text-slate-700">
+        <strong>Small margin (OK):</strong> A short or rough night now and then is normal. Most people can still make progress if they usually get 7–8 hours.
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-slate-700">
+        <strong>Too little, too often:</strong> Chronic short sleep (e.g. regularly under 6–7 hours) hurts recovery, raises cortisol, and can blunt muscle gain and fat loss. It also makes adherence harder (more hunger, less energy to train). Fixing sleep often improves everything else.
+      </p>
+      <p className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        <strong>Prioritize:</strong> Aim for 7–9 hours most nights. If progress is stuck and sleep is poor, improve sleep before adding more training or cutting more calories.
+      </p>
+
+      <h3 className="mt-4 text-base font-semibold text-slate-800">Steps and daily movement</h3>
+      <p className="mt-1 text-sm leading-relaxed text-slate-700">
+        <strong>Margin for error:</strong> Steps support calorie balance, mood, and recovery but aren’t the main driver of recomp. Doing 5,000 one day and 10,000 another is fine. Very low activity (e.g. under 3,000 steps most days) can make it harder to stay in a small deficit and recover; moving more generally helps.
+      </p>
+      <p className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        <strong>Prioritize:</strong> Build a baseline you can sustain (e.g. 6,000–8,000 steps most days). Don’t obsess over exact numbers; avoid being sedentary day after day.
+      </p>
+
+      <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs text-slate-700">
+        <strong>Quick priority order for recomp:</strong> (1) <strong>Protein</strong> — hit target most days. (2) <strong>Resistance training</strong> — 3–4× per week with progressive overload. (3) <strong>Calories</strong> — keep average near maintenance; avoid big overshoots or undershoots. (4) <strong>Sleep</strong> — 7–9 hours most nights. (5) <strong>Steps</strong> — consistent baseline, no need to max out. Nail the top two first; then refine the rest.
+      </div>
+
       <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
         <strong>What won’t work:</strong> Spot reduction (you can’t choose where fat comes off). Crash diets (they strip muscle and set you up for rebound). Only cardio (you’ll get smaller and softer without resistance training). Expecting to look “shredded” in a few weeks (body composition changes in months, not weeks).
       </div>
