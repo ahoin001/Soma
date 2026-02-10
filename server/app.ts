@@ -1,23 +1,24 @@
 import "dotenv/config";
 import express from "express";
+import type { NextFunction, Request, Response } from "express";
 import crypto from "node:crypto";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import foodsRouter from "./routes/foods";
-import groceriesRouter from "./routes/groceries";
-import mealEntriesRouter from "./routes/meal-entries";
-import mealTypesRouter from "./routes/meal-types";
-import nutritionRouter from "./routes/nutrition";
-import exercisesRouter from "./routes/exercises";
-import fitnessRouter from "./routes/fitness";
-import analyticsRouter from "./routes/analytics";
-import authRouter from "./routes/auth";
-import brandsRouter from "./routes/brands";
-import { queryOne } from "./db";
-import workoutsRouter from "./routes/workouts";
-import sessionsRouter from "./routes/sessions";
-import trackingRouter from "./routes/tracking";
-import usersRouter from "./routes/users";
+import foodsRouter from "./routes/foods.js";
+import groceriesRouter from "./routes/groceries.js";
+import mealEntriesRouter from "./routes/meal-entries.js";
+import mealTypesRouter from "./routes/meal-types.js";
+import nutritionRouter from "./routes/nutrition.js";
+import exercisesRouter from "./routes/exercises.js";
+import fitnessRouter from "./routes/fitness.js";
+import analyticsRouter from "./routes/analytics.js";
+import authRouter from "./routes/auth.js";
+import brandsRouter from "./routes/brands.js";
+import { queryOne } from "./db.js";
+import workoutsRouter from "./routes/workouts.js";
+import sessionsRouter from "./routes/sessions.js";
+import trackingRouter from "./routes/tracking.js";
+import usersRouter from "./routes/users.js";
 
 const app = express();
 const isProduction = process.env.NODE_ENV === "production";
@@ -107,9 +108,9 @@ app.use("/api/users", usersRouter);
 app.use(
   (
     err: unknown,
-    _req: express.Request,
-    res: express.Response,
-    _next: express.NextFunction,
+    _req: Request,
+    res: Response,
+    _next: NextFunction,
   ) => {
     const error = err as Error & { status?: number };
     res.status(error.status ?? 500).json({
