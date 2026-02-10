@@ -19,7 +19,8 @@ export const setSessionToken = (token: string | null) => {
   else window.localStorage.removeItem(SESSION_TOKEN_KEY);
 };
 
-const buildApiUrl = (path: string) => {
+/** Use for any API path so VITE_API_BASE_URL (e.g. Render) is applied. */
+export const buildApiUrl = (path: string) => {
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
   if (!API_BASE) return path;
   return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;

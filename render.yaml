@@ -1,0 +1,10 @@
+# Render Blueprint: API only. Frontend stays on Vercel; set VITE_API_BASE_URL to this service URL.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: aurafit-api
+    runtime: node
+    plan: free
+    buildCommand: pnpm install
+    startCommand: pnpm run start:server
+    # In Render dashboard, add: DATABASE_URL, CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, etc. (see .env.example)

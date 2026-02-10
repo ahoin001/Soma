@@ -1,4 +1,4 @@
-import { ensureUser, getUserId } from "@/lib/api";
+import { buildApiUrl, ensureUser, getUserId } from "@/lib/api";
 
 export type ExerciseMedia = {
   id: string;
@@ -18,7 +18,7 @@ export const fetchExerciseMedia = async (
   const resolvedUserId = userId ?? getUserId() ?? undefined;
   const params = new URLSearchParams({ exerciseName });
   if (resolvedUserId) params.set("userId", resolvedUserId);
-  const response = await fetch(`/api/workouts/exercise-media?${params.toString()}`);
+  const response = await fetch(buildApiUrl(`/api/workouts/exercise-media?${params.toString()}`));
   if (!response.ok) {
     throw new Error("Failed to load exercise media.");
   }
@@ -36,7 +36,7 @@ export const createExerciseMedia = async (payload: {
 }) => {
   await ensureUser();
   const resolvedUserId = payload.userId ?? getUserId() ?? undefined;
-  const response = await fetch("/api/workouts/exercise-media", {
+  const response = await fetch(buildApiUrl("/api/workouts/exercise-media"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -59,7 +59,7 @@ export const setExerciseMediaPrimary = async (payload: {
 }) => {
   const resolvedUserId = payload.userId ?? getUserId() ?? "";
   const response = await fetch(
-    `/api/workouts/exercise-media/${payload.mediaId}/primary`,
+    buildApiUrl(`/api/workouts/exercise-media/${payload.mediaId}/primary`),
     {
       method: "PATCH",
       headers: {
@@ -80,7 +80,7 @@ export const deleteExerciseMedia = async (payload: {
   userId: string;
 }) => {
   const resolvedUserId = payload.userId ?? getUserId() ?? "";
-  const response = await fetch(`/api/workouts/exercise-media/${payload.mediaId}`, {
+  const response = await fetch(buildApiUrl(`/api/workouts/exercise-media/${payload.mediaId}`), {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",

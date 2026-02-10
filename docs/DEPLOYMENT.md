@@ -1,107 +1,81 @@
 # AuraFit deployment guide
 
-This app can run in two ways. You only need **one** of these for production.
+**Recommended setup (free):** Frontend on **Vercel**, API on **Render**. No pay-per-request; Render free tier runs your API 24/7 (with spin-down when idle).
 
 ---
 
-## Option A: Single deployment on Vercel (recommended)
+## Recommended: Vercel (frontend) + Render (API)
 
-**What runs where**
+### What runs where
 
-| Part | Where it runs |
-|------|----------------|
-| Frontend (React/Vite) | Vercel static hosting (from `vite build`) |
-| API (Express) | Vercel **serverless functions** via `api/[...path].ts` |
+| Part | Where | Cost |
+|------|--------|------|
+| Frontend (React/Vite) | Vercel | Free tier |
+| API (Express) | Render Web Service | Free tier (no per-request charge) |
 
-There is no separate “Express deployment.” The same Express app in `server/app.ts` is imported by `api/[...path].ts` and runs as a serverless function on Vercel. Every request to `https://your-app.vercel.app/api/*` is handled by that function.
+### Step 1: Deploy API on Render
 
-**Steps**
+1. Go to [Render](https://render.com) → Dashboard → **New** → **Web Service**.
+2. Connect your Git repo (same repo as Vercel).
+3. **Settings:**
+   - **Name:** e.g. `aurafit-api`
+   - **Region:** pick one
+   - **Branch:** `main` (or your default)
+   - **Runtime:** Node
+   - **Build Command:** `pnpm install`
+   - **Start Command:** `pnpm run start:server`
+   - **Plan:** Free
+4. **Environment** (Render → your service → Environment):
+   - `NODE_ENV` = `production`
+   - `DATABASE_URL` = your PostgreSQL URL (e.g. Neon)
+   - `CORS_ORIGIN` = your Vercel frontend URL, e.g. `https://aurafit-omega.vercel.app` (or leave empty to allow all; we also allow `*.vercel.app`)
+   - Optional: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDINARY_UPLOAD_PRESET` for exercise/food image uploads
+5. **Create Web Service.** Wait for the first deploy.
+6. Copy the service URL, e.g. `https://aurafit-api.onrender.com` (no trailing slash).
 
-1. **Connect repo**  
-   Vercel → New Project → Import your Git repo (e.g. GitHub).
+**Optional:** If your repo has a `render.yaml` at the root, you can use **New** → **Blueprint** and connect the repo; Render will create the service from the spec. Then add env vars in the dashboard.
 
-2. **Build settings**
-   - **Framework Preset:** Vite  
-   - **Build Command:** `pnpm run build` (or `npm run build`)  
-   - **Output Directory:** `dist`  
-   - **Install Command:** `pnpm install` (or `npm install`)  
-   - **Root Directory:** leave blank (repo root)
+### Step 2: Deploy frontend on Vercel (pointing at Render)
 
-3. **Environment variables** (Vercel → Project → Settings → Environment Variables)  
-   Add for **Production** (and **Preview** if you use preview deployments):
+1. Vercel → your project → **Settings** → **Environment Variables**.
+2. Add (for **Production** and **Preview** if you use previews):
+   - **`VITE_API_BASE_URL`** = your Render API URL, e.g. `https://aurafit-api.onrender.com`  
+     (no trailing slash; this is required so the frontend calls Render instead of Vercel `/api`.)
+3. Remove or leave unset any `DATABASE_URL` / Cloudinary vars on **Vercel** if you only want them on Render (the API runs on Render, so it reads env from Render).
+4. **Redeploy** the frontend (Deployments → ⋮ → Redeploy) so the new `VITE_API_BASE_URL` is baked into the build.
 
-   | Variable | Required | Notes |
-   |----------|----------|--------|
-   | `DATABASE_URL` | Yes | PostgreSQL URL (e.g. Neon). Needed for plans, workouts, auth, nutrition, **and exercise media**. |
-   | `CLOUDINARY_CLOUD_NAME` | For uploads | Image/video uploads (exercise media, etc.). |
-   | `CLOUDINARY_API_KEY` | For uploads | |
-   | `CLOUDINARY_API_SECRET` | Optional | If omitted, use unsigned upload preset. |
-   | `CLOUDINARY_UPLOAD_PRESET` | For uploads | |
-   | `CORS_ORIGIN` | Optional | Comma‑separated origins, or leave empty to allow all (and `*.vercel.app`). |
-   | `VITE_API_BASE_URL` | No | Leave **empty** so the frontend calls the same origin (`/api/...`). |
+### Step 3: Verify
 
-   Do **not** set `VITE_API_BASE_URL` if the frontend and API are on the same Vercel URL. The app uses relative `/api/...` URLs, so the same domain serves both.
+- Open your app: `https://your-app.vercel.app`
+- Check **Network** tab: API requests should go to `https://your-api.onrender.com/api/...`
+- Test: `https://your-api.onrender.com/api/health` → `{"ok":true,"service":"aurafit-api"}`
 
-4. **Redeploy**  
-   After saving env vars, trigger a new deployment (Deployments → ⋮ → Redeploy).
-
-**Why exercise media can 404 here**
-
-- `DATABASE_URL` not set or wrong → DB queries (including exercise media) fail or never run.  
-- API route not hit → If `/api/workouts/exercise-media` returns 404, the request may not be reaching the serverless function. A `vercel.json` that rewrites `/api/*` to the function fixes that (see repo root `vercel.json` if present).  
-- Function crash → Check Vercel → Logs / Functions → select the API function and reproduce the request; the stack trace will show the real error.
-
----
-
-## Option B: Frontend on Vercel + API on Render
-
-Use this only if you intentionally run the API as a long‑running server on Render.
-
-**What runs where**
-
-| Part | Where it runs |
-|------|----------------|
-| Frontend | Vercel (static from `vite build`) |
-| API | Render “Web Service” running `node server/index.js` (or `tsx server/index.ts`) |
-
-**Render (API)**
-
-1. New → Web Service → Connect same repo.  
-2. Build: e.g. `npm install` or `pnpm install`.  
-3. Start: e.g. `node server/index.js` (you must build the server to JS) or `npx tsx server/index.ts`.  
-4. Set env vars on Render (same as in `.env.example`, especially `DATABASE_URL`, `PORT`).  
-5. Note the Render URL, e.g. `https://your-api.onrender.com`.
-
-**Vercel (frontend only)**
-
-1. Build as in Option A.  
-2. **Important:** set **`VITE_API_BASE_URL`** to your Render API URL with no trailing slash, e.g. `https://your-api.onrender.com`.  
-3. Do **not** deploy `api/[...path].ts` as the main API (or disable it); all API traffic should go to Render.
-
-In this setup, **every** API call (including exercise media) goes to Render. If exercise media fails, the problem is on Render (route, DB, or env), not Vercel.
+**Render free tier:** The service may spin down after ~15 min idle; the first request after that can take 30–60 s. After that it’s responsive until the next idle period.
 
 ---
 
-## How to confirm which setup you have
+## Alternative: All on Vercel (serverless API)
 
-1. **Where does the frontend live?**  
-   Open your app in the browser; the URL is your frontend origin (e.g. `https://aurafit-omega.vercel.app`).
+Frontend and API both on Vercel. API runs as a serverless function (`api/[...path].ts`). Pay-per-invocation on paid plans; free tier has limits.
 
-2. **Where do API calls go?**  
-   - If `VITE_API_BASE_URL` is **empty**: API calls are to the **same origin** (e.g. `https://aurafit-omega.vercel.app/api/...`). So the API is on **Vercel** (Option A).  
-   - If `VITE_API_BASE_URL` is set (e.g. to a Render URL): API calls go to **that** host. So the API is on **Render** (Option B).
+| Part | Where |
+|------|--------|
+| Frontend | Vercel static |
+| API | Vercel serverless function |
 
-3. **Exercise media only**  
-   - Same origin (Option A): Ensure `DATABASE_URL` is set on Vercel, that `vercel.json` sends `/api/*` to the serverless function, and check Vercel function logs for the exact error.  
-   - Separate API (Option B): Ensure `DATABASE_URL` (and Cloudinary if you use it) are set on **Render** and check Render logs for `/api/workouts/exercise-media` requests.
+- **Build:** Same as above (Vite, build command `pnpm run build`, output `dist`).
+- **Env on Vercel:** `DATABASE_URL`, Cloudinary vars, etc. **Leave `VITE_API_BASE_URL` empty** so the app uses same-origin `/api/...`.
+- **Routing:** Repo includes `vercel.json` so `/api/*` is handled by the serverless function.
+
+Use this if you prefer a single platform or don’t want to manage Render; be aware of serverless cold starts and execution limits.
 
 ---
 
-## Quick checklist (Option A – all on Vercel)
+## Quick checklist (Vercel + Render)
 
-- [ ] `DATABASE_URL` set in Vercel (Production + Preview if needed).  
-- [ ] `VITE_API_BASE_URL` **not** set (so `/api` is same origin).  
-- [ ] `vercel.json` rewrites `/api/(.*)` to the API function (if your repo has it).  
-- [ ] Redeploy after changing env vars.  
-- [ ] Test `https://your-app.vercel.app/api/health` → should return `{"ok":true,"service":"aurafit-api"}`.  
-- [ ] If exercise media still 404/500: open Vercel → Logs, reproduce the request, and use the stack trace to fix the failing code or env.
+- [ ] Render: Web Service created, **Start Command** = `pnpm run start:server`
+- [ ] Render: `DATABASE_URL` and (optional) Cloudinary vars set
+- [ ] Render: `CORS_ORIGIN` = your Vercel URL, or leave empty
+- [ ] Vercel: `VITE_API_BASE_URL` = Render API URL (no trailing slash)
+- [ ] Vercel: Redeploy after setting `VITE_API_BASE_URL`
+- [ ] Test `https://your-api.onrender.com/api/health` and exercise media from the app

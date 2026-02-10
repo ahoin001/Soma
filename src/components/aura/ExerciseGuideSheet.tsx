@@ -29,6 +29,7 @@ import {
   saveExerciseOverride,
 } from "@/data/exerciseOverridesApi";
 import {
+  buildApiUrl,
   fetchCurrentUser,
   fetchExerciseByName,
   updateExerciseMaster,
@@ -1121,7 +1122,7 @@ export const ExerciseGuideSheet = ({
                       const prevVideoName = exercise.customVideoName;
                       setSaving(true);
                       setUploadStatus("Uploading video...");
-                      fetch("/api/workouts/exercise-media/signature")
+                      fetch(buildApiUrl("/api/workouts/exercise-media/signature"))
                         .then(async (res) => {
                           if (!res.ok) {
                             const message = await res.text();
