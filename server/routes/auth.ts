@@ -3,13 +3,17 @@ import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import type { Request, Response } from "express";
-import { queryOne, withTransaction } from "../db";
+import { query, queryOne, withTransaction } from "../db";
 import { asyncHandler } from "../utils";
 
 const router = Router();
 
 const SESSION_COOKIE = "aurafit_session";
-const SESSION_DAYS = 30;
+/** Session lifetime in days; configurable for PWA "stay logged in" (e.g. 90). */
+const SESSION_DAYS = Math.min(
+  365,
+  Math.max(1, parseInt(process.env.SESSION_DAYS ?? "30", 10) || 30),
+);
 const RESET_TOKEN_HOURS = 2;
 const VERIFY_TOKEN_DAYS = 7;
 const shouldReturnToken =
@@ -145,7 +149,8 @@ router.post(
     const sessionToken = await createSession(result, req, res);
     res.json({
       user: { id: result },
-      ...(cookieSameSite === "none" ? { sessionToken } : {}),
+      // Always return sessionToken so PWA can store it (Bearer fallback when cookie isn't sent).
+      sessionToken,
       ...(shouldReturnToken ? { verificationToken: verifyToken } : {}),
     });
   }),
@@ -177,7 +182,8 @@ router.post(
     const sessionToken = await createSession(record.user_id, req, res);
     res.json({
       user: { id: record.user_id, emailVerified: Boolean(record.email_verified_at) },
-      ...(cookieSameSite === "none" ? { sessionToken } : {}),
+      // Always return sessionToken so PWA can store it (Bearer fallback when cookie isn't sent).
+      sessionToken,
     });
   }),
 );
@@ -199,14 +205,28 @@ router.post(
   }),
 );
 
+/** Extend session expiry (sliding window) so active PWA users stay logged in. */
+const extendSessionIfPresent = async (sessionTokenHash: string | undefined) => {
+  if (!sessionTokenHash) return;
+  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
+  await query(
+    "UPDATE user_sessions SET expires_at = $1 WHERE token_hash = $2;",
+    [expiresAt, sessionTokenHash],
+  );
+};
+
 router.get(
   "/me",
   asyncHandler(async (req, res) => {
     const userId = (req as Request & { userId?: string }).userId;
+    const sessionTokenHash = (req as Request & { sessionTokenHash?: string }).sessionTokenHash;
     if (!userId) {
       res.status(401).json({ user: null });
       return;
     }
+    // Sliding session: extend expiry on each /me (e.g. app load) so active users stay logged in.
+    void extendSessionIfPresent(sessionTokenHash);
+
     const profile = await queryOne<{ email: string; email_verified_at: string | null }>(
       "SELECT email, email_verified_at FROM user_auth_local WHERE user_id = $1;",
       [userId],

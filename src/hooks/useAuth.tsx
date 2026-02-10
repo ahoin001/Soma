@@ -7,6 +7,7 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import {
+  clearUserId,
   fetchCurrentUser,
   getSessionToken,
   getStoredUserId,
@@ -132,6 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = useCallback(async () => {
     await logoutUser();
     setSessionToken(null);
+    clearUserId();
     setState({ userId: null, email: null, status: "ready" });
   }, []);
 

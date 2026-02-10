@@ -46,6 +46,12 @@ export const setUserId = (userId: string) => {
   window.localStorage.setItem(USER_ID_KEY, userId);
 };
 
+/** Clear stored user id (e.g. on logout) so next visit doesn't send stale x-user-id. */
+export const clearUserId = () => {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(USER_ID_KEY);
+};
+
 const apiFetch = async <T>(path: string, options?: RequestInit) => {
   const userId = getUserId();
   const sessionToken = getSessionToken();

@@ -80,7 +80,9 @@ app.use(async (req, _res, next) => {
     [tokenHash],
   );
   if (session) {
-    (req as typeof req & { userId?: string }).userId = session.user_id;
+    (req as typeof req & { userId?: string; sessionTokenHash?: string }).userId = session.user_id;
+    (req as typeof req & { userId?: string; sessionTokenHash?: string }).sessionTokenHash =
+      tokenHash;
   }
   next();
 });
