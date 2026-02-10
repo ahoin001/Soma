@@ -61,15 +61,8 @@ export default defineConfig(() => ({
       workbox: {
         // Use index.html so refresh/failed document requests load the app; only show offline.html when truly uncached
         navigateFallback: "/index.html",
-        // Never serve API (auth, data) from cache so session and credentials always hit the server
         navigateFallbackDenylist: [/^\/api\//, /\/[^/?]+\.[^/]+$/],
         runtimeCaching: [
-          // Auth and API: always network so session stays valid and cookies/headers are sent
-          {
-            urlPattern: /\/api\//,
-            handler: "NetworkOnly",
-            options: { networkTimeoutSeconds: 10 },
-          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: "StaleWhileRevalidate",

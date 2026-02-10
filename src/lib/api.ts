@@ -46,8 +46,8 @@ export const setUserId = (userId: string) => {
   window.localStorage.setItem(USER_ID_KEY, userId);
 };
 
-/** Clear stored user id (e.g. on logout) so next visit doesn't send stale x-user-id. */
-export const clearUserId = () => {
+/** Clear stored user id (e.g. on logout). Keeps PWA from showing stale "logged in" state. */
+export const clearStoredUserId = () => {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(USER_ID_KEY);
 };
@@ -124,6 +124,8 @@ export const fetchCurrentUser = async (): Promise<{
       signal: controller.signal,
     });
     if (response.status === 401) {
+      setSessionToken(null);
+      clearStoredUserId();
       return { user: null };
     }
     if (!response.ok) {

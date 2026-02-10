@@ -373,7 +373,7 @@ const ExperienceBackdrop = () => {
   );
 };
 
-// ─── Data prefetch ──────────────────────────────────────────────────
+// ─── Data prefetch (PWA best practice: critical path fast, rest in background) ─
 const AppPrefetch = () => {
   const auth = useAuth();
   const { defaultHome } = useUserSettings();
@@ -384,12 +384,12 @@ const AppPrefetch = () => {
     let cancelled = false;
     const localDate = toLocalDate(new Date());
 
-    const prefetch = async () => {
+    // Critical path: data needed for login → home (Nutrition diary + summary). Run immediately.
+    const runCriticalPrefetch = async () => {
       try {
         await ensureUser();
         if (cancelled) return;
 
-        // Nutrition essentials
         const mealTypes = await ensureMealTypes();
         queryClient.setQueryData(queryKeys.mealTypes, mealTypes);
         const meals: Meal[] = mealTypes.items.map((item) => ({
@@ -413,7 +413,6 @@ const AppPrefetch = () => {
               meals,
             );
             const totals = computeTotals(logSections);
-
             const goalCandidate =
               summaryRes.targets?.kcal_goal ??
               summaryRes.settings?.kcal_goal ??
@@ -423,7 +422,6 @@ const AppPrefetch = () => {
               Number.isFinite(Number(goalCandidate)) && Number(goalCandidate) > 0
                 ? Number(goalCandidate)
                 : defaultSummary.goal;
-
             const macros = defaultMacroTargets.map((macro) => ({
               ...macro,
               current: totals[macro.key],
@@ -446,7 +444,6 @@ const AppPrefetch = () => {
                           macro.goal,
                       ),
             }));
-
             return {
               summary: {
                 eaten: totals.kcal,
@@ -461,8 +458,15 @@ const AppPrefetch = () => {
           staleTime: 2 * 60 * 1000,
           gcTime: 60 * 60 * 1000,
         });
+      } catch {
+        // Silent; page will fetch on demand
+      }
+    };
 
-        // Tracking essentials
+    // Background: tracking, favorites, history, fitness. Prefetch when idle so critical path stays fast.
+    const runBackgroundPrefetch = async () => {
+      if (cancelled) return;
+      try {
         await queryClient.prefetchQuery({
           queryKey: queryKeys.trackingWeight,
           queryFn: async () => {
@@ -475,6 +479,7 @@ const AppPrefetch = () => {
           staleTime: 10 * 60 * 1000,
           gcTime: 60 * 60 * 1000,
         });
+        if (cancelled) return;
 
         await queryClient.prefetchQuery({
           queryKey: queryKeys.trackingSteps(localDate),
@@ -494,6 +499,7 @@ const AppPrefetch = () => {
           staleTime: 60 * 1000,
           gcTime: 30 * 60 * 1000,
         });
+        if (cancelled) return;
 
         await queryClient.prefetchQuery({
           queryKey: queryKeys.trackingWater(localDate),
@@ -514,8 +520,8 @@ const AppPrefetch = () => {
           staleTime: 60 * 1000,
           gcTime: 30 * 60 * 1000,
         });
+        if (cancelled) return;
 
-        // Food catalog essentials (favorites/history)
         await queryClient.prefetchQuery({
           queryKey: queryKeys.foodFavorites,
           queryFn: async () => {
@@ -525,6 +531,7 @@ const AppPrefetch = () => {
           staleTime: 10 * 60 * 1000,
           gcTime: 60 * 60 * 1000,
         });
+        if (cancelled) return;
 
         await queryClient.prefetchQuery({
           queryKey: queryKeys.foodHistory,
@@ -536,11 +543,9 @@ const AppPrefetch = () => {
           gcTime: 60 * 60 * 1000,
         });
 
-        // Fitness data prefetch (when default home is fitness, or always)
-        if (defaultHome === "fitness") {
+        if (defaultHome === "fitness" && !cancelled) {
           const workoutPlans = await fetchWorkoutPlans();
           setWorkoutPlansCache(workoutPlans);
-
           const [routinesRes, activeRes, historyRes, goalsRes] =
             await Promise.all([
               fetchFitnessRoutines(),
@@ -554,7 +559,6 @@ const AppPrefetch = () => {
             historyRes,
             goalsRes,
           });
-
           const training = await fetchTrainingAnalytics(8);
           setTrainingAnalyticsCache({ weeks: 8, items: training.items });
         }
@@ -563,15 +567,29 @@ const AppPrefetch = () => {
       }
     };
 
-    // Defer slightly so the app renders immediately
-    const timer = window.setTimeout(
-      () => void prefetch(),
-      defaultHome === "fitness" ? 150 : 50,
+    // Start critical immediately (0ms) so home page has data as soon as possible.
+    void runCriticalPrefetch();
+
+    // Schedule background after critical gets a head start; use requestIdleCallback when available.
+    const scheduleBackground = () => {
+      if (cancelled) return;
+      void runBackgroundPrefetch();
+    };
+    const idleId =
+      typeof requestIdleCallback !== "undefined"
+        ? requestIdleCallback(scheduleBackground, { timeout: 300 })
+        : null;
+    const timerId = window.setTimeout(
+      scheduleBackground,
+      typeof requestIdleCallback !== "undefined" ? 400 : 100,
     );
 
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
+      if (idleId != null && typeof cancelIdleCallback !== "undefined") {
+        cancelIdleCallback(idleId);
+      }
+      window.clearTimeout(timerId);
     };
   }, [auth.status, auth.userId, defaultHome, queryClient]);
 

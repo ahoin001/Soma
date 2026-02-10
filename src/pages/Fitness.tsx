@@ -629,7 +629,6 @@ const Fitness = () => {
           if (!selectedPlan) return;
           try {
             await deleteWorkoutPlan(selectedPlan.id);
-            setExpandedPlans((prev) => prev.filter((id) => id !== selectedPlan.id));
             closeSheet();
             toast("Plan deleted");
           } catch {
