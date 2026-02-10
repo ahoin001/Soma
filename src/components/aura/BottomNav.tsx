@@ -71,7 +71,7 @@ export const BottomNav = ({ experience, onAddAction }: BottomNavProps) => {
 
   return createPortal(
     <div
-      className="flex justify-center px-5 z-[60]"
+      className="aura-bottom-nav flex justify-center px-5 z-[40]"
       style={{
         position: "fixed",
         left: 0,

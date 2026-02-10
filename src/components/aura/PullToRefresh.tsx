@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+// ─── Constants (best practice: named values, single source of truth) ───
+const AT_TOP_THRESHOLD_PX = 10;
+const PULL_PREVENT_SCROLL_THRESHOLD_PX = 4;
+const INDICATOR_OFFSET_PX = 56;
 
 type PullToRefreshProps = {
   experience: "nutrition" | "fitness";
@@ -19,11 +25,13 @@ export const PullToRefresh = ({
   const queryClient = useQueryClient();
   const startYRef = useRef<number | null>(null);
   const pullingRef = useRef(false);
+  /** Current pull distance at touch time; used in touchend to avoid stale state. */
+  const pullDistanceRef = useRef(0);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [atTop, setAtTop] = useState(true);
 
-  // Best practice: refetch active queries instead of full reload (preserves state, faster, smoother UX).
+  // Refetch active queries instead of full reload (preserves state, faster, smoother UX).
   const handleRefresh = useCallback(async () => {
     await queryClient.refetchQueries({ type: "active" });
   }, [queryClient]);
@@ -46,7 +54,7 @@ export const PullToRefresh = ({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const onScroll = () => setAtTop(window.scrollY <= 10);
+    const onScroll = () => setAtTop(window.scrollY <= AT_TOP_THRESHOLD_PX);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -55,11 +63,14 @@ export const PullToRefresh = ({
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!("ontouchstart" in window)) return;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) return;
 
     const onTouchStart = (event: TouchEvent) => {
       if (window.scrollY > 0 || refreshing) return;
       startYRef.current = event.touches[0]?.clientY ?? null;
       pullingRef.current = false;
+      pullDistanceRef.current = 0;
     };
 
     const onTouchMove = (event: TouchEvent) => {
@@ -68,13 +79,15 @@ export const PullToRefresh = ({
       const delta = currentY - startYRef.current;
       if (delta <= 0) {
         setPullDistance(0);
+        pullDistanceRef.current = 0;
         pullingRef.current = false;
         return;
       }
       pullingRef.current = true;
       const distance = clamp(delta, 0, maxPull);
+      pullDistanceRef.current = distance;
       setPullDistance(distance);
-      if (distance > 4) {
+      if (distance > PULL_PREVENT_SCROLL_THRESHOLD_PX) {
         event.preventDefault();
       }
     };
@@ -84,14 +97,20 @@ export const PullToRefresh = ({
         startYRef.current = null;
         return;
       }
-      const shouldRefresh = pullDistance >= threshold;
+      const distanceAtRelease = pullDistanceRef.current;
+      const shouldRefresh = distanceAtRelease >= threshold;
       setPullDistance(0);
+      pullDistanceRef.current = 0;
       startYRef.current = null;
       pullingRef.current = false;
       if (shouldRefresh) {
         setRefreshing(true);
         try {
           await handleRefresh();
+        } catch {
+          toast.error("Refresh failed", {
+            description: "Check your connection and try again.",
+          });
         } finally {
           setRefreshing(false);
         }
@@ -109,10 +128,10 @@ export const PullToRefresh = ({
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [handleRefresh, maxPull, pullDistance, refreshing, threshold]);
+  }, [handleRefresh, maxPull, refreshing, threshold]);
 
   const progress = clamp(pullDistance / threshold, 0, 1);
-  const translateY = Math.min(pullDistance - 56, 0);
+  const translateY = Math.min(pullDistance - INDICATOR_OFFSET_PX, 0);
   const indicatorText = refreshing
     ? "Refreshing…"
     : progress >= 1
@@ -128,6 +147,9 @@ export const PullToRefresh = ({
       }}
     >
       <div
+        role="status"
+        aria-live="polite"
+        aria-label={refreshing ? "Refreshing content" : indicatorText}
         className={cn(
           "mt-[calc(var(--sat,0px)+6px)] flex items-center gap-3 rounded-full px-4 py-2 text-xs font-semibold shadow-[0_10px_24px_rgba(15,23,42,0.12)] backdrop-blur-sm",
           tone.ring,

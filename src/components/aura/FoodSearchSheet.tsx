@@ -114,7 +114,7 @@ const FoodSearchSheetContent = ({
     <>
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6 overflow-hidden">
-          <div className="aura-sheet-scroll" data-vaul-no-drag>
+          <div className="aura-sheet-scroll">
             <FoodSearchContent
               activeTab={activeTab}
               libraryTab={lastBrowseTab}

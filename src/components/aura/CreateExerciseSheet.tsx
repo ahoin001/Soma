@@ -250,7 +250,7 @@ export const CreateExerciseForm = ({
   };
 
   return (
-    <div className="aura-sheet-body" aria-busy={saving}>
+    <div className="aura-sheet-body-fit" aria-busy={saving}>
       <div className="mt-2 text-center">
         <p className="text-xs uppercase tracking-[0.2em] text-white/50">
           Create exercise

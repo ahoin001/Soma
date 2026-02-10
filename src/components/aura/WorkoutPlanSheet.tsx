@@ -51,7 +51,7 @@ export const WorkoutPlanSheet = ({
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="rounded-t-[36px] border-none bg-slate-950 pb-6 text-white">
-        <div className="aura-sheet-body">
+        <div className="aura-sheet-body-fit">
           {showLoading ? (
             <>
               <div className="mt-2 text-center">

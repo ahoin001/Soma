@@ -17,13 +17,22 @@ const Drawer = ({
     if (open === undefined) return;
     if (open && !prevOpenRef.current) {
       lockScroll();
+      if (typeof document !== "undefined") {
+        document.body.dataset.sheetOpen = "true";
+      }
     } else if (!open && prevOpenRef.current) {
       unlockScroll();
+      if (typeof document !== "undefined") {
+        delete document.body.dataset.sheetOpen;
+      }
     }
     prevOpenRef.current = Boolean(open);
     return () => {
       if (prevOpenRef.current) {
         unlockScroll();
+        if (typeof document !== "undefined") {
+          delete document.body.dataset.sheetOpen;
+        }
         prevOpenRef.current = false;
       }
     };

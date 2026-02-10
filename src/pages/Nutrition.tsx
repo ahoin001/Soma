@@ -731,7 +731,7 @@ const Nutrition = () => {
         onOpenChange={(open) => (open ? openSheet("admin") : closeSheets())}
       >
         <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6">
-          <div className="px-5 pb-6 pt-3" data-vaul-no-drag>
+          <div className="px-5 pb-6 pt-3">
             <p className="text-xs uppercase tracking-[0.3em] text-emerald-400">
               Admin
             </p>

@@ -491,10 +491,41 @@ export const FoodDetailSheet = ({
     }
     onOpenChange(nextOpen);
   };
+  const handleTrack = async () => {
+    if (!food || tracking) return;
+    setSparkle(true);
+    setTracking(true);
+    const servingLabel = selectedServing?.label ?? food.portion;
+    const baseGramsRaw = basePortionGrams ?? food.portionGrams ?? null;
+    const baseGrams = Number.isFinite(Number(baseGramsRaw))
+      ? Number(baseGramsRaw)
+      : null;
+    const quantityForLog = scaled.multiplier;
+    if (!Number.isFinite(quantityForLog) || quantityForLog <= 0) {
+      setTracking(false);
+      return;
+    }
+    const baseFood = {
+      ...food,
+      portion: servingLabel,
+      portionLabel: servingLabel,
+      portionGrams: baseGrams ?? undefined,
+    };
+    try {
+      await onTrack(baseFood, {
+        quantity: quantityForLog,
+        portionLabel: servingLabel,
+        portionGrams: baseGrams,
+      });
+      onOpenChange(false);
+    } finally {
+      setTracking(false);
+    }
+  };
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
-      <DrawerContent className="relative rounded-t-[36px] border-none bg-aura-surface pb-6 overflow-hidden">
+      <DrawerContent className="relative flex max-h-[100svh] flex-col rounded-t-[36px] border-none bg-aura-surface pb-6 overflow-hidden safe-pt">
         {tracking && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 text-sm font-semibold text-emerald-700 backdrop-blur">
             Logging food...
@@ -506,7 +537,7 @@ export const FoodDetailSheet = ({
         {food && (
           <div
             ref={scrollRef}
-            className="aura-sheet-scroll"
+            className="min-h-0 flex-1 overflow-y-auto px-5 pt-2 pb-6"
           >
             <div className="flex items-center justify-between pt-2">
               <span className="text-xs uppercase tracking-[0.3em] text-emerald-400">
@@ -1426,39 +1457,13 @@ export const FoodDetailSheet = ({
               )}
             </div>
 
+          </div>
+        )}
+        {food && (
+          <div className="shrink-0 bg-transparent px-5 pb-4 pt-3">
             <Button
-              className="relative mt-6 w-full overflow-hidden rounded-full bg-aura-primary py-6 text-base font-semibold text-white shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
-              onClick={async () => {
-                if (!food || tracking) return;
-                setSparkle(true);
-                setTracking(true);
-                const servingLabel = selectedServing?.label ?? food.portion;
-                const baseGramsRaw = basePortionGrams ?? food.portionGrams ?? null;
-                const baseGrams = Number.isFinite(Number(baseGramsRaw))
-                  ? Number(baseGramsRaw)
-                  : null;
-                const quantityForLog = scaled.multiplier;
-                if (!Number.isFinite(quantityForLog) || quantityForLog <= 0) {
-                  setTracking(false);
-                  return;
-                }
-                const baseFood = {
-                  ...food,
-                  portion: servingLabel,
-                  portionLabel: servingLabel,
-                  portionGrams: baseGrams ?? undefined,
-                };
-                try {
-                  await onTrack(baseFood, {
-                    quantity: quantityForLog,
-                    portionLabel: servingLabel,
-                    portionGrams: baseGrams,
-                  });
-                  onOpenChange(false);
-                } finally {
-                  setTracking(false);
-                }
-              }}
+              className="relative w-full overflow-hidden rounded-full bg-aura-primary py-6 text-base font-semibold text-white shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
+              onClick={handleTrack}
               disabled={tracking}
             >
               {sparkle && (
@@ -1467,6 +1472,14 @@ export const FoodDetailSheet = ({
                 </span>
               )}
               {tracking ? "Tracking..." : "Track"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="mt-2 w-full rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50"
+              onClick={() => handleOpenChange(false)}
+            >
+              Back
             </Button>
           </div>
         )}

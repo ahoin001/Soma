@@ -215,6 +215,30 @@
     padding-bottom: 1.5rem;
   }
 
+  .aura-sheet-body-fit {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+    padding-top: 0.5rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .aura-sheet-scroll-fit {
+    max-height: calc(100svh - 56px);
+    overflow-y: auto;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+    padding-top: 0.5rem;
+    padding-bottom: 1.5rem;
+  }
+
+
+  body[data-sheet-open="true"] .aura-bottom-nav {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(12px);
+    transition: opacity 200ms ease, transform 200ms ease;
+  }
+
   /* Safe area utilities for PWA (notch, gesture bar) */
   .safe-pt {
     padding-top: var(--sat);

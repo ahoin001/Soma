@@ -177,7 +177,6 @@ export const EditLogSheet = ({
           <div
             ref={contentRef}
             className="aura-sheet-scroll max-h-[calc(100svh-160px)]"
-            data-vaul-no-drag
           >
             <div className="flex items-center justify-center pt-4">
               <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-white text-3xl shadow-[0_14px_30px_rgba(15,23,42,0.1)]">

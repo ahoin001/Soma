@@ -485,7 +485,7 @@ export const ExerciseGuideSheet = ({
       className={
         variant === "page"
           ? "mx-auto w-full max-w-[420px] px-4 pb-10 pt-4"
-          : "aura-sheet-body"
+          : "aura-sheet-body-fit"
       }
     >
       {variant === "page" ? (
