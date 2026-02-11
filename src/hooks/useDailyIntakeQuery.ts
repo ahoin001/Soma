@@ -713,6 +713,48 @@ export const useDailyIntakeQuery = (
     void queryClient.invalidateQueries({ queryKey: queryKeys.nutrition(localDate) });
   }, [localDate, queryClient, setSyncPulse]);
 
+  // --- Mutation: Copy day from another date (e.g. yesterday) ---
+  const copyDayMutation = useMutation({
+    mutationFn: async (sourceLocalDate: string) => {
+      await ensureUser();
+      const { entries, items } = await fetchMealEntries(sourceLocalDate);
+      const sourceSections = computeLogSections(entries, items, meals);
+      let created = 0;
+      for (const section of sourceSections) {
+        if (section.items.length === 0) continue;
+        const mealTypeId = section.items[0]?.mealTypeId ?? undefined;
+        await createMealEntry({
+          localDate,
+          mealTypeId,
+          items: section.items.map((item) => ({
+            foodId: item.foodId ?? undefined,
+            foodName: item.name,
+            portionLabel: item.portionLabel ?? undefined,
+            portionGrams: item.portionGrams ?? undefined,
+            quantity: item.quantity ?? 1,
+            kcal: item.kcal,
+            carbsG: item.macros.carbs,
+            proteinG: item.macros.protein,
+            fatG: item.macros.fat,
+          })),
+        });
+        created += section.items.length;
+      }
+      return { copiedItems: created };
+    },
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.nutrition(localDate) });
+      toast(
+        data.copiedItems > 0
+          ? `Copied ${data.copiedItems} item${data.copiedItems === 1 ? "" : "s"} from yesterday`
+          : "Nothing to copy — yesterday was empty",
+      );
+    },
+    onError: () => {
+      toast("Could not copy yesterday's meals", { description: "Please try again." });
+    },
+  });
+
   // --- Refresh helpers ---
   const refreshEntries = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.nutrition(localDate) });
@@ -809,6 +851,8 @@ export const useDailyIntakeQuery = (
     hydrateSummary,
     hydrateEntries,
     hydrateTargets,
+    copyDayFrom: (sourceLocalDate: string) => copyDayMutation.mutate(sourceLocalDate),
+    isCopyingDay: copyDayMutation.isPending,
     // Additional query state for components that need it
     isLoading: nutritionQuery.isLoading,
     isRefetching: nutritionQuery.isRefetching,

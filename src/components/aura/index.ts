@@ -17,6 +17,10 @@ export { WorkoutPlanSheet } from "./WorkoutPlanSheet";
 export { WorkoutTemplateSheet } from "./WorkoutTemplateSheet";
 export { WorkoutEditSheet } from "./WorkoutEditSheet";
 export { WorkoutSessionEditor } from "./WorkoutSessionEditor";
+export {
+  SessionSummaryScreen,
+  type SessionSummaryStats,
+} from "./SessionSummaryScreen";
 export { ReplaceExerciseSheet } from "./ReplaceExerciseSheet";
 export { DateSwitcher } from "./DateSwitcher";
 export { CreateFoodSheet } from "./CreateFoodSheet";

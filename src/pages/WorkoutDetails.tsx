@@ -1,6 +1,11 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useNavigationType, useParams } from "react-router-dom";
-import { AppShell, WorkoutSessionEditor } from "@/components/aura";
+import {
+  AppShell,
+  WorkoutSessionEditor,
+  SessionSummaryScreen,
+  type SessionSummaryStats,
+} from "@/components/aura";
 import { useAppStore } from "@/state/AppStore";
 import { toast } from "sonner";
 import { fetchExerciseByName } from "@/lib/api";
@@ -66,11 +71,51 @@ const WorkoutDetails = () => {
   }
 
   const editorMode = mode === "session" ? "session" : "edit";
+  const [showSummary, setShowSummary] = useState(false);
+  const [summaryStats, setSummaryStats] = useState<SessionSummaryStats | null>(null);
 
   useEffect(() => {
     if (navigationType === "POP") return;
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [workoutId, mode, navigationType]);
+
+  const handleFinishWithStats = (stats: SessionSummaryStats) => {
+    setSummaryStats(stats);
+    setShowSummary(true);
+  };
+
+  const handleSummaryBack = async () => {
+    try {
+      await recordWorkoutCompleted(activePlan!.id, activeWorkout!.id);
+      fitnessPlanner.finishSession();
+    } catch {
+      // handled in hook
+    }
+    setShowSummary(false);
+    setSummaryStats(null);
+    navigate("/fitness");
+  };
+
+  if (showSummary && summaryStats && activePlan && activeWorkout) {
+    return (
+      <AppShell experience="fitness" showNav={false} safeAreaTop="extra">
+        <SessionSummaryScreen
+          workoutName={activeWorkout.name}
+          planName={activePlan.name}
+          stats={summaryStats}
+          onBack={handleSummaryBack}
+          onCopySummary={() => {
+            const text = [
+              `${activeWorkout.name} · ${activePlan.name}`,
+              `${summaryStats.totalSets} sets · ${Math.round(summaryStats.totalVolume)} ${summaryStats.unitUsed} volume`,
+              `Duration: ${Math.round(summaryStats.durationMs / 1000 / 60)}m`,
+            ].join("\n");
+            navigator.clipboard?.writeText(text).then(() => toast("Summary copied"));
+          }}
+        />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell experience="fitness" showNav={false} safeAreaTop="extra">
@@ -161,7 +206,12 @@ const WorkoutDetails = () => {
         onPersistSets={
           editorMode === "session" ? fitnessPlanner.persistTemplateSessionSets : undefined
         }
+        sessionStartedAt={
+          editorMode === "session" ? fitnessPlanner.activeSession?.startedAt ?? undefined : undefined
+        }
+        onFinishWithStats={editorMode === "session" ? handleFinishWithStats : undefined}
         onFinish={async () => {
+          if (editorMode === "session") return;
           try {
             await recordWorkoutCompleted(activePlan.id, activeWorkout.id);
             fitnessPlanner.finishSession();

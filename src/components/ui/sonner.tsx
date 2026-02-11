@@ -8,9 +8,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme="light"
       className="toaster group"
       position="top-center"
-      // Push toasts below the status bar / notch on PWA
-      offset="calc(0.75rem + var(--sat, env(safe-area-inset-top, 0px)))"
       richColors
+      offset={{ top: "0.75rem" }}
       toastOptions={{
         classNames: {
           toast: [

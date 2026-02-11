@@ -13,6 +13,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { Bar, BarChart, Line, LineChart, XAxis, YAxis } from "recharts";
+import { TrendingUp } from "lucide-react";
 
 const WEEKS = 12;
 
@@ -102,6 +103,30 @@ const FitnessProgress = () => {
     return Math.round(totalVolume / chartData.length);
   }, [chartData.length, totalVolume]);
 
+  const volumeTrend = useMemo(() => {
+    if (chartData.length < 2) return null;
+    const half = Math.floor(chartData.length / 2);
+    const recent = chartData.slice(-half).reduce((s, d) => s + d.volume, 0);
+    const previous = chartData.slice(0, -half).reduce((s, d) => s + d.volume, 0);
+    if (previous === 0) return recent > 0 ? "up" : null;
+    const pct = Math.round(((recent - previous) / previous) * 100);
+    if (pct > 5) return { direction: "up" as const, pct };
+    if (pct < -5) return { direction: "down" as const, pct };
+    return { direction: "steady" as const, pct: 0 };
+  }, [chartData]);
+
+  const setsTrend = useMemo(() => {
+    if (chartData.length < 2) return null;
+    const half = Math.floor(chartData.length / 2);
+    const recent = chartData.slice(-half).reduce((s, d) => s + d.total_sets, 0);
+    const previous = chartData.slice(0, -half).reduce((s, d) => s + d.total_sets, 0);
+    if (previous === 0) return recent > 0 ? "up" : null;
+    const pct = Math.round(((recent - previous) / previous) * 100);
+    if (pct > 5) return { direction: "up" as const, pct };
+    if (pct < -5) return { direction: "down" as const, pct };
+    return { direction: "steady" as const, pct: 0 };
+  }, [chartData]);
+
   const bestWeek = useMemo(() => {
     if (chartData.length === 0) return null;
     return chartData.reduce((best, current) =>
@@ -172,6 +197,40 @@ const FitnessProgress = () => {
 
         {hasData ? (
           <>
+            {(volumeTrend && typeof volumeTrend === "object") ||
+            (setsTrend && typeof setsTrend === "object") ? (
+              <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+                  Trend (recent half vs previous half of period)
+                </p>
+                <div className="mt-2 flex flex-wrap gap-3 text-sm">
+                  {volumeTrend && typeof volumeTrend === "object" && (
+                    <span className="text-white/80">
+                      Volume:{" "}
+                      {volumeTrend.direction === "up" ? (
+                        <span className="text-emerald-400">↑ {volumeTrend.pct}%</span>
+                      ) : volumeTrend.direction === "down" ? (
+                        <span className="text-amber-400/90">↓ {Math.abs(volumeTrend.pct)}%</span>
+                      ) : (
+                        <span className="text-white/60">steady</span>
+                      )}
+                    </span>
+                  )}
+                  {setsTrend && typeof setsTrend === "object" && (
+                    <span className="text-white/80">
+                      Sets:{" "}
+                      {setsTrend.direction === "up" ? (
+                        <span className="text-emerald-400">↑ {setsTrend.pct}%</span>
+                      ) : setsTrend.direction === "down" ? (
+                        <span className="text-amber-400/90">↓ {Math.abs(setsTrend.pct)}%</span>
+                      ) : (
+                        <span className="text-white/60">steady</span>
+                      )}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : null}
             <div className="mt-6 grid grid-cols-2 gap-3">
               <div className="rounded-[22px] border border-white/10 bg-white/5 px-4 py-3">
                 <p className="text-xs uppercase tracking-[0.2em] text-white/50">
@@ -286,17 +345,74 @@ const FitnessProgress = () => {
                 </BarChart>
               </ChartContainer>
               <p className="mt-1 text-center text-[10px] text-white/40">
-                Volume in kg per week
+                Volume (kg) per week
+              </p>
+            </div>
+            <div className="mt-6 rounded-[28px] border border-white/10 bg-white/5 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+                Sets per week
+              </p>
+              <ChartContainer
+                config={trainingChartConfig}
+                className="mt-3 h-[220px] w-full [&_.recharts-cartesian-axis-tick_text]:fill-white/50"
+              >
+                <BarChart
+                  data={chartData}
+                  margin={{ top: 8, right: 8, bottom: 24, left: 28 }}
+                >
+                  <XAxis
+                    dataKey="weekLabel"
+                    tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={32}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => [
+                          `${Number(value).toLocaleString()} sets`,
+                          "Sets",
+                        ]}
+                        labelFormatter={(_, payload) =>
+                          payload?.[0]?.payload?.weekLabel ?? ""
+                        }
+                      />
+                    }
+                  />
+                  <Bar
+                    dataKey="total_sets"
+                    fill="var(--color-total_sets)"
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={32}
+                  />
+                </BarChart>
+              </ChartContainer>
+              <p className="mt-1 text-center text-[10px] text-white/40">
+                Total sets per week
               </p>
             </div>
           </>
         ) : (
-          <div className="mt-6 rounded-[28px] border border-white/10 bg-white/5 px-4 py-6 text-center">
-            <p className="text-sm text-white/70">
-              Your training trends will live here once you log sessions.
+          <div className="mt-6 rounded-[28px] border border-white/10 bg-white/5 px-6 py-10 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
+              <TrendingUp className="h-8 w-8 text-white/50" />
+            </div>
+            <h2 className="mt-4 text-lg font-semibold text-white">
+              No training data yet
+            </h2>
+            <p className="mt-2 text-sm text-white/60">
+              Log workouts from IronFlow to see weekly volume, total sets, and
+              estimated 1RM trends here.
             </p>
             <Button
-              className="mt-5 w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+              className="mt-6 w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
               onClick={() => navigate("/fitness")}
             >
               Go to workouts

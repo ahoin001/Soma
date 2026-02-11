@@ -13,7 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import type { WorkoutPlan, WorkoutTemplate } from "@/types/fitness";
-import { Dumbbell, Pencil, Trash2 } from "lucide-react";
+import { Copy, Dumbbell, Pencil, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useEffect, useState } from "react";
 
@@ -26,6 +26,7 @@ type WorkoutTemplateSheetProps = {
   onEdit: () => void;
   onDelete: () => void;
   onRename: (name: string) => void;
+  onDuplicate?: () => void;
 };
 
 export const WorkoutTemplateSheet = ({
@@ -37,6 +38,7 @@ export const WorkoutTemplateSheet = ({
   onEdit,
   onDelete,
   onRename,
+  onDuplicate,
 }: WorkoutTemplateSheetProps) => {
   const showLoading = loading || !workout;
   const [name, setName] = useState("");
@@ -76,7 +78,7 @@ export const WorkoutTemplateSheet = ({
                   {workout.name}
                 </h3>
                 <p className="mt-1 text-sm text-white/60">
-                  {plan?.name ?? "Workout"} · {workout.exercises.length} exercises
+                  {plan?.name ?? "Workout"} · {(workout.exercises ?? []).length} exercises
                 </p>
               </div>
 
@@ -116,6 +118,16 @@ export const WorkoutTemplateSheet = ({
                 >
                   Edit workout
                 </Button>
+                {onDuplicate ? (
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-full border-white/20 text-white hover:bg-white/10"
+                    onClick={onDuplicate}
+                  >
+                    <Copy className="mr-2 h-4 w-4" />
+                    Duplicate workout
+                  </Button>
+                ) : null}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button className="w-full rounded-full bg-rose-500 text-white hover:bg-rose-400">

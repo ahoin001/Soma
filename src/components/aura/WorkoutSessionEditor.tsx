@@ -108,6 +108,12 @@ type SortableExerciseProps = {
   children: React.ReactNode;
 };
 
+const parsePreviousWeight = (previous: string): number | null => {
+  if (!previous || previous === "—") return null;
+  const match = previous.match(/^([\d.]+)\s*(?:lb|kg)/i);
+  return match ? Number(match[1]) : null;
+};
+
 type ExerciseCardProps = {
   exercise: EditableExercise;
   thumb: string | null;
@@ -134,6 +140,8 @@ type ExerciseCardProps = {
   onReplace: (id: string) => void;
   deleteConfirmId: string | null;
   setDeleteConfirmId: (id: string | null) => void;
+  /** Session mode: completed sets count for "Set 2 of 4" and progress bar */
+  completedSets?: number;
 };
 
 const SortableExercise = ({
@@ -198,7 +206,11 @@ const ExerciseCard = memo(
     onReplace,
     deleteConfirmId,
     setDeleteConfirmId,
-  }: ExerciseCardProps) => (
+    completedSets = 0,
+  }: ExerciseCardProps) => {
+    const totalSets = (exercise.sets ?? []).length;
+    const isSession = mode === "session";
+    return (
     <motion.div
       className={cn(
         "relative rounded-[22px] border border-white/10 bg-white/5 px-3 py-3 will-change-transform",
@@ -247,7 +259,25 @@ const ExerciseCard = memo(
               >
                 {exercise.name}
               </button>
-              <p className="mt-1 text-xs text-white/50">{(exercise.sets ?? []).length} sets</p>
+              <div className="mt-1 flex items-center gap-2">
+                {isSession && totalSets > 0 ? (
+                  <>
+                    <p className="text-xs text-white/50">
+                      Set {completedSets} of {totalSets}
+                    </p>
+                    <div className="h-1.5 flex-1 max-w-[80px] overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-emerald-400/80 transition-all duration-300"
+                        style={{
+                          width: `${totalSets ? (100 * completedSets) / totalSets : 0}%`,
+                        }}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-white/50">{(exercise.sets ?? []).length} sets</p>
+                )}
+              </div>
               {exercise.note || isNoteOpen ? (
                 <Textarea
                   value={exercise.note}
@@ -465,8 +495,20 @@ const ExerciseCard = memo(
                     swipedSetId === set.id ? "-translate-x-12" : "translate-x-0",
                   )}
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold text-white">
+                  <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold text-white">
                     {setIndex + 1}
+                    {isSession && (() => {
+                      const prevW = parsePreviousWeight(set.previous ?? "");
+                      const currW = Number(set.weight);
+                      if (prevW != null && Number.isFinite(currW) && currW > prevW) {
+                        return (
+                          <span className="absolute -right-1 -top-1 rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-bold text-slate-900">
+                            PR
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                   <span className="text-sm text-white/50">{set.previous}</span>
                   <Input
@@ -648,7 +690,8 @@ const ExerciseCard = memo(
         Add set
       </Button>
     </motion.div>
-  ),
+  );
+  },
 );
 
 const thumbnailCache = new Map<string, string | null>();
@@ -751,6 +794,15 @@ type WorkoutSessionEditorProps = {
   activeSessionId?: string | null;
   sessionExercises?: SessionExerciseForPersist[];
   onPersistSets?: (payload: PersistSetPayload) => Promise<void>;
+  /** Session start time (ms) for duration in finish summary. */
+  sessionStartedAt?: number;
+  /** Called when session is finished with stats for summary/confetti. */
+  onFinishWithStats?: (stats: {
+    totalSets: number;
+    totalVolume: number;
+    unitUsed: "lb" | "kg";
+    durationMs: number;
+  }) => void;
 };
 
 export const WorkoutSessionEditor = ({
@@ -767,6 +819,8 @@ export const WorkoutSessionEditor = ({
   activeSessionId,
   sessionExercises,
   onPersistSets,
+  sessionStartedAt,
+  onFinishWithStats,
 }: WorkoutSessionEditorProps) => {
   const { workoutDrafts, setWorkoutDraft, clearWorkoutDraft } = useAppStore();
   const [exercises, setExercises] = useState<EditableExercise[]>([]);
@@ -796,6 +850,9 @@ export const WorkoutSessionEditor = ({
     active: boolean;
   } | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [restSecondsRemaining, setRestSecondsRemaining] = useState<number | null>(null);
+  const [restDuration, setRestDuration] = useState(90);
+  const restEndedRef = useRef(false);
   const sensors = useSensors(
     useSensor(SmartPointerSensor, {
       activationConstraint: { distance: 4 },
@@ -1121,6 +1178,35 @@ export const WorkoutSessionEditor = ({
     [exercises],
   );
 
+  const loggedSetsCount = useMemo(
+    () =>
+      exercises.reduce((sum, exercise) => {
+        const valid = (exercise.sets ?? []).filter(
+          (s) =>
+            isValidNumber(s.weight) &&
+            isValidNumber(s.reps) &&
+            Number(s.weight) > 0 &&
+            Number(s.reps) > 0,
+        ).length;
+        return sum + valid;
+      }, 0),
+    [exercises],
+  );
+
+  const totalVolumeDisplay = useMemo(() => {
+    let vol = 0;
+    exercises.forEach((exercise) => {
+      (exercise.sets ?? []).forEach((set) => {
+        const w = Number(set.weight);
+        const r = Number(set.reps);
+        if (Number.isFinite(w) && w > 0 && Number.isFinite(r) && r > 0) {
+          vol += w * r;
+        }
+      });
+    });
+    return vol;
+  }, [exercises]);
+
   const hasInvalidEntries = useMemo(
     () =>
       exercises.some((exercise) =>
@@ -1136,6 +1222,23 @@ export const WorkoutSessionEditor = ({
       ),
     [advancedLogging, exercises, mode],
   );
+
+  useEffect(() => {
+    if (restSecondsRemaining === null || restSecondsRemaining <= 0) return;
+    const id = window.setInterval(() => {
+      setRestSecondsRemaining((prev) => {
+        if (prev === null || prev <= 1) {
+          if (prev === 1 && !restEndedRef.current) {
+            restEndedRef.current = true;
+            if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+          }
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [restSecondsRemaining]);
 
   useEffect(() => {
     if (!isEditMode || exercises.length < 2) {
@@ -1242,6 +1345,16 @@ export const WorkoutSessionEditor = ({
         }
       }
     }
+    const durationMs =
+      sessionStartedAt != null ? Date.now() - sessionStartedAt : 0;
+    if (onFinishWithStats) {
+      onFinishWithStats({
+        totalSets: loggedSetsCount,
+        totalVolume: totalVolumeDisplay,
+        unitUsed,
+        durationMs,
+      });
+    }
     onFinish?.();
   };
 
@@ -1273,7 +1386,7 @@ export const WorkoutSessionEditor = ({
             ) : null}
           </div>
           <div className="flex items-center gap-2">
-            {isEditMode && exercises.length > 1 ? (
+            {(isEditMode || mode === "session") && exercises.length > 1 ? (
               <Button
                 variant="outline"
                 className={cn(
@@ -1311,6 +1424,64 @@ export const WorkoutSessionEditor = ({
           <p className="mt-3 text-center text-xs text-rose-300">
             Fix invalid numbers before saving.
           </p>
+        ) : null}
+        {mode === "session" ? (
+          <div className="mt-4 flex flex-col gap-2">
+            {restSecondsRemaining != null ? (
+              <div className="flex items-center justify-between rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3">
+                <span className="text-xs uppercase tracking-wider text-emerald-200/90">
+                  Rest
+                </span>
+                <span className="font-mono text-xl font-semibold tabular-nums text-emerald-200">
+                  {Math.floor(restSecondsRemaining / 60)}:
+                  {String(restSecondsRemaining % 60).padStart(2, "0")}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-emerald-200 hover:text-emerald-100"
+                  onClick={() => {
+                    restEndedRef.current = true;
+                    setRestSecondsRemaining(null);
+                  }}
+                >
+                  Skip
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs">
+                <span className="text-white/60">Rest between sets</span>
+                <div className="flex gap-1">
+                  {[60, 90, 120].map((sec) => (
+                    <button
+                      key={sec}
+                      type="button"
+                      className={cn(
+                        "rounded-full px-3 py-1 font-medium",
+                        restDuration === sec
+                          ? "bg-emerald-400/30 text-emerald-200"
+                          : "text-white/70 hover:text-white",
+                      )}
+                      onClick={() => setRestDuration(sec)}
+                    >
+                      {sec}s
+                    </button>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-emerald-400/40 text-emerald-200 hover:bg-emerald-400/20"
+                  onClick={() => {
+                    restEndedRef.current = false;
+                    setRestSecondsRemaining(restDuration);
+                  }}
+                >
+                  Start rest
+                </Button>
+              </div>
+            )}
+          </div>
         ) : null}
         {mode === "session" ? (
           <div className="mt-4 flex items-center justify-between rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs">
@@ -1382,7 +1553,7 @@ export const WorkoutSessionEditor = ({
             </div>
           ) : null}
 
-          {dragMode && isEditMode ? (
+          {dragMode && (isEditMode || mode === "session") ? (
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -1427,7 +1598,7 @@ export const WorkoutSessionEditor = ({
                     <SortableExercise
                       key={exercise.id}
                       id={exercise.id}
-                      disabled={!isEditMode}
+                      disabled={false}
                       className="relative"
                       wrapperStyle={{}}
                       variants={{}}
@@ -1469,6 +1640,17 @@ export const WorkoutSessionEditor = ({
                         onReplace={handleReplaceSelect}
                         deleteConfirmId={deleteConfirmId}
                         setDeleteConfirmId={setDeleteConfirmId}
+                        completedSets={
+                          mode === "session"
+                            ? (exercise.sets ?? []).filter(
+                                (s) =>
+                                  isValidNumber(s.weight) &&
+                                  isValidNumber(s.reps) &&
+                                  Number(s.weight) > 0 &&
+                                  Number(s.reps) > 0,
+                              ).length
+                            : 0
+                        }
                       />
                     </SortableExercise>
                   ))}
@@ -1514,6 +1696,17 @@ export const WorkoutSessionEditor = ({
                   onReplace={handleReplaceSelect}
                   deleteConfirmId={deleteConfirmId}
                   setDeleteConfirmId={setDeleteConfirmId}
+                  completedSets={
+                    mode === "session"
+                      ? (exercise.sets ?? []).filter(
+                          (s) =>
+                            isValidNumber(s.weight) &&
+                            isValidNumber(s.reps) &&
+                            Number(s.weight) > 0 &&
+                            Number(s.reps) > 0,
+                        ).length
+                      : 0
+                  }
                 />
               ))}
             </motion.div>

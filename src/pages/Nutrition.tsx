@@ -36,10 +36,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useExperienceTransitionConfig } from "@/state";
 import { useSheetManager } from "@/hooks/useSheetManager";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Sparkles } from "lucide-react";
+import { ChevronDown, Copy, Sparkles } from "lucide-react";
 import { LoadingState } from "@/components/ui/loading-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HEADER_STYLE_KEY, SHEET_NUTRITION_KEY } from "@/lib/storageKeys";
+import { toLocalDate } from "@/lib/nutritionData";
 import type { NutritionDraft } from "@/types/nutrition";
 
 type ActiveSheet = "detail" | "quick" | "edit" | "admin" | null;
@@ -151,6 +152,8 @@ const Nutrition = () => {
     setSelectedDate,
     removeLogItem,
     updateLogItem,
+    copyDayFrom,
+    isCopyingDay,
     isLoading: nutritionLoading,
   } = nutrition;
   const meals = mealTypes.meals;
@@ -469,6 +472,26 @@ const Nutrition = () => {
         </div>
 
         <DateSwitcher value={selectedDate} onChange={setSelectedDate} />
+
+        {(() => {
+          const todayLocal = toLocalDate(new Date());
+          const currentLocal = toLocalDate(selectedDate);
+          const isViewingToday = currentLocal === todayLocal;
+          const yesterday = new Date(selectedDate);
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayLocal = toLocalDate(yesterday);
+          return isViewingToday ? (
+            <Button
+              variant="outline"
+              className="mt-4 w-full rounded-full border-emerald-200 bg-white/80 text-emerald-800 shadow-sm hover:bg-emerald-50 hover:border-emerald-300"
+              onClick={() => copyDayFrom(yesterdayLocal)}
+              disabled={isCopyingDay}
+            >
+              <Copy className="mr-2 h-4 w-4" />
+              {isCopyingDay ? "Copying…" : "Same as yesterday"}
+            </Button>
+          ) : null;
+        })()}
 
         <MealLogPanel
           meals={meals}

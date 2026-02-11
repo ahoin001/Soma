@@ -662,6 +662,35 @@ const Fitness = () => {
             // handled in hook
           }
         }}
+        onDuplicate={
+          selectedPlan && selectedWorkout
+            ? async () => {
+                try {
+                  const newWorkout = await createWorkoutTemplate(
+                    selectedPlan.id,
+                    `${selectedWorkout.name} (copy)`,
+                  );
+                  await updateWorkoutTemplate(selectedPlan.id, newWorkout.id, {
+                    exercises: selectedWorkout.exercises ?? [],
+                  });
+                  setExpandedPlans((prev) =>
+                    prev.includes(selectedPlan.id) ? prev : [...prev, selectedPlan.id],
+                  );
+                  closeSheet();
+                  toast("Workout duplicated", {
+                    description: "Edit the copy to customize.",
+                  });
+                  navigate(
+                    `/fitness/workouts/${selectedPlan.id}/${newWorkout.id}`,
+                  );
+                } catch {
+                  toast("Could not duplicate workout", {
+                    description: "Please try again.",
+                  });
+                }
+              }
+            : undefined
+        }
         onDelete={async () => {
           if (!selectedPlan || !selectedWorkout) return;
           try {
