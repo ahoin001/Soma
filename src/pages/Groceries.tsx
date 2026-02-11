@@ -89,15 +89,15 @@ const groceryItems: GroceryItem[] = [
 const bucketConfig: Record<BagBucket, { label: string; tone: string }> = {
   staples: {
     label: "Must haves",
-    tone: "bg-emerald-500/10 text-emerald-700 border-emerald-200",
+    tone: "bg-primary/15 text-primary border-primary/30",
   },
   rotation: {
     label: "Rotation",
-    tone: "bg-sky-500/10 text-sky-700 border-sky-200",
+    tone: "bg-secondary text-secondary-foreground border-border",
   },
   special: {
     label: "Feeling special",
-    tone: "bg-amber-500/10 text-amber-700 border-amber-200",
+    tone: "bg-accent text-accent-foreground border-border",
   },
 };
 
@@ -179,19 +179,19 @@ const GroceryPanel = ({
 }) => (
   <div
     className={cn(
-      "rounded-[28px] border border-black/5 bg-white px-4 py-5 shadow-[0_16px_36px_rgba(15,23,42,0.08)]",
+      "rounded-[28px] border border-border/60 bg-card px-4 py-5 shadow-[0_16px_36px_rgba(15,23,42,0.08)]",
       className,
     )}
   >
     <div className="flex items-center gap-3">
       {icon ? (
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-primary">
           {icon}
         </div>
       ) : null}
       <div>
-        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-        {subtitle ? <p className="text-xs text-slate-500">{subtitle}</p> : null}
+        <h3 className="text-base font-semibold text-foreground">{title}</h3>
+        {subtitle ? <p className="text-xs text-muted-foreground">{subtitle}</p> : null}
       </div>
     </div>
     <div className="mt-4">{children}</div>
@@ -340,23 +340,23 @@ export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) =
   return (
     <div className="mx-auto w-full max-w-[420px] px-4 pb-10" style={GROCERIES_PADDING}>
       {showHeader && (
-        <div className="rounded-[28px] bg-gradient-to-br from-emerald-200 via-emerald-100 to-white px-5 py-6 shadow-[0_18px_40px_rgba(16,185,129,0.18)]">
-          <p className="text-xs uppercase tracking-[0.2em] text-emerald-500">
+        <div className="rounded-[28px] bg-gradient-to-br from-primary/30 via-primary/15 to-card px-5 py-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+          <p className="text-xs uppercase tracking-[0.2em] text-primary">
             Groceries
           </p>
-          <h1 className="text-2xl font-display font-semibold text-emerald-950">
+          <h1 className="text-2xl font-display font-semibold text-foreground">
             Build your grocery bag
           </h1>
-          <p className="mt-1 text-sm text-emerald-700/70">
+          <p className="mt-1 text-sm text-muted-foreground">
             Stock your staples, rotations, and special treats in one easy view.
           </p>
         </div>
       )}
 
-      <div className={`${showHeader ? "mt-6" : "mt-4"} flex items-center justify-between rounded-[24px] border border-emerald-100 bg-white px-4 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.06)]`}>
+      <div className={`${showHeader ? "mt-6" : "mt-4"} flex items-center justify-between rounded-[24px] border border-border/60 bg-card px-4 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.06)]`}>
           <div>
-            <p className="text-sm font-semibold text-slate-800">Advanced</p>
-            <p className="text-xs text-slate-500">
+            <p className="text-sm font-semibold text-foreground">Advanced</p>
+            <p className="text-xs text-muted-foreground">
               Split categories into meats, dairy, fruits, veggies, and more.
             </p>
           </div>
@@ -370,9 +370,9 @@ export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) =
           className="mt-6"
         >
           {bagStatus === "loading" && (
-            <p className="text-xs text-emerald-600">Loading your bag...</p>
+            <p className="text-xs text-primary">Loading your bag...</p>
           )}
-          <div className="rounded-[22px] border border-emerald-100 bg-emerald-50/70 px-3 py-3">
+          <div className="rounded-[22px] border border-border/60 bg-secondary/70 px-3 py-3">
             <div className="flex flex-wrap gap-2 text-xs">
               {(["staples", "rotation", "special"] as BagBucket[]).map(
                 (value) => (
@@ -383,8 +383,8 @@ export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) =
                     className={cn(
                       "rounded-full border px-3 py-1 font-semibold transition",
                       bucket === value
-                        ? "border-emerald-400 bg-white text-emerald-700 shadow-sm"
-                        : "border-transparent bg-white/70 text-slate-500",
+                        ? "border-primary/40 bg-card text-primary shadow-sm"
+                        : "border-transparent bg-card/70 text-muted-foreground",
                     )}
                   >
                     {bucketConfig[value].label}
@@ -397,11 +397,11 @@ export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) =
                 value={manualName}
                 onChange={(event) => setManualName(event.target.value)}
                 placeholder="Add item manually"
-                className="h-10 rounded-full bg-white"
+                className="h-10 rounded-full bg-card"
               />
               <Button
                 type="button"
-                className="rounded-full bg-aura-primary px-4"
+                className="rounded-full bg-primary px-4 text-primary-foreground"
                 onClick={handleManualAdd}
                 disabled={!manualName.trim()}
               >
@@ -414,7 +414,7 @@ export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) =
             {(["staples", "rotation", "special"] as BagBucket[]).map((value) => (
               <div key={value}>
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-700">
+                  <p className="text-sm font-semibold text-foreground">
                     {bucketConfig[value].label}
                   </p>
                   <Badge
@@ -437,10 +437,10 @@ export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) =
                         key={item.id}
                         type="button"
                         onClick={() => removeItem(item.id)}
-                        className="flex items-center gap-2 rounded-full border border-emerald-100 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"
+                        className="flex items-center gap-2 rounded-full border border-border/60 bg-card px-3 py-1 text-xs font-semibold text-foreground shadow-sm"
                       >
                         {item.name}
-                        <span className="text-emerald-500">×</span>
+                        <span className="text-primary">×</span>
                       </button>
                     ))
                   )}
@@ -450,8 +450,8 @@ export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) =
           </div>
         </GroceryPanel>
 
-        <div className="mt-6 flex items-center gap-2 rounded-full border border-emerald-100 bg-white px-4 py-2 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-          <Package className="h-4 w-4 text-emerald-400" />
+        <div className="mt-6 flex items-center gap-2 rounded-full border border-border/60 bg-card px-4 py-2 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
+          <Package className="h-4 w-4 text-primary/70" />
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -459,12 +459,12 @@ export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) =
             className="h-7 border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
           />
         </div>
-        <div className="mt-3 flex items-center justify-between rounded-[20px] border border-emerald-100 bg-white px-4 py-3 text-xs text-slate-500 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
+        <div className="mt-3 flex items-center justify-between rounded-[20px] border border-border/60 bg-card px-4 py-3 text-xs text-muted-foreground shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
           <span>Need something new?</span>
           <Button
             type="button"
             variant="ghost"
-            className="h-8 rounded-full bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+            className="h-8 rounded-full bg-secondary px-3 text-xs font-semibold text-secondary-foreground hover:bg-secondary/80"
             onClick={() => setUseDatabase((prev) => !prev)}
           >
             {useDatabase ? "Hide catalog search" : "Search catalog"}
@@ -483,7 +483,7 @@ export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) =
             className="mt-6"
           >
             {apiResults.length === 0 && searchStatus !== "loading" ? (
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 No results yet. Try another search.
               </p>
             ) : (
@@ -498,7 +498,7 @@ export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) =
                       onClick={() =>
                         addToBag(item.name, bucket, macroGroup, category)
                       }
-                      className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
+                      className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
                     >
                       {item.name}
                     </button>
@@ -529,7 +529,7 @@ export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) =
                         onClick={() =>
                           addToBag(item.name, bucket, item.macro, item.category)
                         }
-                        className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
+                        className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
                       >
                         {item.name}
                       </button>
@@ -549,11 +549,11 @@ export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) =
                         updateCategoryDraft(panel.id, event.target.value)
                       }
                       placeholder={`Add ${panel.label.toLowerCase()} item`}
-                      className="h-9 rounded-full bg-white"
+                      className="h-9 rounded-full bg-card"
                     />
                     <Button
                       type="button"
-                      className="rounded-full bg-emerald-100 px-4 text-emerald-700 hover:bg-emerald-200"
+                      className="rounded-full bg-secondary px-4 text-secondary-foreground hover:bg-secondary/80"
                       onClick={() =>
                         addMasterItem(panel.id, macroForCategory(panel.id))
                       }
@@ -584,7 +584,7 @@ export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) =
                       );
                       return (
                         <div key={category.id}>
-                          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                             {category.label}
                           </p>
                           <div className="mt-2 flex flex-wrap gap-2">
@@ -595,14 +595,14 @@ export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) =
                         onClick={() =>
                           addToBag(item.name, bucket, item.macro, item.category)
                         }
-                                className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
+                                className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
                               >
                                 {item.name}
                               </button>
                             ))}
                           </div>
                           {categoryItems.length === 0 ? (
-                            <p className="mt-2 text-xs text-slate-400">
+                            <p className="mt-2 text-xs text-muted-foreground">
                               Add a favorite to start the list.
                             </p>
                           ) : null}
@@ -616,11 +616,11 @@ export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) =
                                 )
                               }
                               placeholder={`Add ${category.label.toLowerCase()} item`}
-                              className="h-9 rounded-full bg-white"
+                              className="h-9 rounded-full bg-card"
                             />
                             <Button
                               type="button"
-                              className="rounded-full bg-emerald-100 px-4 text-emerald-700 hover:bg-emerald-200"
+                              className="rounded-full bg-secondary px-4 text-secondary-foreground hover:bg-secondary/80"
                               onClick={() =>
                                 addMasterItem(category.id, panel.id)
                               }

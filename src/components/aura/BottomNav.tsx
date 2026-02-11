@@ -28,12 +28,10 @@ const NavButton = ({
     to={to}
     className={`flex w-14 flex-col items-center gap-1 text-xs font-medium ${
       active
-        ? tone === "dark"
-          ? "text-white"
-          : "text-slate-900"
+        ? "text-foreground"
         : tone === "dark"
-          ? "text-white/60"
-          : "text-slate-400"
+          ? "text-foreground/65"
+          : "text-muted-foreground"
     }`}
   >
     <Icon className="h-5 w-5" />
@@ -52,9 +50,7 @@ export const BottomNav = ({ experience, onAddAction }: BottomNavProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const path = location.pathname;
-  const containerTone = isNutrition
-    ? "border-black/5 bg-white"
-    : "border-white/10 bg-slate-950/90 text-white";
+  const containerTone = "border-border/70 bg-card/90";
 
   // Use portal to render directly to body, escaping any parent transforms
   // that would break fixed positioning (e.g., PageTransition animations)
@@ -99,9 +95,9 @@ export const BottomNav = ({ experience, onAddAction }: BottomNavProps) => {
             <Button
               type="button"
               onClick={handleAddAction}
-              className="h-12 w-12 rounded-full bg-aura-primary shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
+              className="h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-[0_16px_30px_rgba(15,23,42,0.28)] hover:bg-primary/90"
             >
-              <Plus className="h-5 w-5 text-white" />
+              <Plus className="h-5 w-5" />
             </Button>
             <NavButton
               icon={LineChart}
@@ -133,11 +129,11 @@ export const BottomNav = ({ experience, onAddAction }: BottomNavProps) => {
               tone={tone}
             />
             <Button
-              className="h-12 w-12 rounded-full bg-emerald-400 shadow-[0_16px_30px_rgba(45,212,191,0.35)] hover:bg-emerald-300"
+              className="h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-[0_16px_30px_rgba(15,23,42,0.28)] hover:bg-primary/90"
               onClick={handleAddAction}
               type="button"
             >
-              <Timer className="h-5 w-5 text-slate-950" />
+              <Timer className="h-5 w-5" />
             </Button>
             <NavButton
               icon={LineChart}

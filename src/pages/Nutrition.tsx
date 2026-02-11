@@ -37,6 +37,7 @@ import { useExperienceTransitionConfig } from "@/state";
 import { useSheetManager } from "@/hooks/useSheetManager";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, Copy, Sparkles } from "lucide-react";
+import { useTheme } from "next-themes";
 import { LoadingState } from "@/components/ui/loading-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HEADER_STYLE_KEY, SHEET_NUTRITION_KEY } from "@/lib/storageKeys";
@@ -101,6 +102,17 @@ const homeOptions: SegmentedOption[] = [
   { value: "fitness", label: "Fitness" },
 ];
 
+const themeModeOptions: SegmentedOption[] = [
+  { value: "system", label: "System" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+];
+
+const themePaletteOptions: SegmentedOption[] = [
+  { value: "emerald", label: "Emerald" },
+  { value: "ocean", label: "Ocean" },
+];
+
 const Nutrition = () => {
   const { activeSheet, openSheet, closeSheets, setActiveSheet } =
     useSheetManager<Exclude<ActiveSheet, null>>(null, {
@@ -128,8 +140,15 @@ const Nutrition = () => {
     foodCatalog,
     mealTypes,
   } = useAppStore();
-  const { showFoodImages, setShowFoodImages, defaultHome, setDefaultHome } =
-    useUserSettings();
+  const {
+    showFoodImages,
+    setShowFoodImages,
+    defaultHome,
+    setDefaultHome,
+    themePalette,
+    setThemePalette,
+  } = useUserSettings();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const { mealPulse, setMealPulse, clearMealPulse } = useMealPulse();
   const { email, logout } = useAuth();
   const isAdmin = email?.toLowerCase() === "ahoin001@gmail.com";
@@ -524,16 +543,16 @@ const Nutrition = () => {
           onSetTotal={waterSummary.setWaterTotal}
           onGoalSave={(value) => waterSummary.updateGoal(value)}
         />
-        <Card className="mt-6 rounded-[24px] border border-black/5 bg-white px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
+        <Card className="mt-6 rounded-[24px] border border-black/5 bg-card px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+              <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
                 Preferences
               </p>
-              <p className="mt-1 text-sm font-semibold text-slate-800">
+              <p className="mt-1 text-sm font-semibold text-foreground">
                 Show food images
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Toggle food photos across lists and sheets.
               </p>
             </div>
@@ -542,14 +561,14 @@ const Nutrition = () => {
               onCheckedChange={setShowFoodImages}
             />
           </div>
-          <div className="mt-4 border-t border-emerald-100 pt-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+          <div className="mt-4 border-t border-border/60 pt-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70">
               Immersive style
             </p>
-            <p className="mt-1 text-sm font-semibold text-slate-800">
+            <p className="mt-1 text-sm font-semibold text-foreground">
               Header look & feel
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Try the three immersive PWA styles from the brief.
             </p>
             <SegmentedControl
@@ -557,20 +576,20 @@ const Nutrition = () => {
               options={headerStyleOptions}
               onValueChange={(next) => setHeaderStyle(next as "immersive" | "card" | "media")}
               className="mt-3"
-              itemClassName="bg-emerald-50"
-              activeClassName="text-white"
-              inactiveClassName="text-emerald-700"
-              indicatorClassName="bg-emerald-500"
+              itemClassName="bg-muted"
+              activeClassName="text-primary-foreground"
+              inactiveClassName="text-muted-foreground"
+              indicatorClassName="bg-primary"
             />
           </div>
-          <div className="mt-4 border-t border-emerald-100 pt-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+          <div className="mt-4 border-t border-border/60 pt-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70">
               Default home
             </p>
-            <p className="mt-1 text-sm font-semibold text-slate-800">
+            <p className="mt-1 text-sm font-semibold text-foreground">
               Open the app on
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Choose which experience loads first.
             </p>
             <SegmentedControl
@@ -580,28 +599,72 @@ const Nutrition = () => {
                 setDefaultHome(next === "fitness" ? "fitness" : "nutrition")
               }
               className="mt-3"
-              itemClassName="bg-emerald-50"
-              activeClassName="text-white"
-              inactiveClassName="text-emerald-700"
-              indicatorClassName="bg-emerald-500"
+              itemClassName="bg-muted"
+              activeClassName="text-primary-foreground"
+              inactiveClassName="text-muted-foreground"
+              indicatorClassName="bg-primary"
             />
           </div>
-          <div className="mt-4 border-t border-emerald-100 pt-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+          <div className="mt-4 border-t border-border/60 pt-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70">
+              Theme mode
+            </p>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              Light, dark, or system
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Current resolved mode: {resolvedTheme === "dark" ? "Dark" : "Light"}.
+            </p>
+            <SegmentedControl
+              value={theme ?? "system"}
+              options={themeModeOptions}
+              onValueChange={(next) => setTheme(next)}
+              className="mt-3"
+              itemClassName="bg-muted"
+              activeClassName="text-primary-foreground"
+              inactiveClassName="text-muted-foreground"
+              indicatorClassName="bg-primary"
+            />
+          </div>
+          <div className="mt-4 border-t border-border/60 pt-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70">
+              Color palette
+            </p>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              Choose your accent theme
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Emerald keeps today&apos;s look. Ocean gives the app a deeper blue style.
+            </p>
+            <SegmentedControl
+              value={themePalette}
+              options={themePaletteOptions}
+              onValueChange={(next) =>
+                setThemePalette(next === "ocean" ? "ocean" : "emerald")
+              }
+              className="mt-3"
+              itemClassName="bg-muted"
+              activeClassName="text-primary-foreground"
+              inactiveClassName="text-muted-foreground"
+              indicatorClassName="bg-primary"
+            />
+          </div>
+          <div className="mt-4 border-t border-border/60 pt-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70">
               Experience transition
             </p>
-            <p className="mt-1 text-sm font-semibold text-slate-800">
+            <p className="mt-1 text-sm font-semibold text-foreground">
               Switching Nutrition ↔ Fitness
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Circular reveal is now the default. Tweak the feel below.
             </p>
             <Collapsible className="mt-3">
-              <CollapsibleTrigger className="group flex w-full items-center justify-between rounded-[14px] border border-emerald-100 bg-emerald-50/60 px-3 py-2 text-xs font-semibold text-emerald-700">
+              <CollapsibleTrigger className="group flex w-full items-center justify-between rounded-[14px] border border-border/60 bg-muted/50 px-3 py-2 text-xs font-semibold text-foreground">
                 <span>Advanced tuning</span>
                 <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
               </CollapsibleTrigger>
-              <CollapsibleContent className="mt-3 space-y-4 rounded-[16px] border border-emerald-100 bg-white px-3 py-3">
+              <CollapsibleContent className="mt-3 space-y-4 rounded-[16px] border border-border/60 bg-card px-3 py-3">
                 <div>
                   <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                     <span>Duration</span>
@@ -676,12 +739,12 @@ const Nutrition = () => {
           message={insights.streak.message}
         />
 
-        <Card className="mt-6 rounded-[24px] border border-black/5 bg-white px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
+        <Card className="mt-6 rounded-[24px] border border-black/5 bg-card px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
           <div className="flex flex-col gap-3">
-            <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+            <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
               Account
             </p>
-            <p className="text-sm font-semibold text-slate-800">
+            <p className="text-sm font-semibold text-foreground">
               {email ?? "Not signed in"}
             </p>
             {email ? (

@@ -391,14 +391,14 @@ const Fitness = () => {
 
         {hasActiveSession && activeRoutine ? (
           <div className="mt-6 space-y-3">
-            <div className="rounded-[24px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-4 text-white">
-              <p className="text-xs uppercase tracking-[0.2em] text-emerald-200/80">
+            <div className="rounded-[24px] border border-primary/30 bg-primary/12 px-4 py-4 text-foreground">
+              <p className="text-xs uppercase tracking-[0.2em] text-primary/80">
                 Session in progress
               </p>
-              <p className="mt-1 text-lg font-semibold text-white">
+              <p className="mt-1 text-lg font-semibold text-foreground">
                 {activeRoutine.name}
               </p>
-              <p className="text-xs text-white/60">
+              <p className="text-xs text-muted-foreground">
                 Keep logging sets or finish when you are done.
               </p>
             </div>
@@ -416,15 +416,15 @@ const Fitness = () => {
         <div>
           <section className="mt-8 space-y-6">
           {!showEmptyState && nextWorkout && activePlanForHud ? (
-            <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+            <div className="rounded-[24px] border border-border/70 bg-card/45 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 Quick add
               </p>
-              <p className="mt-1 text-sm text-white/70">
+              <p className="mt-1 text-sm text-foreground/80">
                 Add an exercise to {nextWorkout.name}.
               </p>
               <Button
-                className="mt-3 w-full rounded-full bg-white/10 text-white hover:bg-white/20"
+                className="mt-3 w-full rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
                 onClick={handleQuickAdd}
               >
                 Add exercise
@@ -451,7 +451,7 @@ const Fitness = () => {
                   label: creating ? "Creating folder..." : "Create folder",
                   onClick: () => handleCreatePlan(),
                 }}
-                className="rounded-[28px] border border-white/10 bg-white/5 py-8 [&_.text-foreground]:!text-white [&_.text-muted-foreground]:!text-white/70"
+                className="rounded-[28px] border border-border/70 bg-card/45 py-8"
                 size="lg"
               />
               <div className="flex flex-wrap justify-center gap-2">
@@ -459,7 +459,7 @@ const Fitness = () => {
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="rounded-full border-white/20 text-white hover:bg-white/10"
+                    className="rounded-full border-border/70 text-foreground hover:bg-secondary/80"
                     onClick={() => navigate("/fitness/admin/exercises")}
                   >
                     <Wrench className="mr-2 h-4 w-4" />
@@ -469,7 +469,7 @@ const Fitness = () => {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="rounded-full border-white/20 text-white hover:bg-white/10"
+                  className="rounded-full border-border/70 text-foreground hover:bg-secondary/80"
                   onClick={() => navigate("/fitness/exercises/create")}
                 >
                   Create exercise
@@ -485,13 +485,13 @@ const Fitness = () => {
                   shouldAnimate ? { duration: 0.3, ease: "easeOut" } : undefined
                 }
               >
-                <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Today in focus
                 </p>
-                <h2 className="mt-2 text-xl font-display font-semibold text-white">
+                <h2 className="mt-2 text-xl font-display font-semibold text-foreground">
                   Design your strength
                 </h2>
-                <p className="mt-1 text-sm text-white/60">
+                <p className="mt-1 text-sm text-muted-foreground">
                   Plan the routine, then drop into Flow mode when you are ready.
                 </p>
               </motion.div>
@@ -503,10 +503,10 @@ const Fitness = () => {
                   shouldAnimate ? { duration: 0.35, ease: "easeOut" } : undefined
                 }
               >
-                <Card className="border-white/10 bg-card text-card-foreground">
+                <Card className="border-border/70 bg-card/55 text-card-foreground">
                   <CardHeader>
-                    <CardTitle className="text-lg text-white">Atlas</CardTitle>
-                    <CardDescription className="text-white/60">
+                    <CardTitle className="text-lg text-foreground">Atlas</CardTitle>
+                    <CardDescription className="text-muted-foreground">
                       Search the exercise library by name or muscle group.
                     </CardDescription>
                   </CardHeader>
@@ -515,17 +515,17 @@ const Fitness = () => {
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder="Search exercises (e.g., bench press)"
-                    className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                    className="border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
                   />
                   <Button
                     variant="secondary"
-                    className="w-full rounded-full bg-white/10 text-white hover:bg-white/20"
+                    className="w-full rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
                     onClick={() => navigate("/fitness/exercises/create")}
                   >
                     Create exercise
                   </Button>
                   {creating ? (
-                    <p className="text-xs text-white/60">
+                    <p className="text-xs text-muted-foreground">
                       Preparing your workout...
                     </p>
                   ) : null}
@@ -533,7 +533,7 @@ const Fitness = () => {
                     <p className="text-sm text-rose-300">{error}</p>
                   ) : null}
                   {status === "loading" ? (
-                    <p className="text-sm text-white/60">Loading exercises...</p>
+                    <p className="text-sm text-muted-foreground">Loading exercises...</p>
                   ) : null}
                   {previewItems.length ? (
                     <VirtualizedExerciseList
@@ -542,7 +542,7 @@ const Fitness = () => {
                       onSelect={handleSelectExercise}
                     />
                   ) : (
-                    <p className="text-sm text-white/50">
+                    <p className="text-sm text-muted-foreground">
                       Start typing to explore the Atlas.
                     </p>
                   )}

@@ -14,6 +14,7 @@ export const USER_KEY_LEGACY = "aura-user-id";
 export const USER_PROFILE_KEY = "aurafit-user-profile-v1";
 export const FOOD_IMAGES_KEY = "aurafit-show-food-images";
 export const DEFAULT_HOME_KEY = "aurafit-default-home";
+export const THEME_PALETTE_KEY = "aurafit-theme-palette";
 
 // UI & sheets
 export const HEADER_STYLE_KEY = "aurafit-header-style";

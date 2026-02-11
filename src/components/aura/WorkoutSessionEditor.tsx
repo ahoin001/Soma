@@ -42,6 +42,7 @@ import {
   upsertActivityGoals,
 } from "@/lib/api";
 import { ADVANCED_LOGGING_KEY, workoutLastSetsKey } from "@/lib/storageKeys";
+import { playRestCompleteSound } from "@/lib/restCompleteSound";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -59,8 +60,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const isInteractiveTarget = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) return false;
@@ -142,6 +143,14 @@ type ExerciseCardProps = {
   setDeleteConfirmId: (id: string | null) => void;
   /** Session mode: completed sets count for "Set 2 of 4" and progress bar */
   completedSets?: number;
+  /** Session mode: which set is currently in rest (so only that set's bar fills) */
+  activeRest?: { exerciseId: string; setId: string; durationSec: number; startedAt: number } | null;
+  /** Session mode: rest duration in seconds when starting rest after marking set complete */
+  restDurationSec?: number;
+  /** Session mode: called when user marks a set complete; starts rest for that set */
+  onSetComplete?: (exerciseId: string, setId: string) => void;
+  /** Session mode: toggle completed state for a set */
+  onToggleSetCompleted?: (exerciseId: string, setId: string, completed: boolean) => void;
 };
 
 const SortableExercise = ({
@@ -207,6 +216,10 @@ const ExerciseCard = memo(
     deleteConfirmId,
     setDeleteConfirmId,
     completedSets = 0,
+    activeRest = null,
+    restDurationSec = 90,
+    onSetComplete,
+    onToggleSetCompleted,
   }: ExerciseCardProps) => {
     const totalSets = (exercise.sets ?? []).length;
     const isSession = mode === "session";
@@ -407,7 +420,13 @@ const ExerciseCard = memo(
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="mt-3 grid grid-cols-[48px_1fr_72px_72px] items-center gap-3 text-xs uppercase tracking-[0.2em] text-white/40">
+      <div
+        className={cn(
+          "mt-3 grid items-center gap-3 text-xs uppercase tracking-[0.2em] text-white/40",
+          isSession ? "grid-cols-[auto_48px_1fr_72px_72px]" : "grid-cols-[48px_1fr_72px_72px]",
+        )}
+      >
+        {isSession ? <span className="w-6" aria-hidden /> : null}
         <span>Set</span>
         <span>Previous</span>
         <span>{unitUsed}</span>
@@ -426,7 +445,13 @@ const ExerciseCard = memo(
             restSeconds % 60,
           ).padStart(2, "0")}`;
           return (
-            <div key={set.id} className="space-y-2">
+            <div
+              key={set.id}
+              className={cn(
+                "space-y-2 rounded-[18px] transition-colors",
+                isSession && (set.completed === true) && "bg-emerald-400/5 ring-1 ring-emerald-400/20",
+              )}
+            >
               <div
                 className="relative overflow-hidden rounded-[18px]"
                 onPointerDown={(event) => {
@@ -484,6 +509,7 @@ const ExerciseCard = memo(
                       );
                       setSwipedSetId(null);
                     }}
+                    aria-label="Remove set from workout"
                     data-swipe-ignore
                   >
                     ✕
@@ -491,10 +517,25 @@ const ExerciseCard = memo(
                 </div>
                 <div
                   className={cn(
-                    "grid grid-cols-[48px_1fr_72px_72px] items-center gap-3 transition-transform duration-200",
+                    "grid items-center gap-3 transition-transform duration-200",
+                    isSession ? "grid-cols-[auto_48px_1fr_72px_72px]" : "grid-cols-[48px_1fr_72px_72px]",
                     swipedSetId === set.id ? "-translate-x-12" : "translate-x-0",
                   )}
                 >
+                  {isSession ? (
+                    <div className="flex items-center gap-2" data-swipe-ignore>
+                      <Checkbox
+                        checked={set.completed ?? false}
+                        onCheckedChange={(checked) => {
+                          const next = !!checked;
+                          onToggleSetCompleted?.(exercise.id, set.id, next);
+                          if (next) onSetComplete?.(exercise.id, set.id);
+                        }}
+                        className="h-6 w-6 rounded-md border-2 border-emerald-400/60 data-[state=checked]:bg-emerald-400 data-[state=checked]:border-emerald-400"
+                        aria-label={set.completed ? "Set completed" : "Mark set complete"}
+                      />
+                    </div>
+                  ) : null}
                   <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold text-white">
                     {setIndex + 1}
                     {isSession && (() => {
@@ -650,8 +691,15 @@ const ExerciseCard = memo(
                     <span>Rest</span>
                     <span>{restLabel}</span>
                   </div>
-                  <div className="h-1 rounded-full bg-white/10">
-                    <div className="h-1 origin-left rounded-full bg-emerald-400/70 animate-restBar" />
+                  <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    {activeRest?.exerciseId === exercise.id && activeRest?.setId === set.id ? (
+                      <div
+                        className="h-full origin-left rounded-full bg-emerald-400/80"
+                        style={{
+                          animation: `restBar ${activeRest.durationSec}s linear forwards`,
+                        }}
+                      />
+                    ) : null}
                   </div>
                 </div>
               ) : null}
@@ -853,6 +901,15 @@ export const WorkoutSessionEditor = ({
   const [restSecondsRemaining, setRestSecondsRemaining] = useState<number | null>(null);
   const [restDuration, setRestDuration] = useState(90);
   const restEndedRef = useRef(false);
+  /** Session mode: which set is in rest; only that set's bar fills. */
+  const [activeRest, setActiveRest] = useState<{
+    exerciseId: string;
+    setId: string;
+    durationSec: number;
+    startedAt: number;
+  } | null>(null);
+  /** Session mode: confirm before finishing when some sets are incomplete */
+  const [finishConfirmOpen, setFinishConfirmOpen] = useState(false);
   const sensors = useSensors(
     useSensor(SmartPointerSensor, {
       activationConstraint: { distance: 4 },
@@ -1087,6 +1144,36 @@ export const WorkoutSessionEditor = ({
     setReplaceOpen(true);
   }, []);
 
+  const handleToggleSetCompleted = useCallback(
+    (exerciseId: string, setId: string, completed: boolean) => {
+      setExercises((prev) =>
+        prev.map((ex) =>
+          ex.id === exerciseId
+            ? {
+                ...ex,
+                sets: (ex.sets ?? []).map((s) =>
+                  s.id === setId ? { ...s, completed } : s,
+                ),
+              }
+            : ex,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleSetCompleteStartRest = useCallback(
+    (exerciseId: string, setId: string) => {
+      setActiveRest({
+        exerciseId,
+        setId,
+        durationSec: restDuration,
+        startedAt: Date.now(),
+      });
+    },
+    [restDuration],
+  );
+
   const triggerAddExercise = () => {
     if (onAddExercise) {
       onAddExercise();
@@ -1240,6 +1327,20 @@ export const WorkoutSessionEditor = ({
     return () => window.clearInterval(id);
   }, [restSecondsRemaining]);
 
+  // Per-set rest: when timer ends, clear and notify
+  useEffect(() => {
+    if (!activeRest) return;
+    const endAt = activeRest.startedAt + activeRest.durationSec * 1000;
+    const id = window.setInterval(() => {
+      if (Date.now() >= endAt) {
+        setActiveRest(null);
+        playRestCompleteSound();
+        if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+      }
+    }, 200);
+    return () => window.clearInterval(id);
+  }, [activeRest]);
+
   useEffect(() => {
     if (!isEditMode || exercises.length < 2) {
       setDragMode(false);
@@ -1286,6 +1387,7 @@ export const WorkoutSessionEditor = ({
         const sets = (exercise.sets ?? [])
           .filter(
             (set) =>
+              (mode !== "session" || set.completed === true) &&
               isValidNumber(set.weight) &&
               isValidNumber(set.reps) &&
               Number(set.weight) > 0 &&
@@ -1311,11 +1413,26 @@ export const WorkoutSessionEditor = ({
 
   const [isPersisting, setIsPersisting] = useState(false);
 
-  const handleFinish = async () => {
+  const totalSetCount = useMemo(
+    () => exercises.reduce((sum, ex) => sum + (ex.sets ?? []).length, 0),
+    [exercises],
+  );
+  const completedSetCount = useMemo(
+    () =>
+      exercises.reduce(
+        (sum, ex) => sum + (ex.sets ?? []).filter((s) => s.completed === true).length,
+        0,
+      ),
+    [exercises],
+  );
+  const hasIncompleteSets = mode === "session" && totalSetCount > 0 && completedSetCount < totalSetCount;
+
+  const doFinish = async () => {
     if (isEditMode) {
       saveExercises();
       return;
     }
+    setFinishConfirmOpen(false);
     persistSessionSets();
     if (
       activeSessionId &&
@@ -1356,6 +1473,14 @@ export const WorkoutSessionEditor = ({
       });
     }
     onFinish?.();
+  };
+
+  const handleFinish = () => {
+    if (hasIncompleteSets) {
+      setFinishConfirmOpen(true);
+      return;
+    }
+    void doFinish();
   };
 
   return (
@@ -1405,7 +1530,7 @@ export const WorkoutSessionEditor = ({
                 "h-10 rounded-full bg-emerald-400 px-4 text-slate-950 transition hover:bg-emerald-300",
                 savePulse && "shadow-[0_0_24px_rgba(52,211,153,0.5)]",
               )}
-              onClick={() => void handleFinish()}
+              onClick={() => handleFinish()}
               disabled={
                 hasInvalidEntries ||
                 (isEditMode && !hasExercises) ||
@@ -1426,61 +1551,25 @@ export const WorkoutSessionEditor = ({
           </p>
         ) : null}
         {mode === "session" ? (
-          <div className="mt-4 flex flex-col gap-2">
-            {restSecondsRemaining != null ? (
-              <div className="flex items-center justify-between rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3">
-                <span className="text-xs uppercase tracking-wider text-emerald-200/90">
-                  Rest
-                </span>
-                <span className="font-mono text-xl font-semibold tabular-nums text-emerald-200">
-                  {Math.floor(restSecondsRemaining / 60)}:
-                  {String(restSecondsRemaining % 60).padStart(2, "0")}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-emerald-200 hover:text-emerald-100"
-                  onClick={() => {
-                    restEndedRef.current = true;
-                    setRestSecondsRemaining(null);
-                  }}
+          <div className="mt-4 flex items-center justify-between rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs">
+            <span className="text-white/60">Rest after set (when you mark one done)</span>
+            <div className="flex gap-1">
+              {[60, 90, 120].map((sec) => (
+                <button
+                  key={sec}
+                  type="button"
+                  className={cn(
+                    "rounded-full px-3 py-1 font-medium",
+                    restDuration === sec
+                      ? "bg-emerald-400/30 text-emerald-200"
+                      : "text-white/70 hover:text-white",
+                  )}
+                  onClick={() => setRestDuration(sec)}
                 >
-                  Skip
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs">
-                <span className="text-white/60">Rest between sets</span>
-                <div className="flex gap-1">
-                  {[60, 90, 120].map((sec) => (
-                    <button
-                      key={sec}
-                      type="button"
-                      className={cn(
-                        "rounded-full px-3 py-1 font-medium",
-                        restDuration === sec
-                          ? "bg-emerald-400/30 text-emerald-200"
-                          : "text-white/70 hover:text-white",
-                      )}
-                      onClick={() => setRestDuration(sec)}
-                    >
-                      {sec}s
-                    </button>
-                  ))}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full border-emerald-400/40 text-emerald-200 hover:bg-emerald-400/20"
-                  onClick={() => {
-                    restEndedRef.current = false;
-                    setRestSecondsRemaining(restDuration);
-                  }}
-                >
-                  Start rest
-                </Button>
-              </div>
-            )}
+                  {sec}s
+                </button>
+              ))}
+            </div>
           </div>
         ) : null}
         {mode === "session" ? (
@@ -1642,15 +1731,13 @@ export const WorkoutSessionEditor = ({
                         setDeleteConfirmId={setDeleteConfirmId}
                         completedSets={
                           mode === "session"
-                            ? (exercise.sets ?? []).filter(
-                                (s) =>
-                                  isValidNumber(s.weight) &&
-                                  isValidNumber(s.reps) &&
-                                  Number(s.weight) > 0 &&
-                                  Number(s.reps) > 0,
-                              ).length
+                            ? (exercise.sets ?? []).filter((s) => s.completed === true).length
                             : 0
                         }
+                        activeRest={mode === "session" ? activeRest : null}
+                        restDurationSec={restDuration}
+                        onSetComplete={handleSetCompleteStartRest}
+                        onToggleSetCompleted={handleToggleSetCompleted}
                       />
                     </SortableExercise>
                   ))}
@@ -1698,15 +1785,13 @@ export const WorkoutSessionEditor = ({
                   setDeleteConfirmId={setDeleteConfirmId}
                   completedSets={
                     mode === "session"
-                      ? (exercise.sets ?? []).filter(
-                          (s) =>
-                            isValidNumber(s.weight) &&
-                            isValidNumber(s.reps) &&
-                            Number(s.weight) > 0 &&
-                            Number(s.reps) > 0,
-                        ).length
+                      ? (exercise.sets ?? []).filter((s) => s.completed === true).length
                       : 0
                   }
+                  activeRest={mode === "session" ? activeRest : null}
+                  restDurationSec={restDuration}
+                  onSetComplete={handleSetCompleteStartRest}
+                  onToggleSetCompleted={handleToggleSetCompleted}
                 />
               ))}
             </motion.div>
@@ -1736,6 +1821,27 @@ export const WorkoutSessionEditor = ({
         }}
       />
 
+      <AlertDialog open={finishConfirmOpen} onOpenChange={setFinishConfirmOpen}>
+        <AlertDialogContent className="border-white/10 bg-slate-950 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Some sets are incomplete</AlertDialogTitle>
+            <AlertDialogDescription className="text-white/60">
+              You have unchecked sets. Save what you&apos;ve done and finish the workout, or cancel to keep logging.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-full border-white/20 text-white hover:bg-white/10">
+              Cancel workout
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-full bg-emerald-500 text-slate-950 hover:bg-emerald-400"
+              onClick={() => void doFinish()}
+            >
+              Save what was done
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

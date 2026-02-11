@@ -20,22 +20,22 @@ const FitnessLog = () => {
 
   return (
     <AppShell experience="fitness" onAddAction={() => navigate("/fitness")} safeAreaTop="extra">
-      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-white">
+      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-foreground">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Flow
             </p>
             <h1 className="mt-2 text-2xl font-display font-semibold">
               Session log
             </h1>
-            <p className="mt-1 text-sm text-white/60">
+            <p className="mt-1 text-sm text-muted-foreground">
               Keep your log open while you train.
             </p>
           </div>
           <Button
             variant="ghost"
-            className="h-10 rounded-full bg-white/10 text-white hover:bg-white/20"
+            className="h-10 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
             onClick={() => navigate("/fitness")}
           >
             Back
@@ -53,7 +53,7 @@ const FitnessLog = () => {
           />
           {!fitnessPlanner.activeSession ? (
             <Button
-              className="w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+              className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => navigate("/fitness")}
             >
               Start a session
@@ -61,17 +61,17 @@ const FitnessLog = () => {
           ) : null}
 
           {history.length > 0 ? (
-            <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+            <div className="rounded-[24px] border border-border/70 bg-card/55 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 Recent sessions
               </p>
-              <p className="mt-1 text-sm font-medium text-white/90">
+              <p className="mt-1 text-sm font-medium text-foreground/90">
                 Last {Math.min(history.length, 20)} finished
               </p>
               {latestSession ? (
                 <Button
                   variant="outline"
-                  className="mt-3 w-full rounded-full border-white/20 text-white hover:bg-white/10"
+                  className="mt-3 w-full rounded-full border-border/70 text-foreground hover:bg-secondary/70"
                   onClick={async () => {
                     const summary = [
                       "IronFlow Session Summary",
@@ -93,12 +93,12 @@ const FitnessLog = () => {
                 {history.slice(0, 20).map((session) => (
                   <li
                     key={session.id}
-                    className="flex items-center justify-between rounded-[16px] border border-white/10 bg-white/5 px-3 py-2 text-sm"
+                    className="flex items-center justify-between rounded-[16px] border border-border/70 bg-card/60 px-3 py-2 text-sm"
                   >
-                    <span className="text-white/90">
+                    <span className="text-foreground/90">
                       {formatSessionDate(session.endedAt)}
                     </span>
-                    <span className="tabular-nums text-white/70">
+                    <span className="tabular-nums text-muted-foreground">
                       {session.totalSets} sets · {Math.round(session.totalVolume)} kg
                     </span>
                   </li>

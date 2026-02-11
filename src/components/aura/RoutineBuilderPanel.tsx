@@ -66,16 +66,16 @@ export const RoutineBuilderPanel = ({
   );
 
   return (
-    <Card className="border-white/10 bg-card text-card-foreground">
+    <Card className="border-border/70 bg-card/55 text-card-foreground">
       <CardHeader>
-        <CardTitle className="text-lg text-white">Architect</CardTitle>
-        <CardDescription className="text-white/60">
+        <CardTitle className="text-lg text-foreground">Architect</CardTitle>
+        <CardDescription className="text-muted-foreground">
           Build reusable routines and drop into Flow when ready.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
             New routine
           </p>
           <div className="flex gap-2">
@@ -83,10 +83,10 @@ export const RoutineBuilderPanel = ({
               value={routineName}
               onChange={(event) => setRoutineName(event.target.value)}
               placeholder="Routine name"
-              className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
+              className="border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
             />
             <Button
-              className="rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+              className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => {
                 if (!routineName.trim()) return;
                 onCreateRoutine(routineName);
@@ -100,14 +100,14 @@ export const RoutineBuilderPanel = ({
 
         {routineOptions.length ? (
           <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Active routine
             </p>
             <Select
               value={activeRoutineId ?? ""}
               onValueChange={(value) => onSelectRoutine(value)}
             >
-              <SelectTrigger className="border-white/10 bg-white/5 text-white">
+              <SelectTrigger className="border-border/70 bg-secondary/35 text-foreground">
                 <SelectValue placeholder="Select routine" />
               </SelectTrigger>
               <SelectContent>
@@ -122,23 +122,23 @@ export const RoutineBuilderPanel = ({
         ) : null}
 
         {activeRoutine ? (
-          <div className="space-y-3 rounded-[20px] border border-white/10 bg-white/5 px-4 py-4">
+          <div className="space-y-3 rounded-[20px] border border-border/70 bg-card/50 px-4 py-4">
             <div className="flex items-center justify-between gap-2">
               <Input
                 value={renameValue}
                 onChange={(event) => setRenameValue(event.target.value)}
-                className="border-white/10 bg-white/5 text-white"
+                className="border-border/70 bg-secondary/35 text-foreground"
               />
               <Button
                 variant="outline"
-                className="rounded-full border-white/20 text-white hover:bg-white/10"
+                className="rounded-full border-border/70 text-foreground hover:bg-secondary/70"
                 onClick={() => onRenameRoutine(activeRoutine.id, renameValue)}
               >
                 Save
               </Button>
               <Button
                 variant="ghost"
-                className="text-white/60 hover:text-white"
+                className="text-muted-foreground hover:text-foreground"
                 onClick={() => onRemoveRoutine(activeRoutine.id)}
               >
                 <X className="h-4 w-4" />
@@ -150,13 +150,13 @@ export const RoutineBuilderPanel = ({
                 activeRoutine.exercises.map((exercise) => (
                   <div
                     key={exercise.id}
-                    className="flex items-center justify-between gap-2 rounded-2xl border border-white/10 bg-slate-950/40 px-3 py-2"
+                    className="flex items-center justify-between gap-2 rounded-2xl border border-border/70 bg-card/55 px-3 py-2"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-white">
+                      <p className="truncate text-sm font-semibold text-foreground">
                         {exercise.name}
                       </p>
-                      <p className="text-xs text-white/50">
+                      <p className="text-xs text-muted-foreground">
                         Target sets
                       </p>
                     </div>
@@ -182,11 +182,11 @@ export const RoutineBuilderPanel = ({
                           [exercise.id]: String(exercise.targetSets ?? 1),
                         }));
                       }}
-                      className="h-9 w-16 border-white/10 bg-white/5 text-center text-white"
+                      className="h-9 w-16 border-border/70 bg-secondary/35 text-center text-foreground"
                     />
                     <Button
                       variant="ghost"
-                      className="text-white/60 hover:text-white"
+                      className="text-muted-foreground hover:text-foreground"
                       onClick={() =>
                         onRemoveExercise(activeRoutine.id, exercise.id)
                       }
@@ -196,7 +196,7 @@ export const RoutineBuilderPanel = ({
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-white/50">
+                <p className="text-sm text-muted-foreground">
                   Add exercises from the Atlas to build this routine.
                 </p>
               )}
@@ -204,7 +204,7 @@ export const RoutineBuilderPanel = ({
 
             <div className="grid gap-2">
               <Button
-                className="w-full rounded-full bg-white/10 text-white hover:bg-white/20"
+                className="w-full rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
                 onClick={() => {
                   if (!activeRoutine || !selectedExercise) return;
                   onAddExercise(activeRoutine.id, selectedExercise);
@@ -214,7 +214,7 @@ export const RoutineBuilderPanel = ({
                 Add selected exercise
               </Button>
               <Button
-                className="w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => onStartSession(activeRoutine.id)}
                 disabled={
                   hasActiveSession || activeRoutine.exercises.length === 0

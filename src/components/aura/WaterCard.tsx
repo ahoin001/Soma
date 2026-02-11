@@ -107,27 +107,27 @@ export const WaterCard = ({
   const progress = goalMl > 0 ? Math.min((totalMl / goalMl) * 100, 100) : 0;
 
   return (
-    <Card className="mt-6 rounded-[28px] border border-black/5 bg-white px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+    <Card className="mt-6 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+          <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
             Daily wins
           </p>
-          <h3 className="text-lg font-display font-semibold text-slate-900">
+          <h3 className="text-lg font-display font-semibold text-foreground">
             Water
           </h3>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             {formatOz(totalMl)} &bull; {Math.round(progress)}% of goal
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-600">
+        <div className="flex items-center gap-2 rounded-full bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground">
           <Droplets className="h-4 w-4" />
           {formatMl(totalMl)}
         </div>
       </div>
 
-      <div className="mt-4 rounded-[20px] border border-emerald-100 bg-emerald-50/60 px-4 py-4">
-        <div className="flex items-center justify-between text-xs text-emerald-700/80">
+      <div className="mt-4 rounded-[20px] border border-border/60 bg-secondary/55 px-4 py-4">
+        <div className="flex items-center justify-between text-xs text-secondary-foreground/80">
           <span>Goal {formatMl(goalMl)}</span>
           <span>Tap a cup to set your count</span>
         </div>
@@ -139,7 +139,7 @@ export const WaterCard = ({
                 key={cup.id}
                 type="button"
                 onClick={() => handleCupSelect(cup.id)}
-                className="relative flex h-12 items-end justify-center rounded-[14px] border border-emerald-200 bg-white transition-transform hover:bg-emerald-50"
+                className="relative flex h-12 items-end justify-center rounded-[14px] border border-border/60 bg-card transition-transform hover:bg-secondary/70"
                 style={{
                   // Pop animation via scale
                   transform: cup.active ? "scale(1)" : "scale(1)",
@@ -152,8 +152,8 @@ export const WaterCard = ({
                 <span
                   className={`absolute inset-x-1 bottom-1 origin-bottom rounded-[10px] ${
                     cup.active
-                      ? "bg-gradient-to-t from-emerald-400 via-teal-300 to-sky-200"
-                      : "bg-emerald-100/60"
+                      ? "bg-gradient-to-t from-primary via-accent to-secondary"
+                      : "bg-secondary/70"
                   }`}
                   style={{
                     height: cup.active ? "70%" : "20%",
@@ -168,7 +168,7 @@ export const WaterCard = ({
                 />
                 {/* Plus icon on the next empty cup */}
                 {isNext && !cup.active ? (
-                  <span className="relative z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white text-emerald-500 shadow-sm">
+                  <span className="relative z-10 flex h-6 w-6 items-center justify-center rounded-full bg-card text-primary shadow-sm">
                     <Plus className="h-3 w-3" />
                   </span>
                 ) : null}
@@ -190,7 +190,7 @@ export const WaterCard = ({
           />
           <Button
             type="button"
-            className="h-10 rounded-full bg-aura-primary text-white hover:bg-aura-primary/90"
+            className="h-10 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={addCustom}
           >
             Add
@@ -209,7 +209,7 @@ export const WaterCard = ({
             <Button
               type="button"
               variant="secondary"
-              className="h-10 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+              className="h-10 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
               onClick={() => {
                 const numeric = Number(goalInput);
                 if (!Number.isFinite(numeric) || numeric <= 0) return;

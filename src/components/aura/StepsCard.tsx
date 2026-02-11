@@ -31,17 +31,17 @@ export const StepsCard = ({
   }, [goal]);
 
   return (
-    <Card className="mt-6 overflow-hidden rounded-[28px] border border-black/5 bg-white px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+    <Card className="mt-6 overflow-hidden rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+          <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
             Steps
           </p>
-          <h3 className="text-lg font-display font-semibold text-slate-900">
+          <h3 className="text-lg font-display font-semibold text-foreground">
             Daily movement
           </h3>
         </div>
-        <div className="flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-600">
+        <div className="flex items-center gap-2 rounded-full bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground">
           <Watch className="h-4 w-4" />
           Apple Watch
         </div>
@@ -51,25 +51,25 @@ export const StepsCard = ({
         <>
           <div className="mt-4 flex items-end justify-between">
             <div>
-              <p className="text-sm text-slate-500">Steps today</p>
-              <p className="text-3xl font-display font-semibold text-slate-900">
+              <p className="text-sm text-muted-foreground">Steps today</p>
+              <p className="text-3xl font-display font-semibold text-foreground">
                 {steps.toLocaleString()}
               </p>
             </div>
-            <div className="text-right text-xs text-slate-500">
+            <div className="text-right text-xs text-muted-foreground">
               Goal {goal.toLocaleString()}
             </div>
           </div>
-          <Progress value={progress} className="mt-4 h-2 bg-emerald-100" />
+          <Progress value={progress} className="mt-4 h-2 bg-secondary" />
         </>
       ) : (
         <>
-          <p className="mt-4 text-sm text-slate-500">
+          <p className="mt-4 text-sm text-muted-foreground">
             Connect your Apple Watch to automatically track steps and activity.
           </p>
           <Button
             type="button"
-            className="mt-4 w-full rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+            className="mt-4 w-full rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
             onClick={onConnect}
           >
             Connect Apple Watch
@@ -90,7 +90,7 @@ export const StepsCard = ({
             />
             <Button
               type="button"
-              className="h-10 rounded-full bg-aura-primary text-white hover:bg-aura-primary/90"
+              className="h-10 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => {
                 const numeric = Number(manual);
                 if (!Number.isFinite(numeric) || numeric <= 0) return;
@@ -114,7 +114,7 @@ export const StepsCard = ({
               <Button
                 type="button"
                 variant="secondary"
-                className="h-10 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                className="h-10 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
                 onClick={() => {
                   const numeric = Number(goalInput);
                   if (!Number.isFinite(numeric) || numeric <= 0) return;

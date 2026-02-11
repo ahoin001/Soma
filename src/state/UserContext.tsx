@@ -26,6 +26,7 @@ import {
 import {
   DEFAULT_HOME_KEY,
   FOOD_IMAGES_KEY,
+  THEME_PALETTE_KEY,
   USER_PROFILE_KEY,
 } from "@/lib/storageKeys";
 
@@ -46,6 +47,7 @@ export type UserProfile = {
 export type UserSettings = {
   showFoodImages: boolean;
   defaultHome: "nutrition" | "fitness";
+  themePalette: "emerald" | "ocean";
 };
 
 type UserContextValue = {
@@ -59,6 +61,8 @@ type UserContextValue = {
   setShowFoodImages: (next: boolean) => void;
   defaultHome: "nutrition" | "fitness";
   setDefaultHome: (next: "nutrition" | "fitness") => void;
+  themePalette: "emerald" | "ocean";
+  setThemePalette: (next: "emerald" | "ocean") => void;
 
   // Hydration state
   isHydrated: boolean;
@@ -122,6 +126,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     return stored === "fitness" ? "fitness" : "nutrition";
   });
 
+  const [themePalette, setThemePalette] = useState<"emerald" | "ocean">(() => {
+    if (typeof window === "undefined") return "emerald";
+    const stored = window.localStorage.getItem(THEME_PALETTE_KEY);
+    return stored === "ocean" ? "ocean" : "emerald";
+  });
+
   // Convenience method to patch profile
   const updateUserProfile = useCallback((patch: Partial<UserProfile>) => {
     setUserProfile((prev) => ({ ...prev, ...patch }));
@@ -143,6 +153,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(DEFAULT_HOME_KEY, defaultHome);
   }, [defaultHome]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(THEME_PALETTE_KEY, themePalette);
+  }, [themePalette]);
 
   // Hydrate from server on mount
   useEffect(() => {
@@ -232,9 +247,18 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setShowFoodImages,
       defaultHome,
       setDefaultHome,
+      themePalette,
+      setThemePalette,
       isHydrated,
     }),
-    [userProfile, updateUserProfile, showFoodImages, defaultHome, isHydrated]
+    [
+      userProfile,
+      updateUserProfile,
+      showFoodImages,
+      defaultHome,
+      themePalette,
+      isHydrated,
+    ]
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
@@ -264,6 +288,20 @@ export const useUserProfile = () => {
  * Convenience hook for just the settings
  */
 export const useUserSettings = () => {
-  const { showFoodImages, setShowFoodImages, defaultHome, setDefaultHome } = useUser();
-  return { showFoodImages, setShowFoodImages, defaultHome, setDefaultHome };
+  const {
+    showFoodImages,
+    setShowFoodImages,
+    defaultHome,
+    setDefaultHome,
+    themePalette,
+    setThemePalette,
+  } = useUser();
+  return {
+    showFoodImages,
+    setShowFoodImages,
+    defaultHome,
+    setDefaultHome,
+    themePalette,
+    setThemePalette,
+  };
 };

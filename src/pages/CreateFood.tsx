@@ -21,14 +21,14 @@ const CreateFood = () => {
             type="button"
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-full bg-white/80 text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
+            className="h-10 w-10 rounded-full bg-card/80 text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
             onClick={() =>
               navigate(`${returnTo}?${searchParams.toString()}`)
             }
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
-          <p className="ml-3 text-sm font-semibold text-slate-700">
+          <p className="ml-3 text-sm font-semibold text-foreground">
             Create food
           </p>
         </div>

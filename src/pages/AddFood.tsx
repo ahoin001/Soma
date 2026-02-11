@@ -486,14 +486,14 @@ const AddFood = () => {
             type="button"
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-full bg-white/80 text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
+            className="h-10 w-10 rounded-full bg-card/80 text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
             onClick={() => navigate(returnTo)}
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <button
             type="button"
-            className="rounded-full border border-emerald-100 bg-white px-3 py-1 text-xs font-semibold text-emerald-700"
+            className="rounded-full border border-border/70 bg-card px-3 py-1 text-xs font-semibold text-primary"
             onClick={() => {
               const nextParams = new URLSearchParams(searchParams);
               if (selectedMeal?.id) {

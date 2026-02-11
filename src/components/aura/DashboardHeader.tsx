@@ -56,38 +56,38 @@ export const DashboardHeader = ({
       */}
       <div
         className={cn(
-          "relative overflow-hidden shadow-[0_22px_55px_rgba(52,211,153,0.28)]",
+          "relative overflow-hidden shadow-[0_22px_55px_rgba(15,23,42,0.22)]",
           isCard
-            ? "mx-4 rounded-[32px] bg-gradient-to-br from-white via-emerald-50 to-white"
-            : "rounded-b-[40px] bg-[radial-gradient(circle_at_15%_10%,_rgba(191,219,254,0.85),_transparent_50%),radial-gradient(circle_at_85%_0%,_rgba(167,243,208,0.92),_transparent_50%),radial-gradient(circle_at_70%_80%,_rgba(253,224,71,0.28),_transparent_60%),linear-gradient(180deg,_rgba(255,255,255,0.96)_0%,_rgba(236,253,245,0.92)_50%,_rgba(209,250,229,0.86)_100%)]",
+            ? "mx-4 rounded-[32px] bg-gradient-to-br from-background via-card to-secondary/65"
+            : "rounded-b-[40px] bg-[radial-gradient(circle_at_15%_10%,_hsl(var(--accent)/0.5),_transparent_50%),radial-gradient(circle_at_85%_0%,_hsl(var(--primary)/0.46),_transparent_50%),radial-gradient(circle_at_70%_80%,_hsl(var(--secondary)/0.35),_transparent_60%),linear-gradient(180deg,_hsl(var(--background)/0.96)_0%,_hsl(var(--card)/0.92)_50%,_hsl(var(--secondary)/0.86)_100%)]",
           isMedia && "rounded-b-none pb-10",
           !isMedia && "pb-8",
         )}
         style={{ paddingTop: containerTopPadding }}
       >
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -right-16 top-2 h-40 w-40 rounded-full bg-white/45 blur-2xl" />
-          <div className="absolute -left-16 bottom-6 h-36 w-36 rounded-full bg-sky-200/60 blur-2xl" />
-          <div className="absolute left-1/2 top-0 h-36 w-64 -translate-x-1/2 rounded-[100%] bg-white/50 blur-3xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,_rgba(16,185,129,0.22),_rgba(255,255,255,0)_50%)]" />
-          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent via-white/40 to-aura-surface" />
+          <div className="absolute -right-16 top-2 h-40 w-40 rounded-full bg-card/55 blur-2xl" />
+          <div className="absolute -left-16 bottom-6 h-36 w-36 rounded-full bg-accent/45 blur-2xl" />
+          <div className="absolute left-1/2 top-0 h-36 w-64 -translate-x-1/2 rounded-[100%] bg-background/55 blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,_hsl(var(--primary)/0.22),_hsl(var(--background)/0)_50%)]" />
+          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent via-background/30 to-background" />
         </div>
         <div className="relative z-10 flex items-center justify-between gap-3 px-5">
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-full bg-white/85 text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.12)] hover:bg-white"
+            className="h-10 w-10 rounded-full bg-card/90 text-foreground shadow-[0_10px_25px_rgba(15,23,42,0.12)] hover:bg-card"
             onClick={onProfileClick}
             aria-label="Open profile actions"
           >
             <User className="h-5 w-5" />
           </Button>
           <div className="text-center">
-            <p className="text-sm font-medium tracking-[0.18em] text-emerald-900/60">
+            <p className="text-sm font-medium tracking-[0.18em] text-primary/70">
               AuraFit
             </p>
-            <h1 className="text-2xl font-display font-semibold text-emerald-950">
+            <h1 className="text-2xl font-display font-semibold text-foreground">
               Healthy
             </h1>
             <SyncStatus state={syncState} />
@@ -98,14 +98,14 @@ export const DashboardHeader = ({
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-full bg-white/85 text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.12)] hover:bg-white"
+            className="h-10 w-10 rounded-full bg-card/90 text-foreground shadow-[0_10px_25px_rgba(15,23,42,0.12)] hover:bg-card"
           >
             <Bell className="h-5 w-5" />
           </Button>
         </div>
 
         <motion.div
-          className="relative z-10 mt-6 flex items-center justify-center px-5 text-emerald-900/70"
+          className="relative z-10 mt-6 flex items-center justify-center px-5 text-foreground/75"
           initial="hidden"
           animate="show"
           variants={{
@@ -117,10 +117,10 @@ export const DashboardHeader = ({
             className="absolute left-5 top-1/2 -translate-y-1/2 text-left"
             variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700/70">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary/75">
               Eaten
             </p>
-            <p className="text-3xl font-display font-semibold text-emerald-950">
+            <p className="text-3xl font-display font-semibold text-foreground">
               <AnimatedNumber value={consumed} animateTrigger={animateTrigger} />
             </p>
           </motion.div>
@@ -133,18 +133,18 @@ export const DashboardHeader = ({
               className="absolute flex flex-col items-center text-center"
               variants={{ hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }}
             >
-              <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-emerald-700/80">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-primary/80">
                 Remaining
               </span>
-              <div className="mt-1 flex items-baseline gap-1 text-emerald-950">
+              <div className="mt-1 flex items-baseline gap-1 text-foreground">
                 <span className="text-6xl font-display font-semibold leading-none">
                   <AnimatedNumber value={remaining} animateTrigger={animateTrigger} />
                 </span>
-                {/* <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700/80">
+                {/* <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">
                   cal
                 </span> */}
               </div>
-              <div className="mt-1 text-[11px] font-semibold text-emerald-700/70">
+              <div className="mt-1 text-[11px] font-semibold text-primary/75">
                 Goal <AnimatedNumber value={goal} animateTrigger={animateTrigger} /> cal
               </div>
             </motion.div>
@@ -153,10 +153,10 @@ export const DashboardHeader = ({
             className="absolute right-5 top-1/2 -translate-y-1/2 text-right"
             variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700/70">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary/75">
               Steps
             </p>
-            <p className="text-3xl font-display font-semibold text-emerald-950">
+            <p className="text-3xl font-display font-semibold text-foreground">
               <AnimatedNumber value={steps} animateTrigger={animateTrigger} />
             </p>
           </motion.div>
@@ -176,18 +176,18 @@ export const DashboardHeader = ({
             return (
               <div
                 key={macro.key}
-                className="rounded-[20px] border border-white/70 bg-white/90 px-3 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur"
+                className="rounded-[20px] border border-border/70 bg-card/90 px-3 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur"
               >
-                <p className="text-xs font-semibold text-slate-700">
+                <p className="text-xs font-semibold text-foreground/85">
                   {macro.label}
                 </p>
-                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-emerald-100">
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-secondary">
                   <div
-                    className="h-full rounded-full bg-emerald-400 transition-all"
+                    className="h-full rounded-full bg-primary transition-all"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <p className="mt-2 text-[11px] text-slate-500">
+                <p className="mt-2 text-[11px] text-muted-foreground">
                   <AnimatedNumber value={macro.current} animateTrigger={animateTrigger} />/
                   <AnimatedNumber value={macro.goal} animateTrigger={animateTrigger} /> {macro.unit}
                 </p>

@@ -37,22 +37,22 @@ const FitnessRoutines = () => {
 
   return (
     <AppShell experience="fitness" onAddAction={() => navigate("/fitness")} safeAreaTop="extra">
-      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-white">
+      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-foreground">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Architect
             </p>
             <h1 className="mt-2 text-2xl font-display font-semibold">
               Routines
             </h1>
-            <p className="mt-1 text-sm text-white/60">
+            <p className="mt-1 text-sm text-muted-foreground">
               Build reusable flows and launch a session fast.
             </p>
           </div>
           <Button
             variant="ghost"
-            className="h-10 rounded-full bg-white/10 text-white hover:bg-white/20"
+            className="h-10 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
             onClick={() => navigate("/fitness")}
           >
             Back
@@ -60,21 +60,21 @@ const FitnessRoutines = () => {
         </div>
 
         <div className="mt-6 space-y-5">
-          <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+          <div className="rounded-[24px] border border-border/70 bg-card/55 px-4 py-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Atlas picker
             </p>
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search exercises to add"
-              className="mt-3 border-white/10 bg-white/5 text-white placeholder:text-white/40"
+              className="mt-3 border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
             />
             <div className="mt-3">
               {status === "loading" ? (
-                <p className="text-sm text-white/60">Searching…</p>
+                <p className="text-sm text-muted-foreground">Searching...</p>
               ) : error ? (
-                <p className="text-sm text-rose-300">{error}</p>
+                <p className="text-sm text-destructive">{error}</p>
               ) : previewItems.length ? (
                 <VirtualizedExerciseList
                   items={previewItems}
@@ -82,7 +82,7 @@ const FitnessRoutines = () => {
                   onSelect={(exercise) => setSelectedExercise(exercise)}
                 />
               ) : (
-                <p className="text-sm text-white/50">
+                <p className="text-sm text-muted-foreground">
                   Start typing to select an exercise.
                 </p>
               )}

@@ -7,6 +7,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { Suspense, lazy, useEffect, useLayoutEffect, useRef } from "react";
+import { useTheme } from "next-themes";
 // framer-motion is used by PageTransition / ExperienceSwitch — not directly here
 import {
   BrowserRouter,
@@ -199,7 +200,8 @@ const AppRoutes = () => {
   const location = useLocation();
   const navigationType = useNavigationType();
   const { experienceTransitionConfig } = useExperienceTransitionConfig();
-  const { defaultHome } = useUserSettings();
+  const { defaultHome, themePalette } = useUserSettings();
+  const { resolvedTheme } = useTheme();
 
   const currentExperience = location.pathname.startsWith("/fitness")
     ? "fitness"
@@ -221,18 +223,31 @@ const AppRoutes = () => {
     if (typeof document === "undefined") return;
     const root = document.documentElement;
     const isFitness = location.pathname.startsWith("/fitness");
+    const isDark = resolvedTheme === "dark";
 
-    // Update experience class on root
-    root.classList.remove("experience-nutrition", "experience-fitness");
+    // Update root classes for experience + palette theme
+    root.classList.remove(
+      "experience-nutrition",
+      "experience-fitness",
+      "theme-emerald",
+      "theme-ocean",
+    );
     root.classList.add(isFitness ? "experience-fitness" : "experience-nutrition");
+    root.classList.add(themePalette === "ocean" ? "theme-ocean" : "theme-emerald");
 
     // Dynamic theme-color for immersive status bar
-    const themeColor = isFitness ? "#020617" : "#f0fdf4";
+    const themeColor = isFitness
+      ? "#020617"
+      : isDark
+        ? "#0f172a"
+      : themePalette === "ocean"
+        ? "#eff6ff"
+        : "#f0fdf4";
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
       metaThemeColor.setAttribute("content", themeColor);
     }
-  }, [location.pathname]);
+  }, [location.pathname, themePalette, resolvedTheme]);
 
   // Shared transition props passed to every page's PageTransition wrapper.
   // The `key` prop on PageTransition causes it to re-mount on every

@@ -129,14 +129,14 @@ const AddExerciseToWorkout = () => {
   if (!exerciseName.trim() && !planIdParam) {
     return (
       <AppShell experience="fitness" showNav={false} safeAreaTop="extra">
-        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-white">
-          <div className="rounded-[28px] border border-white/10 bg-white/5 px-4 py-6 text-center">
-            <p className="text-sm text-white/70">
+        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-foreground">
+          <div className="rounded-[28px] border border-border/70 bg-card/55 px-4 py-6 text-center">
+            <p className="text-sm text-muted-foreground">
               We could not find that exercise.
             </p>
             <Button
               variant="outline"
-              className="mt-4 rounded-full border-white/20 text-white hover:bg-white/10"
+              className="mt-4 rounded-full border-border/70 text-foreground hover:bg-secondary/70"
               onClick={handleBack}
             >
               Back
@@ -186,20 +186,20 @@ const AddExerciseToWorkout = () => {
 
   return (
     <AppShell experience="fitness" showNav={false} safeAreaTop="extra">
-      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-4 text-white">
+      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-4 text-foreground">
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
-            className="h-10 w-10 rounded-full bg-white/10 text-white hover:bg-white/20"
+            className="h-10 w-10 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
             onClick={handleBack}
           >
             ✕
           </Button>
           <div className="text-center">
-            <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               {adminEdit ? "Admin edit" : "Add to workout"}
             </p>
-            <p className="text-sm text-white/80">
+            <p className="text-sm text-foreground/85">
               {selectedName || exerciseName || "Select an exercise"}
             </p>
           </div>
@@ -208,21 +208,21 @@ const AddExerciseToWorkout = () => {
 
         <div className="mt-6 space-y-4">
           {!adminEdit ? (
-            <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+            <div className="rounded-[24px] border border-border/70 bg-card/55 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 Choose exercise
               </p>
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search exercises"
-                className="mt-3 border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                className="mt-3 border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
               />
               {status === "error" ? (
-                <p className="mt-2 text-sm text-rose-300">{error}</p>
+                <p className="mt-2 text-sm text-destructive">{error}</p>
               ) : null}
               {status === "loading" ? (
-                <p className="mt-2 text-sm text-white/60">Loading exercises...</p>
+                <p className="mt-2 text-sm text-muted-foreground">Loading exercises...</p>
               ) : null}
               {previewItems.length ? (
                 <div className="mt-3">
@@ -237,13 +237,13 @@ const AddExerciseToWorkout = () => {
                   />
                 </div>
               ) : (
-                <p className="mt-3 text-sm text-white/50">
+                <p className="mt-3 text-sm text-muted-foreground">
                   Start typing to search the Atlas.
                 </p>
               )}
               {query.trim().length > 1 ? (
                 <Button
-                  className="mt-3 w-full rounded-full bg-white/10 text-white hover:bg-white/20"
+                  className="mt-3 w-full rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
                   onClick={() => {
                     setSelectedName(query.trim());
                     if (targetPlan && targetWorkout) {
@@ -257,22 +257,22 @@ const AddExerciseToWorkout = () => {
             </div>
           ) : null}
           {adminEdit && isAdmin ? (
-            <div className="rounded-[24px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-emerald-200/80">
+            <div className="rounded-[24px] border border-primary/30 bg-primary/12 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-primary/85">
                 Thumbnail manager
               </p>
-              <p className="mt-2 text-sm text-white/70">
+              <p className="mt-2 text-sm text-foreground/80">
                 Update the thumbnail for this exercise.
               </p>
               <Input
                 value={thumbnailUrl}
                 onChange={(event) => setThumbnailUrl(event.target.value)}
                 placeholder="Thumbnail image URL"
-                className="mt-3 border-emerald-400/30 bg-white/10 text-white placeholder:text-white/50"
+                className="mt-3 border-primary/35 bg-card/60 text-foreground placeholder:text-muted-foreground"
               />
-              <label className="mt-3 flex cursor-pointer items-center justify-between rounded-2xl border border-emerald-400/30 bg-white/10 px-4 py-3 text-xs font-semibold text-emerald-100">
+              <label className="mt-3 flex cursor-pointer items-center justify-between rounded-2xl border border-primary/35 bg-card/60 px-4 py-3 text-xs font-semibold text-primary">
                 <span>{thumbnailUploading ? "Uploading..." : "Upload thumbnail"}</span>
-                <span className="text-emerald-200">Browse</span>
+                <span className="text-primary/80">Browse</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -296,18 +296,18 @@ const AddExerciseToWorkout = () => {
                 />
               </label>
               {thumbnailUploading ? (
-                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-emerald-400/15">
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-primary/15">
                   <div
-                    className="h-full rounded-full bg-emerald-300 transition-all"
+                    className="h-full rounded-full bg-primary transition-all"
                     style={{ width: `${thumbnailProgress}%` }}
                   />
                 </div>
               ) : null}
               {thumbnailNotice ? (
-                <p className="mt-2 text-xs text-emerald-200">{thumbnailNotice}</p>
+                <p className="mt-2 text-xs text-primary">{thumbnailNotice}</p>
               ) : null}
               <Button
-                className="mt-3 w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                className="mt-3 w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={async () => {
                   if (!masterId) {
                     toast("Master exercise not found");
@@ -333,12 +333,12 @@ const AddExerciseToWorkout = () => {
           ) : null}
           {selectedName || exerciseName ? (
             targetPlan && targetWorkout ? (
-              <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-center">
-                <p className="text-sm text-white/70">
+              <div className="rounded-[24px] border border-border/70 bg-card/55 px-4 py-4 text-center">
+                <p className="text-sm text-muted-foreground">
                   Adding to {targetWorkout.name}.
                 </p>
                 <Button
-                  className="mt-4 w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                  className="mt-4 w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={() =>
                     void handleAdd(
                       targetPlan.id,
@@ -351,12 +351,12 @@ const AddExerciseToWorkout = () => {
                 </Button>
               </div>
             ) : workoutPlans.length === 0 ? (
-            <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-6 text-center">
-              <p className="text-sm text-white/70">
+            <div className="rounded-[24px] border border-border/70 bg-card/55 px-4 py-6 text-center">
+              <p className="text-sm text-muted-foreground">
                 Create a workout first, then add exercises.
               </p>
               <Button
-                className="mt-4 w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                className="mt-4 w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => navigate("/fitness")}
               >
                 Go to workouts
@@ -366,15 +366,15 @@ const AddExerciseToWorkout = () => {
             workoutPlans.map((plan) => (
               <div
                 key={plan.id}
-                className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4"
+                className="rounded-[24px] border border-border/70 bg-card/55 px-4 py-4"
               >
-                <p className="text-sm font-semibold text-white">{plan.name}</p>
+                <p className="text-sm font-semibold text-foreground">{plan.name}</p>
                 <div className="mt-3 space-y-2">
                   {plan.workouts.map((workout) => (
                     <button
                       key={workout.id}
                       type="button"
-                      className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left text-sm text-white/80 hover:border-white/30"
+                      className="flex w-full items-center justify-between rounded-2xl border border-border/70 bg-card/60 px-3 py-3 text-left text-sm text-foreground/85 hover:border-border"
                       onClick={() =>
                         void handleAdd(
                           plan.id,
@@ -384,14 +384,14 @@ const AddExerciseToWorkout = () => {
                       }
                     >
                       <span>{workout.name}</span>
-                      <span className="text-xs text-white/50">
+                      <span className="text-xs text-muted-foreground">
                         {workout.exercises.length} exercises
                       </span>
                     </button>
                   ))}
                   <Button
                     variant="outline"
-                    className="w-full rounded-full border-white/20 text-white hover:bg-white/10"
+                    className="w-full rounded-full border-border/70 text-foreground hover:bg-secondary/70"
                     onClick={async () => {
                       const workout = await createWorkoutTemplate(
                         plan.id,

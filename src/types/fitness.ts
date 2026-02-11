@@ -30,6 +30,8 @@ export type EditableSet = {
   previous: string;
   rpe?: string;
   restSeconds?: string;
+  /** Session mode: user marked this set done; triggers rest and counts toward completion. */
+  completed?: boolean;
 };
 
 /**

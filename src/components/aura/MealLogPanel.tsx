@@ -53,14 +53,14 @@ export const MealLogPanel = ({
   }, [logSections, meals]);
 
   return (
-    <Card className="relative mt-6 overflow-hidden rounded-[28px] border border-black/5 bg-white/85 px-5 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)] backdrop-blur-sm">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,_rgba(16,185,129,0.14),_transparent_45%),radial-gradient(circle_at_85%_0%,_rgba(59,130,246,0.08),_transparent_50%),radial-gradient(circle_at_70%_85%,_rgba(253,224,71,0.08),_transparent_55%)] opacity-70" />
+    <Card className="relative mt-6 overflow-hidden rounded-[28px] border border-border/60 bg-card/85 px-5 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,_hsl(var(--primary)/0.14),_transparent_45%),radial-gradient(circle_at_85%_0%,_hsl(var(--accent)/0.12),_transparent_50%),radial-gradient(circle_at_70%_85%,_hsl(var(--secondary)/0.18),_transparent_55%)] opacity-70" />
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-emerald-500/70">
+          <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
             Meals & log
           </p>
-          <h3 className="text-lg font-display font-semibold text-slate-900">
+          <h3 className="text-lg font-display font-semibold text-foreground">
             Add and review
           </h3>
         </div>
@@ -102,28 +102,28 @@ export const MealLogPanel = ({
               onOpenChange={(open) =>
                 setOpenMeals((prev) => ({ ...prev, [meal.id]: open }))
               }
-              className="group relative overflow-hidden rounded-[22px] border border-black/5 bg-white/70 transition-colors transition-shadow data-[state=open]:border-emerald-100/70 data-[state=open]:shadow-[0_10px_26px_rgba(16,185,129,0.12)]"
+              className="group relative overflow-hidden rounded-[22px] border border-border/60 bg-card/70 transition-colors transition-shadow data-[state=open]:border-primary/30 data-[state=open]:shadow-[0_10px_26px_rgba(15,23,42,0.12)]"
             >
-              <div className="pointer-events-none absolute inset-x-4 top-2 h-px bg-emerald-200/60 opacity-0 transition-opacity group-data-[state=open]:opacity-100" />
-              <div className="bg-emerald-50/50 p-3 transition-colors group-data-[state=open]:bg-emerald-50/70">
+              <div className="pointer-events-none absolute inset-x-4 top-2 h-px bg-primary/35 opacity-0 transition-opacity group-data-[state=open]:opacity-100" />
+              <div className="bg-secondary/45 p-3 transition-colors group-data-[state=open]:bg-secondary/60">
                 <div className="flex items-center gap-3">
                   <CollapsibleTrigger asChild>
                     <Button
                       type="button"
                       variant="ghost"
-                      className="group h-auto flex-1 justify-between gap-3 rounded-[18px] px-3 py-3 text-left transition-colors hover:text-emerald-700/80 active:text-emerald-800/90"
+                      className="group h-auto flex-1 justify-between gap-3 rounded-[18px] px-3 py-3 text-left transition-colors hover:text-foreground/85 active:text-foreground"
                       aria-label={`Toggle ${meal.label} details`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-lg shadow-[0_8px_18px_rgba(15,23,42,0.08)]">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-card text-lg shadow-[0_8px_18px_rgba(15,23,42,0.08)]">
                           {meal.emoji}
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-slate-800">
+                          <p className="text-sm font-semibold text-foreground">
                             {meal.label}
                           </p>
                           <motion.p
-                            className="text-xs text-slate-500/90"
+                            className="text-xs text-muted-foreground"
                             animate={
                               shouldGlow ? { scale: [1, 1.04, 1] } : undefined
                             }
@@ -156,7 +156,7 @@ export const MealLogPanel = ({
                     onClick={() => onAddMeal(meal)}
                     aria-label={`Add to ${meal.label}`}
                     size="icon"
-                  className="h-11 w-11 shrink-0 rounded-full bg-emerald-100/80 text-emerald-700 shadow-[0_6px_16px_rgba(16,185,129,0.14)] hover:bg-emerald-200/80"
+                  className="h-11 w-11 shrink-0 rounded-full bg-primary/15 text-primary shadow-[0_6px_16px_rgba(15,23,42,0.14)] hover:bg-primary/25"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -186,7 +186,7 @@ export const MealLogPanel = ({
                       <ListEmptyState
                         itemName="items"
                         onAdd={() => onAddMeal(meal)}
-                        className="rounded-[16px] border border-dashed border-emerald-200/80 bg-emerald-50/50 py-6"
+                        className="rounded-[16px] border border-dashed border-primary/35 bg-secondary/50 py-6"
                       />
                     )}
                   </div>
@@ -211,9 +211,9 @@ export const MealLogPanel = ({
                 onOpenChange={(open) =>
                   setOpenMeals((prev) => ({ ...prev, [fakeMealId]: open }))
                 }
-                className="group relative overflow-hidden rounded-[22px] border border-black/5 bg-white/70 transition-colors data-[state=open]:border-emerald-100/70 data-[state=open]:shadow-[0_10px_26px_rgba(16,185,129,0.12)]"
+                className="group relative overflow-hidden rounded-[22px] border border-border/60 bg-card/70 transition-colors data-[state=open]:border-primary/30 data-[state=open]:shadow-[0_10px_26px_rgba(15,23,42,0.12)]"
               >
-                <div className="bg-emerald-50/50 p-3">
+                <div className="bg-secondary/45 p-3">
                   <div className="flex items-center gap-3">
                     <CollapsibleTrigger asChild>
                       <Button
@@ -223,14 +223,14 @@ export const MealLogPanel = ({
                         aria-label={`Toggle ${section.meal} details`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="h-11 w-11 rounded-full bg-white/95 text-lg shadow-[0_8px_18px_rgba(15,23,42,0.08)] flex items-center justify-center">
+                          <div className="h-11 w-11 rounded-full bg-card text-lg shadow-[0_8px_18px_rgba(15,23,42,0.08)] flex items-center justify-center">
                             🍽️
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-slate-800">
+                            <p className="text-sm font-semibold text-foreground">
                               {section.meal}
                             </p>
-                            <p className="text-xs text-slate-500/90">
+                            <p className="text-xs text-muted-foreground">
                               <AnimatedNumber value={itemCount} /> items •{" "}
                               <AnimatedNumber value={kcalTotal} /> cal
                             </p>
@@ -324,7 +324,7 @@ const LogRow = forwardRef<
       }}
       transition={{ type: "spring", stiffness: 260, damping: 20 }}
       type="button"
-      className="relative w-full overflow-hidden rounded-[16px] border border-white/70 bg-white/80 px-3 py-3 text-sm text-slate-700 shadow-[0_6px_14px_rgba(15,23,42,0.06)] backdrop-blur-sm transition-shadow hover:shadow-[0_10px_20px_rgba(15,23,42,0.1)] cursor-pointer"
+      className="relative w-full overflow-hidden rounded-[16px] border border-border/70 bg-card/80 px-3 py-3 text-sm text-foreground shadow-[0_6px_14px_rgba(15,23,42,0.06)] backdrop-blur-sm transition-shadow hover:shadow-[0_10px_20px_rgba(15,23,42,0.1)] cursor-pointer"
       onClick={onEdit}
     >
       <motion.span
@@ -343,14 +343,14 @@ const LogRow = forwardRef<
         💨
       </motion.span>
       <motion.span
-        className="pointer-events-none absolute -right-4 -top-4 h-10 w-10 rounded-full bg-emerald-100/60 blur-xl"
+        className="pointer-events-none absolute -right-4 -top-4 h-10 w-10 rounded-full bg-primary/20 blur-xl"
         animate={{ opacity: [0.2, 0.5, 0.2], scale: [1, 1.2, 1] }}
         transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
       />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {showFoodImages && item.imageUrl ? (
-            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-emerald-50">
+            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-secondary">
               <img
                 src={item.imageUrl}
                 alt={item.name}
@@ -362,13 +362,13 @@ const LogRow = forwardRef<
           ) : null}
           <span className="font-medium">{item.name}</span>
           {showQuantity && (
-            <span className="rounded-full bg-emerald-50/80 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">
+            <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-secondary-foreground">
               {quantityLabel}x
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-emerald-600/90">{totalKcal} cal</span>
+          <span className="text-xs text-primary/90">{totalKcal} cal</span>
         </div>
       </div>
     </motion.button>
@@ -396,8 +396,8 @@ const MealSummary = ({ items, pulse }: { items: LogItem[]; pulse?: boolean }) =>
   );
 
   return (
-    <div className="rounded-[24px] border border-emerald-100/70 bg-white/75 px-4 py-4 shadow-[0_10px_22px_rgba(16,185,129,0.1)] backdrop-blur-sm">
-      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500/70">
+    <div className="rounded-[24px] border border-border/70 bg-card/75 px-4 py-4 shadow-[0_10px_22px_rgba(15,23,42,0.1)] backdrop-blur-sm">
+      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-primary/70">
         <span>Meal summary</span>
         <motion.span
           animate={pulse ? { scale: [1, 1.08, 1] } : undefined}
@@ -406,37 +406,37 @@ const MealSummary = ({ items, pulse }: { items: LogItem[]; pulse?: boolean }) =>
           <AnimatedNumber value={totals.kcal} /> cal
         </motion.span>
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-3 text-xs text-emerald-700/80">
-        <div className="rounded-[16px] bg-white/80 px-3 py-3 text-center">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-500/70">
+      <div className="mt-3 grid grid-cols-3 gap-3 text-xs text-foreground/80">
+        <div className="rounded-[16px] bg-secondary/70 px-3 py-3 text-center">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-primary/70">
             Carbs
           </p>
           <motion.p
-            className="mt-1 text-sm font-semibold text-emerald-800"
+            className="mt-1 text-sm font-semibold text-foreground"
             animate={pulse ? { scale: [1, 1.06, 1] } : undefined}
             transition={{ duration: 0.4, ease: "easeOut" }}
           >
             <AnimatedNumber value={totals.carbs} />g
           </motion.p>
         </div>
-        <div className="rounded-[16px] bg-white/80 px-3 py-3 text-center">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-500/70">
+        <div className="rounded-[16px] bg-secondary/70 px-3 py-3 text-center">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-primary/70">
             Protein
           </p>
           <motion.p
-            className="mt-1 text-sm font-semibold text-emerald-800"
+            className="mt-1 text-sm font-semibold text-foreground"
             animate={pulse ? { scale: [1, 1.06, 1] } : undefined}
             transition={{ duration: 0.4, ease: "easeOut" }}
           >
             <AnimatedNumber value={totals.protein} />g
           </motion.p>
         </div>
-        <div className="rounded-[16px] bg-white/80 px-3 py-3 text-center">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-500/70">
+        <div className="rounded-[16px] bg-secondary/70 px-3 py-3 text-center">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-primary/70">
             Fat
           </p>
           <motion.p
-            className="mt-1 text-sm font-semibold text-emerald-800"
+            className="mt-1 text-sm font-semibold text-foreground"
             animate={pulse ? { scale: [1, 1.06, 1] } : undefined}
             transition={{ duration: 0.4, ease: "easeOut" }}
           >
@@ -477,7 +477,7 @@ const CompletionRing = ({
           cx="20"
           cy="20"
           r={radius}
-          stroke="rgba(16,185,129,0.2)"
+          stroke="hsl(var(--primary) / 0.2)"
           strokeWidth="4"
           fill="none"
         />
@@ -485,14 +485,14 @@ const CompletionRing = ({
           cx="20"
           cy="20"
           r={radius}
-          stroke="rgba(16,185,129,0.8)"
+          stroke="hsl(var(--primary) / 0.8)"
           strokeWidth="4"
           fill="none"
           strokeLinecap="round"
           strokeDasharray={`${dash} ${circumference}`}
         />
       </svg>
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-[11px] font-semibold text-emerald-700">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-[11px] font-semibold text-secondary-foreground">
         {label}
       </div>
     </motion.div>

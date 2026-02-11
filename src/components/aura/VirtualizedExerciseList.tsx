@@ -34,7 +34,7 @@ export const VirtualizedExerciseList = ({
 
   return (
     <div
-      className={cn("relative overflow-auto rounded-2xl border border-white/10", className)}
+      className={cn("relative overflow-auto rounded-2xl border border-border/70", className)}
       style={{ height }}
       onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
     >
@@ -55,39 +55,39 @@ export const VirtualizedExerciseList = ({
                 type="button"
                 onClick={() => onSelect?.(item)}
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left text-white transition-transform",
+                  "flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left text-foreground transition-transform",
                   "active:scale-[0.98]",
-                  "hover:-translate-y-0.5 hover:border-white/30",
+                  "hover:-translate-y-0.5 hover:border-border",
                   isSelected
-                    ? "border-emerald-400/60 bg-emerald-400/10"
-                    : "border-white/10 bg-white/5",
+                    ? "border-primary/60 bg-primary/12"
+                    : "border-border/70 bg-card/55",
                 )}
               >
                 {item.imageUrl ? (
                   <img
                     src={item.imageUrl}
                     alt={`${item.name} preview`}
-                    className="h-12 w-12 rounded-2xl border border-white/10 object-cover object-center"
+                    className="h-12 w-12 rounded-2xl border border-border/70 object-cover object-center"
                     loading="lazy"
                     decoding="async"
                   />
                 ) : (
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-400/20 via-slate-950 to-slate-900 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/70 bg-gradient-to-br from-primary/20 via-card to-background text-xs font-semibold uppercase tracking-[0.2em] text-foreground/80">
                     {primaryMuscle.slice(0, 3)}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{item.name}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-white/60">
-                    <span className="rounded-full border border-white/10 px-2 py-0.5">
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                    <span className="rounded-full border border-border/70 px-2 py-0.5">
                       {primaryMuscle}
                     </span>
                     {secondaryMuscle ? (
-                      <span className="rounded-full border border-white/10 px-2 py-0.5">
+                      <span className="rounded-full border border-border/70 px-2 py-0.5">
                         {secondaryMuscle}
                       </span>
                     ) : null}
-                    <span className="rounded-full border border-white/10 px-2 py-0.5">
+                    <span className="rounded-full border border-border/70 px-2 py-0.5">
                       {equipment}
                     </span>
                   </div>

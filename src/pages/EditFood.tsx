@@ -251,12 +251,12 @@ const EditFood = () => {
             type="button"
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-full bg-white/80 text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
+            className="h-10 w-10 rounded-full bg-card/80 text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
             onClick={() => navigate(returnTo)}
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
-          <Card className="mt-6 rounded-[24px] border border-black/5 bg-white px-4 py-4 text-sm text-slate-600">
+          <Card className="mt-6 rounded-[24px] border border-border/60 bg-card px-4 py-4 text-sm text-muted-foreground">
             Food details are unavailable. Go back and select a food again.
           </Card>
         </PageContainer>
@@ -272,29 +272,29 @@ const EditFood = () => {
             type="button"
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-full bg-white/80 text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
+            className="h-10 w-10 rounded-full bg-card/80 text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
             onClick={() => navigate(returnTo)}
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+            <p className="text-xs uppercase tracking-[0.2em] text-primary/75">
               Food editor
             </p>
-            <h2 className="text-lg font-display font-semibold text-slate-900">
+            <h2 className="text-lg font-display font-semibold text-foreground">
               {currentFood.name}
             </h2>
           </div>
         </div>
 
         {isAdmin && (
-          <Card className="mt-4 rounded-[24px] border border-emerald-100 bg-emerald-50/70 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
+          <Card className="mt-4 rounded-[24px] border border-primary/25 bg-primary/10 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/75">
                   Admin mode
                 </p>
-                <p className="text-sm font-semibold text-slate-800">
+                <p className="text-sm font-semibold text-foreground">
                   Edit master nutrition
                 </p>
               </div>
@@ -304,14 +304,14 @@ const EditFood = () => {
         )}
 
         {adminEditing && (
-          <Card className="mt-4 rounded-[24px] border border-emerald-100 bg-white px-4 py-4 shadow-[0_12px_28px_rgba(16,185,129,0.12)]">
-            <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+          <Card className="mt-4 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)]">
+            <p className="text-xs uppercase tracking-[0.2em] text-primary/75">
               Food image
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               {currentFood.imageUrl && (
                 <div className="flex flex-col items-center gap-1">
-                  <p className="text-[10px] font-medium text-slate-500">Current</p>
+                  <p className="text-[10px] font-medium text-muted-foreground">Current</p>
                   <img
                     src={currentFood.imageUrl}
                     alt={currentFood.name}
@@ -321,17 +321,17 @@ const EditFood = () => {
               )}
               {newImagePreview && (
                 <div className="flex flex-col items-center gap-1">
-                  <p className="text-[10px] font-medium text-emerald-600">New</p>
+                  <p className="text-[10px] font-medium text-primary">New</p>
                   <img
                     src={newImagePreview}
                     alt="New upload"
-                    className="h-16 w-16 shrink-0 rounded-xl object-contain shadow-sm ring-2 ring-emerald-400"
+                    className="h-16 w-16 shrink-0 rounded-xl object-contain shadow-sm ring-2 ring-primary"
                   />
                 </div>
               )}
-              <label className="flex cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-emerald-50/60 px-4 py-2 text-xs font-semibold text-emerald-700">
+              <label className="flex cursor-pointer items-center justify-between rounded-full border border-border/70 bg-secondary/55 px-4 py-2 text-xs font-semibold text-secondary-foreground">
                 <span>{uploading ? "Uploading..." : "Upload new image"}</span>
-                <span className="text-emerald-500">Browse</span>
+                <span className="text-primary">Browse</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -377,14 +377,14 @@ const EditFood = () => {
               </label>
             </div>
             {uploadNotice && (
-              <p className="mt-2 text-[11px] text-emerald-600">{uploadNotice}</p>
+              <p className="mt-2 text-[11px] text-primary">{uploadNotice}</p>
             )}
           </Card>
         )}
 
         {adminEditing && draft && (
-          <Card className="mt-4 rounded-[24px] border border-emerald-100 bg-white px-4 py-4 shadow-[0_12px_28px_rgba(16,185,129,0.12)]">
-            <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+          <Card className="mt-4 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)]">
+            <p className="text-xs uppercase tracking-[0.2em] text-primary/75">
               Brand
             </p>
             <div className="mt-3 space-y-3">
@@ -428,7 +428,7 @@ const EditFood = () => {
                   </div>
                   <SelectItem value="none">No brand</SelectItem>
                   {brandLoading && (
-                    <div className="px-3 py-2 text-xs text-slate-500">Loading...</div>
+                    <div className="px-3 py-2 text-xs text-muted-foreground">Loading...</div>
                   )}
                   {brands
                     .filter((brand) =>
@@ -462,7 +462,7 @@ const EditFood = () => {
                       </SelectItem>
                     ))}
                   {!brandLoading && brands.length === 0 && (
-                    <div className="px-3 py-2 text-xs text-slate-500">
+                    <div className="px-3 py-2 text-xs text-muted-foreground">
                       No brands found
                     </div>
                   )}
@@ -470,7 +470,7 @@ const EditFood = () => {
               </Select>
               <button
                 type="button"
-                className="text-xs font-semibold text-emerald-600"
+                className="text-xs font-semibold text-primary"
                 onClick={() => setBrandCreateOpen((prev) => !prev)}
               >
                 {brandCreateOpen ? "Cancel new brand" : "Create new brand"}
@@ -478,8 +478,8 @@ const EditFood = () => {
             </div>
 
             {brandCreateOpen && (
-              <div className="mt-4 rounded-[20px] border border-emerald-100 bg-emerald-50/60 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500">
+              <div className="mt-4 rounded-[20px] border border-border/70 bg-secondary/55 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">
                   New brand
                 </p>
                 <div className="mt-3 space-y-3">
@@ -498,17 +498,17 @@ const EditFood = () => {
                   <div className="flex flex-wrap items-center gap-3">
                     {brandLogoUrl && (
                       <div className="flex flex-col items-center gap-1">
-                        <p className="text-[10px] font-medium text-emerald-600">Logo</p>
+                        <p className="text-[10px] font-medium text-primary">Logo</p>
                         <img
                           src={brandLogoUrl}
                           alt="Brand logo"
-                          className="h-12 w-12 shrink-0 rounded-full object-contain shadow-sm ring-2 ring-emerald-400"
+                          className="h-12 w-12 shrink-0 rounded-full object-contain shadow-sm ring-2 ring-primary"
                         />
                       </div>
                     )}
-                    <label className="flex flex-1 cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-white px-4 py-2 text-xs font-semibold text-emerald-700">
+                    <label className="flex flex-1 cursor-pointer items-center justify-between rounded-full border border-border/70 bg-card px-4 py-2 text-xs font-semibold text-secondary-foreground">
                       <span>{brandUploading ? "Uploading..." : "Upload logo"}</span>
-                      <span className="text-emerald-500">Browse</span>
+                      <span className="text-primary">Browse</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -563,17 +563,17 @@ const EditFood = () => {
                     </label>
                   </div>
                   {brandUploading && (
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-emerald-100">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-primary/15">
                       <div
-                        className="h-full rounded-full bg-emerald-400 transition-all"
+                        className="h-full rounded-full bg-primary transition-all"
                         style={{ width: `${brandUploadProgress}%` }}
                       />
                     </div>
                   )}
-                  {brandNotice && <p className="text-xs text-emerald-600">{brandNotice}</p>}
+                  {brandNotice && <p className="text-xs text-primary">{brandNotice}</p>}
                   <Button
                     type="button"
-                    className="w-full rounded-full bg-aura-primary py-4 text-sm font-semibold text-white"
+                    className="w-full rounded-full bg-primary py-4 text-sm font-semibold text-primary-foreground"
                     onClick={async () => {
                       if (!brandName.trim()) {
                         setBrandNotice("Enter a brand name.");
@@ -608,8 +608,8 @@ const EditFood = () => {
             )}
 
             {draft.brandId && !brandCreateOpen && (
-              <div className="mt-4 rounded-[20px] border border-emerald-100 bg-emerald-50/60 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500">
+              <div className="mt-4 rounded-[20px] border border-border/70 bg-secondary/55 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">
                   Edit brand details
                 </p>
                 <div className="mt-3 space-y-3">
@@ -628,7 +628,7 @@ const EditFood = () => {
                   <div className="flex flex-wrap items-center gap-3">
                     {originalBrandLogoUrl && (
                       <div className="flex flex-col items-center gap-1">
-                        <p className="text-[10px] font-medium text-slate-500">Current</p>
+                        <p className="text-[10px] font-medium text-muted-foreground">Current</p>
                         <img
                           src={originalBrandLogoUrl}
                           alt="Brand logo"
@@ -638,17 +638,17 @@ const EditFood = () => {
                     )}
                     {brandLogoUrl && brandLogoUrl !== originalBrandLogoUrl && (
                       <div className="flex flex-col items-center gap-1">
-                        <p className="text-[10px] font-medium text-emerald-600">New</p>
+                        <p className="text-[10px] font-medium text-primary">New</p>
                         <img
                           src={brandLogoUrl}
                           alt="New logo"
-                          className="h-12 w-12 shrink-0 rounded-full object-contain shadow-sm ring-2 ring-emerald-400"
+                          className="h-12 w-12 shrink-0 rounded-full object-contain shadow-sm ring-2 ring-primary"
                         />
                       </div>
                     )}
-                    <label className="flex cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-white px-4 py-2 text-xs font-semibold text-emerald-700">
+                    <label className="flex cursor-pointer items-center justify-between rounded-full border border-border/70 bg-card px-4 py-2 text-xs font-semibold text-secondary-foreground">
                       <span>{brandUploading ? "Uploading..." : "Upload logo"}</span>
-                      <span className="text-emerald-500">Browse</span>
+                      <span className="text-primary">Browse</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -703,19 +703,19 @@ const EditFood = () => {
                     </label>
                   </div>
                   {brandUploading && (
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-emerald-100">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-primary/15">
                       <div
-                        className="h-full rounded-full bg-emerald-400 transition-all"
+                        className="h-full rounded-full bg-primary transition-all"
                         style={{ width: `${brandUploadProgress}%` }}
                       />
                     </div>
                   )}
                   {brandEditNotice && (
-                    <p className="text-xs text-emerald-600">{brandEditNotice}</p>
+                    <p className="text-xs text-primary">{brandEditNotice}</p>
                   )}
                   <Button
                     type="button"
-                    className="w-full rounded-full bg-emerald-400 py-4 text-sm font-semibold text-slate-950 hover:bg-emerald-300"
+                    className="w-full rounded-full bg-primary py-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                     onClick={async () => {
                       if (!draft.brandId) return;
                       if (!brandName.trim()) {
@@ -793,8 +793,8 @@ const EditFood = () => {
           </Card>
         )}
 
-        <Card className="mt-4 rounded-[24px] border border-black/5 bg-white px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+        <Card className="mt-4 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Base serving size
           </p>
           <div className="mt-3 grid grid-cols-[1fr_130px] gap-2">
@@ -826,7 +826,7 @@ const EditFood = () => {
               <SelectContent>
                 <SelectGroup>
                   <SelectLabel>
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
+                    <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
                       Weight
                     </span>
                   </SelectLabel>
@@ -839,7 +839,7 @@ const EditFood = () => {
                 <SelectSeparator />
                 <SelectGroup>
                   <SelectLabel>
-                    <span className="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-600">
+                    <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-secondary-foreground">
                       Volume
                     </span>
                   </SelectLabel>
@@ -852,7 +852,7 @@ const EditFood = () => {
                 <SelectSeparator />
                 <SelectGroup>
                   <SelectLabel>
-                    <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-600">
+                    <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-secondary-foreground">
                       Count
                     </span>
                   </SelectLabel>
@@ -867,7 +867,7 @@ const EditFood = () => {
           </div>
           {adminEditing && (
             <div className="mt-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Base serving grams
               </p>
               <Input
@@ -883,23 +883,23 @@ const EditFood = () => {
         </Card>
 
         {adminEditing && (
-          <Card className="mt-4 rounded-[24px] border border-emerald-100 bg-emerald-50/60 px-4 py-4 shadow-[0_14px_30px_rgba(16,185,129,0.12)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500">
+          <Card className="mt-4 rounded-[24px] border border-border/70 bg-secondary/55 px-4 py-4 shadow-[0_14px_30px_rgba(15,23,42,0.12)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">
               Additional serving sizes
             </p>
             {customServings.length > 0 ? (
-              <div className="mt-2 flex flex-wrap gap-2 text-xs text-emerald-700">
+              <div className="mt-2 flex flex-wrap gap-2 text-xs text-secondary-foreground">
                 {customServings.map((serving) => (
                   <span
                     key={serving.id}
-                    className="rounded-full bg-white px-3 py-1 shadow-sm"
+                    className="rounded-full bg-card px-3 py-1 shadow-sm"
                   >
                     {serving.label} ({serving.grams} g)
                   </span>
                 ))}
               </div>
             ) : (
-              <p className="mt-2 text-xs text-emerald-700/70">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Add a cup/handful/serving option to mirror labels.
               </p>
             )}
@@ -920,7 +920,7 @@ const EditFood = () => {
                 <SelectContent>
                 <SelectGroup>
                   <SelectLabel>
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
+                    <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
                       Weight
                     </span>
                   </SelectLabel>
@@ -933,7 +933,7 @@ const EditFood = () => {
                 <SelectSeparator />
                 <SelectGroup>
                   <SelectLabel>
-                    <span className="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-600">
+                    <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-secondary-foreground">
                       Volume
                     </span>
                   </SelectLabel>
@@ -946,7 +946,7 @@ const EditFood = () => {
                 <SelectSeparator />
                 <SelectGroup>
                   <SelectLabel>
-                    <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-600">
+                    <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-secondary-foreground">
                       Count
                     </span>
                   </SelectLabel>
@@ -1000,13 +1000,13 @@ const EditFood = () => {
           </Card>
         )}
 
-        <Card className="mt-4 rounded-[24px] border border-black/5 bg-white px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+        <Card className="mt-4 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Nutrition facts
           </p>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Calories
               </p>
               <div className="relative mt-1">
@@ -1018,13 +1018,13 @@ const EditFood = () => {
                   onChange={(event) => handleDraftChange("kcal", event.target.value)}
                   className="h-10 rounded-full pr-12"
                 />
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   kcal
                 </span>
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Carbs
               </p>
               <div className="relative mt-1">
@@ -1036,13 +1036,13 @@ const EditFood = () => {
                   onChange={(event) => handleDraftChange("carbs", event.target.value)}
                   className="h-10 rounded-full pr-8"
                 />
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   g
                 </span>
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Protein
               </p>
               <div className="relative mt-1">
@@ -1054,13 +1054,13 @@ const EditFood = () => {
                   onChange={(event) => handleDraftChange("protein", event.target.value)}
                   className="h-10 rounded-full pr-8"
                 />
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   g
                 </span>
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Fat
               </p>
               <div className="relative mt-1">
@@ -1072,7 +1072,7 @@ const EditFood = () => {
                   onChange={(event) => handleDraftChange("fat", event.target.value)}
                   className="h-10 rounded-full pr-8"
                 />
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   g
                 </span>
               </div>
@@ -1081,13 +1081,13 @@ const EditFood = () => {
         </Card>
 
         {adminEditing && (
-          <Card className="mt-4 rounded-[24px] border border-black/5 bg-white px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+          <Card className="mt-4 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               Micronutrients
             </p>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                   Sodium
                 </p>
                 <div className="relative mt-1">
@@ -1098,13 +1098,13 @@ const EditFood = () => {
                     onChange={(event) => handleDraftChange("sodiumMg", event.target.value)}
                     className="h-10 rounded-full pr-10"
                   />
-                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                     mg
                   </span>
                 </div>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                   Fiber
                 </p>
                 <div className="relative mt-1">
@@ -1115,13 +1115,13 @@ const EditFood = () => {
                     onChange={(event) => handleDraftChange("fiberG", event.target.value)}
                     className="h-10 rounded-full pr-8"
                   />
-                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                     g
                   </span>
                 </div>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                   Sugar
                 </p>
                 <div className="relative mt-1">
@@ -1132,13 +1132,13 @@ const EditFood = () => {
                     onChange={(event) => handleDraftChange("sugarG", event.target.value)}
                     className="h-10 rounded-full pr-8"
                   />
-                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                     g
                   </span>
                 </div>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                   Saturated fat
                 </p>
                 <div className="relative mt-1">
@@ -1151,13 +1151,13 @@ const EditFood = () => {
                     }
                     className="h-10 rounded-full pr-8"
                   />
-                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                     g
                   </span>
                 </div>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                   Trans fat
                 </p>
                 <div className="relative mt-1">
@@ -1168,13 +1168,13 @@ const EditFood = () => {
                     onChange={(event) => handleDraftChange("transFatG", event.target.value)}
                     className="h-10 rounded-full pr-8"
                   />
-                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                     g
                   </span>
                 </div>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                   Cholesterol
                 </p>
                 <div className="relative mt-1">
@@ -1187,13 +1187,13 @@ const EditFood = () => {
                     }
                     className="h-10 rounded-full pr-10"
                   />
-                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                     mg
                   </span>
                 </div>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                   Potassium
                 </p>
                 <div className="relative mt-1">
@@ -1206,14 +1206,14 @@ const EditFood = () => {
                     }
                     className="h-10 rounded-full pr-10"
                   />
-                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                     mg
                   </span>
                 </div>
               </div>
             </div>
             <div className="mt-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Ingredients
               </p>
               <Textarea
@@ -1228,7 +1228,7 @@ const EditFood = () => {
 
         <Button
           type="button"
-          className="mt-6 w-full rounded-full bg-aura-primary py-5 text-sm font-semibold text-white"
+          className="mt-6 w-full rounded-full bg-primary py-5 text-sm font-semibold text-primary-foreground"
           onClick={async () => {
             if (!draft || !canSave) return;
             if (saving) return;

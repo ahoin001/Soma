@@ -112,20 +112,20 @@ const AdminExerciseThumbnails = () => {
 
   return (
     <AppShell experience="fitness" showNav={false}>
-      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-4 text-white">
+      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-4 text-foreground">
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
-            className="h-10 w-10 rounded-full bg-white/10 text-white hover:bg-white/20"
+            className="h-10 w-10 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
             onClick={() => navigate(-1)}
           >
             ✕
           </Button>
           <div className="text-center">
-            <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Admin tools
             </p>
-            <p className="text-sm text-white/80">Thumbnail manager</p>
+            <p className="text-sm text-foreground/85">Thumbnail manager</p>
           </div>
           <div className="h-10 w-10" />
         </div>
@@ -135,13 +135,13 @@ const AdminExerciseThumbnails = () => {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search exercises"
-            className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
+            className="border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
           />
           {rows.length === 0 && status === "loading" ? (
-            <p className="text-sm text-white/60">Loading exercises...</p>
+            <p className="text-sm text-muted-foreground">Loading exercises...</p>
           ) : null}
           {rows.length === 0 && status !== "loading" ? (
-            <p className="text-sm text-white/60">No exercises found.</p>
+            <p className="text-sm text-muted-foreground">No exercises found.</p>
           ) : null}
           {rows.map((item) => {
             const draft = dirty[item.id] ?? item.image_url ?? "";
@@ -152,23 +152,23 @@ const AdminExerciseThumbnails = () => {
             return (
               <div
                 key={item.id}
-                className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4"
+                className="rounded-[24px] border border-border/70 bg-card/55 px-4 py-4"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">
+                    <p className="truncate text-sm font-semibold text-foreground">
                       {item.name}
                     </p>
-                    <p className="text-xs text-white/50">{item.category ?? "General"}</p>
+                    <p className="text-xs text-muted-foreground">{item.category ?? "General"}</p>
                   </div>
                   {item.image_url ? (
                     <img
                       src={item.image_url}
                       alt={`${item.name} thumbnail`}
-                      className="h-10 w-10 rounded-2xl border border-white/10 object-cover"
+                      className="h-10 w-10 rounded-2xl border border-border/70 object-cover"
                     />
                   ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-[10px] uppercase tracking-[0.2em] text-white/60">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-card/70 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                       None
                     </div>
                   )}
@@ -179,11 +179,11 @@ const AdminExerciseThumbnails = () => {
                     setDirty((prev) => ({ ...prev, [item.id]: event.target.value }))
                   }
                   placeholder="Thumbnail image URL"
-                  className="mt-3 border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                  className="mt-3 border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
                 />
-                <label className="mt-3 flex cursor-pointer items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold text-white/70">
+                <label className="mt-3 flex cursor-pointer items-center justify-between rounded-2xl border border-border/70 bg-card/60 px-4 py-3 text-xs font-semibold text-foreground/80">
                   <span>{uploading ? "Uploading..." : "Upload thumbnail"}</span>
-                  <span className="text-emerald-200">Browse</span>
+                  <span className="text-primary">Browse</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -196,19 +196,19 @@ const AdminExerciseThumbnails = () => {
                   />
                 </label>
                 {uploading ? (
-                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-emerald-400/15">
+                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-primary/15">
                     <div
-                      className="h-full rounded-full bg-emerald-300 transition-all"
+                      className="h-full rounded-full bg-primary transition-all"
                       style={{ width: `${progress}%` }}
                     />
                   </div>
                 ) : null}
                 {notice ? (
-                  <p className="mt-2 text-xs text-emerald-200">{notice}</p>
+                  <p className="mt-2 text-xs text-primary">{notice}</p>
                 ) : null}
                 {isDirty ? (
                   <Button
-                    className="mt-3 w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                    className="mt-3 w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                     onClick={() => handleSave(item.id)}
                     disabled={status === "saving"}
                   >

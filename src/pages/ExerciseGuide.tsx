@@ -57,8 +57,8 @@ const ExerciseGuide = () => {
   if (isLoading) {
     return (
       <AppShell experience="fitness" showNav={false} safeAreaTop="extra">
-        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-white">
-          <p className="text-sm text-white/60">Loading exercise...</p>
+        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-foreground">
+          <p className="text-sm text-muted-foreground">Loading exercise...</p>
         </div>
       </AppShell>
     );
@@ -67,14 +67,14 @@ const ExerciseGuide = () => {
   if (!activePlan || !activeWorkout || !draft) {
     return (
       <AppShell experience="fitness" showNav={false} safeAreaTop="extra">
-        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-white">
-          <div className="rounded-[28px] border border-white/10 bg-white/5 px-4 py-6 text-center">
-            <p className="text-sm text-white/70">
+        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-foreground">
+          <div className="rounded-[28px] border border-border/70 bg-card/55 px-4 py-6 text-center">
+            <p className="text-sm text-muted-foreground">
               We could not find that exercise.
             </p>
             <Button
               variant="outline"
-              className="mt-4 rounded-full border-white/20 text-white hover:bg-white/10"
+              className="mt-4 rounded-full border-border/70 text-foreground hover:bg-secondary/70"
               onClick={() => navigate(-1)}
             >
               Back

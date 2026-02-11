@@ -67,9 +67,8 @@ export const AppShell = ({
         // NO pt-[env(safe-area-inset-top)] here! Let backgrounds flow edge-to-edge
         "relative min-h-screen min-h-[100svh] overflow-x-hidden text-foreground",
         showNav && "pb-[calc(6rem+var(--sab,0px))]",
-        experience === "nutrition"
-          ? "experience-nutrition bg-aura-surface"
-          : "experience-fitness bg-slate-950",
+        experience === "nutrition" ? "experience-nutrition" : "experience-fitness",
+        "bg-background",
         className,
       )}
     >
@@ -94,9 +93,7 @@ export const AppShell = ({
         <div
           className={cn(
             "w-full backdrop-blur-xl backdrop-saturate-150",
-            experience === "nutrition"
-              ? "bg-white/70"
-              : "bg-slate-950/75",
+            experience === "nutrition" ? "bg-card/70" : "bg-card/75",
           )}
           style={{ height: "var(--sat, 0px)" }}
         />
@@ -107,8 +104,8 @@ export const AppShell = ({
             height: "20px",
             background:
               experience === "nutrition"
-                ? "linear-gradient(to bottom, rgba(255,255,255,0.55), rgba(255,255,255,0))"
-                : "linear-gradient(to bottom, rgba(15,23,42,0.6), rgba(15,23,42,0))",
+                ? "linear-gradient(to bottom, hsl(var(--card) / 0.55), hsl(var(--card) / 0))"
+                : "linear-gradient(to bottom, hsl(var(--card) / 0.6), hsl(var(--card) / 0))",
           }}
         />
       </div>

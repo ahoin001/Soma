@@ -69,10 +69,10 @@ export const LiveSessionPanel = ({
   const skipRest = () => setRestSecondsRemaining(null);
 
   return (
-    <Card className="border-white/10 bg-card text-card-foreground">
+    <Card className="border-border/70 bg-card/55 text-card-foreground">
       <CardHeader>
-        <CardTitle className="text-lg text-white">Flow</CardTitle>
-        <CardDescription className="text-white/60">
+        <CardTitle className="text-lg text-foreground">Flow</CardTitle>
+        <CardDescription className="text-muted-foreground">
           Log sets fast with auto-rest timers.
         </CardDescription>
       </CardHeader>
@@ -80,18 +80,18 @@ export const LiveSessionPanel = ({
         {activeSession && activeRoutine && currentExercise ? (
           <>
             {restSecondsRemaining !== null ? (
-              <div className="rounded-[22px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-4 text-center">
-                <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/90">
+              <div className="rounded-[22px] border border-primary/30 bg-primary/12 px-4 py-4 text-center">
+                <p className="text-xs uppercase tracking-[0.2em] text-primary/90">
                   Rest
                 </p>
-                <p className="mt-2 font-mono text-3xl font-semibold tabular-nums text-emerald-300">
+                <p className="mt-2 font-mono text-3xl font-semibold tabular-nums text-primary">
                   {Math.floor(restSecondsRemaining / 60)}:
                   {(restSecondsRemaining % 60).toString().padStart(2, "0")}
                 </p>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="mt-2 text-emerald-300 hover:text-emerald-200"
+                  className="mt-2 text-primary hover:text-primary/80"
                   onClick={skipRest}
                 >
                   Skip rest
@@ -99,21 +99,21 @@ export const LiveSessionPanel = ({
               </div>
             ) : (
               <>
-                <div className="rounded-[22px] border border-white/10 bg-white/5 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                <div className="rounded-[22px] border border-border/70 bg-card/55 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                     Current exercise
                   </p>
-                  <p className="mt-2 text-lg font-semibold text-white">
+                  <p className="mt-2 text-lg font-semibold text-foreground">
                     {currentExercise.name}
                   </p>
-                  <p className="text-sm text-white/50">
+                  <p className="text-sm text-muted-foreground">
                     Target {currentExercise.targetSets} sets
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                       Weight
                     </p>
                     <Input
@@ -122,11 +122,11 @@ export const LiveSessionPanel = ({
                       value={weight}
                       onChange={(event) => setWeight(event.target.value)}
                       placeholder={unitUsed}
-                      className="mt-1 border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                      className="mt-1 border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
                     />
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                       Reps
                     </p>
                     <Input
@@ -135,21 +135,21 @@ export const LiveSessionPanel = ({
                       value={reps}
                       onChange={(event) => setReps(event.target.value)}
                       placeholder="reps"
-                      className="mt-1 border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                      className="mt-1 border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
                     />
                   </div>
                 </div>
 
                 <Button
-                  className="w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                  className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={handleLogSet}
                   disabled={!canLog}
                 >
                   Log set
                 </Button>
 
-                <div className="flex items-center justify-between rounded-full border border-white/10 bg-white/5 px-3 py-2">
-                  <span className="text-xs text-white/60">Rest after set</span>
+                <div className="flex items-center justify-between rounded-full border border-border/70 bg-card/55 px-3 py-2">
+                  <span className="text-xs text-muted-foreground">Rest after set</span>
                   <div className="flex gap-1">
                     {REST_PRESETS.map((sec) => (
                       <button
@@ -158,8 +158,8 @@ export const LiveSessionPanel = ({
                         className={cn(
                           "rounded-full px-3 py-1 text-xs font-medium",
                           restDuration === sec
-                            ? "bg-emerald-400/30 text-emerald-300"
-                            : "text-white/70 hover:text-white",
+                            ? "bg-primary/20 text-primary"
+                            : "text-foreground/80 hover:text-foreground",
                         )}
                         onClick={() => setRestDuration(sec)}
                       >
@@ -174,14 +174,14 @@ export const LiveSessionPanel = ({
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                className="w-full rounded-full border-white/20 text-white hover:bg-white/10"
+                className="w-full rounded-full border-border/70 text-foreground hover:bg-secondary/70"
                 onClick={onAdvanceExercise}
               >
                 Next exercise
               </Button>
               <Button
                 variant="outline"
-                className="w-full rounded-full border-white/20 text-white hover:bg-white/10"
+                className="w-full rounded-full border-border/70 text-foreground hover:bg-secondary/70"
                 onClick={onFinishSession}
               >
                 Finish
@@ -189,7 +189,7 @@ export const LiveSessionPanel = ({
             </div>
           </>
         ) : (
-          <p className="text-sm text-white/50">
+          <p className="text-sm text-muted-foreground">
             Start a session from the Architect to begin logging.
           </p>
         )}

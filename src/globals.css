@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes restBar {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
 @layer base {
   html {
     /* Prefer our custom pull-to-refresh over the browser’s (avoids full reload). */
@@ -17,6 +22,24 @@
     /* Theme colors for dynamic status bar - updated via JS */
     --theme-color-nutrition: #f0fdf4; /* emerald-50 - top of gradient */
     --theme-color-fitness: #0f172a; /* slate-900 */
+    --theme-color-ocean: #eff6ff; /* blue-50 */
+
+    /* Palette tokens (switch with .theme-emerald / .theme-ocean) */
+    --palette-primary: 144 68% 55%;
+    --palette-primary-foreground: 0 0% 100%;
+    --palette-secondary: 150 35% 96%;
+    --palette-secondary-foreground: 222 25% 15%;
+    --palette-accent: 150 40% 94%;
+    --palette-accent-foreground: 222 25% 12%;
+    --palette-ring: 144 68% 55%;
+
+    --palette-dark-primary: 146 65% 56%;
+    --palette-dark-primary-foreground: 222 47% 11%;
+    --palette-dark-secondary: 162 18% 16%;
+    --palette-dark-secondary-foreground: 210 40% 98%;
+    --palette-dark-accent: 165 20% 19%;
+    --palette-dark-accent-foreground: 210 40% 98%;
+    --palette-dark-ring: 146 65% 56%;
 
     --background: 0 0% 99%;
     --foreground: 222 25% 12%;
@@ -103,20 +126,56 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
+  .theme-emerald {
+    --palette-primary: 144 68% 55%;
+    --palette-primary-foreground: 0 0% 100%;
+    --palette-secondary: 150 35% 96%;
+    --palette-secondary-foreground: 222 25% 15%;
+    --palette-accent: 150 40% 94%;
+    --palette-accent-foreground: 222 25% 12%;
+    --palette-ring: 144 68% 55%;
+
+    --palette-dark-primary: 146 65% 56%;
+    --palette-dark-primary-foreground: 222 47% 11%;
+    --palette-dark-secondary: 162 18% 16%;
+    --palette-dark-secondary-foreground: 210 40% 98%;
+    --palette-dark-accent: 165 20% 19%;
+    --palette-dark-accent-foreground: 210 40% 98%;
+    --palette-dark-ring: 146 65% 56%;
+  }
+
+  .theme-ocean {
+    --palette-primary: 208 92% 54%;
+    --palette-primary-foreground: 0 0% 100%;
+    --palette-secondary: 207 70% 96%;
+    --palette-secondary-foreground: 222 25% 15%;
+    --palette-accent: 207 82% 93%;
+    --palette-accent-foreground: 222 25% 12%;
+    --palette-ring: 208 92% 54%;
+
+    --palette-dark-primary: 204 90% 60%;
+    --palette-dark-primary-foreground: 222 47% 11%;
+    --palette-dark-secondary: 213 22% 17%;
+    --palette-dark-secondary-foreground: 210 40% 98%;
+    --palette-dark-accent: 212 26% 21%;
+    --palette-dark-accent-foreground: 210 40% 98%;
+    --palette-dark-ring: 204 90% 60%;
+  }
+
   .experience-nutrition {
     --background: 0 0% 99%;
     --foreground: 222 25% 12%;
     --card: 0 0% 100%;
     --card-foreground: 222 25% 12%;
-    --primary: 144 68% 55%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 150 35% 96%;
-    --secondary-foreground: 222 25% 15%;
+    --primary: var(--palette-primary);
+    --primary-foreground: var(--palette-primary-foreground);
+    --secondary: var(--palette-secondary);
+    --secondary-foreground: var(--palette-secondary-foreground);
     --muted: 210 20% 96%;
     --muted-foreground: 215 16% 45%;
-    --accent: 150 40% 94%;
-    --accent-foreground: 222 25% 12%;
-    --ring: 144 68% 55%;
+    --accent: var(--palette-accent);
+    --accent-foreground: var(--palette-accent-foreground);
+    --ring: var(--palette-ring);
   }
 
   .experience-fitness {
@@ -124,15 +183,51 @@
     --foreground: 210 40% 98%;
     --card: 222 20% 13%;
     --card-foreground: 210 40% 98%;
-    --primary: 170 90% 52%;
-    --primary-foreground: 222 47% 11%;
+    --primary: var(--palette-dark-primary);
+    --primary-foreground: var(--palette-dark-primary-foreground);
     --secondary: 222 18% 16%;
     --secondary-foreground: 210 40% 98%;
     --muted: 222 18% 16%;
     --muted-foreground: 215 20% 70%;
-    --accent: 180 38% 18%;
-    --accent-foreground: 210 40% 98%;
-    --ring: 170 90% 52%;
+    --accent: var(--palette-dark-accent);
+    --accent-foreground: var(--palette-dark-accent-foreground);
+    --ring: var(--palette-dark-ring);
+  }
+
+  .dark.experience-nutrition {
+    --background: 222 24% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 20% 14%;
+    --card-foreground: 210 40% 98%;
+    --primary: var(--palette-dark-primary);
+    --primary-foreground: var(--palette-dark-primary-foreground);
+    --secondary: var(--palette-dark-secondary);
+    --secondary-foreground: var(--palette-dark-secondary-foreground);
+    --muted: 222 18% 16%;
+    --muted-foreground: 215 20% 70%;
+    --accent: var(--palette-dark-accent);
+    --accent-foreground: var(--palette-dark-accent-foreground);
+    --ring: var(--palette-dark-ring);
+    --border: 222 16% 22%;
+    --input: 222 16% 22%;
+  }
+
+  .dark.experience-fitness {
+    --background: 222 24% 8%;
+    --foreground: 210 40% 98%;
+    --card: 222 20% 12%;
+    --card-foreground: 210 40% 98%;
+    --primary: var(--palette-dark-primary);
+    --primary-foreground: var(--palette-dark-primary-foreground);
+    --secondary: 222 18% 15%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 222 18% 15%;
+    --muted-foreground: 215 20% 70%;
+    --accent: var(--palette-dark-accent);
+    --accent-foreground: var(--palette-dark-accent-foreground);
+    --ring: var(--palette-dark-ring);
+    --border: 222 16% 22%;
+    --input: 222 16% 22%;
   }
 }
 

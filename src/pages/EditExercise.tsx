@@ -46,8 +46,8 @@ const EditExercise = () => {
   if (loading) {
     return (
       <AppShell experience="fitness" showNav={false}>
-        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-white">
-          <p className="text-sm text-white/60">Loading exercise...</p>
+        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-foreground">
+          <p className="text-sm text-muted-foreground">Loading exercise...</p>
         </div>
       </AppShell>
     );
@@ -56,14 +56,14 @@ const EditExercise = () => {
   if (!exercise) {
     return (
       <AppShell experience="fitness" showNav={false}>
-        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-white">
-          <div className="rounded-[28px] border border-white/10 bg-white/5 px-4 py-6 text-center">
-            <p className="text-sm text-white/70">
+        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-foreground">
+          <div className="rounded-[28px] border border-border/70 bg-card/55 px-4 py-6 text-center">
+            <p className="text-sm text-muted-foreground">
               We could not find that exercise.
             </p>
             <Button
               variant="outline"
-              className="mt-4 rounded-full border-white/20 text-white hover:bg-white/10"
+              className="mt-4 rounded-full border-border/70 text-foreground hover:bg-secondary/70"
               onClick={() => navigate(-1)}
             >
               Back
@@ -76,24 +76,24 @@ const EditExercise = () => {
 
   return (
     <AppShell experience="fitness" showNav={false}>
-      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-4 text-white">
+      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-4 text-foreground">
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
-            className="h-10 w-10 rounded-full bg-white/10 text-white hover:bg-white/20"
+            className="h-10 w-10 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
             onClick={() => navigate(-1)}
           >
             ✕
           </Button>
           <div className="text-center">
-            <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Edit exercise
             </p>
           </div>
           <div className="h-10 w-10" />
         </div>
 
-        <div className="mt-4 rounded-[28px] border border-white/10 bg-white/5 shadow-[0_24px_40px_rgba(0,0,0,0.35)]">
+        <div className="mt-4 rounded-[28px] border border-border/70 bg-card/55 shadow-[0_24px_40px_rgba(0,0,0,0.35)]">
           <CreateExerciseForm
             initial={{
               name: exercise.name ?? "",
