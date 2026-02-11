@@ -41,7 +41,7 @@ export const MicroChart = ({ entries, label, unit }: MicroChartProps) => {
 
   if (!hasData) {
     return (
-      <div className="flex h-40 items-center justify-center text-sm text-emerald-700/70">
+      <div className="flex h-40 items-center justify-center text-sm text-primary/70">
         Log foods with {label} to see trends.
       </div>
     );
@@ -75,7 +75,7 @@ export const MicroChart = ({ entries, label, unit }: MicroChartProps) => {
   return (
     <div className="relative flex">
       <div
-        className="relative shrink-0 text-right text-[10px] font-medium tabular-nums text-emerald-600/70"
+        className="relative shrink-0 text-right text-[10px] font-medium tabular-nums text-primary/70"
         style={{ width: LEFT_LABEL_WIDTH, height: 160 }}
       >
         {yAxisTicks.map((tick, i) => (
@@ -169,16 +169,16 @@ export const MicroChart = ({ entries, label, unit }: MicroChartProps) => {
         </svg>
         {activePoint ? (
           <div
-            className="pointer-events-none absolute -top-2 z-10 -translate-y-full rounded-[14px] bg-white px-3 py-2 text-xs text-emerald-800 shadow-[0_12px_28px_rgba(16,185,129,0.18)]"
+            className="pointer-events-none absolute -top-2 z-10 -translate-y-full rounded-[14px] bg-card px-3 py-2 text-xs text-foreground shadow-[0_12px_28px_rgba(16,185,129,0.18)]"
             style={{
               left: `${(activePoint.x / VIEW_WIDTH) * 100}%`,
               transform: "translate(-50%, -100%)",
             }}
           >
-            <div className="text-[11px] font-semibold text-emerald-700">
+            <div className="text-[11px] font-semibold text-secondary-foreground">
               {Math.round(activePoint.entry.value ?? 0)} {unit}
             </div>
-            <div className="text-[10px] text-emerald-600/70">
+            <div className="text-[10px] text-muted-foreground">
               {formatShortDate(activePoint.entry.date)}
             </div>
           </div>

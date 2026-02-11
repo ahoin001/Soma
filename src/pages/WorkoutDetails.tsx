@@ -40,9 +40,9 @@ const WorkoutDetails = () => {
   if (!plansLoaded) {
     return (
       <AppShell experience="fitness" showNav={false} safeAreaTop="extra">
-        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 text-white">
-          <div className="rounded-[28px] border border-white/10 bg-white/5 px-4 py-6 text-center">
-            <p className="text-sm text-white/60">Loading workout...</p>
+        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 text-foreground">
+          <div className="rounded-[28px] border border-border/70 bg-card/55 px-4 py-6 text-center">
+            <p className="text-sm text-muted-foreground">Loading workout...</p>
           </div>
         </div>
       </AppShell>
@@ -52,14 +52,14 @@ const WorkoutDetails = () => {
   if (!activePlan || !activeWorkout) {
     return (
       <AppShell experience="fitness" showNav={false} safeAreaTop="extra">
-        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 text-white">
-          <div className="rounded-[28px] border border-white/10 bg-white/5 px-4 py-6 text-center">
-            <p className="text-sm text-white/70">
+        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 text-foreground">
+          <div className="rounded-[28px] border border-border/70 bg-card/55 px-4 py-6 text-center">
+            <p className="text-sm text-muted-foreground">
               We could not find that workout. Try selecting a different plan.
             </p>
             <button
               type="button"
-              className="mt-4 rounded-full border border-white/20 px-4 py-2 text-sm text-white"
+              className="mt-4 rounded-full border border-border/70 px-4 py-2 text-sm text-foreground hover:bg-secondary/70"
               onClick={() => navigate("/fitness")}
             >
               Back to Fitness

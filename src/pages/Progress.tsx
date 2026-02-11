@@ -120,11 +120,11 @@ const Progress = () => {
           paddingTop: "calc(1.5rem + var(--sat, env(safe-area-inset-top)))",
         }}
       >
-        <div className="rounded-[28px] bg-gradient-to-br from-emerald-100 via-emerald-50 to-white px-5 py-6 shadow-[0_18px_40px_rgba(16,185,129,0.2)]">
-          <p className="text-xs uppercase tracking-[0.2em] text-emerald-500">
+        <div className="rounded-[28px] bg-gradient-to-br from-background via-card to-secondary/60 px-5 py-6 shadow-[0_18px_40px_rgba(15,23,42,0.2)]">
+          <p className="text-xs uppercase tracking-[0.2em] text-primary/80">
             Progress
           </p>
-          <h1 className="text-2xl font-display font-semibold text-emerald-950">
+          <h1 className="text-2xl font-display font-semibold text-foreground">
             {activeChart === "weight"
               ? "Weight trend"
               : activeChart === "calories"
@@ -133,7 +133,7 @@ const Progress = () => {
                   ? "Macro trend"
                   : "Micro trend"}
           </h1>
-          <p className="mt-1 text-sm text-emerald-700/70">
+          <p className="mt-1 text-sm text-muted-foreground">
             {activeChart === "weight"
               ? "Log any time. The chart adapts to gaps."
               : activeChart === "calories"
@@ -153,7 +153,7 @@ const Progress = () => {
                 onClick: () =>
                   document.getElementById("weight-log")?.scrollIntoView({ behavior: "smooth" }),
               }}
-              className="mt-4 rounded-[22px] border border-dashed border-emerald-200 bg-emerald-50/50 py-8"
+              className="mt-4 rounded-[22px] border border-dashed border-primary/30 bg-secondary/50 py-8"
             />
           )}
 

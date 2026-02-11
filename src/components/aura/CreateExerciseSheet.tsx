@@ -252,13 +252,13 @@ export const CreateExerciseForm = ({
   return (
     <div className="aura-sheet-body-fit" aria-busy={saving}>
       <div className="mt-2 text-center">
-        <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
           Create exercise
         </p>
         <h3 className="mt-2 text-2xl font-display font-semibold">
           Build a custom move
         </h3>
-        <p className="mt-2 text-sm text-white/60">
+        <p className="mt-2 text-sm text-muted-foreground">
           This will live in your personal library.
         </p>
       </div>
@@ -271,13 +271,13 @@ export const CreateExerciseForm = ({
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="e.g. Cable Row (Neutral Grip)"
-                className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                className="border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
               />
             </div>
             <div className="space-y-2">
               <Label>Category</Label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="h-11 rounded-full border-white/10 bg-white/5 text-white">
+                <SelectTrigger className="h-11 rounded-full border-border/70 bg-secondary/35 text-foreground">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -298,17 +298,17 @@ export const CreateExerciseForm = ({
                   onValueChange={(value) =>
                     setMusclePickerMode((value as "pills" | "visual") || "pills")
                   }
-                  className="rounded-full border border-white/10 bg-white/5 p-1"
+                  className="rounded-full border border-border/70 bg-card/60 p-1"
                 >
                   <ToggleGroupItem
                     value="pills"
-                    className="rounded-full px-3 py-1 text-xs text-white/70 data-[state=on]:bg-emerald-400/20 data-[state=on]:text-emerald-200"
+                    className="rounded-full px-3 py-1 text-xs text-foreground/80 data-[state=on]:bg-primary/20 data-[state=on]:text-primary"
                   >
                     Pills
                   </ToggleGroupItem>
                   <ToggleGroupItem
                     value="visual"
-                    className="rounded-full px-3 py-1 text-xs text-white/70 data-[state=on]:bg-emerald-400/20 data-[state=on]:text-emerald-200"
+                    className="rounded-full px-3 py-1 text-xs text-foreground/80 data-[state=on]:bg-primary/20 data-[state=on]:text-primary"
                   >
                     Visual
                   </ToggleGroupItem>
@@ -325,7 +325,7 @@ export const CreateExerciseForm = ({
                     <ToggleGroupItem
                       key={muscle}
                       value={muscle}
-                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70 data-[state=on]:border-emerald-400/60 data-[state=on]:bg-emerald-400/15 data-[state=on]:text-emerald-200"
+                      className="rounded-full border border-border/70 bg-card/60 px-3 py-1 text-xs text-foreground/80 data-[state=on]:border-primary/70 data-[state=on]:bg-primary/15 data-[state=on]:text-primary"
                     >
                       {muscle}
                     </ToggleGroupItem>
@@ -348,11 +348,11 @@ export const CreateExerciseForm = ({
                         }}
                         className={`rounded-2xl border px-3 py-3 text-left text-sm transition ${
                           active
-                            ? "border-emerald-400/60 bg-emerald-400/15 text-emerald-200"
-                            : "border-white/10 bg-white/5 text-white/70 hover:border-white/30"
+                            ? "border-primary/70 bg-primary/15 text-primary"
+                            : "border-border/70 bg-card/60 text-foreground/80 hover:border-border"
                         }`}
                       >
-                        <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                           Region
                         </p>
                         <p className="mt-1 font-semibold">{muscle}</p>
@@ -361,14 +361,14 @@ export const CreateExerciseForm = ({
                   })}
                 </div>
               )}
-              <p className="text-xs text-white/50">
+              <p className="text-xs text-muted-foreground">
                 Anatomy guide: primary movers for the selected category.
               </p>
               <Input
                 value={customMuscles}
                 onChange={(event) => setCustomMuscles(event.target.value)}
                 placeholder="Add other muscles (comma separated)"
-                className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                className="border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
               />
             </div>
           </div>
@@ -382,7 +382,7 @@ export const CreateExerciseForm = ({
               <Button
                 type="button"
                 variant="outline"
-                className="w-full rounded-full border-white/20 bg-white/10 text-white hover:bg-white/20"
+                className="w-full rounded-full border-border/70 bg-secondary/35 text-foreground hover:bg-secondary/65"
               >
                 Optional details
               </Button>
@@ -400,7 +400,7 @@ export const CreateExerciseForm = ({
                     <ToggleGroupItem
                       key={item}
                       value={item}
-                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70 data-[state=on]:border-emerald-400/60 data-[state=on]:bg-emerald-400/15 data-[state=on]:text-emerald-200"
+                      className="rounded-full border border-border/70 bg-card/60 px-3 py-1 text-xs text-foreground/80 data-[state=on]:border-primary/70 data-[state=on]:bg-primary/15 data-[state=on]:text-primary"
                     >
                       {item}
                     </ToggleGroupItem>
@@ -410,7 +410,7 @@ export const CreateExerciseForm = ({
                   value={customEquipment}
                   onChange={(event) => setCustomEquipment(event.target.value)}
                   placeholder="Other equipment (comma separated)"
-                  className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                  className="border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
               <div className="space-y-2">
@@ -420,7 +420,7 @@ export const CreateExerciseForm = ({
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
                   placeholder="Short form cues or setup details."
-                  className="min-h-[120px] border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                  className="min-h-[120px] border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
               <div className="space-y-2">
@@ -430,7 +430,7 @@ export const CreateExerciseForm = ({
                   value={imageUrl}
                   onChange={(event) => setImageUrl(event.target.value)}
                   placeholder="https://..."
-                  className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                  className="border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
               <div className="space-y-2">
@@ -440,18 +440,18 @@ export const CreateExerciseForm = ({
                   value={videoUrl}
                   onChange={(event) => setVideoUrl(event.target.value)}
                   placeholder="https://youtube.com/..."
-                  className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                  className="border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
             </CollapsibleContent>
           </Collapsible>
 
       {statusMessage ? (
-        <p className="mt-4 text-sm text-emerald-200">{statusMessage}</p>
+        <p className="mt-4 text-sm text-primary">{statusMessage}</p>
       ) : null}
       <div className="mt-4 grid gap-2">
         <Button
-          className="w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+          className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={handleSave}
           disabled={saving}
         >
@@ -459,7 +459,7 @@ export const CreateExerciseForm = ({
         </Button>
         <Button
           variant="outline"
-          className="w-full rounded-full border-white/20 bg-white/10 text-white hover:bg-white/20"
+          className="w-full rounded-full border-border/70 bg-secondary/35 text-foreground hover:bg-secondary/65"
           onClick={onCancel}
           disabled={saving}
         >
@@ -482,7 +482,7 @@ export const CreateExerciseSheet = ({
   onCreated,
 }: CreateExerciseSheetProps) => (
   <Drawer open={open} onOpenChange={onOpenChange}>
-    <DrawerContent className="rounded-t-[36px] border-none bg-slate-950 pb-6 text-white">
+    <DrawerContent className="rounded-t-[36px] border-none bg-background pb-6 text-foreground">
       <CreateExerciseForm
         onCreated={onCreated}
         onCancel={() => onOpenChange(false)}

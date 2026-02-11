@@ -357,9 +357,9 @@ export const FoodDetailSheet = ({
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
-      <DrawerContent className="relative flex max-h-[100svh] flex-col rounded-t-[36px] border-none bg-aura-surface pb-6 overflow-hidden safe-pt">
+      <DrawerContent className="relative flex max-h-[100svh] flex-col overflow-hidden rounded-t-[36px] border-none bg-background pb-6 safe-pt">
         {tracking && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 text-sm font-semibold text-emerald-700 backdrop-blur">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/70 text-sm font-semibold text-primary backdrop-blur">
             Logging food...
           </div>
         )}
@@ -372,14 +372,14 @@ export const FoodDetailSheet = ({
             className="min-h-0 flex-1 overflow-y-auto px-5 pt-2 pb-6"
           >
             <div className="flex items-center justify-between pt-2">
-              <span className="text-xs uppercase tracking-[0.3em] text-emerald-400">
+              <span className="text-xs uppercase tracking-[0.3em] text-primary">
                 Food details
               </span>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 rounded-full bg-white/80 text-slate-600 shadow-[0_8px_20px_rgba(15,23,42,0.08)]"
+                className="h-9 w-9 rounded-full bg-card/80 text-secondary-foreground shadow-[0_8px_20px_rgba(15,23,42,0.08)]"
                 onClick={() => handleOpenChange(false)}
                 aria-label="Close"
               >
@@ -387,7 +387,7 @@ export const FoodDetailSheet = ({
               </Button>
             </div>
             <div className="flex items-center justify-center pt-4">
-              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-white text-3xl shadow-[0_14px_30px_rgba(15,23,42,0.1)]">
+              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-card bg-card text-3xl shadow-[0_14px_30px_rgba(15,23,42,0.1)]">
                 {showFoodImages && imageUrl ? (
                   <img
                     src={imageUrl}
@@ -413,25 +413,25 @@ export const FoodDetailSheet = ({
                     decoding="async"
                   />
                 )}
-                <h3 className="text-xl font-display font-semibold text-slate-900">
+                <h3 className="text-xl font-display font-semibold text-foreground">
                   {food.name}
                 </h3>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                  className="h-9 w-9 rounded-full bg-secondary text-primary hover:bg-primary/15"
                   onClick={() => onToggleFavorite?.(!isFavorite)}
                   aria-label={isFavorite ? "Remove favorite" : "Add favorite"}
                 >
-                  <Heart className={isFavorite ? "fill-emerald-500" : ""} />
+                  <Heart className={isFavorite ? "fill-primary" : ""} />
                 </Button>
                 {isAdmin && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    className="h-9 w-9 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
                     onClick={handleOpenEditPage}
                     aria-label="Edit food"
                   >
@@ -439,7 +439,7 @@ export const FoodDetailSheet = ({
                   </Button>
                 )}
               </div>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 {food.brand ? `${food.brand} â€¢ ` : ""}
                 {formatServingLabel(
                   quantity,
@@ -449,52 +449,52 @@ export const FoodDetailSheet = ({
               </p>
             </div>
 
-            <Card className="mt-6 rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-emerald-100/60 px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
-              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+            <Card className="mt-6 rounded-[28px] border border-border/70 bg-gradient-to-br from-secondary via-card to-primary/10 px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                 <span>Meal impact</span>
                 <span>{scaled.kcal} cal</span>
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-3 text-xs text-emerald-700/80">
-                <div className="rounded-[16px] bg-white/90 px-3 py-3 text-center">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-400">
+              <div className="mt-3 grid grid-cols-3 gap-3 text-xs text-secondary-foreground">
+                <div className="rounded-[16px] bg-card/90 px-3 py-3 text-center">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-primary">
                     Carbs
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-emerald-800">
+                  <p className="mt-1 text-sm font-semibold text-foreground">
                     {scaled.carbs}g
                   </p>
                 </div>
-                <div className="rounded-[16px] bg-white/90 px-3 py-3 text-center">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-400">
+                <div className="rounded-[16px] bg-card/90 px-3 py-3 text-center">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-primary">
                     Protein
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-emerald-800">
+                  <p className="mt-1 text-sm font-semibold text-foreground">
                     {scaled.protein}g
                   </p>
                 </div>
-                <div className="rounded-[16px] bg-white/90 px-3 py-3 text-center">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-400">
+                <div className="rounded-[16px] bg-card/90 px-3 py-3 text-center">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-primary">
                     Fat
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-emerald-800">
+                  <p className="mt-1 text-sm font-semibold text-foreground">
                     {scaled.fat}g
                   </p>
                 </div>
               </div>
             </Card>
 
-            <div className="mt-4 rounded-[24px] border border-black/5 bg-white px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+            <div className="mt-4 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-slate-700">Amount</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-sm font-semibold text-secondary-foreground">Amount</p>
+                  <p className="text-xs text-muted-foreground">
                     Choose a serving size
                   </p>
                 </div>
                 <div className="relative">
                   {amountPulse && (
-                    <span className="absolute inset-0 rounded-full bg-emerald-200/60 blur-sm animate-ping" />
+                    <span className="absolute inset-0 animate-ping rounded-full bg-primary/30 blur-sm" />
                   )}
-                  <div className="relative rounded-full bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+                  <div className="relative rounded-full bg-secondary px-3 py-2 text-sm font-semibold text-primary">
                     {scaled.grams ? `${scaled.grams} g` : "â€”"}
                   </div>
                 </div>
@@ -545,43 +545,43 @@ export const FoodDetailSheet = ({
               </div>
             </div>
 
-            <Card className="mt-4 rounded-[28px] border border-black/5 bg-white px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
-              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+            <Card className="mt-4 rounded-[28px] border border-border/60 bg-card px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                 <span>Nutrition information</span>
                 <span>{scaled.kcal} cal</span>
               </div>
               <div className="mt-4 space-y-4">
                 {macros.map((macro) => (
                   <div key={macro.key} className="space-y-2">
-                    <div className="flex items-center justify-between text-sm font-medium text-slate-700">
+                    <div className="flex items-center justify-between text-sm font-medium text-secondary-foreground">
                       <span>{macro.label}</span>
-                      <span className="text-emerald-500">
+                      <span className="text-primary">
                         {food.macroPercent[macro.key]}%
                       </span>
                     </div>
                     <Progress
                       value={food.macroPercent[macro.key]}
-                      className="h-2 bg-emerald-100"
+                      className="h-2 bg-primary/15"
                     />
                   </div>
                 ))}
               </div>
-              <div className="mt-4 grid grid-cols-3 gap-3 text-xs text-slate-500">
+              <div className="mt-4 grid grid-cols-3 gap-3 text-xs text-muted-foreground">
                 <div>
-                  <p className="font-medium text-slate-700">Carbs</p>
+                  <p className="font-medium text-secondary-foreground">Carbs</p>
                   <p>{scaled.carbs} g</p>
                 </div>
                 <div>
-                  <p className="font-medium text-slate-700">Protein</p>
+                  <p className="font-medium text-secondary-foreground">Protein</p>
                   <p>{scaled.protein} g</p>
                 </div>
                 <div>
-                  <p className="font-medium text-slate-700">Fat</p>
+                  <p className="font-medium text-secondary-foreground">Fat</p>
                   <p>{scaled.fat} g</p>
                 </div>
               </div>
               {microEntries.length > 0 && (
-                <div className="mt-4 rounded-[18px] border border-emerald-100 bg-white/90 px-3 py-3 text-xs text-emerald-700/80">
+                <div className="mt-4 rounded-[18px] border border-border/70 bg-card/90 px-3 py-3 text-xs text-secondary-foreground">
                   <div className="flex flex-wrap gap-3">
                     {microEntries.map((entry) => (
                       <span key={entry.label}>
@@ -592,9 +592,9 @@ export const FoodDetailSheet = ({
                 </div>
               )}
               {ingredientText && (
-                <div className="mt-3 rounded-[18px] border border-emerald-100 bg-white/90 px-3 py-3 text-xs text-emerald-700/80">
-                  <span className="font-semibold text-emerald-500">Ingredients</span>
-                  <p className="mt-1 text-xs text-emerald-700/70">{ingredientText}</p>
+                <div className="mt-3 rounded-[18px] border border-border/70 bg-card/90 px-3 py-3 text-xs text-secondary-foreground">
+                  <span className="font-semibold text-primary">Ingredients</span>
+                  <p className="mt-1 text-xs text-muted-foreground">{ingredientText}</p>
                 </div>
               )}
             </Card>
@@ -604,13 +604,13 @@ export const FoodDetailSheet = ({
         {food && (
           <div className="shrink-0 bg-transparent px-5 pb-4 pt-3">
             <Button
-              className="relative w-full overflow-hidden rounded-full bg-aura-primary py-6 text-base font-semibold text-white shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
+              className="relative w-full overflow-hidden rounded-full bg-primary py-6 text-base font-semibold text-primary-foreground shadow-[0_16px_30px_rgba(15,23,42,0.35)] hover:bg-primary/90"
               onClick={handleTrack}
               disabled={tracking}
             >
               {sparkle && (
                 <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <span className="h-16 w-16 rounded-full bg-white/50 blur-sm animate-ping" />
+                  <span className="h-16 w-16 animate-ping rounded-full bg-primary/40 blur-sm" />
                 </span>
               )}
               {tracking ? "Tracking..." : "Track"}
@@ -618,7 +618,7 @@ export const FoodDetailSheet = ({
             <Button
               type="button"
               variant="ghost"
-              className="mt-2 w-full rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50"
+              className="mt-2 w-full rounded-full border border-border text-secondary-foreground hover:bg-secondary/45"
               onClick={() => handleOpenChange(false)}
             >
               Back

@@ -52,19 +52,19 @@ export const BarcodeScanSheet = ({
       <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6">
         <div className="aura-sheet-body">
           <div className="text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-secondary text-primary">
               <Camera className="h-6 w-6" />
             </div>
-            <h3 className="mt-3 text-xl font-display font-semibold text-slate-900">
+            <h3 className="mt-3 text-xl font-display font-semibold text-foreground">
               Barcode scan
             </h3>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               Point your camera at a barcode to log quickly.
             </p>
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-[24px] border border-black/5 bg-white p-4 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
-            <div className="relative flex h-44 items-center justify-center overflow-hidden rounded-[18px] bg-emerald-50/70">
+          <div className="mt-6 overflow-hidden rounded-[24px] border border-border/60 bg-card p-4 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
+            <div className="relative flex h-44 items-center justify-center overflow-hidden rounded-[18px] bg-secondary/70">
               <video
                 ref={videoRef}
                 className="h-full w-full object-contain"
@@ -72,12 +72,12 @@ export const BarcodeScanSheet = ({
                 muted
               />
               {!supported && (
-                <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-emerald-700">
+                <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-primary">
                   Barcode scanning not supported
                 </div>
               )}
               {supported && state === "idle" && (
-                <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-emerald-700">
+                <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-primary">
                   Camera preview
                 </div>
               )}
@@ -90,7 +90,7 @@ export const BarcodeScanSheet = ({
                     className="absolute inset-x-6"
                   >
                     <motion.div
-                      className="h-1 w-full rounded-full bg-emerald-500/80 shadow-[0_0_20px_rgba(16,185,129,0.6)]"
+                      className="h-1 w-full rounded-full bg-primary/80 shadow-[0_0_20px_hsl(var(--primary)/0.6)]"
                       animate={{ y: [10, 120, 10] }}
                       transition={{
                         duration: 2,
@@ -102,7 +102,7 @@ export const BarcodeScanSheet = ({
                 )}
               </AnimatePresence>
               {state === "error" && message && (
-                <div className="absolute inset-0 flex items-center justify-center text-center text-sm text-rose-500">
+                <div className="absolute inset-0 flex items-center justify-center text-center text-sm text-destructive">
                   {message}
                 </div>
               )}
@@ -111,7 +111,7 @@ export const BarcodeScanSheet = ({
 
           <div className="mt-6 flex gap-3">
             <Button
-              className="w-full rounded-full bg-aura-primary py-6 text-base font-semibold text-white shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
+              className="w-full rounded-full bg-primary py-6 text-base font-semibold text-primary-foreground shadow-[0_16px_30px_rgba(15,23,42,0.35)] hover:bg-primary/90"
               onClick={handleStart}
               disabled={!supported || state === "scanning"}
             >

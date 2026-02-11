@@ -66,7 +66,7 @@ export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
       open={activeSheet === "calendar"}
       onOpenChange={(open) => (open ? openSheet("calendar") : closeSheets())}
     >
-      <section className="mt-8 flex items-center justify-between rounded-[24px] border border-black/5 bg-white px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+      <section className="mt-8 flex items-center justify-between rounded-[24px] border border-border/60 bg-card px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
         <Button
           variant="ghost"
           size="icon"
@@ -78,9 +78,9 @@ export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
         <DrawerTrigger asChild>
           <Button
             variant="ghost"
-            className="flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold text-slate-800"
+            className="flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold text-foreground"
           >
-            <CalendarDays className="h-4 w-4 text-emerald-500" />
+            <CalendarDays className="h-4 w-4 text-primary" />
             {label}
           </Button>
         </DrawerTrigger>
@@ -93,16 +93,16 @@ export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
           <ChevronRight className="h-4 w-4" />
         </Button>
       </section>
-      <DrawerContent className="rounded-t-[28px] border-t border-emerald-100 bg-gradient-to-b from-white via-emerald-50/60 to-white px-5 pb-8 pt-6">
+      <DrawerContent className="rounded-t-[28px] border-t border-border/70 bg-gradient-to-b from-background via-secondary/55 to-card px-5 pb-8 pt-6">
         <DrawerHeader className="text-left">
-          <DrawerTitle className="text-xl font-display text-emerald-950">
+          <DrawerTitle className="text-xl font-display text-foreground">
             Calendar
           </DrawerTitle>
-          <p className="text-sm text-emerald-700/70">
+          <p className="text-sm text-muted-foreground">
             Jump to a day to review your nutrition flow.
           </p>
         </DrawerHeader>
-        <div className="mt-4 rounded-[24px] border border-emerald-100 bg-white/90 p-2 shadow-[0_12px_28px_rgba(16,185,129,0.12)]">
+        <div className="mt-4 rounded-[24px] border border-border/70 bg-card/90 p-2 shadow-[0_12px_28px_rgba(15,23,42,0.12)]">
           <Calendar
             mode="single"
             selected={selectedDate}
@@ -115,7 +115,7 @@ export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
             className="w-full"
           />
         </div>
-        <div className="mt-4 rounded-[18px] border border-emerald-100/80 bg-white/80 px-4 py-3 text-sm text-emerald-700/80">
+        <div className="mt-4 rounded-[18px] border border-border/70 bg-card/80 px-4 py-3 text-sm text-secondary-foreground">
           {formatFull(selectedDate)}
         </div>
       </DrawerContent>

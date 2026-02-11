@@ -353,12 +353,26 @@ const AppRoutes = () => {
 // no sequential wait, and no flash of white between experiences.
 const ExperienceBackdrop = () => {
   const location = useLocation();
+  const { resolvedTheme } = useTheme();
+  const { themePalette } = useUserSettings();
   if (location.pathname.startsWith("/auth")) return null;
 
   const isFitness = location.pathname.startsWith("/fitness");
-  const nutritionHudGradient =
-    "radial-gradient(circle_at_15%_10%,_rgba(191,219,254,0.8),_transparent_45%),radial-gradient(circle_at_85%_0%,_rgba(167,243,208,0.9),_transparent_45%),radial-gradient(circle_at_70%_80%,_rgba(253,224,71,0.35),_transparent_55%),linear-gradient(180deg,_rgba(240,253,244,1)_0%,_rgba(236,253,245,0.92)_50%,_rgba(209,250,229,0.88)_100%)";
+  const isDark = resolvedTheme === "dark";
+  const nutritionHudGradient = isDark
+    ? themePalette === "ocean"
+      ? "radial-gradient(circle_at_18%_8%,_rgba(56,189,248,0.22),_transparent_42%),radial-gradient(circle_at_82%_0%,_rgba(59,130,246,0.18),_transparent_44%),radial-gradient(circle_at_70%_78%,_rgba(14,165,233,0.14),_transparent_55%),linear-gradient(180deg,_rgba(10,15,26,1)_0%,_rgba(10,16,28,0.96)_52%,_rgba(12,20,34,0.94)_100%)"
+      : "radial-gradient(circle_at_16%_10%,_rgba(52,211,153,0.24),_transparent_42%),radial-gradient(circle_at_84%_0%,_rgba(45,212,191,0.18),_transparent_44%),radial-gradient(circle_at_72%_80%,_rgba(16,185,129,0.14),_transparent_55%),linear-gradient(180deg,_rgba(11,15,18,1)_0%,_rgba(12,18,22,0.96)_52%,_rgba(13,20,24,0.94)_100%)"
+    : "radial-gradient(circle_at_15%_10%,_rgba(191,219,254,0.8),_transparent_45%),radial-gradient(circle_at_85%_0%,_rgba(167,243,208,0.9),_transparent_45%),radial-gradient(circle_at_70%_80%,_rgba(253,224,71,0.35),_transparent_55%),linear-gradient(180deg,_rgba(240,253,244,1)_0%,_rgba(236,253,245,0.92)_50%,_rgba(209,250,229,0.88)_100%)";
   const fitnessGradient = "linear-gradient(180deg,_#020617_0%,_#0f172a_100%)";
+  const nutritionOverlay = isDark
+    ? themePalette === "ocean"
+      ? "radial-gradient(circle_at_16%_18%,_rgba(14,165,233,0.16),_transparent_44%),radial-gradient(circle_at_80%_16%,_rgba(56,189,248,0.14),_transparent_42%),radial-gradient(circle_at_72%_84%,_rgba(29,78,216,0.16),_transparent_50%),linear-gradient(180deg,_rgba(8,12,20,0.72)_0%,_rgba(8,12,20,0.6)_100%)"
+      : "radial-gradient(circle_at_15%_20%,_rgba(16,185,129,0.18),_transparent_44%),radial-gradient(circle_at_80%_15%,_rgba(20,184,166,0.15),_transparent_43%),radial-gradient(circle_at_70%_80%,_rgba(5,150,105,0.16),_transparent_50%),linear-gradient(180deg,_rgba(8,12,14,0.72)_0%,_rgba(8,12,14,0.6)_100%)"
+    : "radial-gradient(circle_at_15%_20%,_rgba(125,211,252,0.28),_transparent_45%),radial-gradient(circle_at_80%_15%,_rgba(134,239,172,0.32),_transparent_45%),radial-gradient(circle_at_70%_80%,_rgba(253,224,71,0.2),_transparent_50%),radial-gradient(circle_at_10%_85%,_rgba(59,130,246,0.18),_transparent_45%)";
+  const nutritionWash = isDark
+    ? "linear-gradient(180deg,_rgba(4,7,10,0.2)_0%,_rgba(4,7,10,0.35)_40%,_rgba(4,7,10,0.55)_100%)"
+    : "linear-gradient(180deg,_rgba(255,255,255,0.9)_0%,_rgba(255,255,255,0.7)_35%,_rgba(255,255,255,0.85)_100%)";
 
   return (
     <div className="pointer-events-none fixed inset-0 z-0">
@@ -372,8 +386,11 @@ const ExperienceBackdrop = () => {
           style={{ background: nutritionHudGradient }}
         />
         <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,_rgba(125,211,252,0.28),_transparent_45%),radial-gradient(circle_at_80%_15%,_rgba(134,239,172,0.32),_transparent_45%),radial-gradient(circle_at_70%_80%,_rgba(253,224,71,0.2),_transparent_50%),radial-gradient(circle_at_10%_85%,_rgba(59,130,246,0.18),_transparent_45%)] opacity-70" />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,_rgba(255,255,255,0.9)_0%,_rgba(255,255,255,0.7)_35%,_rgba(255,255,255,0.85)_100%)]" />
+          <div
+            className="absolute inset-0 opacity-70"
+            style={{ background: nutritionOverlay }}
+          />
+          <div className="absolute inset-0" style={{ background: nutritionWash }} />
         </div>
       </div>
       {/* Fitness layer */}

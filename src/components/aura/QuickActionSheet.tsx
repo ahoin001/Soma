@@ -23,22 +23,22 @@ export const QuickActionSheet = ({
   onCreateFood,
 }: QuickActionSheetProps) => (
   <Drawer open={open} onOpenChange={onOpenChange}>
-    <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6 overflow-hidden">
+    <DrawerContent className="overflow-hidden rounded-t-[36px] border-none bg-background pb-6">
       <div className="aura-sheet-scroll">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+          <p className="text-xs uppercase tracking-[0.2em] text-primary">
             Quick add
           </p>
-          <h2 className="text-xl font-display font-semibold text-slate-900">
+          <h2 className="text-xl font-display font-semibold text-foreground">
             Add to your day
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Choose a meal and jump in.
           </p>
         </div>
 
         <div className="mt-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Meal target
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -49,8 +49,8 @@ export const QuickActionSheet = ({
                 onClick={() => onSelectMeal(meal)}
                 className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition ${
                   selectedMeal?.id === meal.id
-                    ? "border-emerald-400 bg-emerald-50 text-emerald-700"
-                    : "border-slate-200 bg-white text-slate-600"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-card text-secondary-foreground"
                 }`}
               >
                 <span>{meal.emoji}</span>
@@ -63,31 +63,31 @@ export const QuickActionSheet = ({
         <div className="mt-5 grid grid-cols-2 gap-3">
           <Button
             type="button"
-            className="h-auto flex-col items-start rounded-[22px] bg-white px-4 py-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
+            className="h-auto flex-col items-start rounded-[22px] bg-card px-4 py-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
             onClick={onAddFood}
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-primary">
               <Search className="h-4 w-4" />
             </div>
-            <p className="mt-3 text-sm font-semibold text-slate-800">
+            <p className="mt-3 text-sm font-semibold text-foreground">
               Add food
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Search and track quickly
             </p>
           </Button>
           <Button
             type="button"
-            className="h-auto flex-col items-start rounded-[22px] bg-white px-4 py-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
+            className="h-auto flex-col items-start rounded-[22px] bg-card px-4 py-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
             onClick={onCreateFood}
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-primary">
               <PlusCircle className="h-4 w-4" />
             </div>
-            <p className="mt-3 text-sm font-semibold text-slate-800">
+            <p className="mt-3 text-sm font-semibold text-foreground">
               Create food
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Log a custom item
             </p>
           </Button>

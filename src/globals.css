@@ -192,36 +192,44 @@
     --accent: var(--palette-dark-accent);
     --accent-foreground: var(--palette-dark-accent-foreground);
     --ring: var(--palette-dark-ring);
-  }
-
-  .dark.experience-nutrition {
-    --background: 222 24% 11%;
-    --foreground: 210 40% 98%;
-    --card: 222 20% 14%;
-    --card-foreground: 210 40% 98%;
-    --primary: var(--palette-dark-primary);
-    --primary-foreground: var(--palette-dark-primary-foreground);
-    --secondary: var(--palette-dark-secondary);
-    --secondary-foreground: var(--palette-dark-secondary-foreground);
-    --muted: 222 18% 16%;
-    --muted-foreground: 215 20% 70%;
-    --accent: var(--palette-dark-accent);
-    --accent-foreground: var(--palette-dark-accent-foreground);
-    --ring: var(--palette-dark-ring);
     --border: 222 16% 22%;
     --input: 222 16% 22%;
   }
 
-  .dark.experience-fitness {
-    --background: 222 24% 8%;
+  .dark.experience-nutrition,
+  .dark .experience-nutrition {
+    --background: 222 32% 8%;
     --foreground: 210 40% 98%;
-    --card: 222 20% 12%;
+    --card: 222 26% 11%;
     --card-foreground: 210 40% 98%;
     --primary: var(--palette-dark-primary);
     --primary-foreground: var(--palette-dark-primary-foreground);
-    --secondary: 222 18% 15%;
+    --secondary: 222 24% 14%;
+    --secondary-foreground: var(--palette-dark-secondary-foreground);
+    --muted: 222 22% 15%;
+    --muted-foreground: 215 18% 74%;
+    --accent: 222 24% 16%;
+    --accent-foreground: var(--palette-dark-accent-foreground);
+    --ring: var(--palette-dark-ring);
+    --border: 222 18% 24%;
+    --input: 222 18% 24%;
+  }
+
+  /*
+   * IronFlow keeps its core dark visual language independent of dark mode toggle.
+   * Only palette accents (emerald/ocean) should shift via theme variables.
+   */
+  .dark.experience-fitness,
+  .dark .experience-fitness {
+    --background: 222 24% 10%;
+    --foreground: 210 40% 98%;
+    --card: 222 20% 13%;
+    --card-foreground: 210 40% 98%;
+    --primary: var(--palette-dark-primary);
+    --primary-foreground: var(--palette-dark-primary-foreground);
+    --secondary: 222 18% 16%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 222 18% 15%;
+    --muted: 222 18% 16%;
     --muted-foreground: 215 20% 70%;
     --accent: var(--palette-dark-accent);
     --accent-foreground: var(--palette-dark-accent-foreground);

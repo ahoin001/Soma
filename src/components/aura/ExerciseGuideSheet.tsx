@@ -495,22 +495,22 @@ export const ExerciseGuideSheet = ({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-full bg-white/10 text-white hover:bg-white/20"
+            className="h-10 w-10 rounded-full bg-secondary/35 text-foreground hover:bg-secondary/65"
             onClick={() => handleOpenChange(false)}
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <div className="text-center">
-            <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Exercise guide
             </p>
-            <p className="text-sm text-white/70">{exercise.name}</p>
+            <p className="text-sm text-foreground/80">{exercise.name}</p>
           </div>
           <div className="h-10 w-10" />
         </div>
       ) : (
         <div className="mt-2 text-center">
-          <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
             Exercise guide
           </p>
           <h3 className="mt-2 text-2xl font-display font-semibold">
@@ -527,15 +527,15 @@ export const ExerciseGuideSheet = ({
       >
           <motion.div
             variants={sectionVariants}
-            className="mt-6 overflow-hidden rounded-[24px] border border-white/10 bg-gradient-to-br from-emerald-500/20 via-slate-950 to-slate-950"
+            className="mt-6 overflow-hidden rounded-[24px] border border-border/70 bg-gradient-to-br from-primary/20 via-background to-background"
           >
             <div className="flex h-44 items-center justify-center">
               {mediaUrl && mediaKind === "youtube" ? (
-                <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-white/70">
+                <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-foreground/80">
                   <span className="text-sm">YouTube guide saved</span>
                   <Button
                     variant="outline"
-                    className="rounded-full border-white/20 text-white hover:bg-white/10"
+                    className="rounded-full border-border/70 text-foreground hover:bg-secondary/35"
                     onClick={() => window.open(mediaUrl, "_blank")}
                   >
                     Open video
@@ -556,7 +556,7 @@ export const ExerciseGuideSheet = ({
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <span className="text-sm text-white/60">{mediaLabel}</span>
+                <span className="text-sm text-muted-foreground">{mediaLabel}</span>
               )}
             </div>
           </motion.div>
@@ -564,7 +564,7 @@ export const ExerciseGuideSheet = ({
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
-                className="rounded-full border-white/20 text-white hover:bg-white/10"
+                className="rounded-full border-border/70 text-foreground hover:bg-secondary/35"
                 onClick={() => {
                   if (mediaKind === "youtube" && mediaUrl) {
                     window.open(mediaUrl, "_blank");
@@ -578,7 +578,7 @@ export const ExerciseGuideSheet = ({
               </Button>
               {selectedItem && selectedIsUser ? (
                 <Button
-                  className="rounded-full bg-white/10 text-white hover:bg-white/20"
+                className="rounded-full bg-secondary/35 text-foreground hover:bg-secondary/65"
                   onClick={async () => {
                     const prevItems = mediaItems;
                     const prevUrl = mediaUrl;
@@ -625,7 +625,7 @@ export const ExerciseGuideSheet = ({
               {selectedItem && selectedIsUser ? (
                 <Button
                   variant="outline"
-                  className="rounded-full border-rose-400/40 text-rose-200 hover:bg-rose-500/20"
+                  className="rounded-full border-destructive/50 text-destructive hover:bg-destructive/15"
                   onClick={async () => {
                     const prevItems = mediaItems;
                     const prevSelected = selectedMediaId;
@@ -681,7 +681,7 @@ export const ExerciseGuideSheet = ({
               ) : null}
               {selectedItem && isAdmin ? (
                 <Button
-                  className="rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                  className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={async () => {
                     try {
                       setSaving(true);
@@ -710,7 +710,7 @@ export const ExerciseGuideSheet = ({
 
           {!loadingMedia && mediaItems.length ? (
             <motion.div variants={sectionVariants} className="mt-4">
-              <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-white/50">
+              <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 <span>Gallery</span>
                 <span>{mediaItems.length} items</span>
               </div>
@@ -726,8 +726,8 @@ export const ExerciseGuideSheet = ({
                       key={item.id}
                       type="button"
                       className={`flex h-16 w-full items-center justify-center overflow-hidden rounded-2xl border ${
-                        selected ? "border-emerald-300/80" : "border-white/10"
-                      } bg-white/5 text-white/60 transition`}
+                        selected ? "border-primary/70" : "border-border/70"
+                      } bg-card/55 text-muted-foreground transition`}
                       onClick={() => {
                         setMediaUrl(item.media_url);
                         setMediaKind(item.source_type);
@@ -766,7 +766,7 @@ export const ExerciseGuideSheet = ({
           ) : null}
 
           <motion.div variants={sectionVariants} className="mt-5 space-y-3">
-            <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Steps & cues
             </p>
             {isContentLoading ? (
@@ -786,10 +786,10 @@ export const ExerciseGuideSheet = ({
                     onUpdate({ steps: lines });
                   }}
                   placeholder="1. Set your stance...\n2. Brace core...\n3. Control the eccentric..."
-                  className="min-h-[120px] border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                  className="min-h-[120px] border-border/70 bg-card/55 text-foreground placeholder:text-muted-foreground"
                 />
                 <Button
-                  className="w-full rounded-full bg-white/10 text-white hover:bg-white/20"
+                  className="w-full rounded-full bg-secondary/35 text-foreground hover:bg-secondary/65"
                   disabled={saving}
                   onClick={async () => {
                     const prevSavedAt = overrideSavedAt;
@@ -816,7 +816,7 @@ export const ExerciseGuideSheet = ({
                   Save my default cues
                 </Button>
                 {overrideSavedAt ? (
-                  <p className="text-xs text-white/40">Saved for your account.</p>
+                  <p className="text-xs text-muted-foreground">Saved for your account.</p>
                 ) : null}
               </>
             )}
@@ -825,19 +825,19 @@ export const ExerciseGuideSheet = ({
           {isAdmin && !isContentLoading ? (
             <motion.div
               variants={sectionVariants}
-              className="mt-6 rounded-[24px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-4"
+              className="mt-6 rounded-[24px] border border-primary/30 bg-primary/10 px-4 py-4"
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-emerald-200/80">
+                  <p className="text-xs uppercase tracking-[0.2em] text-primary/80">
                     Admin repair
                   </p>
-                  <p className="text-sm text-white/70">
+                  <p className="text-sm text-foreground/80">
                     Update the master exercise for everyone.
                   </p>
                 </div>
                 <Button
-                  className="rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                  className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={() => setRepairOpen((prev) => !prev)}
                 >
                   {repairOpen ? "Hide" : "Repair"}
@@ -849,29 +849,29 @@ export const ExerciseGuideSheet = ({
                     value={masterName}
                     onChange={(event) => setMasterName(event.target.value)}
                     placeholder="Exercise name"
-                    className="border-emerald-400/30 bg-white/10 text-white placeholder:text-white/50"
+                    className="border-primary/30 bg-card/55 text-foreground placeholder:text-muted-foreground"
                   />
                   <Input
                     value={masterCategory}
                     onChange={(event) => setMasterCategory(event.target.value)}
                     placeholder="Category"
-                    className="border-emerald-400/30 bg-white/10 text-white placeholder:text-white/50"
+                    className="border-primary/30 bg-card/55 text-foreground placeholder:text-muted-foreground"
                   />
                   <Input
                     value={masterMuscles}
                     onChange={(event) => setMasterMuscles(event.target.value)}
                     placeholder="Muscles (comma separated)"
-                    className="border-emerald-400/30 bg-white/10 text-white placeholder:text-white/50"
+                    className="border-primary/30 bg-card/55 text-foreground placeholder:text-muted-foreground"
                   />
                   <Input
                     value={masterImageUrl}
                     onChange={(event) => setMasterImageUrl(event.target.value)}
                     placeholder="Thumbnail image URL"
-                    className="border-emerald-400/30 bg-white/10 text-white placeholder:text-white/50"
+                    className="border-primary/30 bg-card/55 text-foreground placeholder:text-muted-foreground"
                   />
-                  <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-emerald-400/30 bg-white/10 px-4 py-3 text-xs font-semibold text-emerald-100">
+                  <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-primary/30 bg-card/55 px-4 py-3 text-xs font-semibold text-primary/90">
                     <span>{thumbnailUploading ? "Uploading..." : "Upload thumbnail"}</span>
-                    <span className="text-emerald-200">Browse</span>
+                    <span className="text-primary">Browse</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -895,30 +895,30 @@ export const ExerciseGuideSheet = ({
                     />
                   </label>
                   {thumbnailUploading ? (
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-emerald-400/15">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-primary/15">
                       <div
-                        className="h-full rounded-full bg-emerald-300 transition-all"
+                        className="h-full rounded-full bg-primary transition-all"
                         style={{ width: `${thumbnailProgress}%` }}
                       />
                     </div>
                   ) : null}
                   {thumbnailNotice ? (
-                    <p className="text-xs text-emerald-200">{thumbnailNotice}</p>
+                    <p className="text-xs text-primary">{thumbnailNotice}</p>
                   ) : null}
                   <Input
                     value={masterEquipment}
                     onChange={(event) => setMasterEquipment(event.target.value)}
                     placeholder="Equipment (comma separated)"
-                    className="border-emerald-400/30 bg-white/10 text-white placeholder:text-white/50"
+                    className="border-primary/30 bg-card/55 text-foreground placeholder:text-muted-foreground"
                   />
                   <Textarea
                     value={masterDescription}
                     onChange={(event) => setMasterDescription(event.target.value)}
                     placeholder="Master description"
-                    className="min-h-[110px] border-emerald-400/30 bg-white/10 text-white placeholder:text-white/50"
+                    className="min-h-[110px] border-primary/30 bg-card/55 text-foreground placeholder:text-muted-foreground"
                   />
                   <Button
-                    className="w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                    className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                     onClick={async () => {
                       if (!masterId) {
                         toast("Unable to find master exercise");
@@ -1010,7 +1010,7 @@ export const ExerciseGuideSheet = ({
           ) : null}
 
           <motion.div variants={sectionVariants} className="mt-5 space-y-3">
-            <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Video link
             </p>
             {isContentLoading ? (
@@ -1024,19 +1024,19 @@ export const ExerciseGuideSheet = ({
                   value={exercise.guideUrl ?? ""}
                   onChange={(event) => onUpdate({ guideUrl: event.target.value })}
                   placeholder="https://youtube.com/..."
-                  className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                  className="border-border/70 bg-card/55 text-foreground placeholder:text-muted-foreground"
                 />
                 {exercise.guideUrl ? (
                   <div className="grid gap-2">
                     <Button
                       variant="outline"
-                      className="w-full rounded-full border-white/20 text-white hover:bg-white/10"
+                      className="w-full rounded-full border-border/70 text-foreground hover:bg-secondary/35"
                       onClick={() => window.open(exercise.guideUrl, "_blank")}
                     >
                       Open guide
                     </Button>
                     <Button
-                      className="w-full rounded-full bg-white/10 text-white hover:bg-white/20"
+                      className="w-full rounded-full bg-secondary/35 text-foreground hover:bg-secondary/65"
                       onClick={async () => {
                         if (!exercise.guideUrl) return;
                         const prevUrl = mediaUrl;
@@ -1093,20 +1093,20 @@ export const ExerciseGuideSheet = ({
           </motion.div>
 
           <motion.div variants={sectionVariants} className="mt-5 space-y-3">
-            <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Upload your own video
             </p>
             {isContentLoading ? (
               <Skeleton className="h-12 w-full rounded-2xl" />
             ) : (
               <>
-                <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
+                <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-border/70 bg-card/55 px-4 py-3 text-sm text-foreground/80">
                   <span>
                     {exercise.customVideoName
                       ? exercise.customVideoName
                       : "Choose a file"}
                   </span>
-                  <span className="text-emerald-300">Upload</span>
+                  <span className="text-primary">Upload</span>
                   <input
                     type="file"
                     accept="video/*"
@@ -1192,7 +1192,7 @@ export const ExerciseGuideSheet = ({
                   />
                 </label>
                 {uploadStatus ? (
-                  <p className="text-xs text-emerald-200">{uploadStatus}</p>
+                  <p className="text-xs text-primary">{uploadStatus}</p>
                 ) : null}
               </>
             )}
@@ -1200,7 +1200,7 @@ export const ExerciseGuideSheet = ({
 
       <motion.div variants={sectionVariants} className="mt-6">
         <Button
-          className="w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+          className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => handleOpenChange(false)}
         >
           Done
@@ -1208,17 +1208,17 @@ export const ExerciseGuideSheet = ({
       </motion.div>
 
       <AlertDialog open={leaveConfirmOpen} onOpenChange={setLeaveConfirmOpen}>
-        <AlertDialogContent className="border-white/10 bg-slate-900 text-white">
+        <AlertDialogContent className="border-border/70 bg-card text-foreground">
           <AlertDialogTitle>Media still uploading</AlertDialogTitle>
           <AlertDialogDescription>
             If you leave now, the upload may not finish. Stay to ensure it completes?
           </AlertDialogDescription>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/20 text-white hover:bg-white/10">
+            <AlertDialogCancel className="border-border/70 text-foreground hover:bg-secondary/35">
               Stay
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-emerald-500 text-white hover:bg-emerald-600"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => {
                 setLeaveConfirmOpen(false);
                 onOpenChange(false);
@@ -1234,26 +1234,26 @@ export const ExerciseGuideSheet = ({
   );
 
   const viewer = viewerOpen ? (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 px-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 px-5">
       <div className="w-full max-w-lg space-y-4">
-        <div className="flex items-center justify-between text-white">
-          <span className="text-sm uppercase tracking-[0.2em] text-white/60">
+        <div className="flex items-center justify-between text-foreground">
+          <span className="text-sm uppercase tracking-[0.2em] text-muted-foreground">
             Full view
           </span>
           <Button
             variant="ghost"
-            className="rounded-full text-white/70 hover:bg-white/10"
+            className="rounded-full text-foreground/80 hover:bg-secondary/35"
             onClick={() => setViewerOpen(false)}
           >
             Close
           </Button>
         </div>
-        <div className="overflow-hidden rounded-[28px] border border-white/10 bg-black">
+        <div className="overflow-hidden rounded-[28px] border border-border/70 bg-background">
           {mediaUrl && mediaKind === "youtube" ? (
-            <div className="flex h-56 items-center justify-center text-white/70">
+            <div className="flex h-56 items-center justify-center text-foreground/80">
               <Button
                 variant="outline"
-                className="rounded-full border-white/20 text-white hover:bg-white/10"
+                className="rounded-full border-border/70 text-foreground hover:bg-secondary/35"
                 onClick={() => window.open(mediaUrl, "_blank")}
               >
                 Open video
@@ -1281,7 +1281,7 @@ export const ExerciseGuideSheet = ({
 
   if (variant === "page") {
     return (
-      <div className="min-h-screen bg-slate-950 text-white">
+      <div className="min-h-screen bg-background text-foreground">
         {content}
         {viewer}
       </div>
@@ -1290,7 +1290,7 @@ export const ExerciseGuideSheet = ({
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
-      <DrawerContent className="rounded-t-[36px] border-none bg-slate-950 pb-6 text-white">
+      <DrawerContent className="rounded-t-[36px] border-none bg-background pb-6 text-foreground">
         {content}
       </DrawerContent>
       {viewer}

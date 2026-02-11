@@ -11,21 +11,21 @@ type MealCardProps = {
 
 export const MealCard = ({ meal, onAdd }: MealCardProps) => (
   <Pressable>
-    <Card className="flex items-center justify-between rounded-[28px] border border-black/5 bg-white px-4 py-4 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
+    <Card className="flex items-center justify-between rounded-[28px] border border-border/60 bg-card px-4 py-4 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
       <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-xl">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary text-xl">
           {meal.emoji}
         </div>
         <div>
-          <p className="text-sm font-semibold text-slate-800">{meal.label}</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-sm font-semibold text-foreground">{meal.label}</p>
+          <p className="text-xs text-muted-foreground">
             Recommended: {meal.recommended}
           </p>
         </div>
       </div>
       <Button
         size="icon"
-        className="h-10 w-10 rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200"
+        className="h-10 w-10 rounded-full bg-primary/15 text-primary hover:bg-primary/25"
         onClick={onAdd}
       >
         <Plus className="h-5 w-5" />

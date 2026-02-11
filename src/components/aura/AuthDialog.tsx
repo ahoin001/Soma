@@ -50,7 +50,7 @@ export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
         <div className="space-y-4">
           {mode === "register" && (
             <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Display name
               </label>
               <Input
@@ -66,7 +66,7 @@ export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
           )}
           {(mode === "login" || mode === "register" || mode === "reset") && (
             <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Email
               </label>
               <Input
@@ -83,7 +83,7 @@ export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
           )}
           {(mode === "login" || mode === "register" || (mode === "reset" && token.trim())) && (
             <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 {mode === "reset" ? "New password" : "Password"}
               </label>
               <Input
@@ -94,13 +94,13 @@ export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
                 }}
                 placeholder="Minimum 8 characters"
                 type="password"
-                className={`rounded-full ${error ? "border-rose-300 focus-visible:ring-rose-200" : ""}`}
+                className={`rounded-full ${error ? "border-destructive/60 focus-visible:ring-destructive/25" : ""}`}
               />
             </div>
           )}
           {mode === "reset" && (
             <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Token
               </label>
               <Input
@@ -114,11 +114,11 @@ export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
               />
             </div>
           )}
-          {error && <p className="text-xs text-rose-500">{error}</p>}
-          {notice && <p className="text-xs text-emerald-600">{notice}</p>}
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          {notice && <p className="text-xs text-primary">{notice}</p>}
           <Button
             type="button"
-            className="w-full rounded-full bg-aura-primary py-5 text-sm font-semibold text-white disabled:opacity-70"
+            className="w-full rounded-full bg-primary py-5 text-sm font-semibold text-primary-foreground disabled:opacity-70"
             onClick={handleSubmit}
             disabled={!canSubmit || status === "loading"}
           >
@@ -135,7 +135,7 @@ export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
           {onClose && mode !== "reset" ? (
             <button
               type="button"
-              className="w-full rounded-full border border-slate-200 bg-white py-3 text-xs font-semibold text-slate-500"
+              className="w-full rounded-full border border-border bg-card py-3 text-xs font-semibold text-muted-foreground"
               onClick={onClose}
             >
               Continue without account
@@ -143,7 +143,7 @@ export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
           ) : null}
           <button
             type="button"
-            className="w-full text-xs text-emerald-600"
+            className="w-full text-xs text-primary"
             onClick={() => setModeAndClear(mode === "register" ? "login" : "register")}
           >
             {mode === "register"
@@ -151,7 +151,7 @@ export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
               : "New here? Create an account"}
           </button>
           {mode === "login" && (
-            <div className="flex items-center justify-between text-[11px] text-slate-400">
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
               <button type="button" onClick={() => setModeAndClear("reset")}>
                 Forgot password?
               </button>
@@ -160,7 +160,7 @@ export const AuthDialog = ({ open, onClose }: AuthDialogProps) => {
           {mode === "reset" && (
             <button
               type="button"
-              className="w-full text-xs text-slate-500"
+              className="w-full text-xs text-muted-foreground"
               onClick={() => setModeAndClear("login")}
             >
               Back to sign in

@@ -171,16 +171,16 @@ const FitnessProgress = () => {
       onAddAction={() => navigate("/fitness")}
       safeAreaTop="extra"
     >
-      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-white">
+      <div className="mx-auto w-full max-w-[420px] px-4 pb-10 pt-6 text-foreground">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Pulse
             </p>
             <h1 className="mt-2 text-2xl font-display font-semibold">
               Progress
             </h1>
-            <p className="mt-1 text-sm text-white/60">
+            <p className="mt-1 text-sm text-muted-foreground">
               {hasData
                 ? `Last ${WEEKS} weeks · volume & sets`
                 : "Trends will appear as you log workouts."}
@@ -188,7 +188,7 @@ const FitnessProgress = () => {
           </div>
           <Button
             variant="ghost"
-            className="h-10 rounded-full bg-white/10 text-white hover:bg-white/20"
+            className="h-10 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
             onClick={() => navigate("/fitness")}
           >
             Back
@@ -199,32 +199,32 @@ const FitnessProgress = () => {
           <>
             {(volumeTrend && typeof volumeTrend === "object") ||
             (setsTrend && typeof setsTrend === "object") ? (
-              <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+              <div className="mt-6 rounded-2xl border border-border/70 bg-card/55 px-4 py-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Trend (recent half vs previous half of period)
                 </p>
                 <div className="mt-2 flex flex-wrap gap-3 text-sm">
                   {volumeTrend && typeof volumeTrend === "object" && (
-                    <span className="text-white/80">
+                    <span className="text-foreground/85">
                       Volume:{" "}
                       {volumeTrend.direction === "up" ? (
-                        <span className="text-emerald-400">↑ {volumeTrend.pct}%</span>
+                        <span className="text-primary">↑ {volumeTrend.pct}%</span>
                       ) : volumeTrend.direction === "down" ? (
-                        <span className="text-amber-400/90">↓ {Math.abs(volumeTrend.pct)}%</span>
+                        <span className="text-destructive/90">↓ {Math.abs(volumeTrend.pct)}%</span>
                       ) : (
-                        <span className="text-white/60">steady</span>
+                        <span className="text-muted-foreground">steady</span>
                       )}
                     </span>
                   )}
                   {setsTrend && typeof setsTrend === "object" && (
-                    <span className="text-white/80">
+                    <span className="text-foreground/85">
                       Sets:{" "}
                       {setsTrend.direction === "up" ? (
-                        <span className="text-emerald-400">↑ {setsTrend.pct}%</span>
+                        <span className="text-primary">↑ {setsTrend.pct}%</span>
                       ) : setsTrend.direction === "down" ? (
-                        <span className="text-amber-400/90">↓ {Math.abs(setsTrend.pct)}%</span>
+                        <span className="text-destructive/90">↓ {Math.abs(setsTrend.pct)}%</span>
                       ) : (
-                        <span className="text-white/60">steady</span>
+                        <span className="text-muted-foreground">steady</span>
                       )}
                     </span>
                   )}
@@ -232,60 +232,60 @@ const FitnessProgress = () => {
               </div>
             ) : null}
             <div className="mt-6 grid grid-cols-2 gap-3">
-              <div className="rounded-[22px] border border-white/10 bg-white/5 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+              <div className="rounded-[22px] border border-border/70 bg-card/55 px-4 py-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Total volume
                 </p>
-                <p className="mt-1 text-xl font-semibold text-emerald-400">
+                <p className="mt-1 text-xl font-semibold text-primary">
                   {totalVolume.toLocaleString()} kg
                 </p>
-                <p className="text-xs text-white/50">Last {WEEKS} weeks</p>
+                <p className="text-xs text-muted-foreground">Last {WEEKS} weeks</p>
               </div>
-              <div className="rounded-[22px] border border-white/10 bg-white/5 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+              <div className="rounded-[22px] border border-border/70 bg-card/55 px-4 py-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Total sets
                 </p>
-                <p className="mt-1 text-xl font-semibold text-emerald-400">
+                <p className="mt-1 text-xl font-semibold text-primary">
                   {totalSets.toLocaleString()}
                 </p>
-                <p className="text-xs text-white/50">Last {WEEKS} weeks</p>
+                <p className="text-xs text-muted-foreground">Last {WEEKS} weeks</p>
               </div>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-3">
-              <div className="rounded-[22px] border border-white/10 bg-white/5 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+              <div className="rounded-[22px] border border-border/70 bg-card/55 px-4 py-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Weekly average
                 </p>
-                <p className="mt-1 text-xl font-semibold text-white">
+                <p className="mt-1 text-xl font-semibold text-foreground">
                   {weeklyAverage.toLocaleString()} kg
                 </p>
-                <p className="text-xs text-white/50">Last {WEEKS} weeks</p>
+                <p className="text-xs text-muted-foreground">Last {WEEKS} weeks</p>
               </div>
-              <div className="rounded-[22px] border border-white/10 bg-white/5 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+              <div className="rounded-[22px] border border-border/70 bg-card/55 px-4 py-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Best week
                 </p>
-                <p className="mt-1 text-xl font-semibold text-white">
+                <p className="mt-1 text-xl font-semibold text-foreground">
                   {bestWeek?.volume.toLocaleString() ?? "0"} kg
                 </p>
-                <p className="text-xs text-white/50">
+                <p className="text-xs text-muted-foreground">
                   {bestWeek ? formatWeekLabel(bestWeek.week_start) : "—"}
                 </p>
               </div>
             </div>
 
-            <div className="mt-6 rounded-[28px] border border-white/10 bg-white/5 px-3 py-4">
+            <div className="mt-6 rounded-[28px] border border-border/70 bg-card/55 px-3 py-4">
               <div className="mb-3 flex items-baseline justify-between gap-2">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Weekly volume
                 </p>
-                <p className="text-[10px] text-white/40">
+                <p className="text-[10px] text-muted-foreground">
                   {formatWeekRange(chartData)}
                 </p>
               </div>
               <ChartContainer
                 config={trainingChartConfig}
-                className="h-[220px] w-full [&_.recharts-cartesian-axis-tick_text]:fill-white/50"
+                className="h-[220px] w-full [&_.recharts-cartesian-axis-tick_text]:fill-foreground/50"
               >
                 <BarChart
                   data={chartData}
@@ -344,17 +344,17 @@ const FitnessProgress = () => {
                   />
                 </BarChart>
               </ChartContainer>
-              <p className="mt-1 text-center text-[10px] text-white/40">
+              <p className="mt-1 text-center text-[10px] text-muted-foreground">
                 Volume (kg) per week
               </p>
             </div>
-            <div className="mt-6 rounded-[28px] border border-white/10 bg-white/5 px-4 py-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+            <div className="mt-6 rounded-[28px] border border-border/70 bg-card/55 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 Sets per week
               </p>
               <ChartContainer
                 config={trainingChartConfig}
-                className="mt-3 h-[220px] w-full [&_.recharts-cartesian-axis-tick_text]:fill-white/50"
+                className="mt-3 h-[220px] w-full [&_.recharts-cartesian-axis-tick_text]:fill-foreground/50"
               >
                 <BarChart
                   data={chartData}
@@ -394,25 +394,25 @@ const FitnessProgress = () => {
                   />
                 </BarChart>
               </ChartContainer>
-              <p className="mt-1 text-center text-[10px] text-white/40">
+              <p className="mt-1 text-center text-[10px] text-muted-foreground">
                 Total sets per week
               </p>
             </div>
           </>
         ) : (
-          <div className="mt-6 rounded-[28px] border border-white/10 bg-white/5 px-6 py-10 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
-              <TrendingUp className="h-8 w-8 text-white/50" />
+          <div className="mt-6 rounded-[28px] border border-border/70 bg-card/55 px-6 py-10 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
+              <TrendingUp className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h2 className="mt-4 text-lg font-semibold text-white">
+            <h2 className="mt-4 text-lg font-semibold text-foreground">
               No training data yet
             </h2>
-            <p className="mt-2 text-sm text-white/60">
+            <p className="mt-2 text-sm text-muted-foreground">
               Log workouts from IronFlow to see weekly volume, total sets, and
               estimated 1RM trends here.
             </p>
             <Button
-              className="mt-6 w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+              className="mt-6 w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => navigate("/fitness")}
             >
               Go to workouts
@@ -420,16 +420,16 @@ const FitnessProgress = () => {
           </div>
         )}
 
-        <div className="mt-8 rounded-[28px] border border-white/10 bg-white/5 px-4 py-4">
+        <div className="mt-8 rounded-[28px] border border-border/70 bg-card/55 px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 Key lift
               </p>
-              <p className="mt-1 text-lg font-semibold text-white">
+              <p className="mt-1 text-lg font-semibold text-foreground">
                 {selectedLiftName || "Pick a lift to track"}
               </p>
-              <p className="text-xs text-white/50">
+              <p className="text-xs text-muted-foreground">
                 PR timeline · estimated 1RM trend
               </p>
             </div>
@@ -439,7 +439,7 @@ const FitnessProgress = () => {
               value={liftQuery}
               onChange={(event) => setLiftQuery(event.target.value)}
               placeholder="Search exercises"
-              className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
+              className="border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
             />
             {exerciseLibrary.results.length > 0 ? (
               <div className="mt-3 grid gap-2">
@@ -447,7 +447,7 @@ const FitnessProgress = () => {
                   <button
                     key={exercise.id}
                     type="button"
-                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-left text-sm text-white/80 hover:border-white/30"
+                    className="flex items-center justify-between rounded-2xl border border-border/70 bg-card/60 px-3 py-2 text-left text-sm text-foreground/85 hover:border-border"
                     onClick={() => {
                       setSelectedLiftId(exercise.id);
                       setSelectedLiftName(exercise.name);
@@ -455,7 +455,7 @@ const FitnessProgress = () => {
                     }}
                   >
                     <span>{exercise.name}</span>
-                    <span className="text-xs text-white/40">
+                    <span className="text-xs text-muted-foreground">
                       {exercise.muscles[0] ?? exercise.category}
                     </span>
                   </button>
@@ -466,19 +466,19 @@ const FitnessProgress = () => {
           {selectedLiftId ? (
             <div className="mt-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-[20px] border border-white/10 bg-white/5 px-3 py-3">
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+                <div className="rounded-[20px] border border-border/70 bg-card/60 px-3 py-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                     Latest est 1RM
                   </p>
-                  <p className="mt-1 text-lg font-semibold text-emerald-300">
+                  <p className="mt-1 text-lg font-semibold text-primary">
                     {latestOneRm ? `${latestOneRm} kg` : "—"}
                   </p>
                 </div>
-                <div className="rounded-[20px] border border-white/10 bg-white/5 px-3 py-3">
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+                <div className="rounded-[20px] border border-border/70 bg-card/60 px-3 py-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                     PR timeline
                   </p>
-                  <div className="mt-1 space-y-1 text-xs text-white/70">
+                  <div className="mt-1 space-y-1 text-xs text-foreground/75">
                     {prTimeline.length === 0 ? (
                       <p>No PRs yet</p>
                     ) : (
@@ -495,13 +495,13 @@ const FitnessProgress = () => {
                   </div>
                 </div>
               </div>
-              <div className="rounded-[22px] border border-white/10 bg-white/5 px-3 py-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+              <div className="rounded-[22px] border border-border/70 bg-card/60 px-3 py-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Estimated 1RM trend
                 </p>
                 <ChartContainer
                   config={liftChartConfig}
-                  className="mt-3 h-[200px] w-full [&_.recharts-cartesian-axis-tick_text]:fill-white/50"
+                  className="mt-3 h-[200px] w-full [&_.recharts-cartesian-axis-tick_text]:fill-foreground/50"
                 >
                   <LineChart data={liftTrend} margin={{ top: 8, right: 8, bottom: 16, left: 28 }}>
                     <XAxis

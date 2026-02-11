@@ -54,35 +54,35 @@ export const WorkoutExerciseEditorSheet = ({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="rounded-t-[36px] border-none bg-slate-950 pb-6 text-white">
+      <DrawerContent className="rounded-t-[36px] border-none bg-background pb-6 text-foreground">
         {workout && (
         <div className="aura-sheet-body-fit">
             <div className="mt-2 text-center">
-              <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 {plan?.name ?? "Workout plan"}
               </p>
               <h3 className="mt-2 text-2xl font-display font-semibold">
                 Edit exercises
               </h3>
-              <p className="mt-1 text-sm text-white/60">{workout.name}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{workout.name}</p>
             </div>
 
             <div className="mt-6 space-y-3">
               {exercises.map((exercise, index) => (
                 <div
                   key={`${exercise}-${index}`}
-                  className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2"
+                  className="flex items-center gap-2 rounded-2xl border border-border/70 bg-card/55 px-3 py-2"
                 >
                   <Input
                     value={exercise}
                     onChange={(event) => updateExercise(index, event.target.value)}
-                    className="border-white/10 bg-white/5 text-white"
+                    className="border-border/70 bg-card/55 text-foreground"
                   />
                   <div className="flex flex-col gap-1">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-white/60 hover:text-white"
+                      className="h-8 w-8 text-foreground/70 hover:text-foreground"
                       onClick={() => moveExercise(index, "up")}
                       disabled={index === 0}
                     >
@@ -91,7 +91,7 @@ export const WorkoutExerciseEditorSheet = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-white/60 hover:text-white"
+                      className="h-8 w-8 text-foreground/70 hover:text-foreground"
                       onClick={() => moveExercise(index, "down")}
                       disabled={index === exercises.length - 1}
                     >
@@ -101,7 +101,7 @@ export const WorkoutExerciseEditorSheet = ({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-rose-300 hover:text-rose-200"
+                    className="h-8 w-8 text-destructive hover:text-destructive/80"
                     onClick={() => removeExercise(index)}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -115,10 +115,10 @@ export const WorkoutExerciseEditorSheet = ({
                 value={newExercise}
                 onChange={(event) => setNewExercise(event.target.value)}
                 placeholder="Add new exercise"
-                className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                className="border-border/70 bg-card/55 text-foreground placeholder:text-muted-foreground"
               />
               <Button
-                className="rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={handleAddExercise}
               >
                 Add
@@ -127,7 +127,7 @@ export const WorkoutExerciseEditorSheet = ({
 
             <div className="mt-6 grid gap-3">
               <Button
-                className="w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => {
                   const cleaned = exercises.map((item) => item.trim()).filter(Boolean);
                   onSave(cleaned);
@@ -138,7 +138,7 @@ export const WorkoutExerciseEditorSheet = ({
               </Button>
               <Button
                 variant="outline"
-                className="w-full rounded-full border-white/20 text-white hover:bg-white/10"
+                className="w-full rounded-full border-border/70 text-foreground hover:bg-secondary/35"
                 onClick={() => onOpenChange(false)}
               >
                 Cancel

@@ -24,8 +24,8 @@ type PageTransitionProps = {
  * Used by the transition curtain to mask the content swap.
  */
 const TONE_COLORS = {
-  nutrition: "#f0fdf4", // bg-green-50  (AuraFit surface)
-  fitness: "#020617", // bg-slate-950 (IronFlow surface)
+  nutrition: "#f0fdf4", // nutrition surface tint
+  fitness: "#020617", // fitness surface tint
 } as const;
 
 /**

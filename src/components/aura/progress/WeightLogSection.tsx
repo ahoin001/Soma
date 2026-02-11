@@ -40,7 +40,7 @@ export const WeightLogSection = ({
   return (
     <div className="mt-4 grid gap-3">
       {latest && (
-        <div className="flex items-center justify-between gap-2 overflow-hidden rounded-[20px] bg-white/80 px-4 py-3 text-sm text-emerald-800">
+        <div className="flex items-center justify-between gap-2 overflow-hidden rounded-[20px] bg-card/80 px-4 py-3 text-sm text-foreground">
           <span className="shrink-0">Latest</span>
           <span className="truncate font-semibold">
             {latest.weight} lb &middot; {formatShortDate(latest.date)}
@@ -48,13 +48,13 @@ export const WeightLogSection = ({
         </div>
       )}
 
-      <div className="rounded-[20px] border border-emerald-100 bg-white/90 px-4 py-4">
+      <div className="rounded-[20px] border border-border/70 bg-card/90 px-4 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+            <p className="text-xs uppercase tracking-[0.2em] text-primary">
               Log weight
             </p>
-            <p className="mt-1 text-sm font-semibold text-slate-800">
+            <p className="mt-1 text-sm font-semibold text-foreground">
               Check-in
             </p>
           </div>
@@ -69,7 +69,7 @@ export const WeightLogSection = ({
               placeholder="Weight"
               className="h-11 w-full min-w-0 rounded-full pr-10"
             />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-muted-foreground">
               lbs
             </span>
           </div>
@@ -82,7 +82,7 @@ export const WeightLogSection = ({
         </div>
         <Button
           type="button"
-          className="mt-3 w-full rounded-full bg-aura-primary py-4 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
+          className="mt-3 w-full rounded-full bg-primary py-4 text-sm font-semibold text-primary-foreground shadow-[0_16px_30px_rgba(15,23,42,0.35)] hover:bg-primary/90"
           onClick={onSaveEntry}
         >
           Save check-in
@@ -90,21 +90,21 @@ export const WeightLogSection = ({
       </div>
 
       {lastEntries.length > 0 && (
-        <Collapsible className="rounded-[20px] border border-emerald-100 bg-white/90">
+        <Collapsible className="rounded-[20px] border border-border/70 bg-card/90">
           <CollapsibleTrigger asChild>
             <button
               type="button"
               className="group flex w-full items-center justify-between px-4 py-4 text-left"
             >
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+                <p className="text-xs uppercase tracking-[0.2em] text-primary">
                   Recent entries
                 </p>
-                <p className="mt-1 text-sm font-semibold text-slate-800">
+                <p className="mt-1 text-sm font-semibold text-foreground">
                   Correct a weight
                 </p>
               </div>
-              <ChevronDown className="h-4 w-4 shrink-0 text-emerald-400 transition-transform group-data-[state=open]:rotate-180" />
+              <ChevronDown className="h-4 w-4 shrink-0 text-primary transition-transform group-data-[state=open]:rotate-180" />
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent>
@@ -112,9 +112,9 @@ export const WeightLogSection = ({
               {lastEntries.map((entry) => (
                 <div
                   key={entry.date}
-                  className="flex items-center gap-2 rounded-[16px] bg-emerald-50/70 px-3 py-2"
+                  className="flex items-center gap-2 rounded-[16px] bg-secondary/70 px-3 py-2"
                 >
-                  <div className="shrink-0 text-xs font-semibold text-emerald-700">
+                  <div className="shrink-0 text-xs font-semibold text-primary">
                     {formatShortDate(entry.date)}
                   </div>
                   <div className="relative min-w-0 flex-1">
@@ -125,9 +125,9 @@ export const WeightLogSection = ({
                       onChange={(e) =>
                         onEditWeightChange(entry.date, e.target.value)
                       }
-                      className="h-9 w-full rounded-full bg-white pr-10"
+                      className="h-9 w-full rounded-full bg-card pr-10"
                     />
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-muted-foreground">
                       lbs
                     </span>
                   </div>
@@ -153,7 +153,7 @@ export const WeightLogSection = ({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 shrink-0 rounded-full text-rose-400 hover:text-rose-600"
+                    className="h-9 w-9 shrink-0 rounded-full text-destructive hover:text-destructive/80"
                     onClick={() => {
                       onRemoveEntry(entry.date);
                       toast("Weight removed");

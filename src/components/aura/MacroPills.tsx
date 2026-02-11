@@ -13,14 +13,14 @@ export const MacroPills = ({ macros, className }: MacroPillsProps) => (
     {macros.map((macro) => (
       <Card
         key={macro.key}
-        className="rounded-[24px] border border-black/5 bg-white px-3 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
+        className="rounded-[24px] border border-border/60 bg-card px-3 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
       >
-        <p className="text-xs font-semibold text-slate-700">{macro.label}</p>
+        <p className="text-xs font-semibold text-secondary-foreground">{macro.label}</p>
         <Progress
           value={macro.goal > 0 ? (macro.current / macro.goal) * 100 : 0}
-          className="mt-3 h-2 bg-emerald-100"
+          className="mt-3 h-2 bg-primary/15"
         />
-        <p className="mt-3 text-xs text-slate-500">
+        <p className="mt-3 text-xs text-muted-foreground">
           {macro.current}/{macro.goal} {macro.unit}
         </p>
       </Card>

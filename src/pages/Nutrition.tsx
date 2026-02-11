@@ -50,13 +50,7 @@ function NutritionPageSkeleton() {
   return (
     <div className="mx-auto w-full max-w-[420px] px-4 pb-10">
       <div className="-mx-4">
-        <div
-          className="rounded-b-[40px] pb-8 pt-[calc(3rem+var(--sat,env(safe-area-inset-top)))]"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(236,253,245,0.98) 0%, rgba(209,250,229,0.9) 100%)",
-          }}
-        >
+        <div className="rounded-b-[40px] bg-gradient-to-b from-secondary/80 via-secondary/45 to-background pb-8 pt-[calc(3rem+var(--sat,env(safe-area-inset-top)))] dark:from-card dark:via-background/95 dark:to-background">
           <div className="flex justify-center px-5">
             <Skeleton className="h-24 w-24 rounded-full" />
           </div>
@@ -69,7 +63,7 @@ function NutritionPageSkeleton() {
       <div className="mt-4 flex justify-center gap-2">
         <Skeleton className="h-10 w-32 rounded-full" />
       </div>
-      <Card className="mt-6 overflow-hidden rounded-[28px] border border-black/5 bg-white/85 px-5 py-4">
+      <Card className="mt-6 overflow-hidden rounded-[28px] border border-border/60 bg-card/85 px-5 py-4">
         <div className="flex items-center justify-between">
           <div>
             <Skeleton className="h-3 w-24" />
@@ -392,7 +386,7 @@ const Nutrition = () => {
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 2.5, opacity: [0, 0.6, 0] }}
               transition={{ duration: 2.5, ease: "easeOut" }}
-              className="absolute h-64 w-64 rounded-full bg-gradient-to-br from-emerald-300 via-emerald-200 to-transparent blur-3xl"
+              className="absolute h-64 w-64 rounded-full bg-gradient-to-br from-primary/45 via-accent/35 to-transparent blur-3xl"
             />
             
             {/* Floating sparkles */}
@@ -416,7 +410,7 @@ const Nutrition = () => {
                   delay: 0.1 * i,
                   ease: "easeOut",
                 }}
-                className="absolute text-emerald-400"
+                className="absolute text-primary"
               >
                 <Sparkles className="h-5 w-5" />
               </motion.div>
@@ -434,7 +428,7 @@ const Nutrition = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500"
+                className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/80"
               >
                 {locationState?.isNewUser ? "Welcome to" : "Welcome back to"}
               </motion.p>
@@ -442,7 +436,7 @@ const Nutrition = () => {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
-                className="mt-2 text-4xl font-bold text-emerald-700"
+                className="mt-2 text-4xl font-bold text-primary"
               >
                 AuraFit
               </motion.h1>
@@ -450,7 +444,7 @@ const Nutrition = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.6 }}
-                className="mt-2 text-sm text-emerald-600/80"
+                className="mt-2 text-sm text-primary/80"
               >
                 {locationState?.isNewUser 
                   ? "Let's start your wellness journey ✨" 
@@ -502,7 +496,7 @@ const Nutrition = () => {
           return isViewingToday ? (
             <Button
               variant="outline"
-              className="mt-4 w-full rounded-full border-emerald-200 bg-white/80 text-emerald-800 shadow-sm hover:bg-emerald-50 hover:border-emerald-300"
+              className="mt-4 w-full rounded-full border-border/70 bg-card/80 text-primary shadow-sm hover:bg-secondary/70 hover:border-border"
               onClick={() => copyDayFrom(yesterdayLocal)}
               disabled={isCopyingDay}
             >
@@ -543,7 +537,7 @@ const Nutrition = () => {
           onSetTotal={waterSummary.setWaterTotal}
           onGoalSave={(value) => waterSummary.updateGoal(value)}
         />
-        <Card className="mt-6 rounded-[24px] border border-black/5 bg-card px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
+        <Card className="mt-6 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
@@ -666,7 +660,7 @@ const Nutrition = () => {
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-3 space-y-4 rounded-[16px] border border-border/60 bg-card px-3 py-3">
                 <div>
-                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     <span>Duration</span>
                     <span>{Math.round(experienceTransitionConfig.durationMs)} ms</span>
                   </div>
@@ -682,7 +676,7 @@ const Nutrition = () => {
                   />
                 </div>
                 <div>
-                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     <span>Curve</span>
                     <span>{experienceTransitionConfig.curve.toFixed(2)}</span>
                   </div>
@@ -698,7 +692,7 @@ const Nutrition = () => {
                   />
                 </div>
                 <div>
-                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     <span>Origin</span>
                     <span>{Math.round(experienceTransitionConfig.originY * 100)}%</span>
                   </div>
@@ -714,7 +708,7 @@ const Nutrition = () => {
                   />
                 </div>
                 <div>
-                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     <span>Radius</span>
                     <span>{Math.round(experienceTransitionConfig.radiusPct)}%</span>
                   </div>
@@ -739,7 +733,7 @@ const Nutrition = () => {
           message={insights.streak.message}
         />
 
-        <Card className="mt-6 rounded-[24px] border border-black/5 bg-card px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
+        <Card className="mt-6 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
           <div className="flex flex-col gap-3">
             <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
               Account
@@ -818,10 +812,10 @@ const Nutrition = () => {
       >
         <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6">
           <div className="px-5 pb-6 pt-3">
-            <p className="text-xs uppercase tracking-[0.3em] text-emerald-400">
+            <p className="text-xs uppercase tracking-[0.3em] text-primary/80">
               Admin
             </p>
-            <h3 className="mt-2 text-xl font-display font-semibold text-slate-900">
+            <h3 className="mt-2 text-xl font-display font-semibold text-foreground">
               Food database editor
             </h3>
             <Input
@@ -841,10 +835,10 @@ const Nutrition = () => {
                       state: { food, returnTo: "/nutrition" },
                     });
                   }}
-                  className="flex w-full items-center justify-between rounded-[24px] border border-black/5 bg-white px-4 py-3 text-left shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
+                  className="flex w-full items-center justify-between rounded-[24px] border border-border/60 bg-card px-4 py-3 text-left shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-emerald-50 text-xl">
+                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-secondary text-xl">
                       {showFoodImages && food.imageUrl ? (
                         <img
                           src={food.imageUrl}
@@ -856,17 +850,17 @@ const Nutrition = () => {
                       )}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-slate-800">{food.name}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-sm font-semibold text-foreground">{food.name}</p>
+                      <p className="text-xs text-muted-foreground">
                         {food.portion} • {food.kcal} cal
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs font-semibold text-emerald-600">Edit</span>
+                  <span className="text-xs font-semibold text-primary">Edit</span>
                 </button>
               ))}
               {adminQuery.trim() && apiResults.length === 0 && (
-                <p className="text-sm text-slate-500">No foods found.</p>
+                <p className="text-sm text-muted-foreground">No foods found.</p>
               )}
             </div>
           </div>

@@ -23,8 +23,6 @@ type FoodSearchContentProps = {
   meals: Meal[];
   loggedFoodIds?: Set<string>;
   loggedFoodNames?: Set<string>;
-  pendingFoodKeys?: Set<string>;
-  successFoodKeys?: Set<string>;
   onMealChange: (mealId: string) => void;
   onSelectFood: (food: FoodItem) => void;
   onQuickAddFood: (food: FoodItem) => void;
@@ -47,8 +45,6 @@ export const FoodSearchContent = ({
   meals,
   loggedFoodIds,
   loggedFoodNames,
-  pendingFoodKeys,
-  successFoodKeys,
   onMealChange,
   onSelectFood,
   onQuickAddFood,
@@ -69,22 +65,22 @@ export const FoodSearchContent = ({
   return (
     <div>
       <div className="flex items-center justify-between">
-        <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+        <p className="text-xs uppercase tracking-[0.2em] text-primary">
           {meal?.label ?? "Meal"}
         </p>
         {meal ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-600">
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-[11px] font-semibold text-primary">
             <CheckCircle2 className="h-3 w-3" />
             Selected
           </span>
         ) : null}
       </div>
-      <h2 className="text-xl font-display font-semibold text-slate-900">
+      <h2 className="text-xl font-display font-semibold text-foreground">
         Add food
       </h2>
 
       <div className="mt-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           Log to
         </p>
         <SegmentedControl
@@ -99,8 +95,8 @@ export const FoodSearchContent = ({
               </>
             ),
           }))}
-          className="mt-2 rounded-[18px] border border-emerald-100 bg-white p-2 shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
-          inactiveClassName="bg-emerald-50 hover:bg-emerald-100"
+          className="mt-2 rounded-[18px] border border-border/70 bg-card p-2 shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
+          inactiveClassName="bg-secondary hover:bg-secondary/80"
         />
       </div>
 
@@ -122,27 +118,27 @@ export const FoodSearchContent = ({
         <Button
           type="button"
           variant="secondary"
-          className="h-10 flex-1 rounded-full bg-white text-xs font-semibold text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
+          className="h-10 flex-1 rounded-full bg-card text-xs font-semibold text-secondary-foreground shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
           onClick={() => {
             onTabChange("recent");
             onSearchChange("");
           }}
         >
-          <Heart className="h-4 w-4 text-rose-400" />
+          <Heart className="h-4 w-4 text-destructive" />
           Favorites
         </Button>
         <Button
           type="button"
           variant="secondary"
-          className="h-10 flex-1 rounded-full bg-white text-xs font-semibold text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
+          className="h-10 flex-1 rounded-full bg-card text-xs font-semibold text-secondary-foreground shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
           onClick={onOpenCreate}
         >
-          <PlusCircle className="h-4 w-4 text-emerald-500" />
+          <PlusCircle className="h-4 w-4 text-primary" />
           Create
         </Button>
       </div>
 
-      <div className="mt-4 flex rounded-full bg-white/80 p-1 shadow-[0_10px_24px_rgba(15,23,42,0.06)] backdrop-blur">
+      <div className="mt-4 flex rounded-full bg-card/80 p-1 shadow-[0_10px_24px_rgba(15,23,42,0.06)] backdrop-blur">
         <button
           type="button"
           onClick={() => {
@@ -152,8 +148,8 @@ export const FoodSearchContent = ({
           className={cn(
             "flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition",
             mode === "search"
-              ? "bg-emerald-500 text-white shadow-[0_10px_20px_rgba(16,185,129,0.35)]"
-              : "text-slate-600 hover:text-slate-800",
+              ? "bg-primary text-primary-foreground shadow-[0_10px_20px_rgba(15,23,42,0.35)]"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           <Search className="h-3.5 w-3.5" />
@@ -165,8 +161,8 @@ export const FoodSearchContent = ({
           className={cn(
             "flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition",
             mode === "library"
-              ? "bg-emerald-500 text-white shadow-[0_10px_20px_rgba(16,185,129,0.35)]"
-              : "text-slate-600 hover:text-slate-800",
+              ? "bg-primary text-primary-foreground shadow-[0_10px_20px_rgba(15,23,42,0.35)]"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           <Heart className="h-3.5 w-3.5" />
@@ -174,8 +170,8 @@ export const FoodSearchContent = ({
         </button>
       </div>
 
-      <div className="mt-4 flex items-center gap-2 rounded-full border border-emerald-100 bg-white px-4 py-2 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-        <Search className="h-4 w-4 text-emerald-400" />
+      <div className="mt-4 flex items-center gap-2 rounded-full border border-border/70 bg-card px-4 py-2 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
+        <Search className="h-4 w-4 text-primary" />
         <Input
           ref={inputRef}
           value={searchQuery}
@@ -186,7 +182,7 @@ export const FoodSearchContent = ({
         {hasQuery ? (
           <button
             type="button"
-            className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100"
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-primary transition hover:bg-primary/15"
             onClick={() => onSearchChange("")}
             aria-label="Clear search"
           >
@@ -195,13 +191,13 @@ export const FoodSearchContent = ({
         ) : null}
       </div>
       {isSearching ? (
-        <div className="mt-3 text-xs font-semibold text-emerald-500">
+        <div className="mt-3 text-xs font-semibold text-primary">
           Searching foods...
         </div>
       ) : null}
       
       {searchStatus === "error" && searchError && (
-        <p className="mt-3 text-xs font-semibold text-rose-500">
+        <p className="mt-3 text-xs font-semibold text-destructive">
           {searchError}
         </p>
       )}
@@ -215,8 +211,6 @@ export const FoodSearchContent = ({
             onQuickRemove={onQuickRemoveFood}
             loggedFoodIds={loggedFoodIds}
             loggedFoodNames={loggedFoodNames}
-            pendingFoodKeys={pendingFoodKeys}
-            successFoodKeys={successFoodKeys}
             mealLabel={meal?.label ?? "meal"}
           />
           {showEmpty && (
@@ -232,25 +226,25 @@ export const FoodSearchContent = ({
       >
         <TabsList
           className={cn(
-            "h-10 w-full rounded-full bg-white p-1 shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition-all duration-300",
+            "h-10 w-full rounded-full bg-card p-1 shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition-all duration-300",
             mode === "search" && "pointer-events-none opacity-50 blur-[1px]",
           )}
         >
           <TabsTrigger
             value="recent"
-            className="w-full rounded-full data-[state=active]:bg-aura-primary data-[state=active]:text-white"
+            className="w-full rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
             Recently
           </TabsTrigger>
           <TabsTrigger
             value="liked"
-            className="w-full rounded-full data-[state=active]:bg-aura-primary data-[state=active]:text-white"
+            className="w-full rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
             Liked
           </TabsTrigger>
           <TabsTrigger
             value="history"
-            className="w-full rounded-full data-[state=active]:bg-aura-primary data-[state=active]:text-white"
+            className="w-full rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
             Added
           </TabsTrigger>
@@ -265,8 +259,6 @@ export const FoodSearchContent = ({
                 onQuickRemove={onQuickRemoveFood}
                 loggedFoodIds={loggedFoodIds}
                 loggedFoodNames={loggedFoodNames}
-                pendingFoodKeys={pendingFoodKeys}
-                successFoodKeys={successFoodKeys}
                 mealLabel={meal?.label ?? "meal"}
               />
             </TabsContent>
@@ -278,8 +270,6 @@ export const FoodSearchContent = ({
                 onQuickRemove={onQuickRemoveFood}
                 loggedFoodIds={loggedFoodIds}
                 loggedFoodNames={loggedFoodNames}
-                pendingFoodKeys={pendingFoodKeys}
-                successFoodKeys={successFoodKeys}
                 mealLabel={meal?.label ?? "meal"}
               />
             </TabsContent>
@@ -291,8 +281,6 @@ export const FoodSearchContent = ({
                 onQuickRemove={onQuickRemoveFood}
                 loggedFoodIds={loggedFoodIds}
                 loggedFoodNames={loggedFoodNames}
-                pendingFoodKeys={pendingFoodKeys}
-                successFoodKeys={successFoodKeys}
                 mealLabel={meal?.label ?? "meal"}
               />
             </TabsContent>
@@ -312,12 +300,12 @@ const EmptyState = ({
   onAction?: () => void;
   actionLabel?: string;
 }) => (
-  <div className="mt-4 rounded-[24px] border border-dashed border-emerald-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+  <div className="mt-4 rounded-[24px] border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
     {children}
     {onAction && actionLabel ? (
       <Button
         variant="secondary"
-        className="mt-3 w-full rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+        className="mt-3 w-full rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
         onClick={onAction}
       >
         {actionLabel}
@@ -341,14 +329,14 @@ const ActionTile = ({
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col gap-2 rounded-[22px] border border-black/5 bg-white px-4 py-3 text-left shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
+      className="flex flex-col gap-2 rounded-[22px] border border-border/60 bg-card px-4 py-3 text-left shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
     >
-      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-primary">
         {icon}
       </div>
       <div>
-        <p className="text-sm font-semibold text-slate-800">{label}</p>
-        <p className="text-xs text-slate-500">{description}</p>
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
       </div>
     </button>
   </Pressable>

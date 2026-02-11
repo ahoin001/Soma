@@ -13,6 +13,8 @@ export type FoodListProps = {
   onQuickRemove?: (food: FoodItem) => void;
   loggedFoodIds?: Set<string>;
   loggedFoodNames?: Set<string>;
+  pendingFoodKeys?: Set<string>;
+  successFoodKeys?: Set<string>;
   mealLabel?: string;
 };
 
@@ -50,7 +52,7 @@ export const FoodList: FC<FoodListProps> = ({
               exit: { opacity: 0, y: -6 },
             }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="flex w-full items-center justify-between rounded-[24px] border border-black/5 bg-white px-4 py-3 text-left shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
+            className="flex w-full items-center justify-between rounded-[24px] border border-border/60 bg-card px-4 py-3 text-left shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
           >
             <Pressable className="flex-1">
               <button
@@ -60,7 +62,7 @@ export const FoodList: FC<FoodListProps> = ({
                 onMouseEnter={() => preloadFoodDetail(food.id)}
                 className="flex w-full items-center gap-3 text-left"
               >
-                <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-emerald-50 text-xl">
+                <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-secondary text-xl">
                   {showFoodImages && food.imageUrl ? (
                     <img
                       src={food.imageUrl}
@@ -74,8 +76,8 @@ export const FoodList: FC<FoodListProps> = ({
                   )}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-800">{food.name}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <p className="text-sm font-semibold text-foreground">{food.name}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       {food.brandLogoUrl && (
                         <img
@@ -90,7 +92,7 @@ export const FoodList: FC<FoodListProps> = ({
                       {food.portion} • {food.kcal} cal
                     </span>
                     {isLogged ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
                         <Check className="h-3 w-3" />
                         In {mealLabel}
                       </span>
@@ -115,10 +117,10 @@ export const FoodList: FC<FoodListProps> = ({
                 onMouseEnter={() => preloadFoodDetail(food.id)}
                 className={`flex h-8 w-8 items-center justify-center rounded-full ${
                   canQuickRemove
-                    ? "bg-rose-50 text-rose-500"
+                    ? "bg-destructive/12 text-destructive"
                     : isLogged
-                    ? "bg-emerald-100 text-emerald-400"
-                    : "bg-emerald-50 text-emerald-500"
+                    ? "bg-primary/15 text-primary/80"
+                    : "bg-secondary text-primary"
                 }`}
                 aria-label={
                   canQuickRemove

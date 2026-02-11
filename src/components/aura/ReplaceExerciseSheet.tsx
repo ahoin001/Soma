@@ -40,13 +40,13 @@ export const ReplaceExerciseSheet = ({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="rounded-t-[36px] border-none bg-slate-950 pb-6 text-white">
+      <DrawerContent className="rounded-t-[36px] border-none bg-background pb-6 text-foreground">
         <DrawerHeader className="sr-only">
           <DrawerTitle>Replace exercise</DrawerTitle>
         </DrawerHeader>
         <div className="aura-sheet-body-fit">
           <div className="mt-2 text-center">
-            <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Replace exercise
             </p>
             <h3 className="mt-2 text-2xl font-display font-semibold">
@@ -59,13 +59,13 @@ export const ReplaceExerciseSheet = ({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search exercises"
-              className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
+              className="border-border/70 bg-card/55 text-foreground placeholder:text-muted-foreground"
             />
             {status === "error" ? (
-              <p className="text-sm text-rose-300">{error}</p>
+              <p className="text-sm text-destructive">{error}</p>
             ) : null}
             {status === "loading" ? (
-              <p className="text-sm text-white/60">Loading exercises...</p>
+              <p className="text-sm text-muted-foreground">Loading exercises...</p>
             ) : null}
             {previewItems.length ? (
               <VirtualizedExerciseList
@@ -76,13 +76,13 @@ export const ReplaceExerciseSheet = ({
                 }}
               />
             ) : (
-              <p className="text-sm text-white/50">
+              <p className="text-sm text-muted-foreground">
                 Start typing to search the Atlas.
               </p>
             )}
             {query.trim().length > 1 ? (
               <Button
-                className="w-full rounded-full bg-white/10 text-white hover:bg-white/20"
+                className="w-full rounded-full bg-secondary/35 text-foreground hover:bg-secondary/65"
                 onClick={() => {
                   onSelect(query.trim());
                   onOpenChange(false);
@@ -95,7 +95,7 @@ export const ReplaceExerciseSheet = ({
 
           <Button
             variant="secondary"
-            className="mt-6 w-full rounded-full bg-white/15 text-white hover:bg-white/25"
+            className="mt-6 w-full rounded-full bg-secondary/35 text-foreground hover:bg-secondary/65"
             onClick={() => onOpenChange(false)}
           >
             Cancel

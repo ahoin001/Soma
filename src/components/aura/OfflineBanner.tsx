@@ -23,12 +23,12 @@ export const OfflineBanner = () => {
       <div
         className={cn(
           "pointer-events-auto mt-2 flex items-center gap-2 rounded-full",
-          "bg-amber-500/95 px-3 py-1 text-xs font-medium text-white",
+          "bg-accent/95 px-3 py-1 text-xs font-medium text-accent-foreground",
           "shadow-md backdrop-blur transition-all duration-200",
           isOnline && !isSyncing
             ? "-translate-y-6 opacity-0"
             : "translate-y-0 opacity-100",
-          isSyncing && "bg-emerald-500/95",
+          isSyncing && "bg-primary/95 text-primary-foreground",
         )}
       >
         {isSyncing ? (

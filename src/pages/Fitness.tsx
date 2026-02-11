@@ -530,7 +530,7 @@ const Fitness = () => {
                     </p>
                   ) : null}
                   {status === "error" ? (
-                    <p className="text-sm text-rose-300">{error}</p>
+                    <p className="text-sm text-destructive">{error}</p>
                   ) : null}
                   {status === "loading" ? (
                     <p className="text-sm text-muted-foreground">Loading exercises...</p>

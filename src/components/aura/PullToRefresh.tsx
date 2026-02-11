@@ -40,14 +40,14 @@ export const PullToRefresh = ({
     () =>
       experience === "nutrition"
         ? {
-            ring: "bg-emerald-100 text-emerald-700",
-            text: "text-emerald-700/80",
-            accent: "bg-emerald-500",
+            ring: "bg-secondary text-primary",
+            text: "text-primary/80",
+            accent: "bg-primary",
           }
         : {
-            ring: "bg-white/10 text-white",
-            text: "text-white/70",
-            accent: "bg-emerald-400",
+            ring: "bg-card/20 text-foreground",
+            text: "text-foreground/80",
+            accent: "bg-primary",
           },
     [experience],
   );

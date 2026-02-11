@@ -455,20 +455,20 @@ const Goals = () => {
     <AppShell experience="nutrition">
       {/* pt includes safe-area for immersive edge-to-edge display */}
       <div className="mx-auto w-full max-w-[420px] px-4 pb-10" style={{ paddingTop: "calc(1.5rem + var(--sat, env(safe-area-inset-top)))" }}>
-        <div className="rounded-[28px] bg-gradient-to-br from-emerald-100 via-emerald-50 to-white px-5 py-6 shadow-[0_18px_40px_rgba(16,185,129,0.2)]">
-          <p className="text-xs uppercase tracking-[0.2em] text-emerald-500">
+        <div className="rounded-[28px] bg-gradient-to-br from-background via-card to-secondary/60 px-5 py-6 shadow-[0_18px_40px_rgba(15,23,42,0.2)]">
+          <p className="text-xs uppercase tracking-[0.2em] text-primary/80">
             Goals
           </p>
-          <h1 className="text-2xl font-display font-semibold text-emerald-950">
+          <h1 className="text-2xl font-display font-semibold text-foreground">
             Choose your path
           </h1>
-          <p className="mt-1 text-sm text-emerald-700/70">
+          <p className="mt-1 text-sm text-muted-foreground">
             Pick a focus and we will compute daily calories.
           </p>
         </div>
 
-        <Card className="mt-6 rounded-[28px] border border-black/5 bg-white px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
-          <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+        <Card className="mt-6 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+          <p className="text-xs uppercase tracking-[0.2em] text-primary/75">
             Goal type
           </p>
           <SegmentedControl
@@ -483,8 +483,8 @@ const Goals = () => {
           />
         </Card>
 
-        <Card className="mt-6 rounded-[28px] border border-black/5 bg-white px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
-          <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+        <Card className="mt-6 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+          <p className="text-xs uppercase tracking-[0.2em] text-primary/75">
             Your stats
           </p>
           <div className="mt-4 grid grid-cols-2 gap-3">
@@ -516,7 +516,7 @@ const Goals = () => {
               />
             </div>
           </div>
-          <div className="mt-3 rounded-[18px] border border-emerald-100 bg-emerald-50/60 p-2">
+          <div className="mt-3 rounded-[18px] border border-border/70 bg-secondary/55 p-2">
             <SegmentedControl
               value={heightUnit}
               onValueChange={(value) =>
@@ -582,8 +582,8 @@ const Goals = () => {
                   onClick={() => setActivity(option.value)}
                   className={`rounded-full border px-3 py-2 text-xs font-semibold ${
                     activity === option.value
-                      ? "border-emerald-400 bg-emerald-50 text-emerald-700"
-                      : "border-slate-200 bg-white text-slate-600"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-card text-muted-foreground"
                   }`}
                 >
                   {option.label}
@@ -592,13 +592,13 @@ const Goals = () => {
             </div>
           </div>
           {selectedActivity && (
-            <p className="mt-3 text-xs text-slate-500">
+            <p className="mt-3 text-xs text-muted-foreground">
               {selectedActivity.description}
             </p>
           )}
 
-          <div className="mt-4 rounded-[20px] border border-emerald-100 bg-emerald-50/60 px-4 py-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+          <div className="mt-4 rounded-[20px] border border-border/70 bg-secondary/55 px-4 py-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-primary/75">
               Sex
             </p>
             <RadioGroup
@@ -620,8 +620,8 @@ const Goals = () => {
               </div>
             </RadioGroup>
           </div>
-          <div className="mt-4 rounded-[20px] border border-emerald-100 bg-white/90 px-4 py-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+          <div className="mt-4 rounded-[20px] border border-border/70 bg-card/90 px-4 py-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-primary/75">
               Formula
             </p>
             <div className="mt-3 grid grid-cols-2 gap-2">
@@ -632,15 +632,15 @@ const Goals = () => {
                   onClick={() => setFormula(value)}
                   className={`rounded-full border px-3 py-2 text-xs font-semibold ${
                     formula === value
-                      ? "border-emerald-400 bg-emerald-50 text-emerald-700"
-                      : "border-slate-200 bg-white text-slate-600"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-card text-muted-foreground"
                   }`}
                 >
                   {value === "mifflin" ? "Mifflin-St Jeor" : "Katch-McArdle"}
                 </button>
               ))}
             </div>
-            <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-2 text-xs text-muted-foreground">
               Katch is more accurate when body fat % is provided.
             </p>
           </div>
@@ -653,7 +653,7 @@ const Goals = () => {
               <Button
                 type="button"
                 variant="ghost"
-                className="w-full justify-between rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                className="w-full justify-between rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
               >
                 Optional details
                 <ChevronDown
@@ -663,7 +663,7 @@ const Goals = () => {
                 />
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="mt-3 rounded-[20px] border border-emerald-100 bg-white/80 px-4 py-4">
+            <CollapsibleContent className="mt-3 rounded-[20px] border border-border/70 bg-card/80 px-4 py-4">
               <div className="grid gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="goal-bodyfat">Body fat % (optional)</Label>
@@ -676,7 +676,7 @@ const Goals = () => {
                     type="number"
                     className="h-11 rounded-full"
                   />
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     Adds precision using lean‑mass estimation.
                   </p>
                 </div>
@@ -691,7 +691,7 @@ const Goals = () => {
                     type="number"
                     className="h-11 rounded-full"
                   />
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     Helps fine‑tune activity adjustment.
                   </p>
                 </div>
@@ -706,7 +706,7 @@ const Goals = () => {
                     type="number"
                     className="h-11 rounded-full"
                   />
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     Captures daily movement outside workouts.
                   </p>
                 </div>
@@ -715,22 +715,22 @@ const Goals = () => {
           </Collapsible>
         </Card>
 
-        <Card className="mt-6 rounded-[28px] border border-black/5 bg-white px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
-          <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+        <Card className="mt-6 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+          <p className="text-xs uppercase tracking-[0.2em] text-primary/75">
             Calories
           </p>
           {calculatedTargets ? (
             <div className="mt-4 grid gap-3 text-sm">
-              <div className="rounded-[18px] bg-emerald-50/80 px-4 py-4">
-                <p className="text-xs text-emerald-500">Recommended range</p>
-                <p className="text-lg font-semibold text-emerald-900">
+              <div className="rounded-[18px] bg-secondary/70 px-4 py-4">
+                <p className="text-xs text-primary/80">Recommended range</p>
+                <p className="text-lg font-semibold text-foreground">
                   {calculatedTargets.caloriesRange.min}–{calculatedTargets.caloriesRange.max} cal
                 </p>
               </div>
               <div className="space-y-4">
                 <div className="flex items-baseline justify-between gap-2">
                   <Label htmlFor="goal-kcal-slider">Daily goal</Label>
-                  <span className="text-lg font-semibold tabular-nums text-emerald-900">
+                  <span className="text-lg font-semibold tabular-nums text-foreground">
                     {Math.round(
                       Number.isFinite(Number(kcalGoal)) && Number(kcalGoal) > 0
                         ? Number(kcalGoal)
@@ -763,20 +763,20 @@ const Goals = () => {
                     className="touch-none"
                   />
                 </div>
-                <div className="flex justify-between text-[11px] font-medium text-emerald-600/80">
+                <div className="flex justify-between text-[11px] font-medium text-primary/80">
                   <span>{calculatedTargets.caloriesRange.min.toLocaleString()} cal</span>
                   <span>{calculatedTargets.caloriesRange.max.toLocaleString()} cal</span>
                 </div>
               </div>
             </div>
           ) : (
-            <p className="mt-4 text-sm text-slate-500">
+            <p className="mt-4 text-sm text-muted-foreground">
               Enter your stats to compute calories.
             </p>
           )}
           <Button
             type="button"
-            className="mt-4 w-full rounded-full bg-aura-primary py-5 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
+            className="mt-4 w-full rounded-full bg-primary py-5 text-sm font-semibold text-primary-foreground shadow-[0_16px_30px_rgba(15,23,42,0.35)] hover:bg-primary/90"
             onClick={() => {
               if (!dynamicTargets) return;
               const target = Math.round(dynamicTargets.calories);
@@ -788,13 +788,13 @@ const Goals = () => {
           </Button>
         </Card>
 
-        <Card className="mt-6 rounded-[28px] border border-black/5 bg-white px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
-          <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+        <Card className="mt-6 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+          <p className="text-xs uppercase tracking-[0.2em] text-primary/75">
             Macro targets
           </p>
           <div className="mt-4 grid grid-cols-3 gap-2">
             <div className="space-y-1">
-              <Label className="text-xs text-slate-500">Carbs (g)</Label>
+              <Label className="text-xs text-muted-foreground">Carbs (g)</Label>
               <Input
                 value={carbs}
                 onChange={(event) => {
@@ -807,7 +807,7 @@ const Goals = () => {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-slate-500">Protein (g)</Label>
+              <Label className="text-xs text-muted-foreground">Protein (g)</Label>
               <Input
                 value={protein}
                 onChange={(event) => {
@@ -820,7 +820,7 @@ const Goals = () => {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-slate-500">Fat (g)</Label>
+              <Label className="text-xs text-muted-foreground">Fat (g)</Label>
               <Input
                 value={fat}
                 onChange={(event) => {
@@ -835,7 +835,7 @@ const Goals = () => {
           </div>
           <Button
             type="button"
-            className="mt-4 w-full rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+            className="mt-4 w-full rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
             onClick={() => {
               void saveAllTargets();
             }}

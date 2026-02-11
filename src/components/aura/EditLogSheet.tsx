@@ -164,9 +164,9 @@ export const EditLogSheet = ({
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
-      <DrawerContent className="relative rounded-t-[36px] border-none bg-aura-surface pb-6 overflow-hidden">
+      <DrawerContent className="relative overflow-hidden rounded-t-[36px] border-none bg-background pb-6">
         {saving && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 text-sm font-semibold text-emerald-700 backdrop-blur">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/70 text-sm font-semibold text-primary backdrop-blur">
             Saving changes...
           </div>
         )}
@@ -179,7 +179,7 @@ export const EditLogSheet = ({
             className="aura-sheet-scroll max-h-[calc(100svh-160px)]"
           >
             <div className="flex items-center justify-center pt-4">
-              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-white text-3xl shadow-[0_14px_30px_rgba(15,23,42,0.1)]">
+              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-card bg-card text-3xl shadow-[0_14px_30px_rgba(15,23,42,0.1)]">
                 {showFoodImages && item.imageUrl ? (
                   <img
                     src={item.imageUrl}
@@ -196,24 +196,24 @@ export const EditLogSheet = ({
 
             <div className="mt-4 text-center">
               {item.mealEmoji || item.mealLabel ? (
-                <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-600">
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-primary/12 px-3 py-1 text-[11px] font-semibold text-primary">
                   <span>{item.mealEmoji ?? "🍽️"}</span>
                   <span>{item.mealLabel ?? "Meal"}</span>
                 </div>
               ) : null}
-              <h3 className="text-xl font-display font-semibold text-slate-900">
+              <h3 className="text-xl font-display font-semibold text-foreground">
                 {item.name}
               </h3>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 Adjust serving size
               </p>
             </div>
 
-            <div className="mt-6 rounded-[24px] border border-black/5 bg-white px-4 py-5 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
-              <div className="flex items-center justify-between text-sm font-semibold text-slate-800">
+            <div className="mt-6 rounded-[24px] border border-border/60 bg-card px-4 py-5 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
+              <div className="flex items-center justify-between text-sm font-semibold text-foreground">
                 <span>Serving</span>
                 <span
-                  className={`text-emerald-600 transition-transform duration-150 ${
+                  className={`text-primary transition-transform duration-150 ${
                     pulse ? "scale-110" : "scale-100"
                   }`}
                 >
@@ -293,11 +293,11 @@ export const EditLogSheet = ({
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-between rounded-[24px] border border-black/5 bg-white px-4 py-4 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
-              <span className="text-sm font-semibold text-slate-700">
+            <div className="mt-6 flex items-center justify-between rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
+              <span className="text-sm font-semibold text-secondary-foreground">
                 Calories
               </span>
-              <span className="text-lg font-display font-semibold text-slate-900">
+              <span className="text-lg font-display font-semibold text-foreground">
                 {scaled.kcal} cal
               </span>
             </div>
@@ -321,7 +321,7 @@ export const EditLogSheet = ({
                 </Button>
               ) : null}
               <Button
-                className="w-full rounded-full bg-aura-primary py-6 text-base font-semibold text-white shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
+                className="w-full rounded-full bg-primary py-6 text-base font-semibold text-primary-foreground shadow-[0_16px_30px_rgba(15,23,42,0.35)] hover:bg-primary/90"
                 onClick={async () => {
                   setSaving(true);
                   onOpenChange(false);

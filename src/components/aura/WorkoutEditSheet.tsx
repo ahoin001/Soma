@@ -29,11 +29,11 @@ export const WorkoutEditSheet = ({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="rounded-t-[36px] border-none bg-slate-950 pb-6 text-white">
+      <DrawerContent className="rounded-t-[36px] border-none bg-background pb-6 text-foreground">
         {workout && (
         <div className="aura-sheet-body-fit">
             <div className="mt-2 text-center">
-              <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 {plan?.name ?? "Workout plan"}
               </p>
               <h3 className="mt-2 text-2xl font-display font-semibold">
@@ -43,32 +43,32 @@ export const WorkoutEditSheet = ({
 
             <div className="mt-6 space-y-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Workout name
                 </p>
                 <Input
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   placeholder="Workout name"
-                  className="mt-2 border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                  className="mt-2 border-border/70 bg-card/55 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Last performed
                 </p>
                 <Input
                   value={lastPerformed}
                   onChange={(event) => setLastPerformed(event.target.value)}
                   placeholder="e.g., 3 days ago"
-                  className="mt-2 border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                  className="mt-2 border-border/70 bg-card/55 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
             </div>
 
             <div className="mt-6 grid gap-3">
               <Button
-                className="w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => {
                   if (!name.trim()) return;
                   onSave({ name: name.trim(), lastPerformed: lastPerformed.trim() || undefined });
@@ -79,7 +79,7 @@ export const WorkoutEditSheet = ({
               </Button>
               <Button
                 variant="outline"
-                className="w-full rounded-full border-white/20 text-white hover:bg-white/10"
+                className="w-full rounded-full border-border/70 text-foreground hover:bg-secondary/35"
                 onClick={() => onOpenChange(false)}
               >
                 Cancel

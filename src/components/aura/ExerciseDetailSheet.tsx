@@ -54,41 +54,41 @@ export const ExerciseDetailSheet = ({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="rounded-t-[36px] border-none bg-slate-950 pb-6 text-white">
+      <DrawerContent className="rounded-t-[36px] border-none bg-background pb-6 text-foreground">
         <div className="aura-sheet-body-fit">
           {showLoading ? (
             <>
               <div className="mt-2 text-center">
-                <Skeleton className="mx-auto h-4 w-28 rounded-full bg-white/10" />
-                <Skeleton className="mx-auto mt-2 h-7 w-48 rounded-full bg-white/10" />
-                <Skeleton className="mx-auto mt-2 h-4 w-32 rounded-full bg-white/10" />
+                <Skeleton className="mx-auto h-4 w-28 rounded-full bg-secondary/35" />
+                <Skeleton className="mx-auto mt-2 h-7 w-48 rounded-full bg-secondary/35" />
+                <Skeleton className="mx-auto mt-2 h-4 w-32 rounded-full bg-secondary/35" />
               </div>
               <div className="mt-6 space-y-4">
-                <Skeleton className="h-20 w-full rounded-[28px] bg-white/10" />
-                <Skeleton className="h-20 w-full rounded-[28px] bg-white/10" />
-                <Skeleton className="h-24 w-full rounded-[28px] bg-white/10" />
+                <Skeleton className="h-20 w-full rounded-[28px] bg-secondary/35" />
+                <Skeleton className="h-20 w-full rounded-[28px] bg-secondary/35" />
+                <Skeleton className="h-24 w-full rounded-[28px] bg-secondary/35" />
               </div>
               <div className="mt-6 grid gap-3">
-                <Skeleton className="h-11 w-full rounded-full bg-white/10" />
-                <Skeleton className="h-11 w-full rounded-full bg-white/10" />
+                <Skeleton className="h-11 w-full rounded-full bg-secondary/35" />
+                <Skeleton className="h-11 w-full rounded-full bg-secondary/35" />
               </div>
             </>
           ) : (
             <>
               <div className="mt-2 text-center">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Exercise detail
                 </p>
                 <h3 className="mt-2 text-2xl font-display font-semibold">
                   {exercise.name}
                 </h3>
-                <p className="mt-1 text-sm text-white/60">
+                <p className="mt-1 text-sm text-muted-foreground">
                   {exercise.category}
                 </p>
               </div>
 
-              <div className="mt-6 rounded-[28px] border border-white/10 bg-white/5 px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+              <div className="mt-6 rounded-[28px] border border-border/70 bg-card/55 px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Muscle map
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -97,21 +97,21 @@ export const ExerciseDetailSheet = ({
                       <Badge
                         key={muscle}
                         variant="secondary"
-                        className="border border-white/10 bg-white/10 text-white"
+                        className="border border-border/70 bg-secondary/70 text-foreground"
                       >
                         {muscle}
                       </Badge>
                     ))
                   ) : (
-                    <span className="text-sm text-white/60">
+                    <span className="text-sm text-muted-foreground">
                       Primary muscles not listed.
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="mt-4 rounded-[28px] border border-white/10 bg-white/5 px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+              <div className="mt-4 rounded-[28px] border border-border/70 bg-card/55 px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Equipment
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -120,27 +120,27 @@ export const ExerciseDetailSheet = ({
                       <Badge
                         key={item}
                         variant="outline"
-                        className="border-white/10 text-white"
+                        className="border-border/70 text-foreground"
                       >
                         {item}
                       </Badge>
                     ))
                   ) : (
-                    <span className="text-sm text-white/60">Bodyweight</span>
+                    <span className="text-sm text-muted-foreground">Bodyweight</span>
                   )}
                 </div>
               </div>
 
-              <div className="mt-4 rounded-[28px] border border-white/10 bg-white/5 px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+              <div className="mt-4 rounded-[28px] border border-border/70 bg-card/55 px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Form cues
                 </p>
-                <p className="mt-2 text-sm text-white/70">{description}</p>
+                <p className="mt-2 text-sm text-foreground/80">{description}</p>
               </div>
 
               <div className="mt-6 grid gap-3">
                 <Button
-                  className="w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                  className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={() => onAddToRoutine(exercise)}
                   disabled={!canAddToRoutine}
                 >
@@ -149,7 +149,7 @@ export const ExerciseDetailSheet = ({
                 {onAddToWorkout ? (
                   <Button
                     variant="secondary"
-                    className="w-full rounded-full bg-white/10 text-white hover:bg-white/20"
+                    className="w-full rounded-full bg-secondary/35 text-foreground hover:bg-secondary/65"
                     onClick={() => onAddToWorkout(exercise)}
                   >
                     Add to workout
@@ -158,7 +158,7 @@ export const ExerciseDetailSheet = ({
                 {onEditExercise ? (
                   <Button
                     variant="outline"
-                    className="w-full rounded-full border-white/20 text-white hover:bg-white/10"
+                    className="w-full rounded-full border-border/70 text-foreground hover:bg-secondary/35"
                     onClick={() => onEditExercise(exercise)}
                   >
                     Edit exercise
@@ -167,7 +167,7 @@ export const ExerciseDetailSheet = ({
                 {onAddToSession ? (
                   <Button
                     variant="outline"
-                    className="w-full rounded-full border-white/20 text-white hover:bg-white/10"
+                    className="w-full rounded-full border-border/70 text-foreground hover:bg-secondary/35"
                     onClick={() => onAddToSession(exercise)}
                   >
                     Add to active session
@@ -177,7 +177,7 @@ export const ExerciseDetailSheet = ({
                   <>
                     <Button
                       variant="outline"
-                      className="w-full rounded-full border-rose-400/40 text-rose-200 hover:bg-rose-500/20"
+                      className="w-full rounded-full border-destructive/50 text-destructive hover:bg-destructive/15"
                       onClick={() => setDeleteConfirmOpen(true)}
                       disabled={deleting}
                     >
@@ -188,18 +188,18 @@ export const ExerciseDetailSheet = ({
                       open={deleteConfirmOpen}
                       onOpenChange={setDeleteConfirmOpen}
                     >
-                      <AlertDialogContent className="border-white/10 bg-slate-900 text-white">
+                      <AlertDialogContent className="border-border/70 bg-card text-foreground">
                         <AlertDialogTitle>Delete this exercise?</AlertDialogTitle>
                         <AlertDialogDescription>
                           This will remove &quot;{exercise.name}&quot; from the
                           exercise library. This action cannot be undone.
                         </AlertDialogDescription>
                         <AlertDialogFooter>
-                          <AlertDialogCancel className="border-white/20 text-white hover:bg-white/10">
+                          <AlertDialogCancel className="border-border/70 text-foreground hover:bg-secondary/35">
                             Cancel
                           </AlertDialogCancel>
                           <AlertDialogAction
-                            className="bg-rose-500 text-white hover:bg-rose-600"
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             onClick={async (e) => {
                               e.preventDefault();
                               setDeleting(true);

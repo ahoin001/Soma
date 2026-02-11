@@ -94,7 +94,7 @@ export const ProgressChartPanel = ({
           className="min-w-[150px]"
         />
       </div>
-      <div className="mt-4 rounded-[22px] border border-emerald-100 bg-white/80 p-3 shadow-[0_12px_28px_rgba(16,185,129,0.12)]">
+      <div className="mt-4 rounded-[22px] border border-border/70 bg-card/80 p-3 shadow-[0_12px_28px_rgba(15,23,42,0.12)]">
         {activeChart === "weight" && (
           <>
             <WeightChart
@@ -104,11 +104,11 @@ export const ProgressChartPanel = ({
             />
             {stats && (
               <>
-                <div className="mt-3 flex items-center justify-between text-xs text-emerald-700/80">
+                <div className="mt-3 flex items-center justify-between text-xs text-primary/80">
                   <span>Low {stats.minWeight} lb</span>
                   <span>High {stats.maxWeight} lb</span>
                 </div>
-                <div className="mt-2 grid grid-cols-3 text-[11px] text-emerald-500/70">
+                <div className="mt-2 grid grid-cols-3 text-[11px] text-primary/70">
                   <span>{formatShortDate(stats.startDate)}</span>
                   <span className="text-center">
                     {stats.midDate ? formatShortDate(stats.midDate) : ""}
@@ -119,7 +119,7 @@ export const ProgressChartPanel = ({
                 </div>
               </>
             )}
-            <div className="mt-4 flex items-center justify-between text-[11px] text-emerald-600/70">
+            <div className="mt-4 flex items-center justify-between text-[11px] text-primary/70">
               <span>Weight (lb)</span>
               <span>Date</span>
             </div>
@@ -128,7 +128,7 @@ export const ProgressChartPanel = ({
         {activeChart === "calories" && (
           <>
             <CaloriesChart entries={caloriesEntries} />
-            <div className="mt-4 flex items-center justify-between text-[11px] text-emerald-600/70">
+            <div className="mt-4 flex items-center justify-between text-[11px] text-primary/70">
               <span>Calories</span>
               <span>Last {trendRange} days</span>
             </div>
@@ -137,7 +137,7 @@ export const ProgressChartPanel = ({
         {activeChart === "macros" && (
           <>
             <MacroChart series={macroSeries} />
-            <div className="mt-4 flex flex-wrap items-center gap-3 text-[11px] text-emerald-600/70">
+            <div className="mt-4 flex flex-wrap items-center gap-3 text-[11px] text-primary/70">
               {macroSeries.map((macro) => (
                 <span
                   key={macro.key}
@@ -156,12 +156,12 @@ export const ProgressChartPanel = ({
         {activeChart === "micros" && (
           <>
             <div className="mb-3 flex items-center gap-2">
-              <span className="text-xs text-slate-600">Show:</span>
+              <span className="text-xs text-muted-foreground">Show:</span>
               <Select
                 value={selectedMicro}
                 onValueChange={(v) => onSelectedMicroChange(v as keyof NutritionTrendMicros)}
               >
-                <SelectTrigger className="h-9 w-[140px] rounded-full border-emerald-200 bg-white text-sm">
+                <SelectTrigger className="h-9 w-[140px] rounded-full border-border bg-card text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -178,7 +178,7 @@ export const ProgressChartPanel = ({
               label={selectedMicroOption.label}
               unit={selectedMicroOption.unit}
             />
-            <div className="mt-4 flex items-center justify-between text-[11px] text-emerald-600/70">
+            <div className="mt-4 flex items-center justify-between text-[11px] text-primary/70">
               <span>{selectedMicroOption.label} ({selectedMicroOption.unit})</span>
               <span>Last {trendRange} days</span>
             </div>

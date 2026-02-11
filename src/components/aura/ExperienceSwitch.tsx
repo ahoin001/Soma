@@ -19,14 +19,14 @@ export const ExperienceSwitch = ({
   ] as const;
   const containerTone =
     variant === "dark"
-      ? "border-white/10 bg-slate-950/60 text-white"
-      : "border-black/5 bg-white/80 text-slate-700";
+      ? "border-border/70 bg-background/60 text-foreground"
+      : "border-border/60 bg-card/80 text-secondary-foreground";
   const activeTone =
     variant === "dark"
-      ? "bg-white/15 text-white"
-      : "bg-white text-slate-900 shadow-sm";
+      ? "bg-card/55 text-foreground"
+      : "bg-card text-foreground shadow-sm";
   const inactiveTone =
-    variant === "dark" ? "text-white/70" : "text-slate-500";
+    variant === "dark" ? "text-foreground/80" : "text-muted-foreground";
 
   return (
     <div
@@ -57,7 +57,7 @@ export const ExperienceSwitch = ({
                 activeTone,
                 variant === "dark"
                   ? "shadow-[0_12px_24px_rgba(0,0,0,0.35)]"
-                  : "shadow-[0_10px_22px_rgba(16,185,129,0.2)]",
+                  : "shadow-[0_10px_22px_rgba(15,23,42,0.2)]",
               )}
               transition={{ type: "spring", stiffness: 300, damping: 28 }}
             />

@@ -251,19 +251,19 @@ export const OnboardingDialog = ({
   const StepIcon = stepIcons[step];
 
   return (
-    <div className="fixed inset-0 z-[70] overflow-auto bg-gradient-to-br from-emerald-100 via-emerald-50 to-white">
+    <div className="fixed inset-0 z-[70] overflow-auto bg-gradient-to-br from-secondary via-secondary/55 to-background">
       {/* Decorative background */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-10 top-20 h-40 w-40 rounded-full bg-emerald-200/50 blur-3xl" />
-        <div className="absolute right-[-40px] top-40 h-48 w-48 rounded-full bg-emerald-300/40 blur-3xl" />
+        <div className="absolute -left-10 top-20 h-40 w-40 rounded-full bg-primary/25 blur-3xl" />
+        <div className="absolute right-[-40px] top-40 h-48 w-48 rounded-full bg-accent/30 blur-3xl" />
       </div>
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-sm flex-col px-5 pb-10 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
         <div className="flex items-center justify-between">
-          <p className="text-xs uppercase tracking-[0.3em] text-emerald-400">AuraFit</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-primary">AuraFit</p>
           <button
             type="button"
-            className="rounded-full bg-white/80 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-[0_8px_20px_rgba(16,185,129,0.15)]"
+            className="rounded-full bg-card/80 px-3 py-2 text-xs font-semibold text-primary shadow-[0_8px_20px_rgba(15,23,42,0.15)]"
             onClick={() => {
               window.localStorage.setItem(ONBOARDED_KEY, "true");
               setHasSeen(true);
@@ -284,13 +284,13 @@ export const OnboardingDialog = ({
             transition={{ duration: 0.25 }}
             className="mt-6 text-center"
           >
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[20px] bg-white shadow-[0_12px_28px_rgba(16,185,129,0.2)]">
-              <StepIcon className="h-6 w-6 text-emerald-500" />
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[20px] bg-card shadow-[0_12px_28px_rgba(15,23,42,0.2)]">
+              <StepIcon className="h-6 w-6 text-primary" />
             </div>
-            <h1 className="mt-4 text-2xl font-display font-semibold text-emerald-950">
+            <h1 className="mt-4 text-2xl font-display font-semibold text-foreground">
               {stepTitles[step]}
             </h1>
-            <p className="mt-1 text-sm text-emerald-700/70">
+            <p className="mt-1 text-sm text-muted-foreground">
               {stepDescriptions[step]}
             </p>
           </motion.div>
@@ -302,13 +302,13 @@ export const OnboardingDialog = ({
             <div
               key={idx}
               className={`h-2 rounded-full transition-all duration-300 ${
-                idx === step ? "w-8 bg-emerald-400" : idx < step ? "w-2 bg-emerald-400" : "w-2 bg-emerald-200"
+                idx === step ? "w-8 bg-primary" : idx < step ? "w-2 bg-primary" : "w-2 bg-primary/30"
               }`}
             />
           ))}
         </div>
 
-        <div className="mt-5 space-y-4 rounded-[28px] border border-emerald-100 bg-white/90 px-4 py-4 shadow-[0_14px_30px_rgba(16,185,129,0.12)]">
+        <div className="mt-5 space-y-4 rounded-[28px] border border-border/70 bg-card/90 px-4 py-4 shadow-[0_14px_30px_rgba(15,23,42,0.12)]">
           <AnimatePresence mode="wait" initial={false}>
             {step === 0 && (
               <motion.div
@@ -321,7 +321,7 @@ export const OnboardingDialog = ({
                 className="space-y-4"
               >
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     What should we call you?
                   </label>
                   <Input
@@ -332,7 +332,7 @@ export const OnboardingDialog = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     What's your main goal?
                   </label>
                   <div className="grid grid-cols-3 gap-2">
@@ -343,8 +343,8 @@ export const OnboardingDialog = ({
                         onClick={() => setGoalType(value)}
                         className={`rounded-full border px-3 py-2.5 text-xs font-semibold transition-all ${
                           goalType === value
-                            ? "border-emerald-400 bg-emerald-50 text-emerald-700 shadow-[0_4px_12px_rgba(16,185,129,0.15)]"
-                            : "border-slate-200 bg-white text-slate-600 hover:border-emerald-200"
+                            ? "border-primary bg-primary/10 text-primary shadow-[0_4px_12px_rgba(15,23,42,0.15)]"
+                            : "border-border bg-card text-secondary-foreground hover:border-primary/35"
                         }`}
                       >
                         {value === "cut" ? "🔥 Fat loss" : value === "bulk" ? "💪 Build" : "⚖️ Maintain"}
@@ -366,7 +366,7 @@ export const OnboardingDialog = ({
                 className="space-y-4"
               >
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     Biological sex
                   </label>
                   <div className="grid grid-cols-3 gap-2">
@@ -377,8 +377,8 @@ export const OnboardingDialog = ({
                         onClick={() => setSex(value)}
                         className={`rounded-full border px-3 py-2 text-xs font-semibold transition-all ${
                           sex === value
-                            ? "border-emerald-400 bg-emerald-50 text-emerald-700"
-                            : "border-slate-200 bg-white text-slate-600 hover:border-emerald-200"
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-card text-secondary-foreground hover:border-primary/35"
                         }`}
                       >
                         {value === "female" ? "Female" : value === "male" ? "Male" : "Other"}
@@ -436,7 +436,7 @@ export const OnboardingDialog = ({
                     <button
                       type="button"
                       onClick={() => setHeightUnit("metric")}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:border-emerald-200"
+                      className="rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-secondary-foreground hover:border-primary/35"
                     >
                       Use cm / kg
                     </button>
@@ -451,18 +451,18 @@ export const OnboardingDialog = ({
                       type="number"
                       className="rounded-full"
                     />
-                    <div className="text-xs text-slate-500" />
+                    <div className="text-xs text-muted-foreground" />
                     <button
                       type="button"
                       onClick={() => setHeightUnit("imperial")}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:border-emerald-200"
+                      className="rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-secondary-foreground hover:border-primary/35"
                     >
                       Use ft / lb
                     </button>
                   </div>
                 )}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     Activity level
                   </label>
                   <div className="grid grid-cols-2 gap-2">
@@ -479,15 +479,15 @@ export const OnboardingDialog = ({
                         onClick={() => setActivity(option.value)}
                         className={`rounded-full border px-3 py-2 text-xs font-semibold transition-all ${
                           activity === option.value
-                            ? "border-emerald-400 bg-emerald-50 text-emerald-700"
-                            : "border-slate-200 bg-white text-slate-600 hover:border-emerald-200"
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-card text-secondary-foreground hover:border-primary/35"
                         }`}
                       >
                         {option.label}
                       </button>
                     ))}
                   </div>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {activity === "sedentary" &&
                       "Office or remote work with little movement."}
                     {activity === "light" &&
@@ -504,7 +504,7 @@ export const OnboardingDialog = ({
                   <CollapsibleTrigger asChild>
                     <button
                       type="button"
-                      className="flex w-full items-center justify-between rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600"
+                      className="flex w-full items-center justify-between rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-secondary-foreground"
                     >
                       Add optional details
                       <ChevronDown
@@ -515,7 +515,7 @@ export const OnboardingDialog = ({
                     </button>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-3 space-y-2">
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       These add precision if you know them. Leave blank if unsure.
                     </p>
                     <div className="grid grid-cols-2 gap-2">
@@ -563,7 +563,7 @@ export const OnboardingDialog = ({
                   <CollapsibleTrigger asChild>
                     <button
                       type="button"
-                      className="flex w-full items-center justify-between rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600"
+                      className="flex w-full items-center justify-between rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-secondary-foreground"
                     >
                       Advanced formula settings
                       <ChevronDown
@@ -574,7 +574,7 @@ export const OnboardingDialog = ({
                     </button>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-3 space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    <label className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                       Formula
                     </label>
                     <div className="grid grid-cols-2 gap-2">
@@ -588,8 +588,8 @@ export const OnboardingDialog = ({
                           onClick={() => setFormula(option.value)}
                           className={`rounded-full border px-3 py-2 text-xs font-semibold ${
                             formula === option.value
-                              ? "border-emerald-400 bg-emerald-50 text-emerald-700"
-                              : "border-slate-200 bg-white text-slate-600"
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-card text-secondary-foreground"
                           }`}
                         >
                           {option.label}
@@ -597,21 +597,21 @@ export const OnboardingDialog = ({
                       ))}
                     </div>
                     {formula === "katch" && !calculatedTargets?.leanMass ? (
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-muted-foreground">
                         Add body fat % to enable Katch-McArdle. Using Mifflin for now.
                       </p>
                     ) : null}
                   </CollapsibleContent>
                 </Collapsible>
-                <div className="rounded-[18px] border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-xs text-emerald-700">
+                <div className="rounded-[18px] border border-border/70 bg-secondary/70 px-4 py-3 text-xs text-secondary-foreground">
                   ✨ Based on your info, we've calculated personalized targets. Adjust if needed!
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     Daily calories
                   </label>
                   {calculatedTargets?.caloriesRange ? (
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       Suggested range: {calculatedTargets.caloriesRange.min}–{calculatedTargets.caloriesRange.max} cal
                     </p>
                   ) : null}
@@ -628,7 +628,7 @@ export const OnboardingDialog = ({
                     className="rounded-full"
                   />
                   {calculatedTargets?.caloriesRange ? (
-                    <div className="mt-3 rounded-[16px] border border-emerald-100 bg-emerald-50/60 px-3 py-3">
+                    <div className="mt-3 rounded-[16px] border border-border/70 bg-secondary/60 px-3 py-3">
                       <Slider
                         value={[
                           Math.min(
@@ -659,7 +659,7 @@ export const OnboardingDialog = ({
                           }
                         }}
                       />
-                      <div className="mt-2 flex items-center justify-between text-[11px] text-emerald-600/70">
+                      <div className="mt-2 flex items-center justify-between text-[11px] text-primary/70">
                         <span>{calculatedTargets.caloriesRange.min}</span>
                         <span>{calculatedTargets.caloriesRange.max}</span>
                       </div>
@@ -667,11 +667,11 @@ export const OnboardingDialog = ({
                   ) : null}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     Macro targets (g)
                   </label>
                   {dynamicTargets?.macroRanges ? (
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       Carbs {dynamicTargets.macroRanges.carbs.min}–{dynamicTargets.macroRanges.carbs.max}g · Protein {dynamicTargets.macroRanges.protein.min}–{dynamicTargets.macroRanges.protein.max}g · Fat {dynamicTargets.macroRanges.fat.min}–{dynamicTargets.macroRanges.fat.max}g
                     </p>
                   ) : null}
@@ -732,7 +732,7 @@ export const OnboardingDialog = ({
             {step < 2 ? (
               <Button
                 type="button"
-                className="flex-1 rounded-full bg-aura-primary py-5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(74,222,128,0.3)]"
+                className="flex-1 rounded-full bg-primary py-5 text-sm font-semibold text-primary-foreground shadow-[0_12px_24px_rgba(15,23,42,0.3)]"
                 onClick={() => setStep((prev) => (prev + 1) as 0 | 1 | 2)}
                 disabled={step === 1 && !canContinueBasics}
               >
@@ -741,7 +741,7 @@ export const OnboardingDialog = ({
             ) : (
               <Button
                 type="button"
-                className="flex-1 rounded-full bg-aura-primary py-5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(74,222,128,0.3)]"
+                className="flex-1 rounded-full bg-primary py-5 text-sm font-semibold text-primary-foreground shadow-[0_12px_24px_rgba(15,23,42,0.3)]"
                 onClick={handleSave}
                 disabled={!canSave}
               >

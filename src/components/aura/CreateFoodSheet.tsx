@@ -301,22 +301,22 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
   return (
     <form onSubmit={handleSubmit(onSubmit, onError)} className="aura-sheet-body">
       <div className="text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-secondary text-primary">
           <Plus className="h-6 w-6" />
         </div>
-        <h3 className="mt-3 text-xl font-display font-semibold text-slate-900">
+        <h3 className="mt-3 text-xl font-display font-semibold text-foreground">
           Create custom food
         </h3>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           Add a manual entry with macro details.
         </p>
       </div>
 
-      <div className="mt-6 space-y-3 rounded-[24px] border border-black/5 bg-white p-4 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
+      <div className="mt-6 space-y-3 rounded-[24px] border border-border/60 bg-card p-4 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
         {/* Show "Draft loaded" on initial load if there was a meaningful draft */}
         {showDraftLoaded && !draftSaved ? (
           <div className="flex items-center justify-between">
-            <div className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-600">
+            <div className="rounded-full bg-accent/35 px-3 py-1 text-[11px] font-semibold text-accent-foreground">
               Draft loaded
             </div>
             <button
@@ -331,7 +331,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                 setDraftSaved(false);
                 setSelectedBrandLogoUrl(null);
               }}
-              className="text-[11px] font-semibold text-slate-400 hover:text-slate-600"
+              className="text-[11px] font-semibold text-muted-foreground hover:text-foreground"
             >
               Start fresh
             </button>
@@ -340,7 +340,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
         {/* Show "Draft saved" after user makes changes */}
         {draftSaved ? (
           <div className="flex items-center justify-between">
-            <div className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-600">
+            <div className="rounded-full bg-primary/12 px-3 py-1 text-[11px] font-semibold text-primary">
               Draft saved
             </div>
             <button
@@ -355,7 +355,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                 setDraftSaved(false);
                 setSelectedBrandLogoUrl(null);
               }}
-              className="text-[11px] font-semibold text-slate-400 hover:text-slate-600"
+              className="text-[11px] font-semibold text-muted-foreground hover:text-foreground"
             >
               Clear draft
             </button>
@@ -381,7 +381,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
             <SelectContent>
             <SelectGroup>
               <SelectLabel>
-                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
+                <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
                   Weight
                 </span>
               </SelectLabel>
@@ -394,7 +394,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
             <SelectSeparator />
             <SelectGroup>
               <SelectLabel>
-                <span className="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-600">
+                <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-secondary-foreground">
                   Volume
                 </span>
               </SelectLabel>
@@ -407,7 +407,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
             <SelectSeparator />
             <SelectGroup>
               <SelectLabel>
-                <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-600">
+                <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-secondary-foreground">
                   Count
                 </span>
               </SelectLabel>
@@ -431,12 +431,12 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
             placeholder="Serving grams (optional)"
             className="h-11 rounded-full pr-10"
           />
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-muted-foreground">
             g
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-emerald-50 text-xl">
+          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-secondary text-xl">
             {showFoodImages && imageUrl ? (
               <img
                 src={imageUrl}
@@ -449,9 +449,9 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
               "🍽️"
             )}
           </div>
-          <label className="flex flex-1 cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-emerald-50/60 px-4 py-2 text-xs font-semibold text-emerald-700">
+          <label className="flex flex-1 cursor-pointer items-center justify-between rounded-full border border-border/70 bg-secondary/55 px-4 py-2 text-xs font-semibold text-secondary-foreground">
             <span>{uploading ? "Uploading..." : "Upload image"}</span>
-            <span className="text-emerald-500">Browse</span>
+            <span className="text-primary">Browse</span>
             <input
               type="file"
               accept="image/*"
@@ -464,14 +464,14 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
           </label>
         </div>
         {uploading && (
-          <div className="h-2 w-full overflow-hidden rounded-full bg-emerald-100">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-primary/15">
             <div
-              className="h-full rounded-full bg-emerald-400 transition-all"
+              className="h-full rounded-full bg-primary transition-all"
               style={{ width: `${uploadProgress}%` }}
             />
           </div>
         )}
-        {uploadNotice && <p className="text-xs text-emerald-600">{uploadNotice}</p>}
+        {uploadNotice && <p className="text-xs text-primary">{uploadNotice}</p>}
         <Input
           {...register("name")}
           placeholder="Food name (optional)"
@@ -480,7 +480,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
         <div>
           <div className="flex items-center gap-3">
             {/* Brand logo preview */}
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-xl">
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-xl">
               {selectedBrandLogoUrl ? (
                 <img
                   src={selectedBrandLogoUrl}
@@ -488,7 +488,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   className="h-full w-full object-contain"
                 />
               ) : (
-                <span className="text-slate-400">🏷️</span>
+                <span className="text-muted-foreground">🏷️</span>
               )}
             </div>
             {/* Brand select */}
@@ -536,10 +536,10 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                     </div>
                     <SelectItem value="none">No brand</SelectItem>
                     <SelectItem value="__create__">
-                      <span className="font-semibold text-emerald-600">+ Create new brand</span>
+                      <span className="font-semibold text-primary">+ Create new brand</span>
                     </SelectItem>
                     {brandLoading && (
-                      <div className="px-3 py-2 text-xs text-slate-500">Loading...</div>
+                      <div className="px-3 py-2 text-xs text-muted-foreground">Loading...</div>
                     )}
                     {brands
                       .filter((brand) =>
@@ -564,14 +564,14 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                                 className="h-5 w-5 rounded-full object-contain"
                               />
                             ) : (
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[10px]">🏷️</span>
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px]">🏷️</span>
                             )}
                             <span>{brand.name}</span>
                           </div>
                         </SelectItem>
                       ))}
                     {!brandLoading && brands.length === 0 && (
-                      <div className="px-3 py-2 text-xs text-slate-500">No brands found</div>
+                      <div className="px-3 py-2 text-xs text-muted-foreground">No brands found</div>
                     )}
                   </SelectContent>
                 </Select>
@@ -580,66 +580,66 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
           </div>
         </div>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Calories
           </p>
           <div className="relative mt-1">
             <Input
               {...register("kcal")}
               placeholder="0"
-              className={`h-10 rounded-full pr-12 ${errors.kcal ? "border-red-300" : ""}`}
+              className={`h-10 rounded-full pr-12 ${errors.kcal ? "border-destructive/60" : ""}`}
               inputMode="numeric"
             />
-            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
               kcal
             </span>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               Carbs
             </p>
             <div className="relative mt-1">
               <Input
                 {...register("carbs")}
                 placeholder="0"
-                className={`h-10 rounded-full pr-8 ${errors.carbs ? "border-red-300" : ""}`}
+                className={`h-10 rounded-full pr-8 ${errors.carbs ? "border-destructive/60" : ""}`}
                 inputMode="numeric"
               />
-              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                 g
               </span>
             </div>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               Protein
             </p>
             <div className="relative mt-1">
               <Input
                 {...register("protein")}
                 placeholder="0"
-                className={`h-10 rounded-full pr-8 ${errors.protein ? "border-red-300" : ""}`}
+                className={`h-10 rounded-full pr-8 ${errors.protein ? "border-destructive/60" : ""}`}
                 inputMode="numeric"
               />
-              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                 g
               </span>
             </div>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               Fat
             </p>
             <div className="relative mt-1">
               <Input
                 {...register("fat")}
                 placeholder="0"
-                className={`h-10 rounded-full pr-8 ${errors.fat ? "border-red-300" : ""}`}
+                className={`h-10 rounded-full pr-8 ${errors.fat ? "border-destructive/60" : ""}`}
                 inputMode="numeric"
               />
-              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                 g
               </span>
             </div>
@@ -648,9 +648,9 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
       </div>
 
       {brandCreateOpen && (
-        <div className="mt-4 rounded-[24px] border border-emerald-100 bg-emerald-50/60 p-4">
+        <div className="mt-4 rounded-[24px] border border-border/70 bg-secondary/55 p-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">
               New brand
             </p>
             <button
@@ -662,7 +662,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                 setNewBrandLogoUrl(null);
                 setBrandNotice(null);
               }}
-              className="text-xs font-semibold text-slate-400 hover:text-slate-600"
+              className="text-xs font-semibold text-muted-foreground hover:text-foreground"
             >
               Cancel
             </button>
@@ -681,7 +681,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
               className="h-10 rounded-full"
             />
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-white text-xl shadow-[0_8px_20px_rgba(16,185,129,0.12)]">
+              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-card text-xl shadow-[0_8px_20px_rgba(15,23,42,0.12)]">
                 {newBrandLogoUrl ? (
                   <img
                     src={newBrandLogoUrl}
@@ -692,9 +692,9 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   "🏷️"
                 )}
               </div>
-              <label className="flex flex-1 cursor-pointer items-center justify-between rounded-full border border-emerald-100 bg-white px-4 py-2 text-xs font-semibold text-emerald-700">
+              <label className="flex flex-1 cursor-pointer items-center justify-between rounded-full border border-border/70 bg-card px-4 py-2 text-xs font-semibold text-secondary-foreground">
                 <span>{brandUploading ? "Uploading..." : "Upload logo"}</span>
-                <span className="text-emerald-500">Browse</span>
+                <span className="text-primary">Browse</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -747,17 +747,17 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
               </label>
             </div>
             {brandUploading && (
-              <div className="h-2 w-full overflow-hidden rounded-full bg-emerald-100">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-primary/15">
                 <div
-                  className="h-full rounded-full bg-emerald-400 transition-all"
+                  className="h-full rounded-full bg-primary transition-all"
                   style={{ width: `${brandUploadProgress}%` }}
                 />
               </div>
             )}
-            {brandNotice && <p className="text-xs text-emerald-600">{brandNotice}</p>}
+            {brandNotice && <p className="text-xs text-primary">{brandNotice}</p>}
             <Button
               type="button"
-              className="w-full rounded-full bg-aura-primary py-4 text-sm font-semibold text-white"
+              className="w-full rounded-full bg-primary py-4 text-sm font-semibold text-primary-foreground"
               onClick={async () => {
                 if (!newBrandName.trim()) {
                   setBrandNotice("Enter a brand name.");
@@ -797,15 +797,15 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
         <CollapsibleTrigger asChild>
           <button
             type="button"
-            className="w-full rounded-full border border-emerald-100 bg-white px-4 py-2 text-left text-sm font-semibold text-emerald-700 shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
+            className="w-full rounded-full border border-border/70 bg-card px-4 py-2 text-left text-sm font-semibold text-secondary-foreground shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
           >
             Advanced nutrition (optional)
           </button>
         </CollapsibleTrigger>
-        <CollapsibleContent className="mt-3 space-y-3 rounded-[24px] border border-black/5 bg-white p-4 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
+        <CollapsibleContent className="mt-3 space-y-3 rounded-[24px] border border-border/60 bg-card p-4 shadow-[0_14px_30px_rgba(15,23,42,0.08)]">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Sodium
               </p>
               <div className="relative mt-1">
@@ -816,13 +816,13 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   inputMode="numeric"
                   type="number"
                 />
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   mg
                 </span>
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Potassium
               </p>
               <div className="relative mt-1">
@@ -833,13 +833,13 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   inputMode="numeric"
                   type="number"
                 />
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   mg
                 </span>
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Fiber
               </p>
               <div className="relative mt-1">
@@ -850,13 +850,13 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   inputMode="numeric"
                   type="number"
                 />
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   g
                 </span>
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Saturated fat
               </p>
               <div className="relative mt-1">
@@ -867,13 +867,13 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   inputMode="numeric"
                   type="number"
                 />
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   g
                 </span>
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Sugar
               </p>
               <div className="relative mt-1">
@@ -884,13 +884,13 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   inputMode="numeric"
                   type="number"
                 />
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   g
                 </span>
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Trans fat
               </p>
               <div className="relative mt-1">
@@ -901,13 +901,13 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   inputMode="numeric"
                   type="number"
                 />
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   g
                 </span>
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Cholesterol
               </p>
               <div className="relative mt-1">
@@ -918,14 +918,14 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   inputMode="numeric"
                   type="number"
                 />
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   mg
                 </span>
               </div>
             </div>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               Ingredients
             </p>
             <Textarea
@@ -939,7 +939,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
 
       <Button
         type="submit"
-        className="mt-6 w-full rounded-full bg-aura-primary py-6 text-base font-semibold text-white shadow-[0_16px_30px_rgba(74,222,128,0.35)] hover:bg-aura-primary/90"
+        className="mt-6 w-full rounded-full bg-primary py-6 text-base font-semibold text-primary-foreground shadow-[0_16px_30px_rgba(15,23,42,0.35)] hover:bg-primary/90"
         disabled={isSubmitting}
       >
         {isSubmitting ? "Saving..." : "Save food"}
@@ -954,7 +954,7 @@ export const CreateFoodSheet = ({
   onCreate,
 }: CreateFoodSheetProps) => (
   <Drawer open={open} onOpenChange={onOpenChange}>
-    <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6">
+    <DrawerContent className="rounded-t-[36px] border-none bg-background pb-6">
       <CreateFoodForm onCreate={onCreate} onComplete={() => onOpenChange(false)} />
     </DrawerContent>
   </Drawer>

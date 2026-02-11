@@ -66,7 +66,7 @@ export const SessionSummaryScreen = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className={cn("flex min-h-screen flex-col bg-slate-950 text-white", className)}
+      className={cn("flex min-h-screen flex-col bg-background text-foreground", className)}
     >
       <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col px-4 pb-10 pt-6">
         <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -74,17 +74,17 @@ export const SessionSummaryScreen = ({
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.15, type: "spring", stiffness: 200 }}
-            className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-400/20"
+            className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/20"
           >
-            <Trophy className="h-10 w-10 text-emerald-400" />
+            <Trophy className="h-10 w-10 text-primary" />
           </motion.div>
-          <h1 className="text-2xl font-display font-semibold text-white">
+          <h1 className="text-2xl font-display font-semibold text-foreground">
             Workout complete
           </h1>
-          <p className="mt-2 text-lg font-medium text-emerald-300/90">
+          <p className="mt-2 text-lg font-medium text-primary/90">
             {workoutName}
           </p>
-          <p className="mt-1 text-sm text-white/50">{planName}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{planName}</p>
 
           <motion.div
             initial={{ y: 12, opacity: 0 }}
@@ -92,27 +92,27 @@ export const SessionSummaryScreen = ({
             transition={{ delay: 0.25 }}
             className="mt-8 grid w-full max-w-[280px] grid-cols-3 gap-3"
           >
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-              <p className="text-2xl font-bold tabular-nums text-white">
+            <div className="rounded-2xl border border-border/70 bg-card/55 px-4 py-4">
+              <p className="text-2xl font-bold tabular-nums text-foreground">
                 {stats.totalSets}
               </p>
-              <p className="mt-1 text-xs uppercase tracking-wider text-white/50">
+              <p className="mt-1 text-xs uppercase tracking-wider text-muted-foreground">
                 Sets
               </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-              <p className="text-2xl font-bold tabular-nums text-white">
+            <div className="rounded-2xl border border-border/70 bg-card/55 px-4 py-4">
+              <p className="text-2xl font-bold tabular-nums text-foreground">
                 {Math.round(stats.totalVolume)}
               </p>
-              <p className="mt-1 text-xs uppercase tracking-wider text-white/50">
+              <p className="mt-1 text-xs uppercase tracking-wider text-muted-foreground">
                 {volumeLabel} volume
               </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-              <p className="text-2xl font-bold tabular-nums text-white">
+            <div className="rounded-2xl border border-border/70 bg-card/55 px-4 py-4">
+              <p className="text-2xl font-bold tabular-nums text-foreground">
                 {formatDuration(stats.durationMs)}
               </p>
-              <p className="mt-1 text-xs uppercase tracking-wider text-white/50">
+              <p className="mt-1 text-xs uppercase tracking-wider text-muted-foreground">
                 Duration
               </p>
             </div>
@@ -122,14 +122,14 @@ export const SessionSummaryScreen = ({
             {onCopySummary ? (
               <Button
                 variant="outline"
-                className="w-full rounded-full border-white/20 text-white hover:bg-white/10"
+                className="w-full rounded-full border-border/70 text-foreground hover:bg-secondary/35"
                 onClick={onCopySummary}
               >
                 Copy summary
               </Button>
             ) : null}
             <Button
-              className="w-full rounded-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+              className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={onBack}
             >
               Back to plan
