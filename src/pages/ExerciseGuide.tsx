@@ -10,7 +10,7 @@ const ExerciseGuide = () => {
   const { planId, workoutId, exerciseId } = useParams();
   const [params] = useSearchParams();
   const exerciseName = params.get("name") ?? "";
-  const { workoutPlans, updateWorkoutTemplate } = useAppStore();
+  const { workoutPlans, workoutPlansLoaded, updateWorkoutTemplate } = useAppStore();
 
   const activePlan = useMemo(
     () => workoutPlans.find((plan) => plan.id === planId) ?? null,
@@ -52,7 +52,7 @@ const ExerciseGuide = () => {
     setDraft(exercise ?? fallbackExercise);
   }, [exercise?.id, fallbackExercise]);
 
-  const isLoading = workoutPlans.length === 0;
+  const isLoading = !workoutPlansLoaded;
 
   if (isLoading) {
     return (
@@ -87,7 +87,7 @@ const ExerciseGuide = () => {
 
   const handleClose = async () => {
     if (exercise) {
-      const nextExercises = activeWorkout.exercises.map((item) =>
+      const nextExercises = (activeWorkout.exercises ?? []).map((item) =>
         item.id === draft.id ? { ...item, ...draft } : item,
       );
       try {

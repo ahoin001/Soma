@@ -30,27 +30,35 @@ const WorkoutDetails = () => {
 
   const plansLoaded = workoutPlansLoaded || !planId;
 
+  // Wait for plans to load before resolving plan/workout. Avoids rendering the editor on
+  // stale or partial data (e.g. cache then refetch) which can cause App Error.
+  if (!plansLoaded) {
+    return (
+      <AppShell experience="fitness" showNav={false} safeAreaTop="extra">
+        <div className="mx-auto w-full max-w-[420px] px-4 pb-10 text-white">
+          <div className="rounded-[28px] border border-white/10 bg-white/5 px-4 py-6 text-center">
+            <p className="text-sm text-white/60">Loading workout...</p>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
   if (!activePlan || !activeWorkout) {
     return (
       <AppShell experience="fitness" showNav={false} safeAreaTop="extra">
         <div className="mx-auto w-full max-w-[420px] px-4 pb-10 text-white">
           <div className="rounded-[28px] border border-white/10 bg-white/5 px-4 py-6 text-center">
-            {!plansLoaded ? (
-              <p className="text-sm text-white/60">Loading workout...</p>
-            ) : (
-              <>
-                <p className="text-sm text-white/70">
-                  We could not find that workout. Try selecting a different plan.
-                </p>
-                <button
-                  type="button"
-                  className="mt-4 rounded-full border border-white/20 px-4 py-2 text-sm text-white"
-                  onClick={() => navigate("/fitness")}
-                >
-                  Back to Fitness
-                </button>
-              </>
-            )}
+            <p className="text-sm text-white/70">
+              We could not find that workout. Try selecting a different plan.
+            </p>
+            <button
+              type="button"
+              className="mt-4 rounded-full border border-white/20 px-4 py-2 text-sm text-white"
+              onClick={() => navigate("/fitness")}
+            >
+              Back to Fitness
+            </button>
           </div>
         </div>
       </AppShell>
@@ -107,7 +115,7 @@ const WorkoutDetails = () => {
           );
         }}
         onSave={async (nextExercises) => {
-          const previousExercises = activeWorkout.exercises;
+          const previousExercises = activeWorkout.exercises ?? [];
           try {
             await updateWorkoutTemplate(activePlan.id, activeWorkout.id, {
               exercises: nextExercises,
@@ -132,7 +140,7 @@ const WorkoutDetails = () => {
           try {
             await fitnessPlanner.startSessionFromTemplate(
               activeWorkout.name,
-              activeWorkout.exercises.map((exercise) => exercise.name),
+              (activeWorkout.exercises ?? []).map((exercise) => exercise.name),
             );
             navigate(`/fitness/workouts/${activePlan.id}/${activeWorkout.id}/session`);
           } catch {

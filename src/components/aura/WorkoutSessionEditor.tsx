@@ -247,7 +247,7 @@ const ExerciseCard = memo(
               >
                 {exercise.name}
               </button>
-              <p className="mt-1 text-xs text-white/50">{exercise.sets.length} sets</p>
+              <p className="mt-1 text-xs text-white/50">{(exercise.sets ?? []).length} sets</p>
               {exercise.note || isNoteOpen ? (
                 <Textarea
                   value={exercise.note}
@@ -385,7 +385,7 @@ const ExerciseCard = memo(
       </div>
 
       <div className="mt-3 space-y-3">
-        {exercise.sets.map((set, setIndex) => {
+        {(exercise.sets ?? []).map((set, setIndex) => {
           const weightValid = isValidNumber(set.weight);
           const repsValid = isValidNumber(set.reps);
           const rpeValid = isValidOptionalRange(set.rpe ?? "", 1, 10);
@@ -832,7 +832,7 @@ export const WorkoutSessionEditor = ({
       storedRaw && mode === "session"
         ? (JSON.parse(storedRaw) as Record<string, Array<{ weight: string; reps: string }>>)
         : {};
-    const currentSignature = buildSignature(workout.exercises);
+    const currentSignature = buildSignature(workout.exercises ?? []);
     const draft = mode === "edit" ? workoutDrafts[workout.id] : null;
     const shouldUseDraft = Boolean(
       draft?.exercises.length && draft.baseSignature === currentSignature,
@@ -843,7 +843,7 @@ export const WorkoutSessionEditor = ({
     baseSignatureRef.current = shouldUseDraft
       ? draft?.baseSignature ?? currentSignature
       : currentSignature;
-    const base = shouldUseDraft ? draft?.exercises ?? [] : workout.exercises;
+    const base = shouldUseDraft ? draft?.exercises ?? [] : (workout.exercises ?? []);
     setExercises(
       base.map((exercise) => {
         const previousSets = stored?.[exercise.name];
@@ -908,7 +908,7 @@ export const WorkoutSessionEditor = ({
     setExercises((prev) =>
       prev.map((exercise) => ({
         ...exercise,
-        sets: exercise.sets.map((set) => ({
+        sets: (exercise.sets ?? []).map((set) => ({
           ...set,
           previous: formatPrevious(set.weight ?? "", set.reps ?? "", unitUsed),
         })),
@@ -1089,7 +1089,7 @@ export const WorkoutSessionEditor = ({
       }));
       const baseSignature =
         baseSignatureRef.current ??
-        (workout ? buildSignature(workout.exercises) : "");
+        (workout ? buildSignature(workout.exercises ?? []) : "");
       draftWriteRef.current = workout.id;
       setWorkoutDraft(workout.id, next, baseSignature);
     }, 300);
@@ -1105,7 +1105,7 @@ export const WorkoutSessionEditor = ({
     if (mode !== "session" || !workout || typeof window === "undefined") return;
     const payload: Record<string, Array<{ weight: string; reps: string }>> = {};
     exercises.forEach((exercise) => {
-      payload[exercise.name] = exercise.sets.map((set) => ({
+      payload[exercise.name] = (exercise.sets ?? []).map((set) => ({
         weight: set.weight,
         reps: set.reps,
       }));
@@ -1117,15 +1117,15 @@ export const WorkoutSessionEditor = ({
   };
 
   const totalSets = useMemo(
-    () => exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0),
+    () => exercises.reduce((sum, exercise) => sum + (exercise.sets ?? []).length, 0),
     [exercises],
   );
 
   const hasInvalidEntries = useMemo(
     () =>
       exercises.some((exercise) =>
-        exercise.sets.some(
-          (set) =>
+(exercise.sets ?? []).some(
+            (set) =>
             !isValidNumber(set.weight) ||
             !isValidNumber(set.reps) ||
             (mode === "session" &&
@@ -1180,7 +1180,7 @@ export const WorkoutSessionEditor = ({
           (se) => se.exercise_name === exercise.name,
         );
         if (!sessionEx) return null;
-        const sets = exercise.sets
+        const sets = (exercise.sets ?? [])
           .filter(
             (set) =>
               isValidNumber(set.weight) &&
