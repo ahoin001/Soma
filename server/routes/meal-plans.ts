@@ -12,6 +12,16 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const result = await withTransaction(async (client) => {
+      const groups = await client.query(
+        `
+        SELECT id, user_id, name, sort_order, created_at, updated_at
+        FROM meal_plan_groups
+        WHERE user_id = $1
+        ORDER BY sort_order ASC, created_at ASC;
+        `,
+        [userId],
+      );
+
       const days = await client.query(
         `
         SELECT
@@ -22,6 +32,7 @@ router.get(
           target_protein_g,
           target_carbs_g,
           target_fat_g,
+          group_id,
           created_at,
           updated_at
         FROM meal_plan_days
@@ -43,6 +54,7 @@ router.get(
           [userId],
         );
         return {
+          groups: groups.rows,
           days: [],
           meals: [],
           items: [],
@@ -105,6 +117,7 @@ router.get(
       );
 
       return {
+        groups: groups.rows,
         days: days.rows,
         meals: meals.rows,
         items: items.rows,
@@ -116,8 +129,86 @@ router.get(
   }),
 );
 
+const createGroupSchema = z.object({
+  name: z.string().min(1),
+});
+
+router.post(
+  "/groups",
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = getUserId(req);
+    const payload = createGroupSchema.parse(req.body);
+    const result = await withTransaction(async (client) => {
+      const count = await client.query(
+        `SELECT COUNT(*) AS n FROM meal_plan_groups WHERE user_id = $1;`,
+        [userId],
+      );
+      const sortOrder = Number(count.rows[0]?.n ?? 0);
+      const group = await client.query(
+        `
+        INSERT INTO meal_plan_groups (user_id, name, sort_order)
+        VALUES ($1, $2, $3)
+        RETURNING *;
+        `,
+        [userId, payload.name, sortOrder],
+      );
+      return group.rows[0];
+    });
+    res.status(201).json({ group: result });
+  }),
+);
+
+const patchGroupSchema = z.object({
+  name: z.string().min(1).optional(),
+  sortOrder: z.number().int().min(0).optional(),
+});
+
+router.patch(
+  "/groups/:groupId",
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = getUserId(req);
+    const groupId = req.params.groupId;
+    const payload = patchGroupSchema.parse(req.body);
+    const result = await withTransaction((client) =>
+      client.query(
+        `
+        UPDATE meal_plan_groups
+        SET
+          name = COALESCE($3, name),
+          sort_order = COALESCE($4, sort_order),
+          updated_at = now()
+        WHERE id = $1 AND user_id = $2
+        RETURNING *;
+        `,
+        [groupId, userId, payload.name ?? null, payload.sortOrder ?? null],
+      ),
+    );
+    res.json({ group: result.rows[0] ?? null });
+  }),
+);
+
+router.delete(
+  "/groups/:groupId",
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = getUserId(req);
+    const groupId = req.params.groupId;
+    await withTransaction(async (client) => {
+      await client.query(
+        `UPDATE meal_plan_days SET group_id = NULL WHERE group_id = $1 AND user_id = $2;`,
+        [groupId, userId],
+      );
+      await client.query(
+        `DELETE FROM meal_plan_groups WHERE id = $1 AND user_id = $2;`,
+        [groupId, userId],
+      );
+    });
+    res.status(204).send();
+  }),
+);
+
 const createDaySchema = z.object({
   name: z.string().min(1),
+  groupId: z.string().uuid().nullable().optional(),
   targets: z
     .object({
       kcal: z.number().nonnegative().optional(),
@@ -142,9 +233,10 @@ router.post(
           target_kcal,
           target_protein_g,
           target_carbs_g,
-          target_fat_g
+          target_fat_g,
+          group_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *;
         `,
         [
@@ -154,6 +246,7 @@ router.post(
           payload.targets?.protein ?? 0,
           payload.targets?.carbs ?? 0,
           payload.targets?.fat ?? 0,
+          payload.groupId ?? null,
         ],
       );
 
@@ -190,6 +283,7 @@ router.post(
 
 const patchDaySchema = z.object({
   name: z.string().min(1).optional(),
+  groupId: z.string().uuid().nullable().optional(),
   targets: z
     .object({
       kcal: z.number().nonnegative().optional(),
@@ -207,8 +301,8 @@ router.patch(
     const dayId = req.params.dayId;
     const payload = patchDaySchema.parse(req.body);
 
-    const result = await withTransaction((client) =>
-      client.query(
+    const result = await withTransaction(async (client) => {
+      await client.query(
         `
         UPDATE meal_plan_days
         SET
@@ -218,8 +312,7 @@ router.patch(
           target_carbs_g = COALESCE($6, target_carbs_g),
           target_fat_g = COALESCE($7, target_fat_g),
           updated_at = now()
-        WHERE id = $1 AND user_id = $2
-        RETURNING *;
+        WHERE id = $1 AND user_id = $2;
         `,
         [
           dayId,
@@ -230,10 +323,25 @@ router.patch(
           payload.targets?.carbs ?? null,
           payload.targets?.fat ?? null,
         ],
-      ),
-    );
+      );
+      if (Object.prototype.hasOwnProperty.call(payload, "groupId")) {
+        await client.query(
+          `
+          UPDATE meal_plan_days
+          SET group_id = $3, updated_at = now()
+          WHERE id = $1 AND user_id = $2;
+          `,
+          [dayId, userId, payload.groupId],
+        );
+      }
+      const updated = await client.query(
+        `SELECT * FROM meal_plan_days WHERE id = $1 AND user_id = $2 LIMIT 1;`,
+        [dayId, userId],
+      );
+      return updated.rows[0] ?? null;
+    });
 
-    res.json({ day: result.rows[0] ?? null });
+    res.json({ day: result });
   }),
 );
 
@@ -276,9 +384,10 @@ router.post(
           target_kcal,
           target_protein_g,
           target_carbs_g,
-          target_fat_g
+          target_fat_g,
+          group_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *;
         `,
         [
@@ -288,6 +397,7 @@ router.post(
           source.target_protein_g,
           source.target_carbs_g,
           source.target_fat_g,
+          source.group_id ?? null,
         ],
       );
 

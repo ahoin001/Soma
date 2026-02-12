@@ -5,6 +5,7 @@ import type {
   MealEntryItemRecord,
   MealEntryRecord,
   MealPlanDayRecord,
+  MealPlanGroupRecord,
   MealPlanItemRecord,
   MealPlanMealRecord,
   MealPlanWeekAssignmentRecord,
@@ -292,6 +293,7 @@ export const removeGroceryBagItem = async (itemId: string) =>
 
 export const fetchMealPlans = async () =>
   apiFetch<{
+    groups: MealPlanGroupRecord[];
     days: MealPlanDayRecord[];
     meals: MealPlanMealRecord[];
     items: MealPlanItemRecord[];
@@ -300,6 +302,7 @@ export const fetchMealPlans = async () =>
 
 export const createMealPlanDay = async (payload: {
   name: string;
+  groupId?: string | null;
   targets?: {
     kcal?: number;
     protein?: number;
@@ -316,6 +319,7 @@ export const updateMealPlanDay = async (
   dayId: string,
   payload: {
     name?: string;
+    groupId?: string | null;
     targets?: {
       kcal?: number;
       protein?: number;
@@ -328,6 +332,24 @@ export const updateMealPlanDay = async (
     method: "PATCH",
     body: JSON.stringify(payload),
   });
+
+export const createMealPlanGroup = async (payload: { name: string }) =>
+  apiFetch<{ group: MealPlanGroupRecord }>("/api/meal-plans/groups", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+export const updateMealPlanGroup = async (
+  groupId: string,
+  payload: { name?: string; sortOrder?: number },
+) =>
+  apiFetch<{ group: MealPlanGroupRecord | null }>(`/api/meal-plans/groups/${groupId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+
+export const deleteMealPlanGroup = async (groupId: string) =>
+  apiFetch<{ ok: boolean }>(`/api/meal-plans/groups/${groupId}`, { method: "DELETE" });
 
 export const duplicateMealPlanDay = async (dayId: string, name?: string) =>
   apiFetch<{

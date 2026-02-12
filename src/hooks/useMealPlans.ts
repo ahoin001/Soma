@@ -4,17 +4,21 @@ import {
   applyMealPlanToWeekdays,
   clearMealPlanWeekday,
   createMealPlanDay,
+  createMealPlanGroup,
   deleteMealPlanDay,
+  deleteMealPlanGroup,
   deleteMealPlanItem,
   duplicateMealPlanDay,
   fetchMealPlans,
   reorderMealPlanItems,
   reorderMealPlanMeals,
   updateMealPlanDay,
+  updateMealPlanGroup,
   updateMealPlanItem,
 } from "@/lib/api";
 import type {
   MealPlanDayRecord,
+  MealPlanGroupRecord,
   MealPlanItemRecord,
   MealPlanMealRecord,
   MealPlanWeekAssignmentRecord,
@@ -25,12 +29,19 @@ export type MealPlanSlot = "protein" | "carbs" | "balance";
 export type MealPlanDay = {
   id: string;
   name: string;
+  groupId: string | null;
   targets: {
     kcal: number;
     protein: number;
     carbs: number;
     fat: number;
   };
+};
+
+export type MealPlanGroup = {
+  id: string;
+  name: string;
+  sortOrder: number;
 };
 
 export type MealPlanMeal = {
@@ -70,12 +81,19 @@ const toNum = (value: number | string | null | undefined, fallback = 0) => {
 const mapDay = (row: MealPlanDayRecord): MealPlanDay => ({
   id: row.id,
   name: row.name,
+  groupId: row.group_id ?? null,
   targets: {
     kcal: toNum(row.target_kcal),
     protein: toNum(row.target_protein_g),
     carbs: toNum(row.target_carbs_g),
     fat: toNum(row.target_fat_g),
   },
+});
+
+const mapGroup = (row: MealPlanGroupRecord): MealPlanGroup => ({
+  id: row.id,
+  name: row.name,
+  sortOrder: row.sort_order,
 });
 
 const mapMeal = (row: MealPlanMealRecord): MealPlanMeal => ({
@@ -106,6 +124,7 @@ const mapWeek = (row: MealPlanWeekAssignmentRecord): MealPlanWeekAssignment => (
 });
 
 export const useMealPlans = () => {
+  const [groups, setGroups] = useState<MealPlanGroup[]>([]);
   const [days, setDays] = useState<MealPlanDay[]>([]);
   const [meals, setMeals] = useState<MealPlanMeal[]>([]);
   const [items, setItems] = useState<MealPlanItem[]>([]);
@@ -118,6 +137,7 @@ export const useMealPlans = () => {
     setError(null);
     try {
       const response = await fetchMealPlans();
+      setGroups((response.groups ?? []).map(mapGroup));
       setDays((response.days ?? []).map(mapDay));
       setMeals((response.meals ?? []).map(mapMeal));
       setItems((response.items ?? []).map(mapItem));
@@ -135,24 +155,36 @@ export const useMealPlans = () => {
     reload();
   }, [reload]);
 
-  const addDay = useCallback(async (payload: { name: string; targets: MealPlanDay["targets"] }) => {
-    const response = await createMealPlanDay({
-      name: payload.name,
-      targets: payload.targets,
-    });
-    if (response.day) {
-      setDays((prev) => [...prev, mapDay(response.day)]);
-    }
-    if (response.meals?.length) {
-      setMeals((prev) => [...prev, ...response.meals.map(mapMeal)]);
-    }
-    return response.day ? mapDay(response.day) : null;
-  }, []);
+  const addDay = useCallback(
+    async (payload: {
+      name: string;
+      groupId?: string | null;
+      targets: MealPlanDay["targets"];
+    }) => {
+      const response = await createMealPlanDay({
+        name: payload.name,
+        groupId: payload.groupId ?? undefined,
+        targets: payload.targets,
+      });
+      if (response.day) {
+        setDays((prev) => [...prev, mapDay(response.day)]);
+      }
+      if (response.meals?.length) {
+        setMeals((prev) => [...prev, ...response.meals.map(mapMeal)]);
+      }
+      return response.day ? mapDay(response.day) : null;
+    },
+    [],
+  );
 
   const patchDay = useCallback(
     async (
       dayId: string,
-      payload: { name?: string; targets?: MealPlanDay["targets"] },
+      payload: {
+        name?: string;
+        groupId?: string | null;
+        targets?: MealPlanDay["targets"];
+      },
     ) => {
       const response = await updateMealPlanDay(dayId, payload);
       if (response.day) {
@@ -164,6 +196,36 @@ export const useMealPlans = () => {
     },
     [],
   );
+
+  const addGroup = useCallback(async (name: string) => {
+    const response = await createMealPlanGroup({ name });
+    if (response.group) {
+      setGroups((prev) => [...prev, mapGroup(response.group)]);
+      return mapGroup(response.group);
+    }
+    return null;
+  }, []);
+
+  const patchGroup = useCallback(
+    async (groupId: string, payload: { name?: string; sortOrder?: number }) => {
+      const response = await updateMealPlanGroup(groupId, payload);
+      if (response.group) {
+        const mapped = mapGroup(response.group);
+        setGroups((prev) => prev.map((g) => (g.id === groupId ? mapped : g)));
+        return mapped;
+      }
+      return null;
+    },
+    [],
+  );
+
+  const removeGroup = useCallback(async (groupId: string) => {
+    await deleteMealPlanGroup(groupId);
+    setGroups((prev) => prev.filter((g) => g.id !== groupId));
+    setDays((prev) =>
+      prev.map((day) => (day.groupId === groupId ? { ...day, groupId: null } : day)),
+    );
+  }, []);
 
   const removeDay = useCallback(async (dayId: string) => {
     await deleteMealPlanDay(dayId);
@@ -311,6 +373,7 @@ export const useMealPlans = () => {
 
   return useMemo(
     () => ({
+      groups,
       days,
       meals,
       items,
@@ -322,6 +385,9 @@ export const useMealPlans = () => {
       patchDay,
       removeDay,
       duplicateDay,
+      addGroup,
+      patchGroup,
+      removeGroup,
       addItem,
       patchItem,
       removeItem,
@@ -331,6 +397,7 @@ export const useMealPlans = () => {
       clearWeekday,
     }),
     [
+      groups,
       days,
       meals,
       items,
@@ -342,6 +409,9 @@ export const useMealPlans = () => {
       patchDay,
       removeDay,
       duplicateDay,
+      addGroup,
+      patchGroup,
+      removeGroup,
       addItem,
       patchItem,
       removeItem,

@@ -69,6 +69,15 @@ export type MealEntryItemRecord = {
   created_at: string;
 };
 
+export type MealPlanGroupRecord = {
+  id: string;
+  user_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type MealPlanDayRecord = {
   id: string;
   user_id: string;
@@ -77,6 +86,7 @@ export type MealPlanDayRecord = {
   target_protein_g: number | string;
   target_carbs_g: number | string;
   target_fat_g: number | string;
+  group_id: string | null;
   created_at: string;
   updated_at: string;
 };
