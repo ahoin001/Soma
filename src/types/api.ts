@@ -68,3 +68,48 @@ export type MealEntryItemRecord = {
   sort_order: number;
   created_at: string;
 };
+
+export type MealPlanDayRecord = {
+  id: string;
+  user_id: string;
+  name: string;
+  target_kcal: number | string;
+  target_protein_g: number | string;
+  target_carbs_g: number | string;
+  target_fat_g: number | string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MealPlanMealRecord = {
+  id: string;
+  day_id: string;
+  label: string;
+  emoji: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MealPlanItemRecord = {
+  id: string;
+  meal_id: string;
+  food_id: string | null;
+  food_name: string;
+  quantity: number | string;
+  slot: "protein" | "carbs" | "balance";
+  kcal: number | string;
+  protein_g: number | string;
+  carbs_g: number | string;
+  fat_g: number | string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MealPlanWeekAssignmentRecord = {
+  user_id: string;
+  weekday: number;
+  day_id: string | null;
+  updated_at: string;
+};

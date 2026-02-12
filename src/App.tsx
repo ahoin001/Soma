@@ -659,16 +659,16 @@ const ScrollRestoration = () => {
 
 // ─── Auth helpers ───────────────────────────────────────────────────
 const AuthLoading = () => (
-  <div className="min-h-screen bg-background">
-    <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6">
-      <Skeleton className="h-60 w-full rounded-[36px]" />
-      <div className="mt-6 space-y-3">
-        <Skeleton className="h-4 w-2/3" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
-      </div>
-    </div>
-  </div>
+              <div className="min-h-screen bg-background">
+                <div className="mx-auto w-full max-w-sm px-5 pb-10 pt-6">
+                  <Skeleton className="h-60 w-full rounded-[36px]" />
+                  <div className="mt-6 space-y-3">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                  </div>
+                </div>
+              </div>
 );
 
 const AuthRoute = () => {
@@ -711,13 +711,13 @@ const AppShellRoot = () => {
         </>
       ) : (
         <Suspense fallback={<AuthLoading />}>
-          <Routes>
+            <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="*" element={<Navigate to="/auth" replace />} />
-          </Routes>
-        </Suspense>
+            </Routes>
+          </Suspense>
       )}
-    </BrowserRouter>
+        </BrowserRouter>
   );
 };
 
@@ -758,14 +758,14 @@ const App = () => {
               <UIProvider>
                 <AppStoreProvider>
                   <AppShellRoot />
-                </AppStoreProvider>
+      </AppStoreProvider>
               </UIProvider>
             </UserProvider>
           </AuthProvider>
         </PageErrorBoundary>
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 };
 
 export default App;

@@ -4,6 +4,10 @@ import type {
   FoodServingRecord,
   MealEntryItemRecord,
   MealEntryRecord,
+  MealPlanDayRecord,
+  MealPlanItemRecord,
+  MealPlanMealRecord,
+  MealPlanWeekAssignmentRecord,
   MealTypeRecord,
 } from "@/types/api";
 import { SESSION_TOKEN_KEY, USER_ID_KEY } from "@/lib/storageKeys";
@@ -285,6 +289,117 @@ export const addGroceryBagItem = async (payload: {
 
 export const removeGroceryBagItem = async (itemId: string) =>
   apiFetch<{ ok: boolean }>(`/api/groceries/${itemId}`, { method: "DELETE" });
+
+export const fetchMealPlans = async () =>
+  apiFetch<{
+    days: MealPlanDayRecord[];
+    meals: MealPlanMealRecord[];
+    items: MealPlanItemRecord[];
+    weekAssignments: MealPlanWeekAssignmentRecord[];
+  }>("/api/meal-plans");
+
+export const createMealPlanDay = async (payload: {
+  name: string;
+  targets?: {
+    kcal?: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+  };
+}) =>
+  apiFetch<{ day: MealPlanDayRecord; meals: MealPlanMealRecord[] }>("/api/meal-plans/days", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+export const updateMealPlanDay = async (
+  dayId: string,
+  payload: {
+    name?: string;
+    targets?: {
+      kcal?: number;
+      protein?: number;
+      carbs?: number;
+      fat?: number;
+    };
+  },
+) =>
+  apiFetch<{ day: MealPlanDayRecord }>(`/api/meal-plans/days/${dayId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+
+export const duplicateMealPlanDay = async (dayId: string, name?: string) =>
+  apiFetch<{
+    day: MealPlanDayRecord;
+    meals: MealPlanMealRecord[];
+    items: MealPlanItemRecord[];
+  }>(`/api/meal-plans/days/${dayId}/duplicate`, {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+
+export const deleteMealPlanDay = async (dayId: string) =>
+  apiFetch<{ ok: boolean }>(`/api/meal-plans/days/${dayId}`, { method: "DELETE" });
+
+export const addMealPlanItem = async (
+  mealId: string,
+  payload: {
+    foodId?: string | null;
+    foodName: string;
+    quantity?: number;
+    slot: "protein" | "carbs" | "balance";
+    kcal: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+  },
+) =>
+  apiFetch<{ item: MealPlanItemRecord }>(`/api/meal-plans/meals/${mealId}/items`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+export const updateMealPlanItem = async (
+  itemId: string,
+  payload: {
+    quantity?: number;
+    slot?: "protein" | "carbs" | "balance";
+  },
+) =>
+  apiFetch<{ item: MealPlanItemRecord | null }>(`/api/meal-plans/items/${itemId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+
+export const deleteMealPlanItem = async (itemId: string) =>
+  apiFetch<{ ok: boolean }>(`/api/meal-plans/items/${itemId}`, { method: "DELETE" });
+
+export const reorderMealPlanMeals = async (dayId: string, mealIds: string[]) =>
+  apiFetch<{ meals: MealPlanMealRecord[] }>(`/api/meal-plans/days/${dayId}/meals/reorder`, {
+    method: "PATCH",
+    body: JSON.stringify({ mealIds }),
+  });
+
+export const reorderMealPlanItems = async (mealId: string, itemIds: string[]) =>
+  apiFetch<{ items: MealPlanItemRecord[] }>(`/api/meal-plans/meals/${mealId}/items/reorder`, {
+    method: "PATCH",
+    body: JSON.stringify({ itemIds }),
+  });
+
+export const applyMealPlanToWeekdays = async (
+  dayId: string | null,
+  weekdays: number[],
+) =>
+  apiFetch<{ assignments: MealPlanWeekAssignmentRecord[] }>("/api/meal-plans/week-assignments", {
+    method: "POST",
+    body: JSON.stringify({ dayId, weekdays }),
+  });
+
+export const clearMealPlanWeekday = async (weekday: number) =>
+  apiFetch<{ ok: boolean }>(`/api/meal-plans/week-assignments/${weekday}`, {
+    method: "DELETE",
+  });
 
 export const upsertUserProfile = async (payload: {
   displayName: string;

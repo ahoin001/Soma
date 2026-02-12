@@ -2,12 +2,13 @@ import { useState } from "react";
 import { AppShell } from "@/components/aura";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { GroceriesContent } from "./Groceries";
+import { MealPlansContent } from "./MealPlans";
 import { guideArticles } from "@/data/guideArticles";
 import { cn } from "@/lib/utils";
-import { BookOpen, ChevronDown, ShoppingBag, X } from "lucide-react";
+import { BookOpen, CalendarDays, ChevronDown, ShoppingBag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-type TabId = "groceries" | "articles";
+type TabId = "groceries" | "plans" | "articles";
 
 const Guides = () => {
   const [tab, setTab] = useState<TabId>("groceries");
@@ -24,12 +25,18 @@ const Guides = () => {
             Guides
           </p>
           <h1 className="text-2xl font-display font-semibold text-foreground">
-            {tab === "groceries" ? "Groceries & articles" : "Articles & groceries"}
+            {tab === "groceries"
+              ? "Groceries, plans & articles"
+              : tab === "plans"
+                ? "Meal plans, groceries & articles"
+                : "Articles, plans & groceries"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {tab === "groceries"
-              ? "Build your bag or read health guides."
-              : "Quality health info, then build your bag."}
+              ? "Build your bag, create plan days, or read guides."
+              : tab === "plans"
+                ? "Build day templates with goals and meal ideas."
+                : "Quality health info, then build your days."}
           </p>
         </div>
 
@@ -42,6 +49,12 @@ const Guides = () => {
                 <span className="flex items-center gap-1.5">
                   <ShoppingBag className="h-3.5 w-3.5" />
                   Groceries
+                </span>
+              )},
+              { value: "plans", label: (
+                <span className="flex items-center gap-1.5">
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  Meal plans
                 </span>
               )},
               { value: "articles", label: (
@@ -59,6 +72,7 @@ const Guides = () => {
         </div>
 
         {tab === "groceries" && <GroceriesContent showHeader={false} />}
+        {tab === "plans" && <MealPlansContent showHeader={false} />}
 
         {tab === "articles" && expandedId && (
           <Button

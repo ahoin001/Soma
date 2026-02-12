@@ -18,6 +18,7 @@ import workoutsRouter from "./routes/workouts";
 import sessionsRouter from "./routes/sessions";
 import trackingRouter from "./routes/tracking";
 import usersRouter from "./routes/users";
+import mealPlansRouter from "./routes/meal-plans";
 
 const app = express();
 const isProduction = process.env.NODE_ENV === "production";
@@ -107,6 +108,7 @@ app.use("/api/workouts", workoutsRouter);
 app.use("/api/sessions", sessionsRouter);
 app.use("/api/tracking", trackingRouter);
 app.use("/api/users", usersRouter);
+app.use("/api/meal-plans", mealPlansRouter);
 
 app.use(
   (

@@ -54,3 +54,6 @@ export const DEBUG_KEY = "aurafit-debug";
 
 // Offline
 export const OFFLINE_DB_NAME = "aurafit-offline";
+
+// Meal plans
+export const MEAL_PLANS_KEY = "aurafit-meal-plans-v1";
