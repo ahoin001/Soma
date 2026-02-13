@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { FaceRoundnessArticleBody } from "@/components/aura/articles/FaceRoundnessArticleBody";
 import { RecompArticleBody } from "@/components/aura/articles/RecompArticleBody";
 import { SkinnyFatToLeanArticleBody } from "@/components/aura/articles/SkinnyFatToLeanArticleBody";
+import { SodiumSharpFaceArticleBody } from "@/components/aura/articles/SodiumSharpFaceArticleBody";
 
 export type GuideArticle = {
   id: string;
@@ -38,5 +39,13 @@ export const guideArticles: GuideArticle[] = [
       "Pros and cons, best practices, and a personalized calculator so you know exactly how to approach recomp—maintenance calories, protein, and training.",
     category: "Fitness",
     body: <RecompArticleBody />,
+  },
+  {
+    id: "sodium-sharp-face",
+    title: "Sodium, Face Puffiness & the Sharp-Face Numbers",
+    description:
+      "Why sedentary lifters hold water in the face, FDA-backed sodium targets, the potassium see-saw, and calculators for a sharper jawline.",
+    category: "Nutrition",
+    body: <SodiumSharpFaceArticleBody />,
   },
 ];
