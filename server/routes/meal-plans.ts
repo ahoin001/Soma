@@ -1,11 +1,54 @@
-import { Router, type Request, type Response } from "express";
+import { Router, type NextFunction, type Request, type Response } from "express";
 import { z } from "zod";
-import { withTransaction } from "../db";
+import { query, withTransaction } from "../db";
 import { asyncHandler, getUserId } from "../utils";
 
 const router = Router();
 
 const slotSchema = z.enum(["protein", "carbs", "balance"]);
+
+let ensureMealPlanGroupsSchemaPromise: Promise<void> | null = null;
+
+const ensureMealPlanGroupsSchema = async () => {
+  if (!ensureMealPlanGroupsSchemaPromise) {
+    ensureMealPlanGroupsSchemaPromise = (async () => {
+      await query(`
+        CREATE TABLE IF NOT EXISTS meal_plan_groups (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name text NOT NULL,
+          sort_order int NOT NULL DEFAULT 0,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
+        );
+      `);
+      await query(`
+        CREATE INDEX IF NOT EXISTS meal_plan_groups_user_idx
+          ON meal_plan_groups (user_id, sort_order ASC);
+      `);
+      await query(`
+        ALTER TABLE meal_plan_days
+          ADD COLUMN IF NOT EXISTS group_id uuid REFERENCES meal_plan_groups(id) ON DELETE SET NULL;
+      `);
+      await query(`
+        CREATE INDEX IF NOT EXISTS meal_plan_days_group_idx
+          ON meal_plan_days (group_id)
+          WHERE group_id IS NOT NULL;
+      `);
+    })().catch((error) => {
+      ensureMealPlanGroupsSchemaPromise = null;
+      throw error;
+    });
+  }
+  await ensureMealPlanGroupsSchemaPromise;
+};
+
+router.use(
+  asyncHandler(async (_req: Request, _res: Response, next: NextFunction) => {
+    await ensureMealPlanGroupsSchema();
+    next();
+  }),
+);
 
 router.get(
   "/",

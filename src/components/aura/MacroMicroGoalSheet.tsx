@@ -7,12 +7,32 @@ import { cn } from "@/lib/utils";
 import { MICRO_GOALS_KEY } from "@/lib/storageKeys";
 import type { MacroTarget } from "@/data/mock";
 import type { NutritionSummaryMicros } from "@/lib/api";
-import { Target } from "lucide-react";
+import { Target, TrendingUp, TrendingDown } from "lucide-react";
+
+export type MicroTargetMode = "goal" | "limit";
+
+export type MicroGoalEntry = {
+  value: number;
+  mode: MicroTargetMode;
+};
 
 export type MicroGoals = {
-  fiber_g: number | null;
-  sodium_mg: number | null;
-  sugar_g: number | null;
+  fiber_g: MicroGoalEntry | null;
+  sodium_mg: MicroGoalEntry | null;
+  sugar_g: MicroGoalEntry | null;
+};
+
+const parseEntry = (raw: unknown): MicroGoalEntry | null => {
+  if (raw == null) return null;
+  if (typeof raw === "number" && Number.isFinite(raw))
+    return { value: raw, mode: "goal" };
+  if (typeof raw === "object" && raw !== null && "value" in raw) {
+    const v = (raw as { value: unknown; mode?: string }).value;
+    const m = (raw as { value: unknown; mode?: string }).mode;
+    if (typeof v === "number" && Number.isFinite(v))
+      return { value: v, mode: m === "limit" ? "limit" : "goal" };
+  }
+  return null;
 };
 
 const loadMicroGoals = (): MicroGoals => {
@@ -21,11 +41,11 @@ const loadMicroGoals = (): MicroGoals => {
   try {
     const raw = window.localStorage.getItem(MICRO_GOALS_KEY);
     if (!raw) return { fiber_g: null, sodium_mg: null, sugar_g: null };
-    const parsed = JSON.parse(raw) as MicroGoals;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
     return {
-      fiber_g: typeof parsed.fiber_g === "number" ? parsed.fiber_g : null,
-      sodium_mg: typeof parsed.sodium_mg === "number" ? parsed.sodium_mg : null,
-      sugar_g: typeof parsed.sugar_g === "number" ? parsed.sugar_g : null,
+      fiber_g: parseEntry(parsed.fiber_g),
+      sodium_mg: parseEntry(parsed.sodium_mg),
+      sugar_g: parseEntry(parsed.sugar_g),
     };
   } catch {
     return { fiber_g: null, sodium_mg: null, sugar_g: null };
@@ -36,6 +56,72 @@ const saveMicroGoals = (goals: MicroGoals) => {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(MICRO_GOALS_KEY, JSON.stringify(goals));
 };
+
+function MicroRow({
+  id,
+  label,
+  unit,
+  value,
+  onChange,
+  mode,
+  onModeChange,
+}: {
+  id: string;
+  label: string;
+  unit: string;
+  value: string;
+  onChange: (v: string) => void;
+  mode: MicroTargetMode;
+  onModeChange: (m: MicroTargetMode) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <Label htmlFor={`goal-${id}`} className="text-xs font-medium text-foreground">
+          {label} ({unit})
+        </Label>
+        <div className="flex rounded-full border border-border/60 bg-background p-0.5">
+          <button
+            type="button"
+            onClick={() => onModeChange("goal")}
+            className={cn(
+              "flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium transition",
+              mode === "goal"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <TrendingUp className="h-3 w-3" />
+            Goal
+          </button>
+          <button
+            type="button"
+            onClick={() => onModeChange("limit")}
+            className={cn(
+              "flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium transition",
+              mode === "limit"
+                ? "bg-amber-500/90 text-white"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <TrendingDown className="h-3 w-3" />
+            Limit
+          </button>
+        </div>
+      </div>
+      <Input
+        id={`goal-${id}`}
+        type="number"
+        min={0}
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="rounded-lg border-border/60"
+        placeholder={mode === "limit" ? "e.g. 2000" : "—"}
+      />
+    </div>
+  );
+}
 
 type MacroMicroGoalSheetProps = {
   open: boolean;
@@ -60,8 +146,11 @@ export const MacroMicroGoalSheet = ({
   const [carbs, setCarbs] = useState("");
   const [fat, setFat] = useState("");
   const [fiber, setFiber] = useState("");
+  const [fiberMode, setFiberMode] = useState<MicroTargetMode>("goal");
   const [sodium, setSodium] = useState("");
+  const [sodiumMode, setSodiumMode] = useState<MicroTargetMode>("goal");
   const [sugar, setSugar] = useState("");
+  const [sugarMode, setSugarMode] = useState<MicroTargetMode>("goal");
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -73,9 +162,12 @@ export const MacroMicroGoalSheet = ({
     setCarbs(c ? String(Math.round(c.goal)) : "");
     setFat(f ? String(Math.round(f.goal)) : "");
     const microGoals = loadMicroGoals();
-    setFiber(microGoals.fiber_g != null ? String(microGoals.fiber_g) : "");
-    setSodium(microGoals.sodium_mg != null ? String(microGoals.sodium_mg) : "");
-    setSugar(microGoals.sugar_g != null ? String(microGoals.sugar_g) : "");
+    setFiber(microGoals.fiber_g != null ? String(microGoals.fiber_g.value) : "");
+    setFiberMode(microGoals.fiber_g?.mode ?? "goal");
+    setSodium(microGoals.sodium_mg != null ? String(microGoals.sodium_mg.value) : "");
+    setSodiumMode(microGoals.sodium_mg?.mode ?? "goal");
+    setSugar(microGoals.sugar_g != null ? String(microGoals.sugar_g.value) : "");
+    setSugarMode(microGoals.sugar_g?.mode ?? "goal");
     setSaved(false);
   }, [open, macros]);
 
@@ -99,17 +191,20 @@ export const MacroMicroGoalSheet = ({
       });
     }
 
-    if (
-      fiberNum != null ||
-      sodiumNum != null ||
-      sugarNum != null
-    ) {
-      saveMicroGoals({
-        fiber_g: Number.isFinite(Number(fiberNum)) ? Number(fiberNum) : null,
-        sodium_mg: Number.isFinite(Number(sodiumNum)) ? Number(sodiumNum) : null,
-        sugar_g: Number.isFinite(Number(sugarNum)) ? Number(sugarNum) : null,
-      });
-    }
+    saveMicroGoals({
+      fiber_g:
+        fiber.trim() && Number.isFinite(Number(fiber))
+          ? { value: Number(fiber), mode: fiberMode }
+          : null,
+      sodium_mg:
+        sodium.trim() && Number.isFinite(Number(sodium))
+          ? { value: Number(sodium), mode: sodiumMode }
+          : null,
+      sugar_g:
+        sugar.trim() && Number.isFinite(Number(sugar))
+          ? { value: Number(sugar), mode: sugarMode }
+          : null,
+    });
 
     setSaved(true);
     const t = window.setTimeout(() => {
@@ -203,52 +298,37 @@ export const MacroMicroGoalSheet = ({
               <p className="mb-2 text-[11px] text-muted-foreground">
                 Today: Fiber {Math.round(fiberTotal)}g · Sodium {Math.round(sodiumTotal)} mg · Sugar {Math.round(sugarTotal)}g
               </p>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Label htmlFor="goal-fiber" className="text-xs text-muted-foreground">
-                    Fiber (g)
-                  </Label>
-                  <Input
-                    id="goal-fiber"
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={fiber}
-                    onChange={(e) => setFiber(e.target.value)}
-                    className="mt-1 rounded-xl border-border/60"
-                    placeholder="—"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="goal-sodium" className="text-xs text-muted-foreground">
-                    Sodium (mg)
-                  </Label>
-                  <Input
-                    id="goal-sodium"
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={sodium}
-                    onChange={(e) => setSodium(e.target.value)}
-                    className="mt-1 rounded-xl border-border/60"
-                    placeholder="—"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="goal-sugar" className="text-xs text-muted-foreground">
-                    Sugar (g)
-                  </Label>
-                  <Input
-                    id="goal-sugar"
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={sugar}
-                    onChange={(e) => setSugar(e.target.value)}
-                    className="mt-1 rounded-xl border-border/60"
-                    placeholder="—"
-                  />
-                </div>
+              <p className="mb-2 text-[11px] text-muted-foreground">
+                Goal = get at least this much. Limit = stay below this.
+              </p>
+              <div className="space-y-4">
+                <MicroRow
+                  id="fiber"
+                  label="Fiber"
+                  unit="g"
+                  value={fiber}
+                  onChange={setFiber}
+                  mode={fiberMode}
+                  onModeChange={setFiberMode}
+                />
+                <MicroRow
+                  id="sodium"
+                  label="Sodium"
+                  unit="mg"
+                  value={sodium}
+                  onChange={setSodium}
+                  mode={sodiumMode}
+                  onModeChange={setSodiumMode}
+                />
+                <MicroRow
+                  id="sugar"
+                  label="Sugar"
+                  unit="g"
+                  value={sugar}
+                  onChange={setSugar}
+                  mode={sugarMode}
+                  onModeChange={setSugarMode}
+                />
               </div>
             </div>
           </div>
