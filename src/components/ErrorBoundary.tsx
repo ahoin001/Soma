@@ -133,7 +133,9 @@ export class PageErrorBoundary extends Component<ErrorBoundaryProps, ErrorBounda
   };
 
   handleGoHome = () => {
-    window.location.href = "/nutrition";
+    // Go to auth so recovery is predictable: one place to re-enter the app.
+    // /nutrition would redirect to /auth if not signed in, causing erratic PWA behavior.
+    window.location.href = "/auth";
   };
 
   render() {

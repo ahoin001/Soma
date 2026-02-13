@@ -145,8 +145,9 @@ const Nutrition = () => {
   } = useUserSettings();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { mealPulse, setMealPulse, clearMealPulse } = useMealPulse();
-  const { email, logout } = useAuth();
+  const { userId, email, logout } = useAuth();
   const isAdmin = email?.toLowerCase() === "ahoin001@gmail.com";
+  const isSignedIn = Boolean(userId);
   const {
     results: apiResults,
     applyOverrides,
@@ -746,9 +747,9 @@ const Nutrition = () => {
               Account
             </p>
             <p className="text-sm font-semibold text-foreground">
-              {email ?? "Not signed in"}
+              {isSignedIn ? (email ?? "Signed in") : "Not signed in"}
             </p>
-            {email ? (
+            {isSignedIn ? (
               <Button
                 type="button"
                 variant="outline"

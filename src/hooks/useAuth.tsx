@@ -48,20 +48,23 @@ const AuthContext = createContext<AuthContextValue | null>(null);
  * logout we clear both token and userId. The service worker must not cache /api
  * or clear storage; see vite.config workbox navigateFallbackDenylist.
  *
+ * PWA auth flow: We always start with status "loading" and verify the session
+ * with the server (fetchCurrentUser) before showing the main app. This avoids
+ * showing the home page with "no one signed in" or triggering errors when the
+ * stored token is invalid or the server is slow. User sees a single loading
+ * screen until we know: then either main app or auth page.
+ *
  * Partial state (post-login): After login/register we set userId + email from
  * the API result and form, then navigate immediately. A background refresh()
  * syncs email/emailVerified from GET /me.
  */
-// Restore auth from storage so the app shell can render immediately (no blocking network).
 const getInitialAuthState = (): AuthState => {
   if (typeof window === "undefined") {
     return { userId: null, email: null, status: "loading" };
   }
-  const storedUserId = getStoredUserId();
-  const sessionToken = getSessionToken();
-  if (storedUserId && sessionToken) {
-    return { userId: storedUserId, email: null, status: "ready" };
-  }
+  // Always start as loading; verify session with server before showing app.
+  // This prevents race where app shell renders with unverified token then
+  // refresh() fails and we flip to signed out (causing "Not signed in" + errors).
   return { userId: null, email: null, status: "loading" };
 };
 
@@ -83,13 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    const initial = getInitialAuthState();
-    if (initial.status === "ready") {
-      // Validate in background; app is already visible
-      void refresh();
-    } else {
-      void refresh();
-    }
+    void refresh();
   }, [refresh]);
 
   const register = useCallback(

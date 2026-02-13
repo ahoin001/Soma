@@ -8,6 +8,8 @@ import { MICRO_GOALS_KEY } from "@/lib/storageKeys";
 import type { MacroTarget } from "@/data/mock";
 import type { NutritionSummaryMicros } from "@/lib/api";
 import { Target, TrendingUp, TrendingDown } from "lucide-react";
+import { MicroGoalProgress } from "@/components/aura/MicroGoalProgress";
+import { MicroLimitBudget } from "@/components/aura/MicroLimitBudget";
 
 export type MicroTargetMode = "goal" | "limit";
 
@@ -295,11 +297,68 @@ export const MacroMicroGoalSheet = ({
               <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary/80">
                 Micros
               </p>
+              <p className="mb-3 text-[11px] text-muted-foreground">
+                Goal = get at least this much. Limit = stay below this.
+              </p>
+              {(fiber.trim() && Number.isFinite(Number(fiber))) ||
+               (sodium.trim() && Number.isFinite(Number(sodium))) ||
+               (sugar.trim() && Number.isFinite(Number(sugar))) ? (
+                <div className="mb-4 space-y-3">
+                  {fiber.trim() && Number.isFinite(Number(fiber)) && (
+                    fiberMode === "goal" ? (
+                      <MicroGoalProgress
+                        label="Fiber"
+                        current={Math.round(fiberTotal * 10) / 10}
+                        goal={Number(fiber)}
+                        unit="g"
+                      />
+                    ) : (
+                      <MicroLimitBudget
+                        label="Fiber"
+                        current={Math.round(fiberTotal * 10) / 10}
+                        limit={Number(fiber)}
+                        unit="g"
+                      />
+                    )
+                  )}
+                  {sodium.trim() && Number.isFinite(Number(sodium)) && (
+                    sodiumMode === "goal" ? (
+                      <MicroGoalProgress
+                        label="Sodium"
+                        current={Math.round(sodiumTotal)}
+                        goal={Number(sodium)}
+                        unit="mg"
+                      />
+                    ) : (
+                      <MicroLimitBudget
+                        label="Sodium"
+                        current={Math.round(sodiumTotal)}
+                        limit={Number(sodium)}
+                        unit="mg"
+                      />
+                    )
+                  )}
+                  {sugar.trim() && Number.isFinite(Number(sugar)) && (
+                    sugarMode === "goal" ? (
+                      <MicroGoalProgress
+                        label="Added sugar"
+                        current={Math.round(sugarTotal * 10) / 10}
+                        goal={Number(sugar)}
+                        unit="g"
+                      />
+                    ) : (
+                      <MicroLimitBudget
+                        label="Added sugar"
+                        current={Math.round(sugarTotal * 10) / 10}
+                        limit={Number(sugar)}
+                        unit="g"
+                      />
+                    )
+                  )}
+                </div>
+              ) : null}
               <p className="mb-2 text-[11px] text-muted-foreground">
                 Today: Fiber {Math.round(fiberTotal)}g · Sodium {Math.round(sodiumTotal)} mg · Sugar {Math.round(sugarTotal)}g
-              </p>
-              <p className="mb-2 text-[11px] text-muted-foreground">
-                Goal = get at least this much. Limit = stay below this.
               </p>
               <div className="space-y-4">
                 <MicroRow

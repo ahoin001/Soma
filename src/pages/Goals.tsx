@@ -66,6 +66,8 @@ const activityOptions: Array<{
 import { GOALS_DRAFT_KEY, MICRO_GOALS_KEY } from "@/lib/storageKeys";
 import { cn } from "@/lib/utils";
 import { TrendingDown, TrendingUp } from "lucide-react";
+import { MicroGoalProgress } from "@/components/aura/MicroGoalProgress";
+import { MicroLimitBudget } from "@/components/aura/MicroLimitBudget";
 
 const cmToImperial = (cm: number) => {
   const totalInches = cm / 2.54;
@@ -401,6 +403,63 @@ const MacroTargetsSection = ({
             </div>
           ))}
         </div>
+        {(fiber.trim() && Number.isFinite(Number(fiber))) ||
+         (sodium.trim() && Number.isFinite(Number(sodium))) ||
+         (sugar.trim() && Number.isFinite(Number(sugar))) ? (
+          <div className="space-y-3">
+            <p className="text-[11px] text-muted-foreground">
+              Your targets. Daily progress is shown on the Nutrition page.
+            </p>
+            {fiber.trim() && Number.isFinite(Number(fiber)) &&
+              (fiberMode === "goal" ? (
+                <MicroGoalProgress
+                  label="Fiber"
+                  current={0}
+                  goal={Number(fiber)}
+                  unit="g"
+                />
+              ) : (
+                <MicroLimitBudget
+                  label="Fiber"
+                  current={0}
+                  limit={Number(fiber)}
+                  unit="g"
+                />
+              ))}
+            {sodium.trim() && Number.isFinite(Number(sodium)) &&
+              (sodiumMode === "goal" ? (
+                <MicroGoalProgress
+                  label="Sodium"
+                  current={0}
+                  goal={Number(sodium)}
+                  unit="mg"
+                />
+              ) : (
+                <MicroLimitBudget
+                  label="Sodium"
+                  current={0}
+                  limit={Number(sodium)}
+                  unit="mg"
+                />
+              ))}
+            {sugar.trim() && Number.isFinite(Number(sugar)) &&
+              (sugarMode === "goal" ? (
+                <MicroGoalProgress
+                  label="Added sugar"
+                  current={0}
+                  goal={Number(sugar)}
+                  unit="g"
+                />
+              ) : (
+                <MicroLimitBudget
+                  label="Added sugar"
+                  current={0}
+                  limit={Number(sugar)}
+                  unit="g"
+                />
+              ))}
+          </div>
+        ) : null}
         <div className="rounded-xl border border-border/60 bg-card/70 px-3 py-3">
           <p className="mb-3 text-xs font-semibold text-muted-foreground">Optional: set your own targets</p>
           <div className="space-y-3">
