@@ -39,6 +39,7 @@ export const logDraftKey = (itemId: string) => `${LOG_DRAFT_KEY_PREFIX}${itemId}
 
 // Goals & onboarding
 export const GOALS_DRAFT_KEY = "aurafit-goals-draft-v1";
+export const MICRO_GOALS_KEY = "aurafit-micro-goals-v1";
 export const ONBOARDED_KEY = "aurafit-onboarded-v1";
 
 // Fitness / workout

@@ -8,6 +8,7 @@ import {
   EditLogSheet,
   FoodDetailSheet,
   type FoodDetailSheetProps,
+  MacroMicroGoalSheet,
   MealLogPanel,
   QuickActionSheet,
   StepsCard,
@@ -156,6 +157,7 @@ const Nutrition = () => {
   const {
     summary,
     macros,
+    micros,
     syncState,
     logFood,
     undoLastLog,
@@ -168,7 +170,10 @@ const Nutrition = () => {
     copyDayFrom,
     isCopyingDay,
     isLoading: nutritionLoading,
+    setGoal,
+    setMacroTargets,
   } = nutrition;
+  const [goalSheetOpen, setGoalSheetOpen] = useState(false);
   const meals = mealTypes.meals;
   const { favorites, history, refreshLists, setFavorite } = foodCatalog;
   const stepsSummary = useStepsSummary(selectedDate);
@@ -470,8 +475,10 @@ const Nutrition = () => {
             goal={summary.goal}
             syncState={syncState}
             macros={macros}
+            micros={micros}
             animateTrigger={animateTrigger}
             variant={headerStyle}
+            onLongPressMacros={() => setGoalSheetOpen(true)}
             onProfileClick={
               isAdmin
                 ? () => {
@@ -879,6 +886,15 @@ const Nutrition = () => {
         onDelete={(item) => {
           handleRemoveItem(item);
         }}
+      />
+      <MacroMicroGoalSheet
+        open={goalSheetOpen}
+        onOpenChange={setGoalSheetOpen}
+        macros={macros}
+        micros={micros}
+        calorieGoal={summary.goal}
+        onSaveMacros={setMacroTargets}
+        onSaveCalorieGoal={setGoal}
       />
     </AppShell>
   );

@@ -28,6 +28,7 @@ export { EditLogSheet } from "./EditLogSheet";
 export { FoodDetailSheet, type FoodDetailSheetProps } from "./FoodDetailSheet";
 export { FoodList } from "./FoodList";
 export { FoodSearchSheet } from "./FoodSearchSheet";
+export { MacroMicroGoalSheet } from "./MacroMicroGoalSheet";
 export { MacroPills } from "./MacroPills";
 export { MealCard } from "./MealCard";
 export { MealLogPanel } from "./MealLogPanel";

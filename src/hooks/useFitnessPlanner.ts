@@ -144,6 +144,19 @@ export const useFitnessPlanner = () => {
     void refresh();
   }, [refresh]);
 
+  // Refetch active session when app returns to foreground so session persists across
+  // backgrounding / phone sleep (server already has session; we restore into state).
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void refresh(true);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [refresh]);
+
   const createRoutine = useCallback(
     async (name: string) => {
       const trimmed = name.trim();

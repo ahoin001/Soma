@@ -851,6 +851,8 @@ type WorkoutSessionEditorProps = {
     unitUsed: "lb" | "kg";
     durationMs: number;
   }) => void;
+  /** Session mode: called when user chooses "Discard & leave" (end session without saving form, then parent navigates). */
+  onDiscardAndLeave?: () => void;
 };
 
 export const WorkoutSessionEditor = ({
@@ -869,6 +871,7 @@ export const WorkoutSessionEditor = ({
   onPersistSets,
   sessionStartedAt,
   onFinishWithStats,
+  onDiscardAndLeave,
 }: WorkoutSessionEditorProps) => {
   const { workoutDrafts, setWorkoutDraft, clearWorkoutDraft } = useAppStore();
   const [exercises, setExercises] = useState<EditableExercise[]>([]);
@@ -910,6 +913,8 @@ export const WorkoutSessionEditor = ({
   } | null>(null);
   /** Session mode: confirm before finishing when some sets are incomplete */
   const [finishConfirmOpen, setFinishConfirmOpen] = useState(false);
+  /** Session mode: confirm when user tries to leave the session (back or navigate away) */
+  const [leaveSessionConfirmOpen, setLeaveSessionConfirmOpen] = useState(false);
   const sensors = useSensors(
     useSensor(SmartPointerSensor, {
       activationConstraint: { distance: 4 },
@@ -1490,7 +1495,13 @@ export const WorkoutSessionEditor = ({
           <Button
             variant="ghost"
             className="h-10 w-10 rounded-full bg-white/10 text-white hover:bg-white/20"
-            onClick={onBack}
+            onClick={() => {
+              if (mode === "session" && (activeSessionId != null || onDiscardAndLeave)) {
+                setLeaveSessionConfirmOpen(true);
+                return;
+              }
+              onBack();
+            }}
           >
             ✕
           </Button>
@@ -1838,6 +1849,41 @@ export const WorkoutSessionEditor = ({
               onClick={() => void doFinish()}
             >
               Save what was done
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={leaveSessionConfirmOpen} onOpenChange={setLeaveSessionConfirmOpen}>
+        <AlertDialogContent className="border-white/10 bg-slate-950 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>End workout session?</AlertDialogTitle>
+            <AlertDialogDescription className="text-white/60">
+              Leaving will end your session. Save your progress and finish, or discard and leave. Your session will not continue in the background if you leave this screen.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            <AlertDialogCancel className="w-full rounded-full border-white/20 text-white hover:bg-white/10">
+              Stay
+            </AlertDialogCancel>
+            <Button
+              variant="outline"
+              className="w-full rounded-full border-rose-400/50 text-rose-200 hover:bg-rose-500/20"
+              onClick={() => {
+                setLeaveSessionConfirmOpen(false);
+                onDiscardAndLeave?.();
+              }}
+            >
+              Discard & leave
+            </Button>
+            <AlertDialogAction
+              className="w-full rounded-full bg-emerald-500 text-slate-950 hover:bg-emerald-400"
+              onClick={() => {
+                setLeaveSessionConfirmOpen(false);
+                void doFinish();
+              }}
+            >
+              Save progress & leave
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

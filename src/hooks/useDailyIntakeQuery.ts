@@ -29,10 +29,12 @@ import { queryKeys } from "@/lib/queryKeys";
 import { queueMutation } from "@/lib/offlineQueue";
 import { computeLogSections, computeTotals, toLocalDate } from "@/lib/nutritionData";
 import type { LastLog, Summary, SyncState } from "@/types/nutrition";
+import type { NutritionSummaryMicros } from "@/lib/api";
 
 type NutritionData = {
   summary: Summary;
   macros: MacroTarget[];
+  micros: NutritionSummaryMicros | null;
   logSections: LogSection[];
 };
 
@@ -143,6 +145,8 @@ export const useDailyIntakeQuery = (
                 ),
       }));
 
+      const micros = summaryRes.micros ?? null;
+
       // Final cancellation check before returning
       if (signal?.aborted) {
         console.log("[nutritionQuery] queryFn ABORTED before return - discarding results");
@@ -155,7 +159,7 @@ export const useDailyIntakeQuery = (
         entriesCount: entriesRes.entries.length,
         itemsCount: entriesRes.items.length,
       });
-      return { summary, macros, logSections };
+      return { summary, macros, micros, logSections };
     },
     enabled: meals.length > 0,
     staleTime: 2 * 60 * 1000,
@@ -163,6 +167,7 @@ export const useDailyIntakeQuery = (
     initialData: {
       summary: initialSummary,
       macros: cloneMacros(initialMacros),
+      micros: null,
       logSections: [],
     },
     // Treat initial data as fresh to prevent immediate background refetch
@@ -173,6 +178,7 @@ export const useDailyIntakeQuery = (
   // Extract data with fallbacks
   const summary = nutritionQuery.data?.summary ?? initialSummary;
   const macros = nutritionQuery.data?.macros ?? initialMacros;
+  const micros = nutritionQuery.data?.micros ?? null;
   const logSections = nutritionQuery.data?.logSections ?? [];
 
   // --- Sync pulse (visual feedback) ---
@@ -773,6 +779,7 @@ export const useDailyIntakeQuery = (
             ...macro,
             current: totals[macro.key],
           })),
+          micros: old?.micros ?? null,
           logSections,
         })
       );
@@ -820,6 +827,7 @@ export const useDailyIntakeQuery = (
   return {
     summary,
     macros,
+    micros,
     syncState,
     logFood: (
       food: FoodItem,

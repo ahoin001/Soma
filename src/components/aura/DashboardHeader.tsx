@@ -1,12 +1,14 @@
+import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Bell, User } from "lucide-react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { CalorieGauge } from "./CalorieGauge";
 import { ExperienceSwitch } from "./ExperienceSwitch";
 import { SyncStatus } from "./SyncStatus";
 import type { MacroTarget } from "@/data/mock";
+import type { NutritionSummaryMicros } from "@/lib/api";
 
 type DashboardHeaderVariant = "immersive" | "card" | "media";
 
@@ -17,10 +19,14 @@ type DashboardHeaderProps = {
   goal: number;
   syncState: "idle" | "syncing";
   macros: MacroTarget[];
+  micros?: NutritionSummaryMicros | null;
   onProfileClick?: () => void;
+  onLongPressMacros?: () => void;
   animateTrigger?: number;
   variant?: DashboardHeaderVariant;
 };
+
+const LONG_PRESS_MS = 400;
 
 export const DashboardHeader = ({
   eaten,
@@ -29,10 +35,42 @@ export const DashboardHeader = ({
   goal,
   syncState,
   macros,
+  micros,
   onProfileClick,
+  onLongPressMacros,
   animateTrigger,
   variant = "immersive",
 }: DashboardHeaderProps) => {
+  const [showMicros, setShowMicros] = useState(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartRef = useRef<number | null>(null);
+
+  const handlePointerDown = useCallback(() => {
+    touchStartRef.current = Date.now();
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTimerRef.current = null;
+      onLongPressMacros?.();
+    }, LONG_PRESS_MS);
+  }, [onLongPressMacros]);
+
+  const handlePointerUp = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+      const elapsed = touchStartRef.current ? Date.now() - touchStartRef.current : 0;
+      if (elapsed < LONG_PRESS_MS) setShowMicros((prev) => !prev);
+    }
+    touchStartRef.current = null;
+  }, []);
+
+  const handlePointerLeave = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    touchStartRef.current = null;
+  }, []);
+
   const consumed = Math.max(eaten, 0);
   const remaining = goal > 0 ? Math.max(goal - consumed, 0) : 0;
   const isCard = variant === "card";
@@ -163,13 +201,22 @@ export const DashboardHeader = ({
         </motion.div>
       </div>
       {/* Macro cards: center of cards aligns with the bottom edge of the HUD.
-         translateY(-50%) shifts visually but doesn't affect layout, so -mb-10
-         (~half card height) collapses the leftover "ghost" space. */}
+         Tap toggles fiber/sodium/sugar; long-press opens goal sheet. */}
       <div
         className="relative z-20 -mb-10 px-5"
         style={{ transform: "translateY(-50%)" }}
       >
-        <div className="grid grid-cols-3 gap-3">
+        <div
+          className="grid grid-cols-3 gap-3 select-none"
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerLeave}
+          onPointerCancel={handlePointerLeave}
+          onContextMenu={(e) => e.preventDefault()}
+          role="button"
+          tabIndex={0}
+          aria-label="Tap to show fiber, sodium, sugar. Long-press to set goals."
+        >
           {macros.map((macro) => {
             const progress =
               macro.goal > 0 ? Math.min((macro.current / macro.goal) * 100, 100) : 0;
@@ -195,6 +242,45 @@ export const DashboardHeader = ({
             );
           })}
         </div>
+
+        <AnimatePresence initial={false}>
+          {showMicros && micros && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="mt-3 overflow-hidden"
+            >
+              <div className="grid grid-cols-3 gap-3 rounded-[16px] border border-border/50 bg-card/80 px-3 py-2.5 backdrop-blur">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Fiber
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold text-foreground">
+                    <AnimatedNumber value={micros.fiber_g ?? 0} animateTrigger={animateTrigger} />g
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Sodium
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold text-foreground">
+                    <AnimatedNumber value={micros.sodium_mg ?? 0} animateTrigger={animateTrigger} /> mg
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Sugar
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold text-foreground">
+                    <AnimatedNumber value={micros.sugar_g ?? 0} animateTrigger={animateTrigger} />g
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </header>
   );

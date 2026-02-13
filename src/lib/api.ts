@@ -15,13 +15,56 @@ import { SESSION_TOKEN_KEY, USER_ID_KEY } from "@/lib/storageKeys";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
-export const getSessionToken = () =>
-  typeof window !== "undefined" ? window.localStorage.getItem(SESSION_TOKEN_KEY) : null;
+/** Cookie backup so PWA / production survives app close and localStorage eviction. */
+const SESSION_COOKIE_NAME = "aurafit-session";
+const USER_ID_COOKIE_NAME = "aurafit-uid";
+const AUTH_COOKIE_MAX_AGE_DAYS = 90;
+
+const getCookie = (name: string): string | null => {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(
+    new RegExp("(?:^|;\\s*)" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "=([^;]*)")
+  );
+  const value = match ? decodeURIComponent(match[1]) : null;
+  return value || null;
+};
+
+const setCookie = (name: string, value: string | null) => {
+  if (typeof document === "undefined") return;
+  const secure = typeof location !== "undefined" && location.protocol === "https:";
+  const maxAge = value ? AUTH_COOKIE_MAX_AGE_DAYS * 24 * 60 * 60 : 0;
+  const parts = [
+    `${name}=${value ? encodeURIComponent(value) : ""}`,
+    "path=/",
+    "SameSite=Lax",
+    maxAge ? `max-age=${maxAge}` : "max-age=0",
+  ];
+  if (secure) parts.push("Secure");
+  document.cookie = parts.join("; ");
+};
+
+export const getSessionToken = (): string | null => {
+  if (typeof window === "undefined") return null;
+  const fromStorage = window.localStorage.getItem(SESSION_TOKEN_KEY);
+  if (fromStorage) return fromStorage;
+  const fromCookie = getCookie(SESSION_COOKIE_NAME);
+  if (fromCookie) {
+    window.localStorage.setItem(SESSION_TOKEN_KEY, fromCookie);
+    setCookie(SESSION_COOKIE_NAME, fromCookie);
+    return fromCookie;
+  }
+  return null;
+};
 
 export const setSessionToken = (token: string | null) => {
   if (typeof window === "undefined") return;
-  if (token) window.localStorage.setItem(SESSION_TOKEN_KEY, token);
-  else window.localStorage.removeItem(SESSION_TOKEN_KEY);
+  if (token) {
+    window.localStorage.setItem(SESSION_TOKEN_KEY, token);
+    setCookie(SESSION_COOKIE_NAME, token);
+  } else {
+    window.localStorage.removeItem(SESSION_TOKEN_KEY);
+    setCookie(SESSION_COOKIE_NAME, null);
+  }
 };
 
 /** Use for any API path so VITE_API_BASE_URL (e.g. Render) is applied. */
@@ -31,13 +74,23 @@ export const buildApiUrl = (path: string) => {
   return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
 };
 
-/** Read stored user id only; does not create one. For auth restore. */
-export const getStoredUserId = () =>
-  typeof window !== "undefined" ? window.localStorage.getItem(USER_ID_KEY) : null;
+/** Read stored user id only; does not create one. For auth restore. Restores from cookie if localStorage was cleared. */
+export const getStoredUserId = (): string | null => {
+  if (typeof window === "undefined") return null;
+  const fromStorage = window.localStorage.getItem(USER_ID_KEY);
+  if (fromStorage) return fromStorage;
+  const fromCookie = getCookie(USER_ID_COOKIE_NAME);
+  if (fromCookie) {
+    window.localStorage.setItem(USER_ID_KEY, fromCookie);
+    setCookie(USER_ID_COOKIE_NAME, fromCookie);
+    return fromCookie;
+  }
+  return null;
+};
 
 export const getUserId = () => {
   if (typeof window === "undefined") return null;
-  const existing = window.localStorage.getItem(USER_ID_KEY);
+  const existing = getStoredUserId();
   if (existing) return existing;
   const next =
     typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -50,12 +103,14 @@ export const getUserId = () => {
 export const setUserId = (userId: string) => {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(USER_ID_KEY, userId);
+  setCookie(USER_ID_COOKIE_NAME, userId);
 };
 
 /** Clear stored user id (e.g. on logout). Keeps PWA from showing stale "logged in" state. */
 export const clearStoredUserId = () => {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(USER_ID_KEY);
+  setCookie(USER_ID_COOKIE_NAME, null);
 };
 
 const apiFetch = async <T>(path: string, options?: RequestInit) => {
