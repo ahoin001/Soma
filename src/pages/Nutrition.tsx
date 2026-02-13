@@ -462,7 +462,7 @@ const Nutrition = () => {
 
       <LoadingState
         isLoading={nutritionLoading}
-        delay={150}
+        delay={0}
         skeleton={<NutritionPageSkeleton />}
       >
         <div className="mx-auto w-full max-w-[420px] px-4 pb-10">

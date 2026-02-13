@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,11 +8,15 @@ import { AlertCircle, Loader2 } from "lucide-react";
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [redirecting, setRedirecting] = useState(false);
 
   const handleSuccess = (isNewUser: boolean) => {
     const from = (location.state as { from?: string } | undefined)?.from;
     const destination = from && from !== "/auth" ? from : "/nutrition";
-    navigate(destination, { replace: true, state: { justLoggedIn: true, isNewUser } });
+    setRedirecting(true);
+    requestAnimationFrame(() => {
+      navigate(destination, { replace: true, state: { justLoggedIn: true, isNewUser } });
+    });
   };
 
   const {
@@ -134,9 +139,14 @@ const Auth = () => {
               type="button"
               className="w-full rounded-full bg-primary py-5 text-sm font-semibold text-primary-foreground disabled:opacity-70"
               onClick={handleSubmit}
-              disabled={!canSubmit || status === "loading"}
+              disabled={!canSubmit || status === "loading" || redirecting}
             >
-              {status === "loading" ? (
+              {redirecting ? (
+                <span className="inline-flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Taking you home…
+                </span>
+              ) : status === "loading" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : mode === "register" ? (
                 "Create account"
