@@ -9,6 +9,9 @@ import { ExperienceSwitch } from "./ExperienceSwitch";
 import { SyncStatus } from "./SyncStatus";
 import type { MacroTarget } from "@/data/mock";
 import type { NutritionSummaryMicros } from "@/lib/api";
+import { getMicroState, MICRO_OPTIONS } from "./MacroMicroGoalSheet";
+import { MicroGoalProgress } from "./MicroGoalProgress";
+import { MicroLimitBudget } from "./MicroLimitBudget";
 
 type DashboardHeaderVariant = "immersive" | "card" | "media";
 
@@ -201,7 +204,7 @@ export const DashboardHeader = ({
         </motion.div>
       </div>
       {/* Macro cards: center of cards aligns with the bottom edge of the HUD.
-         Tap toggles fiber/sodium/sugar; long-press opens goal sheet. */}
+         Tap toggles your 3 chosen micros; long-press opens goal sheet. */}
       <div
         className="relative z-20 -mb-10 px-5"
         style={{ transform: "translateY(-50%)" }}
@@ -215,7 +218,7 @@ export const DashboardHeader = ({
           onContextMenu={(e) => e.preventDefault()}
           role="button"
           tabIndex={0}
-          aria-label="Tap to show fiber, sodium, sugar. Long-press to set goals."
+          aria-label="Tap to show micros. Long-press to set goals."
         >
           {macros.map((macro) => {
             const progress =
@@ -244,42 +247,64 @@ export const DashboardHeader = ({
         </div>
 
         <AnimatePresence initial={false}>
-          {showMicros && micros && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className="mt-3 overflow-hidden"
-            >
-              <div className="grid grid-cols-3 gap-3 rounded-[16px] border border-border/50 bg-card/80 px-3 py-2.5 backdrop-blur">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Fiber
-                  </p>
-                  <p className="mt-0.5 text-sm font-semibold text-foreground">
-                    <AnimatedNumber value={micros.fiber_g ?? 0} animateTrigger={animateTrigger} />g
-                  </p>
+          {showMicros && micros && (() => {
+            const { slotKeys, goals } = getMicroState();
+            const microValues = micros as Record<string, number | undefined>;
+            return (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="mt-3 overflow-hidden"
+              >
+                <div className="space-y-3">
+                  {slotKeys.map((key) => {
+                    const opt = MICRO_OPTIONS.find((o) => o.key === key);
+                    const current = microValues?.[key] ?? 0;
+                    if (!opt) return null;
+                    const entry = goals[key];
+                    if (entry) {
+                      const rounded = Math.round(current * 10) / 10;
+                      return entry.mode === "goal" ? (
+                        <MicroGoalProgress
+                          key={key}
+                          label={opt.label}
+                          current={rounded}
+                          goal={entry.value}
+                          unit={opt.unit}
+                          className="backdrop-blur"
+                        />
+                      ) : (
+                        <MicroLimitBudget
+                          key={key}
+                          label={opt.label}
+                          current={rounded}
+                          limit={entry.value}
+                          unit={opt.unit}
+                          className="backdrop-blur"
+                        />
+                      );
+                    }
+                    return (
+                      <div
+                        key={key}
+                        className="rounded-2xl border border-border/50 bg-card/80 px-3 py-2.5 backdrop-blur"
+                      >
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {opt.label}
+                        </p>
+                        <p className="mt-0.5 text-sm font-semibold text-foreground">
+                          <AnimatedNumber value={current} animateTrigger={animateTrigger} />
+                          {opt.unit === "mg" ? " mg" : opt.unit}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Sodium
-                  </p>
-                  <p className="mt-0.5 text-sm font-semibold text-foreground">
-                    <AnimatedNumber value={micros.sodium_mg ?? 0} animateTrigger={animateTrigger} /> mg
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Sugar
-                  </p>
-                  <p className="mt-0.5 text-sm font-semibold text-foreground">
-                    <AnimatedNumber value={micros.sugar_g ?? 0} animateTrigger={animateTrigger} />g
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          )}
+              </motion.div>
+            );
+          })()}
         </AnimatePresence>
       </div>
     </header>

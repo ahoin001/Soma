@@ -1,15 +1,21 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { MICRO_GOALS_KEY } from "@/lib/storageKeys";
 import type { MacroTarget } from "@/data/mock";
 import type { NutritionSummaryMicros } from "@/lib/api";
-import { Target, TrendingUp, TrendingDown } from "lucide-react";
-import { MicroGoalProgress } from "@/components/aura/MicroGoalProgress";
-import { MicroLimitBudget } from "@/components/aura/MicroLimitBudget";
+import { Target, TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
 
 export type MicroTargetMode = "goal" | "limit";
 
@@ -18,11 +24,24 @@ export type MicroGoalEntry = {
   mode: MicroTargetMode;
 };
 
+/** Legacy shape: fixed fiber/sodium/sugar. Still used by Goals page. */
 export type MicroGoals = {
   fiber_g: MicroGoalEntry | null;
   sodium_mg: MicroGoalEntry | null;
   sugar_g: MicroGoalEntry | null;
 };
+
+/** Stored shape: 3 swappable slots + goals keyed by micro key. */
+const DEFAULT_SLOT_KEYS = ["fiber_g", "sodium_mg", "sugar_g"] as const;
+
+export const MICRO_OPTIONS = [
+  { key: "fiber_g", label: "Fiber", unit: "g" },
+  { key: "sodium_mg", label: "Sodium", unit: "mg" },
+  { key: "sugar_g", label: "Added sugar", unit: "g" },
+  { key: "potassium_mg", label: "Potassium", unit: "mg" },
+  { key: "cholesterol_mg", label: "Cholesterol", unit: "mg" },
+  { key: "saturated_fat_g", label: "Saturated fat", unit: "g" },
+] as const;
 
 const parseEntry = (raw: unknown): MicroGoalEntry | null => {
   if (raw == null) return null;
@@ -37,22 +56,62 @@ const parseEntry = (raw: unknown): MicroGoalEntry | null => {
   return null;
 };
 
-const loadMicroGoals = (): MicroGoals => {
-  if (typeof window === "undefined")
-    return { fiber_g: null, sodium_mg: null, sugar_g: null };
+type StoredMicroState = {
+  slotKeys: string[];
+  goals: Record<string, MicroGoalEntry>;
+};
+
+function loadMicroState(): StoredMicroState {
+  if (typeof window === "undefined") {
+    return { slotKeys: [...DEFAULT_SLOT_KEYS], goals: {} };
+  }
   try {
     const raw = window.localStorage.getItem(MICRO_GOALS_KEY);
-    if (!raw) return { fiber_g: null, sodium_mg: null, sugar_g: null };
+    if (!raw) return { slotKeys: [...DEFAULT_SLOT_KEYS], goals: {} };
     const parsed = JSON.parse(raw) as Record<string, unknown>;
-    return {
-      fiber_g: parseEntry(parsed.fiber_g),
-      sodium_mg: parseEntry(parsed.sodium_mg),
-      sugar_g: parseEntry(parsed.sugar_g),
-    };
+    const slotKeys = Array.isArray(parsed.slotKeys)
+      ? (parsed.slotKeys as string[]).slice(0, 3)
+      : [...DEFAULT_SLOT_KEYS];
+    const knownKeys = new Set(MICRO_OPTIONS.map((o) => o.key));
+    const goals: Record<string, MicroGoalEntry> = {};
+    for (const key of knownKeys) {
+      const entry = parseEntry(parsed[key]);
+      if (entry) goals[key] = entry;
+    }
+    return { slotKeys, goals };
   } catch {
-    return { fiber_g: null, sodium_mg: null, sugar_g: null };
+    return { slotKeys: [...DEFAULT_SLOT_KEYS], goals: {} };
   }
+}
+
+/** Used by DashboardHeader to show the 3 chosen micro slots. */
+export function getMicroSlotKeys(): string[] {
+  return loadMicroState().slotKeys;
+}
+
+/** Used by DashboardHeader to render micro progress/limit bars on the HUD. */
+export function getMicroState(): StoredMicroState {
+  return loadMicroState();
+}
+
+/** Backward compat: return legacy MicroGoals for consumers that still use it. */
+export const loadMicroGoals = (): MicroGoals => {
+  const { goals } = loadMicroState();
+  return {
+    fiber_g: goals.fiber_g ?? null,
+    sodium_mg: goals.sodium_mg ?? null,
+    sugar_g: goals.sugar_g ?? null,
+  };
 };
+
+function saveMicroState({ slotKeys, goals }: StoredMicroState) {
+  if (typeof window === "undefined") return;
+  const payload: Record<string, unknown> = { slotKeys };
+  for (const [key, entry] of Object.entries(goals)) {
+    if (entry) payload[key] = entry;
+  }
+  window.localStorage.setItem(MICRO_GOALS_KEY, JSON.stringify(payload));
+}
 
 const saveMicroGoals = (goals: MicroGoals) => {
   if (typeof window === "undefined") return;
@@ -144,16 +203,30 @@ export const MacroMicroGoalSheet = ({
   onSaveMacros,
   onSaveCalorieGoal,
 }: MacroMicroGoalSheetProps) => {
+  const navigate = useNavigate();
   const [protein, setProtein] = useState("");
   const [carbs, setCarbs] = useState("");
   const [fat, setFat] = useState("");
-  const [fiber, setFiber] = useState("");
-  const [fiberMode, setFiberMode] = useState<MicroTargetMode>("goal");
-  const [sodium, setSodium] = useState("");
-  const [sodiumMode, setSodiumMode] = useState<MicroTargetMode>("goal");
-  const [sugar, setSugar] = useState("");
-  const [sugarMode, setSugarMode] = useState<MicroTargetMode>("goal");
+  const [slotKeys, setSlotKeys] = useState<string[]>(() => [...DEFAULT_SLOT_KEYS]);
+  const [slotValues, setSlotValues] = useState<Record<string, string>>({});
+  const [slotModes, setSlotModes] = useState<Record<string, MicroTargetMode>>({});
   const [saved, setSaved] = useState(false);
+
+  const setSlotKey = useCallback((index: number, key: string) => {
+    setSlotKeys((prev) => {
+      const next = [...prev];
+      next[index] = key;
+      return next;
+    });
+  }, []);
+
+  const setSlotValue = useCallback((key: string, value: string) => {
+    setSlotValues((prev) => ({ ...prev, [key]: value }));
+  }, []);
+
+  const setSlotMode = useCallback((key: string, mode: MicroTargetMode) => {
+    setSlotModes((prev) => ({ ...prev, [key]: mode }));
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -163,13 +236,19 @@ export const MacroMicroGoalSheet = ({
     setProtein(p ? String(Math.round(p.goal)) : "");
     setCarbs(c ? String(Math.round(c.goal)) : "");
     setFat(f ? String(Math.round(f.goal)) : "");
-    const microGoals = loadMicroGoals();
-    setFiber(microGoals.fiber_g != null ? String(microGoals.fiber_g.value) : "");
-    setFiberMode(microGoals.fiber_g?.mode ?? "goal");
-    setSodium(microGoals.sodium_mg != null ? String(microGoals.sodium_mg.value) : "");
-    setSodiumMode(microGoals.sodium_mg?.mode ?? "goal");
-    setSugar(microGoals.sugar_g != null ? String(microGoals.sugar_g.value) : "");
-    setSugarMode(microGoals.sugar_g?.mode ?? "goal");
+    const { slotKeys: loadedSlots, goals } = loadMicroState();
+    setSlotKeys(loadedSlots.length >= 3 ? loadedSlots : [...DEFAULT_SLOT_KEYS]);
+    const values: Record<string, string> = {};
+    const modes: Record<string, MicroTargetMode> = {};
+    for (const opt of MICRO_OPTIONS) {
+      const entry = goals[opt.key];
+      if (entry) {
+        values[opt.key] = String(entry.value);
+        modes[opt.key] = entry.mode;
+      }
+    }
+    setSlotValues(values);
+    setSlotModes(modes);
     setSaved(false);
   }, [open, macros]);
 
@@ -177,9 +256,6 @@ export const MacroMicroGoalSheet = ({
     const proteinNum = Number(protein);
     const carbsNum = Number(carbs);
     const fatNum = Number(fat);
-    const fiberNum = fiber.trim() ? Number(fiber) : null;
-    const sodiumNum = sodium.trim() ? Number(sodium) : null;
-    const sugarNum = sugar.trim() ? Number(sugar) : null;
 
     if (
       Number.isFinite(proteinNum) ||
@@ -193,19 +269,22 @@ export const MacroMicroGoalSheet = ({
       });
     }
 
+    const goals: Record<string, MicroGoalEntry> = {};
+    for (const key of slotKeys) {
+      const valueStr = slotValues[key] ?? "";
+      const num = valueStr.trim() ? Number(valueStr) : NaN;
+      if (Number.isFinite(num)) {
+        goals[key] = {
+          value: num,
+          mode: slotModes[key] ?? "goal",
+        };
+      }
+    }
+    saveMicroState({ slotKeys, goals });
     saveMicroGoals({
-      fiber_g:
-        fiber.trim() && Number.isFinite(Number(fiber))
-          ? { value: Number(fiber), mode: fiberMode }
-          : null,
-      sodium_mg:
-        sodium.trim() && Number.isFinite(Number(sodium))
-          ? { value: Number(sodium), mode: sodiumMode }
-          : null,
-      sugar_g:
-        sugar.trim() && Number.isFinite(Number(sugar))
-          ? { value: Number(sugar), mode: sugarMode }
-          : null,
+      fiber_g: goals.fiber_g ?? null,
+      sodium_mg: goals.sodium_mg ?? null,
+      sugar_g: goals.sugar_g ?? null,
     });
 
     setSaved(true);
@@ -216,191 +295,173 @@ export const MacroMicroGoalSheet = ({
     return () => window.clearTimeout(t);
   };
 
-  const fiberTotal = micros?.fiber_g ?? 0;
-  const sodiumTotal = micros?.sodium_mg ?? 0;
-  const sugarTotal = micros?.sugar_g ?? 0;
+  const handleOpenFullGoals = () => {
+    onOpenChange(false);
+    navigate("/nutrition/goals");
+  };
+
+  const getMicroCurrent = (key: string) => {
+    const n = micros?.[key as keyof NutritionSummaryMicros];
+    return typeof n === "number" ? n : 0;
+  };
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="rounded-t-[28px] border-t border-border/60 bg-card">
-        <div className="mx-auto w-full max-w-[420px] px-5 pb-8 pt-2">
-          <div className="mx-auto h-1 w-12 rounded-full bg-muted" />
-          <div className="mt-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary">
-              <Target className="h-5 w-5" />
+      <DrawerContent className="flex max-h-[100svh] flex-col rounded-t-[28px] border-t border-border/60 bg-card">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+          <div className="mx-auto w-full max-w-[420px] shrink-0 px-5 pb-8 pt-2">
+            <div className="mx-auto h-1 w-12 rounded-full bg-muted" />
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary">
+                  <Target className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-display font-semibold text-foreground">
+                    Nutrition goals
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Set daily targets. Micro goals are saved on this device.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="shrink-0 gap-1.5 text-muted-foreground hover:text-foreground"
+                onClick={handleOpenFullGoals}
+              >
+                <ExternalLink className="h-4 w-4" />
+                Full goals
+              </Button>
             </div>
-            <div>
-              <h2 className="text-lg font-display font-semibold text-foreground">
-                Nutrition goals
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Set daily targets. Micro goals are saved on this device.
-              </p>
-            </div>
-          </div>
 
-          <div className="mt-6 space-y-5">
-            <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary/80">
-                Macros (g)
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Label htmlFor="goal-protein" className="text-xs text-muted-foreground">
-                    Protein
-                  </Label>
-                  <Input
-                    id="goal-protein"
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={protein}
-                    onChange={(e) => setProtein(e.target.value)}
-                    className="mt-1 rounded-xl border-border/60"
-                    placeholder="0"
-                  />
+            <div className="mt-6 space-y-5">
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary/80">
+                  Macros (g)
+                </p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <Label htmlFor="goal-protein" className="text-xs text-muted-foreground">
+                      Protein
+                    </Label>
+                    <Input
+                      id="goal-protein"
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      value={protein}
+                      onChange={(e) => setProtein(e.target.value)}
+                      className="mt-1 rounded-xl border-border/60"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="goal-carbs" className="text-xs text-muted-foreground">
+                      Carbs
+                    </Label>
+                    <Input
+                      id="goal-carbs"
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      value={carbs}
+                      onChange={(e) => setCarbs(e.target.value)}
+                      className="mt-1 rounded-xl border-border/60"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="goal-fat" className="text-xs text-muted-foreground">
+                      Fat
+                    </Label>
+                    <Input
+                      id="goal-fat"
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      value={fat}
+                      onChange={(e) => setFat(e.target.value)}
+                      className="mt-1 rounded-xl border-border/60"
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="goal-carbs" className="text-xs text-muted-foreground">
-                    Carbs
-                  </Label>
-                  <Input
-                    id="goal-carbs"
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={carbs}
-                    onChange={(e) => setCarbs(e.target.value)}
-                    className="mt-1 rounded-xl border-border/60"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="goal-fat" className="text-xs text-muted-foreground">
-                    Fat
-                  </Label>
-                  <Input
-                    id="goal-fat"
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={fat}
-                    onChange={(e) => setFat(e.target.value)}
-                    className="mt-1 rounded-xl border-border/60"
-                    placeholder="0"
-                  />
+              </div>
+
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary/80">
+                  Micros
+                </p>
+                <p className="mb-3 text-[11px] text-muted-foreground">
+                  Goal = get at least this much. Limit = stay below. Swap any slot for another nutrient. Progress shows on the dashboard when you tap macros.
+                </p>
+                <p className="mb-2 text-[11px] text-muted-foreground">
+                  Today:{" "}
+                  {slotKeys.map((key) => {
+                    const opt = MICRO_OPTIONS.find((o) => o.key === key);
+                    const cur = getMicroCurrent(key);
+                    return opt ? `${opt.label} ${Math.round(cur)} ${opt.unit}` : null;
+                  }).filter(Boolean).join(" · ") || "—"}
+                </p>
+                <div className="space-y-4">
+                  {slotKeys.map((slotKey, index) => {
+                    const opt = MICRO_OPTIONS.find((o) => o.key === slotKey) ?? MICRO_OPTIONS[0];
+                    const value = slotValues[slotKey] ?? "";
+                    const mode = slotModes[slotKey] ?? "goal";
+                    const usedKeys = new Set(slotKeys);
+                    return (
+                      <div key={`${index}-${slotKey}`} className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Label className="text-[11px] text-muted-foreground">Track</Label>
+                          <Select
+                            value={slotKey}
+                            onValueChange={(next) => setSlotKey(index, next)}
+                          >
+                            <SelectTrigger className="h-8 rounded-lg border-border/60 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {MICRO_OPTIONS.map((o) => (
+                                <SelectItem
+                                  key={o.key}
+                                  value={o.key}
+                                  disabled={o.key !== slotKey && usedKeys.has(o.key)}
+                                >
+                                  {o.label} ({o.unit})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <MicroRow
+                          id={`micro-${index}-${slotKey}`}
+                          label={opt.label}
+                          unit={opt.unit}
+                          value={value}
+                          onChange={(v) => setSlotValue(slotKey, v)}
+                          mode={mode}
+                          onModeChange={(m) => setSlotMode(slotKey, m)}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
 
-            <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary/80">
-                Micros
-              </p>
-              <p className="mb-3 text-[11px] text-muted-foreground">
-                Goal = get at least this much. Limit = stay below this.
-              </p>
-              {(fiber.trim() && Number.isFinite(Number(fiber))) ||
-               (sodium.trim() && Number.isFinite(Number(sodium))) ||
-               (sugar.trim() && Number.isFinite(Number(sugar))) ? (
-                <div className="mb-4 space-y-3">
-                  {fiber.trim() && Number.isFinite(Number(fiber)) && (
-                    fiberMode === "goal" ? (
-                      <MicroGoalProgress
-                        label="Fiber"
-                        current={Math.round(fiberTotal * 10) / 10}
-                        goal={Number(fiber)}
-                        unit="g"
-                      />
-                    ) : (
-                      <MicroLimitBudget
-                        label="Fiber"
-                        current={Math.round(fiberTotal * 10) / 10}
-                        limit={Number(fiber)}
-                        unit="g"
-                      />
-                    )
-                  )}
-                  {sodium.trim() && Number.isFinite(Number(sodium)) && (
-                    sodiumMode === "goal" ? (
-                      <MicroGoalProgress
-                        label="Sodium"
-                        current={Math.round(sodiumTotal)}
-                        goal={Number(sodium)}
-                        unit="mg"
-                      />
-                    ) : (
-                      <MicroLimitBudget
-                        label="Sodium"
-                        current={Math.round(sodiumTotal)}
-                        limit={Number(sodium)}
-                        unit="mg"
-                      />
-                    )
-                  )}
-                  {sugar.trim() && Number.isFinite(Number(sugar)) && (
-                    sugarMode === "goal" ? (
-                      <MicroGoalProgress
-                        label="Added sugar"
-                        current={Math.round(sugarTotal * 10) / 10}
-                        goal={Number(sugar)}
-                        unit="g"
-                      />
-                    ) : (
-                      <MicroLimitBudget
-                        label="Added sugar"
-                        current={Math.round(sugarTotal * 10) / 10}
-                        limit={Number(sugar)}
-                        unit="g"
-                      />
-                    )
-                  )}
-                </div>
-              ) : null}
-              <p className="mb-2 text-[11px] text-muted-foreground">
-                Today: Fiber {Math.round(fiberTotal)}g · Sodium {Math.round(sodiumTotal)} mg · Sugar {Math.round(sugarTotal)}g
-              </p>
-              <div className="space-y-4">
-                <MicroRow
-                  id="fiber"
-                  label="Fiber"
-                  unit="g"
-                  value={fiber}
-                  onChange={setFiber}
-                  mode={fiberMode}
-                  onModeChange={setFiberMode}
-                />
-                <MicroRow
-                  id="sodium"
-                  label="Sodium"
-                  unit="mg"
-                  value={sodium}
-                  onChange={setSodium}
-                  mode={sodiumMode}
-                  onModeChange={setSodiumMode}
-                />
-                <MicroRow
-                  id="sugar"
-                  label="Sugar"
-                  unit="g"
-                  value={sugar}
-                  onChange={setSugar}
-                  mode={sugarMode}
-                  onModeChange={setSugarMode}
-                />
-              </div>
-            </div>
+            <Button
+              className={cn(
+                "mt-6 w-full rounded-full font-semibold",
+                saved && "bg-primary/90 text-primary-foreground",
+              )}
+              onClick={handleSave}
+            >
+              {saved ? "Saved" : "Save goals"}
+            </Button>
           </div>
-
-          <Button
-            className={cn(
-              "mt-6 w-full rounded-full font-semibold",
-              saved && "bg-primary/90 text-primary-foreground",
-            )}
-            onClick={handleSave}
-          >
-            {saved ? "Saved" : "Save goals"}
-          </Button>
         </div>
       </DrawerContent>
     </Drawer>
