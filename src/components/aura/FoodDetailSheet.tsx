@@ -357,7 +357,7 @@ export const FoodDetailSheet = ({
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
-      <DrawerContent className="relative flex max-h-[100svh] flex-col overflow-hidden rounded-t-[36px] border-none bg-background pb-6 safe-pt">
+      <DrawerContent className="relative flex max-h-[90dvh] flex-col overflow-hidden rounded-t-[36px] border-none bg-background">
         {tracking && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/70 text-sm font-semibold text-primary backdrop-blur">
             Logging food...
@@ -369,7 +369,8 @@ export const FoodDetailSheet = ({
         {food && (
           <div
             ref={scrollRef}
-            className="min-h-0 flex-1 overflow-y-auto px-5 pt-2 pb-6"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-2 pb-4"
+            style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
           >
             <div className="flex items-center justify-between pt-2">
               <span className="text-xs uppercase tracking-[0.3em] text-primary">
@@ -602,15 +603,15 @@ export const FoodDetailSheet = ({
           </div>
         )}
         {food && (
-          <div className="shrink-0 bg-transparent px-5 pb-4 pt-3">
+          <div className="shrink-0 border-t border-border/60 bg-background px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
             <Button
-              className="relative w-full overflow-hidden rounded-full bg-primary py-6 text-base font-semibold text-primary-foreground shadow-[0_16px_30px_rgba(15,23,42,0.35)] hover:bg-primary/90"
+              className="relative w-full overflow-hidden rounded-full bg-primary py-4 text-base font-semibold text-primary-foreground shadow-[0_12px_24px_rgba(15,23,42,0.25)] hover:bg-primary/90"
               onClick={handleTrack}
               disabled={tracking}
             >
               {sparkle && (
                 <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <span className="h-16 w-16 animate-ping rounded-full bg-primary/40 blur-sm" />
+                  <span className="h-12 w-12 animate-ping rounded-full bg-primary/40 blur-sm" />
                 </span>
               )}
               {tracking ? "Tracking..." : "Track"}
@@ -618,7 +619,7 @@ export const FoodDetailSheet = ({
             <Button
               type="button"
               variant="ghost"
-              className="mt-2 w-full rounded-full border border-border text-secondary-foreground hover:bg-secondary/45"
+              className="mt-2 h-10 w-full rounded-full text-secondary-foreground hover:bg-secondary/60"
               onClick={() => handleOpenChange(false)}
             >
               Back
