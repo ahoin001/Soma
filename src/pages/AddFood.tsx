@@ -6,7 +6,7 @@ import { FoodSearchContent } from "@/components/aura/FoodSearchContent";
 import { useAppStore } from "@/state/AppStore";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Copy } from "lucide-react";
 import { fuzzyFilter } from "@/lib/fuzzySearch";
 import { useSheetManager } from "@/hooks/useSheetManager";
 import { calculateMacroPercent } from "@/data/foodApi";
@@ -38,6 +38,11 @@ const AddFood = () => {
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [editItem, setEditItem] = useState<LogItem | null>(null);
   const [recentMealFoods, setRecentMealFoods] = useState<FoodItem[]>([]);
+  const [yesterdayMealItems, setYesterdayMealItems] = useState<
+    Array<{ food: FoodItem; quantity: number; portionLabel?: string; portionGrams?: number }>
+  >([]);
+  const [isLoadingYesterday, setIsLoadingYesterday] = useState(false);
+  const [isAddingSameAsYesterday, setIsAddingSameAsYesterday] = useState(false);
   const recentRequestRef = useRef(0);
   const { activeSheet, openSheet, closeSheets } = useSheetManager<"detail" | "edit">(null, {
     storageKey: SHEET_ADD_FOOD_KEY,
@@ -305,6 +310,75 @@ const AddFood = () => {
   }, [applyOverrides, selectedMeal?.emoji, selectedMeal?.id]);
 
   useEffect(() => {
+    const mealId = selectedMeal?.id;
+    if (!mealId) {
+      setYesterdayMealItems([]);
+      return;
+    }
+    const buildLocalDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayLocal = buildLocalDate(yesterday);
+
+    const loadYesterday = async () => {
+      setIsLoadingYesterday(true);
+      try {
+        await ensureUser();
+        const { entries, items } = await fetchMealEntries(yesterdayLocal);
+        const entryIds = new Set(
+          entries
+            .filter((e) => e.meal_type_id === mealId)
+            .map((e) => e.id),
+        );
+        const mealItems = items
+          .filter((item) => entryIds.has(item.meal_entry_id))
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+          .map((item) => {
+            const macros = {
+              carbs: Number(item.carbs_g ?? 0),
+              protein: Number(item.protein_g ?? 0),
+              fat: Number(item.fat_g ?? 0),
+            };
+            const portion =
+              item.portion_label ??
+              (item.portion_grams ? `${item.portion_grams} g` : "1 serving");
+            const food: FoodItem = {
+              id: item.food_id ?? `meal-item:${item.id}`,
+              name: item.food_name,
+              portion,
+              portionLabel: item.portion_label ?? undefined,
+              portionGrams: item.portion_grams ?? undefined,
+              kcal: Number(item.kcal ?? 0),
+              emoji: selectedMeal?.emoji ?? "🍽️",
+              imageUrl: item.image_url ?? undefined,
+              source: "local",
+              macros,
+              macroPercent: calculateMacroPercent(macros),
+            };
+            return {
+              food: applyOverrides([food])[0],
+              quantity: item.quantity ?? 1,
+              portionLabel: item.portion_label ?? undefined,
+              portionGrams: item.portion_grams ?? undefined,
+            };
+          });
+        setYesterdayMealItems(mealItems);
+      } catch {
+        setYesterdayMealItems([]);
+      } finally {
+        setIsLoadingYesterday(false);
+      }
+    };
+
+    void loadYesterday();
+  }, [applyOverrides, selectedMeal?.emoji, selectedMeal?.id]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = window.localStorage.getItem(CREATED_FOOD_KEY);
     if (!raw) return;
@@ -426,6 +500,44 @@ const AddFood = () => {
     nutrition.logFood(food, mealId);
     setMealPulse(mealId);
     toast("Logged to diary", { description: "Food added to your day." });
+  };
+
+  const handleSameAsYesterday = () => {
+    const mealId = resolveMealId();
+    if (!mealId) {
+      toast("Select a meal first", { description: "Choose where to log foods." });
+      return;
+    }
+    if (yesterdayMealItems.length === 0) {
+      toast("Nothing from yesterday", {
+        description: `You didn't log anything for ${selectedMeal?.label ?? "this meal"} yesterday.`,
+      });
+      return;
+    }
+    setIsAddingSameAsYesterday(true);
+    let added = 0;
+    for (const { food, quantity, portionLabel, portionGrams } of yesterdayMealItems) {
+      const existing = findExistingLogItem(food, mealId);
+      if (existing) continue;
+      nutrition.logFood(food, mealId, {
+        quantity,
+        portionLabel: portionLabel ?? undefined,
+        portionGrams: portionGrams ?? undefined,
+      });
+      added++;
+    }
+    setIsAddingSameAsYesterday(false);
+    setMealPulse(mealId);
+    if (added > 0) {
+      toast(`Added ${added} item${added === 1 ? "" : "s"} from yesterday`, {
+        description: `Logged to ${selectedMeal?.label ?? "meal"}.`,
+      });
+      navigate(returnTo, { replace: true });
+    } else {
+      toast("Already logged", {
+        description: `All of yesterday's ${selectedMeal?.label ?? "meal"} items are already in today.`,
+      });
+    }
   };
 
   const handleQuickRemove = (food: FoodItem) => {
@@ -551,6 +663,10 @@ const AddFood = () => {
             }}
             onQuickAddFood={handleQuickAdd}
             onQuickRemoveFood={activeTab === "history" ? handleQuickRemove : undefined}
+            sameAsYesterdayItems={yesterdayMealItems.map((x) => x.food)}
+            onSameAsYesterday={handleSameAsYesterday}
+            isLoadingSameAsYesterday={isLoadingYesterday}
+            isAddingSameAsYesterday={isAddingSameAsYesterday}
             onOpenBarcode={() =>
               (() => {
                 const nextParams = new URLSearchParams(searchParams);

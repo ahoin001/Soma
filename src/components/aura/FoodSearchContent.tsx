@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import type { FoodItem, Meal } from "@/data/mock";
-import { Barcode, CheckCircle2, Heart, PlusCircle, Search, X } from "lucide-react";
+import { Barcode, CheckCircle2, Copy, Heart, PlusCircle, Search, X } from "lucide-react";
 import { FoodList } from "./FoodList.tsx";
 import { Pressable } from "./Pressable";
 import type { RefObject } from "react";
@@ -27,6 +27,10 @@ type FoodSearchContentProps = {
   onSelectFood: (food: FoodItem) => void;
   onQuickAddFood: (food: FoodItem) => void;
   onQuickRemoveFood?: (food: FoodItem) => void;
+  sameAsYesterdayItems?: FoodItem[];
+  onSameAsYesterday?: () => void;
+  isLoadingSameAsYesterday?: boolean;
+  isAddingSameAsYesterday?: boolean;
   onOpenBarcode: () => void;
   onOpenCreate: () => void;
   inputRef?: RefObject<HTMLInputElement>;
@@ -49,6 +53,10 @@ export const FoodSearchContent = ({
   onSelectFood,
   onQuickAddFood,
   onQuickRemoveFood,
+  sameAsYesterdayItems = [],
+  onSameAsYesterday,
+  isLoadingSameAsYesterday = false,
+  isAddingSameAsYesterday = false,
   onOpenBarcode,
   onOpenCreate,
   inputRef,
@@ -252,6 +260,34 @@ export const FoodSearchContent = ({
         {mode === "library" ? (
           <>
             <TabsContent value="recent" className="mt-4">
+              {sameAsYesterdayItems.length > 0 && onSameAsYesterday ? (
+                <button
+                  type="button"
+                  onClick={onSameAsYesterday}
+                  disabled={isAddingSameAsYesterday}
+                  className="mb-3 flex w-full items-center gap-3 rounded-2xl border border-border/60 bg-card/80 px-4 py-3 text-left shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition hover:bg-secondary/60 disabled:opacity-60"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                    <Copy className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-foreground">
+                      Same as yesterday
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {isAddingSameAsYesterday
+                        ? "Adding…"
+                        : isLoadingSameAsYesterday
+                          ? "Loading…"
+                          : `Quick-add ${sameAsYesterdayItems.length} item${sameAsYesterdayItems.length === 1 ? "" : "s"} from yesterday's ${meal?.label ?? "meal"}`}
+                    </p>
+                  </div>
+                </button>
+              ) : isLoadingSameAsYesterday ? (
+                <div className="mb-3 rounded-2xl border border-border/60 bg-card/80 px-4 py-3 text-xs text-muted-foreground">
+                  Checking yesterday's {meal?.label ?? "meal"}…
+                </div>
+              ) : null}
               <FoodList
                 foods={foods}
                 onSelect={onSelectFood}

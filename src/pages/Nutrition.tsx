@@ -37,7 +37,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useExperienceTransitionConfig } from "@/state";
 import { useSheetManager } from "@/hooks/useSheetManager";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Copy, Sparkles } from "lucide-react";
+import { ChevronDown, Sparkles } from "lucide-react";
 import { useTheme } from "next-themes";
 import { LoadingState } from "@/components/ui/loading-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -168,8 +168,6 @@ const Nutrition = () => {
     setSelectedDate,
     removeLogItem,
     updateLogItem,
-    copyDayFrom,
-    isCopyingDay,
     isLoading: nutritionLoading,
     setGoal,
     setMacroTargets,
@@ -493,26 +491,6 @@ const Nutrition = () => {
         </div>
 
         <DateSwitcher value={selectedDate} onChange={setSelectedDate} />
-
-        {(() => {
-          const todayLocal = toLocalDate(new Date());
-          const currentLocal = toLocalDate(selectedDate);
-          const isViewingToday = currentLocal === todayLocal;
-          const yesterday = new Date(selectedDate);
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayLocal = toLocalDate(yesterday);
-          return isViewingToday ? (
-            <Button
-              variant="outline"
-              className="mt-4 w-full rounded-full border-border/70 bg-card/80 text-primary shadow-sm hover:bg-secondary/70 hover:border-border"
-              onClick={() => copyDayFrom(yesterdayLocal)}
-              disabled={isCopyingDay}
-            >
-              <Copy className="mr-2 h-4 w-4" />
-              {isCopyingDay ? "Copying…" : "Same as yesterday"}
-            </Button>
-          ) : null;
-        })()}
 
         <MealLogPanel
           meals={meals}

@@ -1,22 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { useBlocker, useNavigate, useNavigationType, useParams } from "react-router-dom";
+import { useNavigate, useNavigationType, useParams } from "react-router-dom";
 import {
   AppShell,
   WorkoutSessionEditor,
   SessionSummaryScreen,
   type SessionSummaryStats,
 } from "@/components/aura";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/state/AppStore";
 import { toast } from "sonner";
 import { fetchExerciseByName } from "@/lib/api";
@@ -84,9 +73,6 @@ const WorkoutDetails = () => {
   const editorMode = mode === "session" ? "session" : "edit";
   const [showSummary, setShowSummary] = useState(false);
   const [summaryStats, setSummaryStats] = useState<SessionSummaryStats | null>(null);
-
-  const isSessionActive = editorMode === "session" && Boolean(fitnessPlanner.activeSession);
-  const blocker = useBlocker(isSessionActive);
 
   useEffect(() => {
     if (navigationType === "POP") return;
@@ -253,42 +239,6 @@ const WorkoutDetails = () => {
             : undefined
         }
       />
-
-      {blocker.state === "blocked" ? (
-        <AlertDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) blocker.reset();
-          }}
-        >
-          <AlertDialogContent className="border-white/10 bg-slate-950 text-white">
-            <AlertDialogHeader>
-              <AlertDialogTitle>End workout session?</AlertDialogTitle>
-              <AlertDialogDescription className="text-white/60">
-                Leaving will end your session. Use the back button (✕) on the workout screen to save your progress first, or discard and leave now.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
-              <AlertDialogCancel
-                className="w-full rounded-full border-white/20 text-white hover:bg-white/10"
-                onClick={() => blocker.reset()}
-              >
-                Stay
-              </AlertDialogCancel>
-              <Button
-                variant="outline"
-                className="w-full rounded-full border-rose-400/50 text-rose-200 hover:bg-rose-500/20"
-                onClick={() => {
-                  fitnessPlanner.finishSession();
-                  blocker.proceed();
-                }}
-              >
-                Discard & leave
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      ) : null}
     </AppShell>
   );
 };

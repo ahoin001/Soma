@@ -10,8 +10,6 @@ import { SyncStatus } from "./SyncStatus";
 import type { MacroTarget } from "@/data/mock";
 import type { NutritionSummaryMicros } from "@/lib/api";
 import { getMicroState, MICRO_OPTIONS } from "./MacroMicroGoalSheet";
-import { MicroGoalProgress } from "./MicroGoalProgress";
-import { MicroLimitBudget } from "./MicroLimitBudget";
 
 type DashboardHeaderVariant = "immersive" | "card" | "media";
 
@@ -258,45 +256,87 @@ export const DashboardHeader = ({
                 transition={{ duration: 0.25, ease: "easeOut" }}
                 className="mt-3 overflow-hidden"
               >
-                <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-3">
                   {slotKeys.map((key) => {
                     const opt = MICRO_OPTIONS.find((o) => o.key === key);
                     const current = microValues?.[key] ?? 0;
                     if (!opt) return null;
                     const entry = goals[key];
-                    if (entry) {
-                      const rounded = Math.round(current * 10) / 10;
-                      return entry.mode === "goal" ? (
-                        <MicroGoalProgress
+                    const rounded = Math.round(current * 10) / 10;
+                    const cardClass =
+                      "rounded-[20px] border border-border/70 bg-card/90 px-3 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur";
+                    if (entry?.mode === "goal") {
+                      const safeGoal = entry.value > 0 ? entry.value : 1;
+                      const percent = Math.min(100, (rounded / safeGoal) * 100);
+                      const met = rounded >= entry.value;
+                      return (
+                        <div
                           key={key}
-                          label={opt.label}
-                          current={rounded}
-                          goal={entry.value}
-                          unit={opt.unit}
-                          className="backdrop-blur"
-                        />
-                      ) : (
-                        <MicroLimitBudget
+                          className={cn(
+                            cardClass,
+                            met && "border-primary/30 bg-primary/5",
+                          )}
+                        >
+                          <p className="text-xs font-semibold text-foreground/85">
+                            {opt.label}
+                          </p>
+                          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-secondary">
+                            <div
+                              className="h-full rounded-full bg-primary transition-all"
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                          <p className="mt-2 text-[11px] text-muted-foreground">
+                            <AnimatedNumber value={rounded} animateTrigger={animateTrigger} />/
+                            <AnimatedNumber value={entry.value} animateTrigger={animateTrigger} /> {opt.unit}
+                            {met && " ✓"}
+                          </p>
+                        </div>
+                      );
+                    }
+                    if (entry?.mode === "limit") {
+                      const safeLimit = entry.value > 0 ? entry.value : 1;
+                      const percent = Math.min(100, (rounded / safeLimit) * 100);
+                      const isOver = rounded > entry.value;
+                      const isWarning = !isOver && percent >= 80;
+                      const barColor = isOver
+                        ? "bg-destructive"
+                        : isWarning
+                          ? "bg-amber-500"
+                          : "bg-primary";
+                      return (
+                        <div
                           key={key}
-                          label={opt.label}
-                          current={rounded}
-                          limit={entry.value}
-                          unit={opt.unit}
-                          className="backdrop-blur"
-                        />
+                          className={cn(
+                            cardClass,
+                            isWarning && "border-amber-500/40 bg-amber-500/5",
+                            isOver && "border-destructive/40 bg-destructive/5",
+                          )}
+                        >
+                          <p className="text-xs font-semibold text-foreground/85">
+                            {opt.label}
+                          </p>
+                          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-secondary">
+                            <div
+                              className={cn("h-full rounded-full transition-all", barColor)}
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                          <p className="mt-2 text-[11px] text-muted-foreground">
+                            <AnimatedNumber value={rounded} animateTrigger={animateTrigger} />/
+                            <AnimatedNumber value={entry.value} animateTrigger={animateTrigger} /> {opt.unit}
+                            {isOver && " over"}
+                          </p>
+                        </div>
                       );
                     }
                     return (
-                      <div
-                        key={key}
-                        className="rounded-2xl border border-border/50 bg-card/80 px-3 py-2.5 backdrop-blur"
-                      >
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      <div key={key} className={cardClass}>
+                        <p className="text-xs font-semibold text-foreground/85">
                           {opt.label}
                         </p>
-                        <p className="mt-0.5 text-sm font-semibold text-foreground">
-                          <AnimatedNumber value={current} animateTrigger={animateTrigger} />
-                          {opt.unit === "mg" ? " mg" : opt.unit}
+                        <p className="mt-2 text-[11px] text-muted-foreground">
+                          <AnimatedNumber value={rounded} animateTrigger={animateTrigger} /> {opt.unit}
                         </p>
                       </div>
                     );
