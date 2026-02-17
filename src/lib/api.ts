@@ -109,6 +109,7 @@ export const setUserId = (userId: string) => {
 /** Clear stored user id (e.g. on logout). Keeps PWA from showing stale "logged in" state. */
 export const clearStoredUserId = () => {
   if (typeof window === "undefined") return;
+  ensureUserCache = null;
   window.localStorage.removeItem(USER_ID_KEY);
   setCookie(USER_ID_COOKIE_NAME, null);
 };
@@ -145,13 +146,24 @@ const apiFetch = async <T>(path: string, options?: RequestInit) => {
   return (await response.json()) as T;
 };
 
+/** In-memory cache so concurrent/serial ensureUser() calls in the same session share one request. */
+let ensureUserCache: {
+  userId: string;
+  promise: Promise<{ user: { id: string } } | null>;
+} | null = null;
+
 export const ensureUser = async (displayName = "You") => {
-  const userId = getUserId();
+  const userId = getStoredUserId();
   if (!userId) return null;
-  return apiFetch<{ user: { id: string } }>("/api/users/ensure", {
+  if (ensureUserCache?.userId === userId) {
+    return ensureUserCache.promise;
+  }
+  const promise = apiFetch<{ user: { id: string } }>("/api/users/ensure", {
     method: "POST",
     body: JSON.stringify({ userId, displayName }),
   });
+  ensureUserCache = { userId, promise };
+  return promise;
 };
 
 /**
