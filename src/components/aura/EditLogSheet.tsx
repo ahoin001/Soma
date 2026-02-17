@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { logDraftKey } from "@/lib/storageKeys";
 import { calculateMacroPercent } from "@/data/foodApi";
+import { MealIcon } from "./MealIcon";
 
 type EditLogSheetProps = {
   open: boolean;
@@ -195,9 +196,13 @@ export const EditLogSheet = ({
             </div>
 
             <div className="mt-4 text-center">
-              {item.mealEmoji || item.mealLabel ? (
+              {item.mealTypeId || item.mealEmoji || item.mealLabel ? (
                 <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-primary/12 px-3 py-1 text-[11px] font-semibold text-primary">
-                  <span>{item.mealEmoji ?? "🍽️"}</span>
+                  {item.mealTypeId ? (
+                    <MealIcon mealId={item.mealTypeId} size={14} />
+                  ) : (
+                    <span>{item.mealEmoji ?? "🍽️"}</span>
+                  )}
                   <span>{item.mealLabel ?? "Meal"}</span>
                 </div>
               ) : null}

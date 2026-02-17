@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import type { Meal } from "@/data/mock";
 import { Plus } from "lucide-react";
 import { Pressable } from "./Pressable";
+import { MealIcon } from "./MealIcon";
 
 type MealCardProps = {
   meal: Meal;
@@ -13,8 +14,8 @@ export const MealCard = ({ meal, onAdd }: MealCardProps) => (
   <Pressable>
     <Card className="flex items-center justify-between rounded-[28px] border border-border/60 bg-card px-4 py-4 shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
       <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary text-xl">
-          {meal.emoji}
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary text-primary">
+          <MealIcon mealId={meal.id} size={26} />
         </div>
         <div>
           <p className="text-sm font-semibold text-foreground">{meal.label}</p>

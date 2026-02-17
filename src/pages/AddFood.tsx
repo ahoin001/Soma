@@ -335,38 +335,56 @@ const AddFood = () => {
             .filter((e) => e.meal_type_id === mealId)
             .map((e) => e.id),
         );
-        const mealItems = items
+        const itemsForMeal = items
           .filter((item) => entryIds.has(item.meal_entry_id))
-          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-          .map((item) => {
-            const macros = {
-              carbs: Number(item.carbs_g ?? 0),
-              protein: Number(item.protein_g ?? 0),
-              fat: Number(item.fat_g ?? 0),
-            };
-            const portion =
-              item.portion_label ??
-              (item.portion_grams ? `${item.portion_grams} g` : "1 serving");
-            const food: FoodItem = {
-              id: item.food_id ?? `meal-item:${item.id}`,
-              name: item.food_name,
-              portion,
-              portionLabel: item.portion_label ?? undefined,
-              portionGrams: item.portion_grams ?? undefined,
-              kcal: Number(item.kcal ?? 0),
-              emoji: selectedMeal?.emoji ?? "🍽️",
-              imageUrl: item.image_url ?? undefined,
-              source: "local",
-              macros,
-              macroPercent: calculateMacroPercent(macros),
-            };
-            return {
-              food: applyOverrides([food])[0],
-              quantity: item.quantity ?? 1,
-              portionLabel: item.portion_label ?? undefined,
-              portionGrams: item.portion_grams ?? undefined,
-            };
-          });
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+        // Deduplicate by food (id or name): one row per unique food, quantities summed.
+        // Prevents duplicate log entries when the API returns multiple item rows for the same food.
+        const byFoodKey = new Map<
+          string,
+          { item: (typeof itemsForMeal)[0]; totalQuantity: number }
+        >();
+        for (const item of itemsForMeal) {
+          const key = (item.food_id ?? item.food_name.trim().toLowerCase()) || `meal-item:${item.id}`;
+          const existing = byFoodKey.get(key);
+          const qty = item.quantity ?? 1;
+          if (existing) {
+            existing.totalQuantity += qty;
+          } else {
+            byFoodKey.set(key, { item, totalQuantity: qty });
+          }
+        }
+
+        const mealItems = Array.from(byFoodKey.values()).map(({ item, totalQuantity }) => {
+          const macros = {
+            carbs: Number(item.carbs_g ?? 0),
+            protein: Number(item.protein_g ?? 0),
+            fat: Number(item.fat_g ?? 0),
+          };
+          const portion =
+            item.portion_label ??
+            (item.portion_grams ? `${item.portion_grams} g` : "1 serving");
+          const food: FoodItem = {
+            id: item.food_id ?? `meal-item:${item.id}`,
+            name: item.food_name,
+            portion,
+            portionLabel: item.portion_label ?? undefined,
+            portionGrams: item.portion_grams ?? undefined,
+            kcal: Number(item.kcal ?? 0),
+            emoji: selectedMeal?.emoji ?? "🍽️",
+            imageUrl: item.image_url ?? undefined,
+            source: "local",
+            macros,
+            macroPercent: calculateMacroPercent(macros),
+          };
+          return {
+            food: applyOverrides([food])[0],
+            quantity: totalQuantity,
+            portionLabel: item.portion_label ?? undefined,
+            portionGrams: item.portion_grams ?? undefined,
+          };
+        });
         setYesterdayMealItems(mealItems);
       } catch {
         setYesterdayMealItems([]);

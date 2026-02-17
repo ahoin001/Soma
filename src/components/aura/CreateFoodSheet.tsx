@@ -588,7 +588,8 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
               {...register("kcal")}
               placeholder="0"
               className={`h-10 rounded-full pr-12 ${errors.kcal ? "border-destructive/60" : ""}`}
-              inputMode="numeric"
+              inputMode="decimal"
+              step="any"
             />
             <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
               kcal
@@ -605,7 +606,8 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                 {...register("carbs")}
                 placeholder="0"
                 className={`h-10 rounded-full pr-8 ${errors.carbs ? "border-destructive/60" : ""}`}
-                inputMode="numeric"
+                inputMode="decimal"
+                step="any"
               />
               <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                 g
@@ -621,7 +623,8 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                 {...register("protein")}
                 placeholder="0"
                 className={`h-10 rounded-full pr-8 ${errors.protein ? "border-destructive/60" : ""}`}
-                inputMode="numeric"
+                inputMode="decimal"
+                step="any"
               />
               <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                 g
@@ -637,7 +640,8 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                 {...register("fat")}
                 placeholder="0"
                 className={`h-10 rounded-full pr-8 ${errors.fat ? "border-destructive/60" : ""}`}
-                inputMode="numeric"
+                inputMode="decimal"
+                step="any"
               />
               <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                 g
@@ -813,8 +817,9 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   {...register("sodium")}
                   placeholder="0"
                   className="h-10 rounded-full pr-10"
-                  inputMode="numeric"
+                  inputMode="decimal"
                   type="number"
+                  step="any"
                 />
                 <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   mg
@@ -830,8 +835,9 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   {...register("potassium")}
                   placeholder="0"
                   className="h-10 rounded-full pr-10"
-                  inputMode="numeric"
+                  inputMode="decimal"
                   type="number"
+                  step="any"
                 />
                 <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   mg
@@ -847,8 +853,9 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   {...register("fiber")}
                   placeholder="0"
                   className="h-10 rounded-full pr-8"
-                  inputMode="numeric"
+                  inputMode="decimal"
                   type="number"
+                  step="any"
                 />
                 <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   g
@@ -864,8 +871,9 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   {...register("satFat")}
                   placeholder="0"
                   className="h-10 rounded-full pr-8"
-                  inputMode="numeric"
+                  inputMode="decimal"
                   type="number"
+                  step="any"
                 />
                 <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   g
@@ -874,15 +882,40 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Sugar
+                Total sugar
+              </p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                From label: &quot;Total Sugars&quot;
               </p>
               <div className="relative mt-1">
                 <Input
                   {...register("sugar")}
                   placeholder="0"
                   className="h-10 rounded-full pr-8"
-                  inputMode="numeric"
+                  inputMode="decimal"
                   type="number"
+                  step="any"
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+                  g
+                </span>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Added sugar
+              </p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                From label: &quot;Includes Xg Added Sugars&quot;
+              </p>
+              <div className="relative mt-1">
+                <Input
+                  {...register("addedSugar")}
+                  placeholder="—"
+                  className="h-10 rounded-full pr-8"
+                  inputMode="decimal"
+                  type="number"
+                  step="any"
                 />
                 <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   g
@@ -898,8 +931,9 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   {...register("transFat")}
                   placeholder="0"
                   className="h-10 rounded-full pr-8"
-                  inputMode="numeric"
+                  inputMode="decimal"
                   type="number"
+                  step="any"
                 />
                 <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   g
@@ -915,8 +949,9 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   {...register("cholesterol")}
                   placeholder="0"
                   className="h-10 rounded-full pr-10"
-                  inputMode="numeric"
+                  inputMode="decimal"
                   type="number"
+                  step="any"
                 />
                 <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                   mg

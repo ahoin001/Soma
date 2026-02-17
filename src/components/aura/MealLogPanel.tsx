@@ -13,6 +13,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { forwardRef, useMemo, useState } from "react";
 import { ListEmptyState } from "@/components/ui/empty-state";
+import { MealIcon } from "./MealIcon";
 
 export type MealLogPanelProps = {
   meals: Meal[];
@@ -115,8 +116,8 @@ export const MealLogPanel = ({
                       aria-label={`Toggle ${meal.label} details`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-card text-lg shadow-[0_8px_18px_rgba(15,23,42,0.08)]">
-                          {meal.emoji}
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-card text-lg shadow-[0_8px_18px_rgba(15,23,42,0.08)] text-primary">
+                          <MealIcon mealId={meal.id} size={22} />
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-foreground">

@@ -197,7 +197,8 @@ export const FoodDetailSheet = ({
     };
     add("sodium_mg", "Sodium", "mg");
     add("fiber_g", "Fiber", "g");
-    add("sugar_g", "Sugar", "g");
+    add("sugar_g", "Total sugar", "g");
+    add("added_sugar_g", "Added sugar", "g");
     add("saturated_fat_g", "Sat fat", "g");
     add("trans_fat_g", "Trans fat", "g");
     add("cholesterol_mg", "Chol", "mg");

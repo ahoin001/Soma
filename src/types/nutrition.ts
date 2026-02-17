@@ -45,6 +45,7 @@ export type NutritionDraft = {
   sodiumMg?: number | null;
   fiberG?: number | null;
   sugarG?: number | null;
+  addedSugarG?: number | null;
   saturatedFatG?: number | null;
   transFatG?: number | null;
   cholesterolMg?: number | null;
@@ -69,6 +70,7 @@ export type NutritionDraftForm = {
   sodiumMg: number | null;
   fiberG: number | null;
   sugarG: number | null;
+  addedSugarG: number | null;
   saturatedFatG: number | null;
   transFatG: number | null;
   cholesterolMg: number | null;

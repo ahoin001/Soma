@@ -118,6 +118,7 @@ const EditFood = () => {
       sodiumMg: readMicro("sodium_mg"),
       fiberG: readMicro("fiber_g"),
       sugarG: readMicro("sugar_g"),
+      addedSugarG: readMicro("added_sugar_g"),
       saturatedFatG: readMicro("saturated_fat_g"),
       transFatG: readMicro("trans_fat_g"),
       cholesterolMg: readMicro("cholesterol_mg"),
@@ -1013,7 +1014,8 @@ const EditFood = () => {
                 <Input
                   type="number"
                   min={0}
-                  inputMode="numeric"
+                  step="any"
+                  inputMode="decimal"
                   value={draft.kcal}
                   onChange={(event) => handleDraftChange("kcal", event.target.value)}
                   className="h-10 rounded-full pr-12"
@@ -1031,7 +1033,8 @@ const EditFood = () => {
                 <Input
                   type="number"
                   min={0}
-                  inputMode="numeric"
+                  step="any"
+                  inputMode="decimal"
                   value={draft.carbs}
                   onChange={(event) => handleDraftChange("carbs", event.target.value)}
                   className="h-10 rounded-full pr-8"
@@ -1049,7 +1052,8 @@ const EditFood = () => {
                 <Input
                   type="number"
                   min={0}
-                  inputMode="numeric"
+                  step="any"
+                  inputMode="decimal"
                   value={draft.protein}
                   onChange={(event) => handleDraftChange("protein", event.target.value)}
                   className="h-10 rounded-full pr-8"
@@ -1067,7 +1071,8 @@ const EditFood = () => {
                 <Input
                   type="number"
                   min={0}
-                  inputMode="numeric"
+                  step="any"
+                  inputMode="decimal"
                   value={draft.fat}
                   onChange={(event) => handleDraftChange("fat", event.target.value)}
                   className="h-10 rounded-full pr-8"
@@ -1094,6 +1099,8 @@ const EditFood = () => {
                   <Input
                     type="number"
                     min={0}
+                    step="any"
+                    inputMode="decimal"
                     value={draft.sodiumMg ?? ""}
                     onChange={(event) => handleDraftChange("sodiumMg", event.target.value)}
                     className="h-10 rounded-full pr-10"
@@ -1111,6 +1118,8 @@ const EditFood = () => {
                   <Input
                     type="number"
                     min={0}
+                    step="any"
+                    inputMode="decimal"
                     value={draft.fiberG ?? ""}
                     onChange={(event) => handleDraftChange("fiberG", event.target.value)}
                     className="h-10 rounded-full pr-8"
@@ -1122,15 +1131,43 @@ const EditFood = () => {
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  Sugar
+                  Total sugar
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  From label: &quot;Total Sugars&quot;
                 </p>
                 <div className="relative mt-1">
                   <Input
                     type="number"
                     min={0}
+                    step="any"
+                    inputMode="decimal"
                     value={draft.sugarG ?? ""}
                     onChange={(event) => handleDraftChange("sugarG", event.target.value)}
                     className="h-10 rounded-full pr-8"
+                  />
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+                    g
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  Added sugar
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  From label: &quot;Includes Xg Added Sugars&quot;
+                </p>
+                <div className="relative mt-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    step="any"
+                    inputMode="decimal"
+                    value={draft.addedSugarG ?? ""}
+                    onChange={(event) => handleDraftChange("addedSugarG", event.target.value)}
+                    className="h-10 rounded-full pr-8"
+                    placeholder="—"
                   />
                   <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                     g
@@ -1145,6 +1182,8 @@ const EditFood = () => {
                   <Input
                     type="number"
                     min={0}
+                    step="any"
+                    inputMode="decimal"
                     value={draft.saturatedFatG ?? ""}
                     onChange={(event) =>
                       handleDraftChange("saturatedFatG", event.target.value)
@@ -1164,6 +1203,8 @@ const EditFood = () => {
                   <Input
                     type="number"
                     min={0}
+                    step="any"
+                    inputMode="decimal"
                     value={draft.transFatG ?? ""}
                     onChange={(event) => handleDraftChange("transFatG", event.target.value)}
                     className="h-10 rounded-full pr-8"
@@ -1181,6 +1222,8 @@ const EditFood = () => {
                   <Input
                     type="number"
                     min={0}
+                    step="any"
+                    inputMode="decimal"
                     value={draft.cholesterolMg ?? ""}
                     onChange={(event) =>
                       handleDraftChange("cholesterolMg", event.target.value)
@@ -1200,6 +1243,8 @@ const EditFood = () => {
                   <Input
                     type="number"
                     min={0}
+                    step="any"
+                    inputMode="decimal"
                     value={draft.potassiumMg ?? ""}
                     onChange={(event) =>
                       handleDraftChange("potassiumMg", event.target.value)
@@ -1257,6 +1302,7 @@ const EditFood = () => {
                 setMicro("sodium_mg", draft.sodiumMg);
                 setMicro("fiber_g", draft.fiberG);
                 setMicro("sugar_g", draft.sugarG);
+                setMicro("added_sugar_g", draft.addedSugarG);
                 setMicro("saturated_fat_g", draft.saturatedFatG);
                 setMicro("trans_fat_g", draft.transFatG);
                 setMicro("cholesterol_mg", draft.cholesterolMg);

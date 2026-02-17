@@ -37,9 +37,10 @@ export const createFoodSchema = z.object({
     .min(1, "Fat required")
     .refine((val) => !val || !isNaN(Number(val)), "Must be a number"),
 
-  // Optional micronutrients
+  // Optional micronutrients (decimal-friendly: validated as numeric string)
   sodium: z.string().optional().default(""),
   sugar: z.string().optional().default(""),
+  addedSugar: z.string().optional().default(""),
   transFat: z.string().optional().default(""),
   fiber: z.string().optional().default(""),
   cholesterol: z.string().optional().default(""),
@@ -61,6 +62,7 @@ export const transformFoodFormToPayload = (values: CreateFoodFormValues) => {
 
   if (values.sodium?.trim()) micronutrients.sodium_mg = Number(values.sodium);
   if (values.sugar?.trim()) micronutrients.sugar_g = Number(values.sugar);
+  if (values.addedSugar?.trim()) micronutrients.added_sugar_g = Number(values.addedSugar);
   if (values.transFat?.trim()) micronutrients.trans_fat_g = Number(values.transFat);
   if (values.fiber?.trim()) micronutrients.fiber_g = Number(values.fiber);
   if (values.cholesterol?.trim()) micronutrients.cholesterol_mg = Number(values.cholesterol);
@@ -106,6 +108,7 @@ export const createFoodDefaults: CreateFoodFormValues = {
   fat: "",
   sodium: "",
   sugar: "",
+  addedSugar: "",
   transFat: "",
   fiber: "",
   cholesterol: "",

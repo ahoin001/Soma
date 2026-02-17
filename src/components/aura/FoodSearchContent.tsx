@@ -6,6 +6,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import type { FoodItem, Meal } from "@/data/mock";
 import { Barcode, CheckCircle2, Copy, Heart, PlusCircle, Search, X } from "lucide-react";
 import { FoodList } from "./FoodList.tsx";
+import { MealIcon } from "./MealIcon";
 import { Pressable } from "./Pressable";
 import type { RefObject } from "react";
 import { cn } from "@/lib/utils";
@@ -98,7 +99,7 @@ export const FoodSearchContent = ({
             value: entry.id,
             label: (
               <>
-                <span>{entry.emoji}</span>
+                <MealIcon mealId={entry.id} size={18} className="shrink-0" />
                 {entry.label}
               </>
             ),

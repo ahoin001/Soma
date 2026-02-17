@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { AppShell } from "@/components/aura";
+import { MealIcon } from "@/components/aura/MealIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -848,8 +849,9 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-2">
                       <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground/60" />
-                      <p className="text-sm font-semibold text-foreground">
-                        {meal.emoji ?? "🍽️"} {meal.label}
+                      <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <MealIcon mealId={meal.id} size={18} className="shrink-0 text-primary" />
+                        {meal.label}
                       </p>
                     </div>
                     <Button

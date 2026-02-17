@@ -31,6 +31,7 @@ export { FoodSearchSheet } from "./FoodSearchSheet";
 export { MacroMicroGoalSheet } from "./MacroMicroGoalSheet";
 export { MacroPills } from "./MacroPills";
 export { MealCard } from "./MealCard";
+export { MealIcon } from "./MealIcon";
 export { MealLogPanel } from "./MealLogPanel";
 export { PageContainer } from "./PageContainer";
 export { PageTransition } from "./PageTransition";

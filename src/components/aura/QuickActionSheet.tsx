@@ -2,6 +2,7 @@ import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import type { Meal } from "@/data/mock";
 import { PlusCircle, Search } from "lucide-react";
+import { MealIcon } from "./MealIcon";
 
 type QuickActionSheetProps = {
   open: boolean;
@@ -53,7 +54,7 @@ export const QuickActionSheet = ({
                     : "border-border bg-card text-secondary-foreground"
                 }`}
               >
-                <span>{meal.emoji}</span>
+                <MealIcon mealId={meal.id} size={18} className="shrink-0" />
                 {meal.label}
               </button>
             ))}
