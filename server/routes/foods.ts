@@ -539,4 +539,24 @@ router.patch(
   }),
 );
 
+router.delete(
+  "/:foodId",
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = getUserId(req);
+    await assertAdmin(userId);
+    const foodId = req.params.foodId;
+    const result = await query(
+      `DELETE FROM foods WHERE id = $1 RETURNING id;`,
+      [foodId],
+    );
+    if (result.rowCount === 0) {
+      res.status(404).json({ error: "Food not found." });
+      return;
+    }
+    searchCache.clear();
+    listCache.clear();
+    res.json({ ok: true });
+  }),
+);
+
 export default router;

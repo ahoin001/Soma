@@ -573,6 +573,9 @@ export const updateFoodImage = async (foodId: string, imageUrl: string) =>
     body: JSON.stringify({ imageUrl }),
   });
 
+export const deleteFood = async (foodId: string) =>
+  apiFetch<{ ok: boolean }>(`/api/foods/${foodId}`, { method: "DELETE" });
+
 export const updateFoodMaster = async (
   foodId: string,
   payload: {

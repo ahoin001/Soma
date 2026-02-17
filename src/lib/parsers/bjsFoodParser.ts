@@ -52,6 +52,15 @@ function parseNumFromText(text: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Convert ALL CAPS ingredients to normal sentence-style capitalization. */
+function normalizeIngredientsCapitalization(text: string): string {
+  const t = text.trim();
+  if (!t) return t;
+  const lower = t.toLowerCase();
+  if (lower === t) return t; // already not all caps
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
 /**
  * Parse grams from serving size string.
  * Handles "1 packet 43g", "1 packet  43g (43.0g)", "1/2 cup dry (40g)".
@@ -182,12 +191,12 @@ function parseNutritionSvg(svg: Element): NutritionSvgResult {
     }
   }
 
-  // 4. Ingredients: .ingredients, text after "INGREDIENTS:"
+  // 4. Ingredients: .ingredients, text after "INGREDIENTS:" (normalize from ALL CAPS)
   const ingredientsGrp = svg.querySelector("g.ingredients");
   if (ingredientsGrp) {
     const text = getTextContent(ingredientsGrp);
     const afterLabel = text.replace(/^INGREDIENTS:\s*/i, "").trim();
-    if (afterLabel) result.ingredients = afterLabel;
+    if (afterLabel) result.ingredients = normalizeIngredientsCapitalization(afterLabel);
   }
 
   return result;

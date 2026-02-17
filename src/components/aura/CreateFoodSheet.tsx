@@ -24,12 +24,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import type { FoodItem } from "@/data/mock";
 import type { BrandRecord } from "@/types/api";
-import {
-  createBrand,
-  fetchBrandLogoSignature,
-  fetchBrands,
-  fetchFoodImageSignature,
-} from "@/lib/api";
+import { createBrand, fetchBrands, fetchFoodImageSignature } from "@/lib/api";
+import { BrandLogoUpload } from "@/components/aura/BrandLogoUpload";
 import { useAppStore } from "@/state/AppStore";
 import { CREATE_FOOD_DRAFT_KEY } from "@/lib/storageKeys";
 import {
@@ -126,10 +122,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
   const [newBrandName, setNewBrandName] = useState("");
   const [newBrandWebsite, setNewBrandWebsite] = useState("");
   const [newBrandLogoUrl, setNewBrandLogoUrl] = useState<string | null>(null);
-  const [brandUploading, setBrandUploading] = useState(false);
-  const [brandUploadProgress, setBrandUploadProgress] = useState(0);
   const [brandNotice, setBrandNotice] = useState<string | null>(null);
-  // Selected brand logo (shown in trigger when a brand is selected)
   const [selectedBrandLogoUrl, setSelectedBrandLogoUrl] = useState<string | null>(null);
 
   // UI state
@@ -478,20 +471,20 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
           className="rounded-full"
         />
         <div>
-          <div className="flex items-center gap-3">
-            {/* Brand logo preview */}
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            Brand (optional)
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Select a brand or create one and add a logo.
+          </p>
+          <div className="mt-2 flex items-center gap-3">
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted/80">
               {selectedBrandLogoUrl ? (
-                <img
-                  src={selectedBrandLogoUrl}
-                  alt="Brand"
-                  className="h-full w-full object-contain"
-                />
+                <img src={selectedBrandLogoUrl} alt="Brand" className="h-full w-full object-contain" />
               ) : (
                 <span className="text-muted-foreground">🏷️</span>
               )}
             </div>
-            {/* Brand select */}
             <Controller
               name="brandId"
               control={control}
@@ -517,19 +510,19 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                   }}
                 >
                   <SelectTrigger className="h-10 flex-1 rounded-full">
-                    <SelectValue placeholder="Select brand (optional)" />
+                    <SelectValue placeholder="Select or create brand" />
                   </SelectTrigger>
                   <SelectContent>
                     <div className="px-3 py-2">
                       <Input
                         value={brandQuery}
-                        onChange={(event) => setBrandQuery(event.target.value)}
-                        placeholder="Search brand"
+                        onChange={(e) => setBrandQuery(e.target.value)}
+                        placeholder="Search brands..."
                         className="h-9 rounded-full"
                         onFocus={() => {
                           setBrandLoading(true);
                           fetchBrands("", true, 100)
-                            .then((response) => setBrands(response.items))
+                            .then((res) => setBrands(res.items))
                             .finally(() => setBrandLoading(false));
                         }}
                       />
@@ -539,32 +532,25 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
                       <span className="font-semibold text-primary">+ Create new brand</span>
                     </SelectItem>
                     {brandLoading && (
-                      <div className="px-3 py-2 text-xs text-muted-foreground">Loading...</div>
+                      <div className="px-3 py-2 text-xs text-muted-foreground">Loading…</div>
                     )}
                     {brands
-                      .filter((brand) =>
-                        brand.name.toLowerCase().includes(brandQuery.trim().toLowerCase()),
+                      .filter((b) =>
+                        b.name.toLowerCase().includes(brandQuery.trim().toLowerCase()),
                       )
-                      .reduce<BrandRecord[]>((unique, brand) => {
-                        const normalized = brand.name.trim().toLowerCase();
-                        if (!normalized) return unique;
-                        if (unique.some((item) => item.name.trim().toLowerCase() === normalized)) {
-                          return unique;
-                        }
-                        unique.push(brand);
-                        return unique;
+                      .reduce<BrandRecord[]>((acc, b) => {
+                        const n = b.name.trim().toLowerCase();
+                        if (!n || acc.some((x) => x.name.trim().toLowerCase() === n)) return acc;
+                        acc.push(b);
+                        return acc;
                       }, [])
                       .map((brand) => (
                         <SelectItem key={brand.id} value={brand.id}>
                           <div className="flex items-center gap-2">
                             {brand.logo_url ? (
-                              <img
-                                src={brand.logo_url}
-                                alt={brand.name}
-                                className="h-5 w-5 rounded-full object-contain"
-                              />
+                              <img src={brand.logo_url} alt="" className="h-5 w-5 rounded-full object-contain" />
                             ) : (
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px]">🏷️</span>
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px]">🏷️</span>
                             )}
                             <span>{brand.name}</span>
                           </div>
@@ -652,143 +638,90 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
       </div>
 
       {brandCreateOpen && (
-        <div className="mt-4 rounded-[24px] border border-border/70 bg-secondary/55 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">
-              New brand
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setBrandCreateOpen(false);
-                setNewBrandName("");
-                setNewBrandWebsite("");
-                setNewBrandLogoUrl(null);
-                setBrandNotice(null);
-              }}
-              className="text-xs font-semibold text-muted-foreground hover:text-foreground"
-            >
-              Cancel
-            </button>
-          </div>
-          <div className="mt-3 space-y-3">
-            <Input
-              value={newBrandName}
-              onChange={(event) => setNewBrandName(event.target.value)}
-              placeholder="Brand name"
-              className="h-10 rounded-full"
-            />
-            <Input
-              value={newBrandWebsite}
-              onChange={(event) => setNewBrandWebsite(event.target.value)}
-              placeholder="Website (optional)"
-              className="h-10 rounded-full"
-            />
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-card text-xl shadow-[0_8px_20px_rgba(15,23,42,0.12)]">
-                {newBrandLogoUrl ? (
-                  <img
-                    src={newBrandLogoUrl}
-                    alt="Brand logo"
-                    className="h-full w-full object-contain"
-                  />
-                ) : (
-                  "🏷️"
-                )}
-              </div>
-              <label className="flex flex-1 cursor-pointer items-center justify-between rounded-full border border-border/70 bg-card px-4 py-2 text-xs font-semibold text-secondary-foreground">
-                <span>{brandUploading ? "Uploading..." : "Upload logo"}</span>
-                <span className="text-primary">Browse</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    setBrandUploading(true);
-                    setBrandNotice(null);
-                    setBrandUploadProgress(0);
-                    fetchBrandLogoSignature()
-                      .then(async (signature) => {
-                        const formData = new FormData();
-                        formData.append("file", file);
-                        formData.append("api_key", signature.apiKey);
-                        formData.append("timestamp", String(signature.timestamp));
-                        formData.append("signature", signature.signature);
-                        if (signature.uploadPreset) {
-                          formData.append("upload_preset", signature.uploadPreset);
-                        }
-                        const data = await new Promise<{ secure_url?: string }>((resolve, reject) => {
-                          const xhr = new XMLHttpRequest();
-                          xhr.open(
-                            "POST",
-                            `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
-                          );
-                          xhr.upload.onprogress = (evt) => {
-                            if (!evt.lengthComputable) return;
-                            const pct = Math.round((evt.loaded / evt.total) * 100);
-                            setBrandUploadProgress(pct);
-                          };
-                          xhr.onload = () => {
-                            try {
-                              resolve(JSON.parse(xhr.responseText));
-                            } catch {
-                              reject(new Error("Upload failed"));
-                            }
-                          };
-                          xhr.onerror = () => reject(new Error("Upload failed"));
-                          xhr.send(formData);
-                        });
-                        if (!data.secure_url) throw new Error("Upload failed");
-                        setNewBrandLogoUrl(data.secure_url);
-                        setBrandNotice("Logo added.");
-                      })
-                      .catch(() => setBrandNotice("Upload failed."))
-                      .finally(() => setBrandUploading(false));
-                  }}
-                />
-              </label>
+        <div className="mt-4 rounded-[24px] border border-border/70 bg-muted/40 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">
+            New brand
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Add a name and optional logo. You can change the logo later.
+          </p>
+          <div className="mt-4 space-y-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Name</label>
+              <Input
+                value={newBrandName}
+                onChange={(e) => setNewBrandName(e.target.value)}
+                placeholder="Brand name"
+                className="mt-1 h-10 rounded-full"
+              />
             </div>
-            {brandUploading && (
-              <div className="h-2 w-full overflow-hidden rounded-full bg-primary/15">
-                <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{ width: `${brandUploadProgress}%` }}
-                />
-              </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Website (optional)</label>
+              <Input
+                value={newBrandWebsite}
+                onChange={(e) => setNewBrandWebsite(e.target.value)}
+                placeholder="https://…"
+                className="mt-1 h-10 rounded-full"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Logo</label>
+              <BrandLogoUpload
+                logoUrl={newBrandLogoUrl}
+                onLogoChange={setNewBrandLogoUrl}
+                size="md"
+                className="mt-2"
+              />
+            </div>
+            {brandNotice && brandNotice !== "Logo saved." && (
+              <p className="text-xs text-destructive">{brandNotice}</p>
             )}
-            {brandNotice && <p className="text-xs text-primary">{brandNotice}</p>}
-            <Button
-              type="button"
-              className="w-full rounded-full bg-primary py-4 text-sm font-semibold text-primary-foreground"
-              onClick={async () => {
-                if (!newBrandName.trim()) {
-                  setBrandNotice("Enter a brand name.");
-                  return;
-                }
-                try {
-                  const response = await createBrand({
-                    name: newBrandName.trim(),
-                    websiteUrl: newBrandWebsite.trim() || undefined,
-                    logoUrl: newBrandLogoUrl ?? undefined,
-                  });
-                  setBrands((prev) => [response.brand, ...prev]);
-                  setValue("brandId", response.brand.id);
-                  setValue("brandName", response.brand.name);
-                  setSelectedBrandLogoUrl(response.brand.logo_url);
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                className="rounded-full"
+                onClick={() => {
                   setBrandCreateOpen(false);
                   setNewBrandName("");
                   setNewBrandWebsite("");
                   setNewBrandLogoUrl(null);
                   setBrandNotice(null);
-                } catch {
-                  setBrandNotice("Unable to create brand.");
-                }
-              }}
-            >
-              Save brand
-            </Button>
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="flex-1 rounded-full"
+                onClick={async () => {
+                  if (!newBrandName.trim()) {
+                    setBrandNotice("Enter a brand name.");
+                    return;
+                  }
+                  setBrandNotice(null);
+                  try {
+                    const response = await createBrand({
+                      name: newBrandName.trim(),
+                      websiteUrl: newBrandWebsite.trim() || undefined,
+                      logoUrl: newBrandLogoUrl ?? undefined,
+                    });
+                    setBrands((prev) => [response.brand, ...prev]);
+                    setValue("brandId", response.brand.id);
+                    setValue("brandName", response.brand.name);
+                    setSelectedBrandLogoUrl(response.brand.logo_url ?? null);
+                    setBrandCreateOpen(false);
+                    setNewBrandName("");
+                    setNewBrandWebsite("");
+                    setNewBrandLogoUrl(null);
+                  } catch {
+                    setBrandNotice("Unable to create brand.");
+                  }
+                }}
+              >
+                Create brand
+              </Button>
+            </div>
           </div>
         </div>
       )}

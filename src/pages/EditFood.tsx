@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { FoodItem } from "@/data/mock";
 import { AppShell, PageContainer } from "@/components/aura";
+import { BrandLogoUpload } from "@/components/aura/BrandLogoUpload";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,16 +18,27 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useAppStore } from "@/state/AppStore";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { toast } from "sonner";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Trash2 } from "lucide-react";
 import { calculateMacroPercent } from "@/data/foodApi";
 import {
   createBrand,
   createFoodServing,
-  fetchBrandLogoSignature,
+  deleteFood,
   fetchBrands,
   fetchFoodImageSignature,
   fetchFoodServings,
@@ -103,7 +115,7 @@ const EditFood = () => {
   const { foodCatalog } = useAppStore();
   useAuth();
   const isAdmin = useIsAdmin();
-  const { upsertOverride, updateFoodMaster, getFoodById } = foodCatalog;
+  const { upsertOverride, updateFoodMaster, getFoodById, refreshLists } = foodCatalog;
   const state = (location.state ?? {}) as EditFoodLocationState;
   const returnTo = state.returnTo ?? "/nutrition";
   const [currentFood, setCurrentFood] = useState<FoodItem | null>(
@@ -118,6 +130,7 @@ const EditFood = () => {
   const [customServings, setCustomServings] = useState<ServingOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const [brands, setBrands] = useState<BrandRecord[]>([]);
   const [brandQuery, setBrandQuery] = useState("");
@@ -126,10 +139,7 @@ const EditFood = () => {
   const [brandName, setBrandName] = useState("");
   const [brandWebsite, setBrandWebsite] = useState("");
   const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(null);
-  const [brandUploading, setBrandUploading] = useState(false);
-  const [brandUploadProgress, setBrandUploadProgress] = useState(0);
   const [brandNotice, setBrandNotice] = useState<string | null>(null);
-  const [brandEditNotice, setBrandEditNotice] = useState<string | null>(null);
   const [adminEditing, setAdminEditing] = useState(isAdmin);
   const [newImagePreview, setNewImagePreview] = useState<string | null>(null);
   const [originalBrandLogoUrl, setOriginalBrandLogoUrl] = useState<string | null>(null);
@@ -417,68 +427,76 @@ const EditFood = () => {
 
         {adminEditing && draft && (
           <Card className="mt-4 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)]">
-            <p className="text-xs uppercase tracking-[0.2em] text-primary/75">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/75">
               Brand
             </p>
-            <div className="mt-3 space-y-3">
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Select a brand or create one and add a logo.
+            </p>
+            <div className="mt-4 space-y-4">
               <Select
-                value={draft.brandId ?? "none"}
+                value={brandCreateOpen ? "__create__" : (draft.brandId ?? "none")}
                 onValueChange={(value) => {
                   if (value === "none") {
                     setDraft({ ...draft, brandId: null, brand: "" });
                     setBrandLogoUrl(null);
+                    setBrandCreateOpen(false);
                     return;
                   }
-                  const match = brands.find((brand) => brand.id === value);
-                  setDraft({
-                    ...draft,
-                    brandId: value,
-                    brand: match?.name ?? "",
-                  });
+                  if (value === "__create__") {
+                    setBrandCreateOpen(true);
+                    setBrandName("");
+                    setBrandWebsite("");
+                    setBrandLogoUrl(null);
+                    setBrandNotice(null);
+                    return;
+                  }
+                  const match = brands.find((b) => b.id === value);
+                  setDraft({ ...draft, brandId: value, brand: match?.name ?? "" });
                   setBrandLogoUrl(match?.logo_url ?? null);
+                  setOriginalBrandLogoUrl(match?.logo_url ?? null);
+                  setBrandName(match?.name ?? "");
+                  setBrandWebsite(match?.website_url ?? "");
+                  setBrandCreateOpen(false);
                 }}
               >
-                <SelectTrigger className="h-10 rounded-full">
+                <SelectTrigger className="h-11 rounded-full">
                   <div className="flex items-center gap-2">
                     {brandLogoUrl && (
                       <img
                         src={brandLogoUrl}
-                        alt="Brand"
-                        className="h-5 w-5 rounded-full object-contain"
+                        alt=""
+                        className="h-6 w-6 rounded-full object-contain"
                       />
                     )}
-                    <SelectValue placeholder="Select brand" />
+                    <SelectValue placeholder="Select or create brand" />
                   </div>
                 </SelectTrigger>
                 <SelectContent>
                   <div className="px-3 py-2">
                     <Input
                       value={brandQuery}
-                      onChange={(event) => setBrandQuery(event.target.value)}
-                      placeholder="Search brand"
+                      onChange={(e) => setBrandQuery(e.target.value)}
+                      placeholder="Search brands..."
                       className="h-9 rounded-full"
                     />
                   </div>
                   <SelectItem value="none">No brand</SelectItem>
+                  <SelectItem value="__create__">
+                    <span className="font-semibold text-primary">+ Create new brand</span>
+                  </SelectItem>
                   {brandLoading && (
-                    <div className="px-3 py-2 text-xs text-muted-foreground">Loading...</div>
+                    <div className="px-3 py-2 text-xs text-muted-foreground">Loading…</div>
                   )}
                   {brands
-                    .filter((brand) =>
-                      brand.name.toLowerCase().includes(brandQuery.trim().toLowerCase()),
+                    .filter((b) =>
+                      b.name.toLowerCase().includes(brandQuery.trim().toLowerCase()),
                     )
-                    .reduce<BrandRecord[]>((unique, brand) => {
-                      const normalized = brand.name.trim().toLowerCase();
-                      if (!normalized) return unique;
-                      if (
-                        unique.some(
-                          (item) => item.name.trim().toLowerCase() === normalized,
-                        )
-                      ) {
-                        return unique;
-                      }
-                      unique.push(brand);
-                      return unique;
+                    .reduce<BrandRecord[]>((acc, b) => {
+                      const n = b.name.trim().toLowerCase();
+                      if (!n || acc.some((x) => x.name.trim().toLowerCase() === n)) return acc;
+                      acc.push(b);
+                      return acc;
                     }, [])
                     .map((brand) => (
                       <SelectItem key={brand.id} value={brand.id}>
@@ -486,343 +504,150 @@ const EditFood = () => {
                           {brand.logo_url ? (
                             <img
                               src={brand.logo_url}
-                              alt={brand.name}
+                              alt=""
                               className="h-5 w-5 rounded-full object-contain"
                             />
-                          ) : null}
+                          ) : (
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px]">🏷️</span>
+                          )}
                           <span>{brand.name}</span>
                         </div>
                       </SelectItem>
                     ))}
                   {!brandLoading && brands.length === 0 && (
-                    <div className="px-3 py-2 text-xs text-muted-foreground">
-                      No brands found
-                    </div>
+                    <div className="px-3 py-2 text-xs text-muted-foreground">No brands found</div>
                   )}
                 </SelectContent>
               </Select>
-              <button
-                type="button"
-                className="text-xs font-semibold text-primary"
-                onClick={() => setBrandCreateOpen((prev) => !prev)}
-              >
-                {brandCreateOpen ? "Cancel new brand" : "Create new brand"}
-              </button>
-            </div>
 
-            {brandCreateOpen && (
-              <div className="mt-4 rounded-[20px] border border-border/70 bg-secondary/55 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">
-                  New brand
-                </p>
-                <div className="mt-3 space-y-3">
-                  <Input
-                    value={brandName}
-                    onChange={(event) => setBrandName(event.target.value)}
-                    placeholder="Brand name"
-                    className="h-10 rounded-full"
-                  />
-                  <Input
-                    value={brandWebsite}
-                    onChange={(event) => setBrandWebsite(event.target.value)}
-                    placeholder="Website (optional)"
-                    className="h-10 rounded-full"
-                  />
-                  <div className="flex flex-wrap items-center gap-3">
-                    {brandLogoUrl && (
-                      <div className="flex flex-col items-center gap-1">
-                        <p className="text-[10px] font-medium text-primary">Logo</p>
-                        <img
-                          src={brandLogoUrl}
-                          alt="Brand logo"
-                          className="h-12 w-12 shrink-0 rounded-full object-contain shadow-sm ring-2 ring-primary"
-                        />
-                      </div>
+              {(brandCreateOpen || draft.brandId) && (
+                <div className="rounded-[20px] border border-border/70 bg-muted/40 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">
+                    {brandCreateOpen ? "New brand" : "Brand details"}
+                  </p>
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Name</label>
+                      <Input
+                        value={brandName}
+                        onChange={(e) => setBrandName(e.target.value)}
+                        placeholder="Brand name"
+                        className="mt-1 h-10 rounded-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Website (optional)</label>
+                      <Input
+                        value={brandWebsite}
+                        onChange={(e) => setBrandWebsite(e.target.value)}
+                        placeholder="https://…"
+                        className="mt-1 h-10 rounded-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Logo</label>
+                      <BrandLogoUpload
+                        logoUrl={brandLogoUrl}
+                        onLogoChange={setBrandLogoUrl}
+                        size="md"
+                        className="mt-2"
+                      />
+                    </div>
+                    {brandNotice && brandNotice !== "Logo saved." && (
+                      <p className="text-xs text-destructive">{brandNotice}</p>
                     )}
-                    <label className="flex flex-1 cursor-pointer items-center justify-between rounded-full border border-border/70 bg-card px-4 py-2 text-xs font-semibold text-secondary-foreground">
-                      <span>{brandUploading ? "Uploading..." : "Upload logo"}</span>
-                      <span className="text-primary">Browse</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="sr-only"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          if (!file) return;
-                          setBrandUploading(true);
+                    <div className="flex gap-2">
+                      {brandCreateOpen && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="rounded-full"
+                          onClick={() => {
+                            setBrandCreateOpen(false);
+                            setBrandName("");
+                            setBrandWebsite("");
+                            setBrandLogoUrl(null);
+                            setBrandNotice(null);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        className="flex-1 rounded-full"
+                        onClick={async () => {
+                          if (!brandName.trim()) {
+                            setBrandNotice("Enter a brand name.");
+                            return;
+                          }
                           setBrandNotice(null);
-                          setBrandUploadProgress(0);
-                          fetchBrandLogoSignature()
-                            .then(async (signature) => {
-                              const formData = new FormData();
-                              formData.append("file", file);
-                              formData.append("api_key", signature.apiKey);
-                              formData.append("timestamp", String(signature.timestamp));
-                              formData.append("signature", signature.signature);
-                              if (signature.uploadPreset) {
-                                formData.append("upload_preset", signature.uploadPreset);
-                              }
-                              const data = await new Promise<{ secure_url?: string }>(
-                                (resolve, reject) => {
-                                  const xhr = new XMLHttpRequest();
-                                  xhr.open(
-                                    "POST",
-                                    `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
-                                  );
-                                  xhr.upload.onprogress = (evt) => {
-                                    if (!evt.lengthComputable) return;
-                                    const pct = Math.round((evt.loaded / evt.total) * 100);
-                                    setBrandUploadProgress(pct);
-                                  };
-                                  xhr.onload = () => {
-                                    try {
-                                      resolve(JSON.parse(xhr.responseText));
-                                    } catch {
-                                      reject(new Error("Upload failed"));
-                                    }
-                                  };
-                                  xhr.onerror = () => reject(new Error("Upload failed"));
-                                  xhr.send(formData);
-                                },
-                              );
-                              if (!data.secure_url) throw new Error("Upload failed");
-                              setBrandLogoUrl(data.secure_url);
-                              setBrandNotice("Logo added.");
-                            })
-                            .catch(() => setBrandNotice("Upload failed."))
-                            .finally(() => setBrandUploading(false));
-                        }}
-                      />
-                    </label>
-                  </div>
-                  {brandUploading && (
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-primary/15">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${brandUploadProgress}%` }}
-                      />
-                    </div>
-                  )}
-                  {brandNotice && <p className="text-xs text-primary">{brandNotice}</p>}
-                  <Button
-                    type="button"
-                    className="w-full rounded-full bg-primary py-4 text-sm font-semibold text-primary-foreground"
-                    onClick={async () => {
-                      if (!brandName.trim()) {
-                        setBrandNotice("Enter a brand name.");
-                        return;
-                      }
-                      try {
-                        const response = await createBrand({
-                          name: brandName.trim(),
-                          websiteUrl: brandWebsite.trim() || undefined,
-                          logoUrl: brandLogoUrl ?? undefined,
-                        });
-                        setBrands((prev) => [response.brand, ...prev]);
-                        setDraft({
-                          ...draft,
-                          brandId: response.brand.id,
-                          brand: response.brand.name,
-                        });
-                        setBrandCreateOpen(false);
-                        setBrandName("");
-                        setBrandWebsite("");
-                        setBrandLogoUrl(null);
-                        setBrandNotice(null);
-                      } catch {
-                        setBrandNotice("Unable to create brand.");
-                      }
-                    }}
-                  >
-                    Save brand
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {draft.brandId && !brandCreateOpen && (
-              <div className="mt-4 rounded-[20px] border border-border/70 bg-secondary/55 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">
-                  Edit brand details
-                </p>
-                <div className="mt-3 space-y-3">
-                  <Input
-                    value={brandName}
-                    onChange={(event) => setBrandName(event.target.value)}
-                    placeholder="Brand name"
-                    className="h-10 rounded-full"
-                  />
-                  <Input
-                    value={brandWebsite}
-                    onChange={(event) => setBrandWebsite(event.target.value)}
-                    placeholder="Website (optional)"
-                    className="h-10 rounded-full"
-                  />
-                  <div className="flex flex-wrap items-center gap-3">
-                    {originalBrandLogoUrl && (
-                      <div className="flex flex-col items-center gap-1">
-                        <p className="text-[10px] font-medium text-muted-foreground">Current</p>
-                        <img
-                          src={originalBrandLogoUrl}
-                          alt="Brand logo"
-                          className="h-12 w-12 shrink-0 rounded-full object-contain shadow-sm"
-                        />
-                      </div>
-                    )}
-                    {brandLogoUrl && brandLogoUrl !== originalBrandLogoUrl && (
-                      <div className="flex flex-col items-center gap-1">
-                        <p className="text-[10px] font-medium text-primary">New</p>
-                        <img
-                          src={brandLogoUrl}
-                          alt="New logo"
-                          className="h-12 w-12 shrink-0 rounded-full object-contain shadow-sm ring-2 ring-primary"
-                        />
-                      </div>
-                    )}
-                    <label className="flex cursor-pointer items-center justify-between rounded-full border border-border/70 bg-card px-4 py-2 text-xs font-semibold text-secondary-foreground">
-                      <span>{brandUploading ? "Uploading..." : "Upload logo"}</span>
-                      <span className="text-primary">Browse</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="sr-only"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          if (!file) return;
-                          setBrandUploading(true);
-                          setBrandEditNotice(null);
-                          setBrandUploadProgress(0);
-                          fetchBrandLogoSignature()
-                            .then(async (signature) => {
-                              const formData = new FormData();
-                              formData.append("file", file);
-                              formData.append("api_key", signature.apiKey);
-                              formData.append("timestamp", String(signature.timestamp));
-                              formData.append("signature", signature.signature);
-                              if (signature.uploadPreset) {
-                                formData.append("upload_preset", signature.uploadPreset);
-                              }
-                              const data = await new Promise<{ secure_url?: string }>(
-                                (resolve, reject) => {
-                                  const xhr = new XMLHttpRequest();
-                                  xhr.open(
-                                    "POST",
-                                    `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
-                                  );
-                                  xhr.upload.onprogress = (evt) => {
-                                    if (!evt.lengthComputable) return;
-                                    const pct = Math.round((evt.loaded / evt.total) * 100);
-                                    setBrandUploadProgress(pct);
-                                  };
-                                  xhr.onload = () => {
-                                    try {
-                                      resolve(JSON.parse(xhr.responseText));
-                                    } catch {
-                                      reject(new Error("Upload failed"));
-                                    }
-                                  };
-                                  xhr.onerror = () => reject(new Error("Upload failed"));
-                                  xhr.send(formData);
-                                },
-                              );
-                              if (!data.secure_url) throw new Error("Upload failed");
-                              setBrandLogoUrl(data.secure_url);
-                              setBrandEditNotice("Logo uploaded.");
-                            })
-                            .catch(() => setBrandEditNotice("Upload failed."))
-                            .finally(() => setBrandUploading(false));
-                        }}
-                      />
-                    </label>
-                  </div>
-                  {brandUploading && (
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-primary/15">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${brandUploadProgress}%` }}
-                      />
-                    </div>
-                  )}
-                  {brandEditNotice && (
-                    <p className="text-xs text-primary">{brandEditNotice}</p>
-                  )}
-                  <Button
-                    type="button"
-                    className="w-full rounded-full bg-primary py-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-                    onClick={async () => {
-                      if (!draft.brandId) return;
-                      if (!brandName.trim()) {
-                        setBrandEditNotice("Enter a brand name.");
-                        return;
-                      }
-                      const previousFood = currentFood;
-                      const previousBrandLogoUrl = brandLogoUrl;
-                      const previousOriginalBrandLogoUrl = originalBrandLogoUrl;
-                      const optimisticFood: FoodItem = {
-                        ...currentFood,
-                        brand: brandName.trim(),
-                        brandId: draft.brandId ?? undefined,
-                        brandLogoUrl: brandLogoUrl ?? undefined,
-                      };
-                      setCurrentFood(optimisticFood);
-                      setDraft({ ...draft, brand: brandName.trim(), brandId: draft.brandId });
-                      setBrandEditNotice(null);
-                      try {
-                        const response = await updateBrand(draft.brandId, {
-                          name: brandName.trim(),
-                          websiteUrl: brandWebsite.trim() || null,
-                          logoUrl: brandLogoUrl ?? null,
-                        });
-                        const updatedBrand =
-                          response.brand ??
-                          brands.find((item) => item.id === draft.brandId) ??
-                          null;
-                        if (updatedBrand) {
-                          setBrands((prev) =>
-                            prev.map((item) =>
-                              item.id === updatedBrand.id ? updatedBrand : item,
-                            ),
+                          if (brandCreateOpen) {
+                            try {
+                              const response = await createBrand({
+                                name: brandName.trim(),
+                                websiteUrl: brandWebsite.trim() || undefined,
+                                logoUrl: brandLogoUrl ?? undefined,
+                              });
+                              setBrands((prev) => [response.brand, ...prev]);
+                              setDraft({ ...draft, brandId: response.brand.id, brand: response.brand.name });
+                              setBrandLogoUrl(response.brand.logo_url ?? null);
+                              setOriginalBrandLogoUrl(response.brand.logo_url ?? null);
+                              setBrandCreateOpen(false);
+                              setBrandName(response.brand.name);
+                              setBrandWebsite(response.brand.website_url ?? "");
+                              toast.success("Brand created");
+                            } catch {
+                              setBrandNotice("Unable to create brand.");
+                            }
+                            return;
+                          }
+                          if (!draft.brandId) return;
+                          const prevFood = currentFood;
+                          const prevLogo = brandLogoUrl;
+                          const prevOriginal = originalBrandLogoUrl;
+                          setCurrentFood((f) =>
+                            f
+                              ? { ...f, brand: brandName.trim(), brandLogoUrl: brandLogoUrl ?? undefined }
+                              : f,
                           );
-                          setCurrentFood((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  brand: updatedBrand.name,
-                                  brandId: updatedBrand.id,
-                                  brandLogoUrl: updatedBrand.logo_url ?? undefined,
-                                }
-                              : prev,
-                          );
-                          setDraft((d) => ({
-                            ...d,
-                            brand: updatedBrand.name,
-                            brandId: updatedBrand.id,
-                          }));
-                          setOriginalBrandLogoUrl(updatedBrand.logo_url ?? null);
-                          setBrandEditNotice("Brand updated.");
-                          toast.success("Brand updated", {
-                            description: "Brand details saved successfully.",
-                          });
-                        } else {
-                          setBrandEditNotice("Brand updated.");
-                          toast.success("Brand updated");
-                        }
-                      } catch {
-                        setCurrentFood(previousFood);
-                        setBrandLogoUrl(previousBrandLogoUrl);
-                        setOriginalBrandLogoUrl(previousOriginalBrandLogoUrl);
-                        setBrandEditNotice("Unable to update brand.");
-                        toast.error("Brand update failed", {
-                          description: "Please try again.",
-                        });
-                      }
-                    }}
-                  >
-                    Save brand details
-                  </Button>
+                          setDraft((d) => ({ ...d, brand: brandName.trim() }));
+                          try {
+                            const response = await updateBrand(draft.brandId, {
+                              name: brandName.trim(),
+                              websiteUrl: brandWebsite.trim() || null,
+                              logoUrl: brandLogoUrl ?? null,
+                            });
+                            const updated = response.brand ?? brands.find((b) => b.id === draft.brandId);
+                            if (updated) {
+                              setBrands((prev) =>
+                                prev.map((b) => (b.id === updated.id ? updated : b)),
+                              );
+                              setCurrentFood((f) =>
+                                f
+                                  ? { ...f, brand: updated.name, brandLogoUrl: updated.logo_url ?? undefined }
+                                  : f,
+                              );
+                              setDraft((d) => ({ ...d, brand: updated.name }));
+                              setOriginalBrandLogoUrl(updated.logo_url ?? null);
+                              toast.success("Brand updated");
+                            }
+                          } catch {
+                            setCurrentFood(prevFood);
+                            setBrandLogoUrl(prevLogo);
+                            setOriginalBrandLogoUrl(prevOriginal);
+                            setBrandNotice("Unable to update brand.");
+                            toast.error("Brand update failed");
+                          }
+                        }}
+                      >
+                        {brandCreateOpen ? "Create brand" : "Save changes"}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </Card>
         )}
 
@@ -1409,6 +1234,53 @@ const EditFood = () => {
         >
           {saving ? "Saving..." : adminEditing ? "Save changes" : "Save nutrition"}
         </Button>
+
+        {isAdmin && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-4 w-full rounded-full border-destructive/50 py-5 text-sm font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete food
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this food?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove &quot;{currentFood.name}&quot; from the database. This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    if (!currentFood || deleting) return;
+                    setDeleting(true);
+                    try {
+                      await deleteFood(currentFood.id);
+                      refreshLists();
+                      toast.success("Food deleted.");
+                      navigate(returnTo);
+                    } catch {
+                      toast.error("Could not delete food.");
+                    } finally {
+                      setDeleting(false);
+                    }
+                  }}
+                  disabled={deleting}
+                >
+                  {deleting ? "Deleting…" : "Delete"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </PageContainer>
     </AppShell>
   );
