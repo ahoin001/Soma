@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { FoodItem } from "@/data/mock";
-import { AppShell, PageContainer } from "@/components/aura";
+import { AppShell, FoodImage, PageContainer } from "@/components/aura";
 import { BrandLogoUpload } from "@/components/aura/BrandLogoUpload";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -355,11 +355,13 @@ const EditFood = () => {
               {currentFood.imageUrl && (
                 <div className="flex flex-col items-center gap-1">
                   <p className="text-[10px] font-medium text-muted-foreground">Current</p>
-                  <img
-                    src={currentFood.imageUrl}
-                    alt={currentFood.name}
-                    className="h-16 w-16 shrink-0 rounded-xl object-contain shadow-sm"
-                  />
+                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl shadow-sm">
+                    <FoodImage
+                      src={currentFood.imageUrl}
+                      alt={currentFood.name}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
                 </div>
               )}
               {newImagePreview && (

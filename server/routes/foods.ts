@@ -6,14 +6,21 @@ import { asyncHandler, getUserId } from "../utils";
 import { createCache } from "../cache";
 
 const router = Router();
+// Cache food search/list until a food is created, updated, or deleted (see cache.clear() in those routes).
+const FOOD_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const searchCache = createCache<{ items?: unknown[]; item?: unknown | null }>({
-  ttlMs: 60_000,
+  ttlMs: FOOD_CACHE_TTL_MS,
   maxEntries: 200,
 });
 const listCache = createCache<{ items: unknown[] }>({
-  ttlMs: 60_000,
+  ttlMs: FOOD_CACHE_TTL_MS,
   maxEntries: 200,
 });
+
+/** Escape a string for safe use in SQL LIKE patterns (% and _ are wildcards). */
+function escapeLikePattern(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
 
 router.get(
   "/search",
@@ -31,6 +38,8 @@ router.get(
       return;
     }
 
+    const likePattern = q ? `%${escapeLikePattern(q)}%` : "";
+    const likePrefix = q ? escapeLikePattern(q) : "";
     const result = await query(
       `
       SELECT
@@ -41,12 +50,15 @@ router.get(
       LEFT JOIN brands b ON b.id = f.brand_id
       WHERE
         (f.is_global = true OR ($2::uuid IS NOT NULL AND f.created_by_user_id = $2))
-        AND ($1 = '' OR to_tsvector('simple', coalesce(f.name, '') || ' ' || coalesce(f.brand, '') || ' ' || coalesce(b.name, ''))
-             @@ plainto_tsquery('simple', $1))
-      ORDER BY f.is_global DESC, f.name ASC
+        AND ($1 = '' OR
+             (f.name ILIKE $4 ESCAPE E'\\' OR f.brand ILIKE $4 ESCAPE E'\\' OR b.name ILIKE $4 ESCAPE E'\\'))
+      ORDER BY
+        ($1 <> '' AND LOWER(f.name) LIKE LOWER($5) || '%') DESC,
+        f.is_global DESC,
+        f.name ASC
       LIMIT $3;
       `,
-      [q, userId, limit],
+      [q, userId, limit, likePattern, likePrefix],
     );
 
     if (result.rows.length > 0 || !q) {

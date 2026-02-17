@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { queryKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,6 +75,7 @@ function parsedToFormState(p: ParsedBjsFood): FormState {
 export default function FoodImportAdmin() {
   const { email } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isAdmin = email?.toLowerCase() === "ahoin001@gmail.com";
 
   const [store, setStore] = useState<string>("bjs");
@@ -176,6 +179,9 @@ export default function FoodImportAdmin() {
         imageUrl: form.imageUrl.trim() || undefined,
         source: "admin-import",
       });
+      queryClient.invalidateQueries({ queryKey: queryKeys.foodFavorites });
+      queryClient.invalidateQueries({ queryKey: queryKeys.foodHistory });
+      queryClient.invalidateQueries({ queryKey: ["foodSearch"] });
       toast.success("Food saved to database.");
       setForm(null);
       setParsed(null);

@@ -8,6 +8,7 @@ import {
   EditLogSheet,
   FoodDetailSheet,
   type FoodDetailSheetProps,
+  FoodImage,
   MacroMicroGoalSheet,
   MealLogPanel,
   QuickActionSheet,
@@ -590,7 +591,7 @@ const Nutrition = () => {
                   <div className="flex items-center gap-3">
                     <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-secondary text-xl">
                       {showFoodImages && food.imageUrl ? (
-                        <img
+                        <FoodImage
                           src={food.imageUrl}
                           alt={food.name}
                           className="h-full w-full object-contain"

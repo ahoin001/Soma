@@ -79,7 +79,7 @@ import AddFood from "./pages/AddFood";
 import Fitness from "./pages/Fitness";
 import FitnessRoutines from "./pages/FitnessRoutines";
 import FitnessProgress from "./pages/FitnessProgress";
-import FitnessLog from "./pages/FitnessLog";
+import FitnessJournal from "./pages/FitnessJournal";
 import Settings from "./pages/Settings";
 
 // ─── Secondary screens: lazy-loaded on demand ───────────────────────
@@ -96,6 +96,9 @@ const AddExerciseToWorkout = lazy(() => import("./pages/AddExerciseToWorkout"));
 const AdminExerciseThumbnails = lazy(() => import("./pages/AdminExerciseThumbnails"));
 const FoodImportAdmin = lazy(() => import("./pages/FoodImportAdmin"));
 const Auth = lazy(() => import("./pages/Auth"));
+const FitnessProgressExercise = lazy(() => import("./pages/FitnessProgressExercise"));
+const FitnessJournalMeasurement = lazy(() => import("./pages/FitnessJournalMeasurement"));
+const FitnessJournalPhotos = lazy(() => import("./pages/FitnessJournalPhotos"));
 
 /**
  * QueryClient configuration for optimal PWA experience:
@@ -285,7 +288,8 @@ const AppRoutes = () => {
         <Route path="/fitness" element={transition(<Fitness />)} />
         <Route path="/fitness/routines" element={transition(<FitnessRoutines />)} />
         <Route path="/fitness/progress" element={transition(<FitnessProgress />)} />
-        <Route path="/fitness/log" element={transition(<FitnessLog />)} />
+        <Route path="/fitness/journal" element={transition(<FitnessJournal />)} />
+        <Route path="/fitness/log" element={<Navigate to="/fitness/journal" replace />} />
 
         {/* ── Fitness secondary (lazy) ── */}
         <Route
@@ -315,6 +319,18 @@ const AppRoutes = () => {
         <Route
           path="/fitness/admin/exercises"
           element={transition(withSuspense(<AdminExerciseThumbnails />))}
+        />
+        <Route
+          path="/fitness/progress/exercise/:exerciseId"
+          element={transition(withSuspense(<FitnessProgressExercise />))}
+        />
+        <Route
+          path="/fitness/journal/measurements/:type"
+          element={transition(withSuspense(<FitnessJournalMeasurement />))}
+        />
+        <Route
+          path="/fitness/journal/photos"
+          element={transition(withSuspense(<FitnessJournalPhotos />))}
         />
 
         <Route path="/auth" element={<AuthRoute />} />

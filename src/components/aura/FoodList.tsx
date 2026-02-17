@@ -4,6 +4,7 @@ import { Check, Plus, X } from "lucide-react";
 import { Pressable } from "./Pressable";
 import { useUserSettings } from "@/state";
 import { preloadFoodDetail } from "./FoodDetailSheet";
+import { FoodImage } from "./FoodImage";
 import { AnimatePresence, motion } from "framer-motion";
 
 export type FoodListProps = {
@@ -64,7 +65,7 @@ export const FoodList: FC<FoodListProps> = ({
               >
                 <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-secondary text-xl">
                   {showFoodImages && food.imageUrl ? (
-                    <img
+                    <FoodImage
                       src={food.imageUrl}
                       alt={food.name}
                       className="h-full w-full object-contain object-center"

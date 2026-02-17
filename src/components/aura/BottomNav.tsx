@@ -146,9 +146,9 @@ export const BottomNav = ({ experience, onAddAction }: BottomNavProps) => {
             />
             <NavButton
               icon={BookOpen}
-              label="Log"
-              to="/fitness/log"
-              active={path.startsWith("/fitness/log")}
+              label="Journal"
+              to="/fitness/journal"
+              active={path.startsWith("/fitness/journal")}
               tone={tone}
             />
           </>

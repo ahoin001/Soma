@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/aura";
+import { useAppStore } from "@/state/AppStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTrainingAnalytics } from "@/hooks/useTrainingAnalytics";
@@ -54,9 +55,19 @@ const liftChartConfig = {
   },
 } satisfies ChartConfig;
 
+const formatSessionDate = (ms: number) =>
+  new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(ms));
+
 const FitnessProgress = () => {
   const navigate = useNavigate();
+  const { fitnessPlanner } = useAppStore();
   const { items } = useTrainingAnalytics(WEEKS);
+  const history = fitnessPlanner.history ?? [];
   const exerciseLibrary = useExerciseLibrary();
   const [liftQuery, setLiftQuery] = useState("");
   const [selectedLiftId, setSelectedLiftId] = useState<number | null>(null);
@@ -534,9 +545,46 @@ const FitnessProgress = () => {
                   </LineChart>
                 </ChartContainer>
               </div>
+              <Button
+                variant="outline"
+                className="mt-3 w-full rounded-full border-border/70 text-foreground hover:bg-secondary/70"
+                onClick={() =>
+                  navigate(`/fitness/progress/exercise/${selectedLiftId}`, {
+                    state: { name: selectedLiftName },
+                  })
+                }
+              >
+                View full detail
+              </Button>
             </div>
           ) : null}
         </div>
+
+        {history.length > 0 ? (
+          <div className="mt-8 rounded-[28px] border border-border/70 bg-card/55 px-4 py-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              Recent sessions
+            </p>
+            <p className="mt-1 text-sm text-foreground/85">
+              Last {Math.min(history.length, 5)} finished
+            </p>
+            <ul className="mt-3 space-y-2">
+              {history.slice(0, 5).map((session) => (
+                <li
+                  key={session.id}
+                  className="flex items-center justify-between rounded-2xl border border-border/70 bg-card/60 px-3 py-2 text-sm"
+                >
+                  <span className="text-foreground/90">
+                    {formatSessionDate(session.endedAt)}
+                  </span>
+                  <span className="tabular-nums text-muted-foreground">
+                    {session.totalSets} sets · {Math.round(session.totalVolume)} kg
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </div>
     </AppShell>
   );

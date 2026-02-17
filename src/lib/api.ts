@@ -1106,3 +1106,45 @@ export const finishFitnessSession = async (sessionId: string) =>
   apiFetch<{ session: { id: string } }>(`/api/fitness/sessions/${sessionId}/finish`, {
     method: "POST",
   });
+
+// ─── Journal (body measurements + progress photos) ────────────────────────
+export const fetchJournalMeasurements = async (params?: { type?: string; limit?: number }) => {
+  const search = new URLSearchParams();
+  if (params?.type) search.set("type", params.type);
+  if (params?.limit != null) search.set("limit", String(params.limit));
+  const q = search.toString();
+  return apiFetch<{ items: Array<{ id: string; measurement_type: string; value: number; unit: string; logged_at: string; notes?: string; created_at: string }> }>(
+    `/api/journal/measurements${q ? `?${q}` : ""}`,
+  );
+};
+
+export const fetchJournalMeasurementsLatest = async () =>
+  apiFetch<{ items: Array<{ id: string; measurement_type: string; value: number; unit: string; logged_at: string }> }>(
+    "/api/journal/measurements/latest",
+  );
+
+export const createJournalMeasurement = async (payload: {
+  measurement_type: string;
+  value: number;
+  unit?: string;
+  logged_at?: string;
+  notes?: string;
+}) =>
+  apiFetch<{ entry: { id: string; measurement_type: string; value: number; unit: string; logged_at: string; notes?: string; created_at: string } }>(
+    "/api/journal/measurements",
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+
+export const fetchProgressPhotos = async (limit?: number) =>
+  apiFetch<{ items: Array<{ id: string; image_url: string; taken_at: string; note?: string; created_at: string }> }>(
+    `/api/journal/photos${limit != null ? `?limit=${limit}` : ""}`,
+  );
+
+export const createProgressPhoto = async (payload: { image_url: string; taken_at?: string; note?: string }) =>
+  apiFetch<{ photo: { id: string; image_url: string; taken_at: string; note?: string; created_at: string } }>(
+    "/api/journal/photos",
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+
+export const deleteProgressPhoto = async (id: string) =>
+  apiFetch(`/api/journal/photos/${id}`, { method: "DELETE" });

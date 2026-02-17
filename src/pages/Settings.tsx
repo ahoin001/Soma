@@ -42,6 +42,8 @@ export default function Settings() {
   const {
     showFoodImages,
     setShowFoodImages,
+    foodImageBackground,
+    setFoodImageBackground,
     headerStyle,
     setHeaderStyle,
     defaultHome,
@@ -86,6 +88,29 @@ export default function Settings() {
               onCheckedChange={setShowFoodImages}
             />
           </div>
+          {showFoodImages && (
+            <div className="mt-4 border-t border-border/60 pt-4">
+              <p className="section-caption">Food image background</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Normalize food photos: white background or transparent (blends with theme; good for dark mode).
+              </p>
+              <SegmentedControl
+                value={foodImageBackground}
+                options={[
+                  { value: "white", label: "White" },
+                  { value: "transparent", label: "Transparent" },
+                ]}
+                onValueChange={(next) =>
+                  setFoodImageBackground(next === "transparent" ? "transparent" : "white")
+                }
+                className="mt-3"
+                itemClassName="bg-muted"
+                activeClassName="text-primary-foreground"
+                inactiveClassName="text-muted-foreground"
+                indicatorClassName="bg-primary"
+              />
+            </div>
+          )}
           <div className="mt-4 border-t border-border/60 pt-4">
             <p className="section-caption">Header look & feel</p>
             <p className="mt-0.5 text-sm text-muted-foreground">

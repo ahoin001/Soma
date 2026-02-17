@@ -31,6 +31,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useUserSettings } from "@/state";
 import { servingUnits } from "@/lib/schemas/food";
+import { FoodImage } from "./FoodImage";
 
 export type FoodDetailSheetProps = {
   open: boolean;
@@ -392,7 +393,7 @@ export const FoodDetailSheet = ({
             <div className="flex items-center justify-center pt-4">
               <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-card bg-card text-3xl shadow-[0_14px_30px_rgba(15,23,42,0.1)]">
                 {showFoodImages && imageUrl ? (
-                  <img
+                  <FoodImage
                     src={imageUrl}
                     alt={food.name}
                     className="h-full w-full object-contain object-center"

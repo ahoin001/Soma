@@ -10,6 +10,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useNavigate } from "react-router-dom";
 import { logDraftKey } from "@/lib/storageKeys";
 import { calculateMacroPercent } from "@/data/foodApi";
+import { FoodImage } from "./FoodImage";
 import { MealIcon } from "./MealIcon";
 
 type EditLogSheetProps = {
@@ -183,7 +184,7 @@ export const EditLogSheet = ({
             <div className="flex items-center justify-center pt-4">
               <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-card bg-card text-3xl shadow-[0_14px_30px_rgba(15,23,42,0.1)]">
                 {showFoodImages && item.imageUrl ? (
-                  <img
+                  <FoodImage
                     src={item.imageUrl}
                     alt={item.name}
                     className="h-full w-full object-contain object-center"

@@ -13,6 +13,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { forwardRef, useMemo, useState } from "react";
 import { ListEmptyState } from "@/components/ui/empty-state";
+import { FoodImage } from "./FoodImage";
 import { MealIcon } from "./MealIcon";
 
 export type MealLogPanelProps = {
@@ -105,9 +106,8 @@ export const MealLogPanel = ({
               onOpenChange={(open) =>
                 setOpenMeals((prev) => ({ ...prev, [meal.id]: open }))
               }
-              className="group relative overflow-hidden rounded-[22px] border border-border/60 bg-card/70 transition-colors transition-shadow data-[state=open]:border-primary/30 data-[state=open]:shadow-[0_10px_26px_rgba(15,23,42,0.12)]"
+              className="group relative overflow-hidden rounded-[22px] border border-border/60 bg-card/70 transition-colors transition-shadow data-[state=open]:shadow-[0_10px_26px_rgba(15,23,42,0.12)]"
             >
-              <div className="pointer-events-none absolute inset-x-4 top-2 h-px bg-primary/35 opacity-0 transition-opacity group-data-[state=open]:opacity-100" />
               <div className="bg-secondary/45 p-3 transition-colors group-data-[state=open]:bg-secondary/60">
                 <div className="flex items-center gap-3">
                   <CollapsibleTrigger asChild>
@@ -356,7 +356,7 @@ const LogRow = forwardRef<
         <div className="flex items-center gap-2">
           {showFoodImages && item.imageUrl ? (
             <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-secondary">
-              <img
+              <FoodImage
                 src={item.imageUrl}
                 alt={item.name}
                 className="h-full w-full object-contain object-center"

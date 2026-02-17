@@ -26,6 +26,7 @@ import {
 import {
   DEFAULT_HOME_KEY,
   FOOD_IMAGES_KEY,
+  FOOD_IMAGE_BACKGROUND_KEY,
   HEADER_STYLE_KEY,
   THEME_PALETTE_KEY,
   USER_PROFILE_KEY,
@@ -45,8 +46,11 @@ export type UserProfile = {
   activity?: "sedentary" | "light" | "moderate" | "active" | "athlete";
 };
 
+export type FoodImageBackground = "white" | "transparent";
+
 export type UserSettings = {
   showFoodImages: boolean;
+  foodImageBackground: FoodImageBackground;
   headerStyle: "immersive" | "card" | "media";
   defaultHome: "nutrition" | "fitness";
   themePalette: "emerald" | "ocean";
@@ -61,6 +65,8 @@ type UserContextValue = {
   // Settings
   showFoodImages: boolean;
   setShowFoodImages: (next: boolean) => void;
+  foodImageBackground: FoodImageBackground;
+  setFoodImageBackground: (next: FoodImageBackground) => void;
   headerStyle: "immersive" | "card" | "media";
   setHeaderStyle: (next: "immersive" | "card" | "media") => void;
   defaultHome: "nutrition" | "fitness";
@@ -124,6 +130,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     return stored ? stored === "true" : true;
   });
 
+  const [foodImageBackground, setFoodImageBackground] = useState<FoodImageBackground>(() => {
+    if (typeof window === "undefined") return "white";
+    const stored = window.localStorage.getItem(FOOD_IMAGE_BACKGROUND_KEY);
+    return stored === "transparent" ? "transparent" : "white";
+  });
+
   const [headerStyle, setHeaderStyle] = useState<"immersive" | "card" | "media">(() => {
     if (typeof window === "undefined") return "immersive";
     const stored = window.localStorage.getItem(HEADER_STYLE_KEY);
@@ -158,6 +170,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(FOOD_IMAGES_KEY, String(showFoodImages));
   }, [showFoodImages]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(FOOD_IMAGE_BACKGROUND_KEY, foodImageBackground);
+  }, [foodImageBackground]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -260,6 +277,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       updateUserProfile,
       showFoodImages,
       setShowFoodImages,
+      foodImageBackground,
+      setFoodImageBackground,
       headerStyle,
       setHeaderStyle,
       defaultHome,
@@ -272,6 +291,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       userProfile,
       updateUserProfile,
       showFoodImages,
+      foodImageBackground,
       headerStyle,
       defaultHome,
       themePalette,
@@ -309,6 +329,8 @@ export const useUserSettings = () => {
   const {
     showFoodImages,
     setShowFoodImages,
+    foodImageBackground,
+    setFoodImageBackground,
     headerStyle,
     setHeaderStyle,
     defaultHome,
@@ -319,6 +341,8 @@ export const useUserSettings = () => {
   return {
     showFoodImages,
     setShowFoodImages,
+    foodImageBackground,
+    setFoodImageBackground,
     headerStyle,
     setHeaderStyle,
     defaultHome,

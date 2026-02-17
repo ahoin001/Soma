@@ -26,6 +26,7 @@ import type { FoodItem } from "@/data/mock";
 import type { BrandRecord } from "@/types/api";
 import { createBrand, fetchBrands, fetchFoodImageSignature } from "@/lib/api";
 import { BrandLogoUpload } from "@/components/aura/BrandLogoUpload";
+import { FoodImage } from "./FoodImage";
 import { useAppStore } from "@/state/AppStore";
 import { CREATE_FOOD_DRAFT_KEY } from "@/lib/storageKeys";
 import {
@@ -431,7 +432,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-secondary text-xl">
             {showFoodImages && imageUrl ? (
-              <img
+              <FoodImage
                 src={imageUrl}
                 alt={foodName || "Food"}
                 className="h-full w-full object-contain object-center"

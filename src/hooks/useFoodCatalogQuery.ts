@@ -402,10 +402,11 @@ export const useFoodCatalogQuery = () => {
     setSearchQuery(query);
   }, []);
 
-  // --- Refresh function ---
+  // --- Refresh function (e.g. after delete); busts all food caches so next fetch is fresh ---
   const refreshLists = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.foodFavorites });
     void queryClient.invalidateQueries({ queryKey: queryKeys.foodHistory });
+    void queryClient.invalidateQueries({ queryKey: ["foodSearch"] });
   }, [queryClient]);
 
   // Determine status

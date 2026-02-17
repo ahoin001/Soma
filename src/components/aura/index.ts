@@ -26,6 +26,7 @@ export { DateSwitcher } from "./DateSwitcher";
 export { CreateFoodSheet } from "./CreateFoodSheet";
 export { EditLogSheet } from "./EditLogSheet";
 export { FoodDetailSheet, type FoodDetailSheetProps } from "./FoodDetailSheet";
+export { FoodImage } from "./FoodImage";
 export { FoodList } from "./FoodList";
 export { FoodSearchSheet } from "./FoodSearchSheet";
 export { MacroMicroGoalSheet } from "./MacroMicroGoalSheet";
