@@ -30,10 +30,10 @@ import {
 } from "@/data/exerciseOverridesApi";
 import {
   buildApiUrl,
-  fetchCurrentUser,
   fetchExerciseByName,
   updateExerciseMaster,
 } from "@/lib/api";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { getUserId } from "@/lib/api";
 import { uploadImageFile } from "@/lib/uploadImage";
 import { ChevronLeft } from "lucide-react";
@@ -207,10 +207,9 @@ export const ExerciseGuideSheet = ({
   const [overrideSavedAt, setOverrideSavedAt] = useState<string | null>(null);
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [loadingOverride, setLoadingOverride] = useState(false);
-  const [loadingAdmin, setLoadingAdmin] = useState(false);
   const [loadingMaster, setLoadingMaster] = useState(false);
   const userId = useMemo(() => getUserId() ?? "anonymous", []);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = useIsAdmin();
   const [repairOpen, setRepairOpen] = useState(false);
   const [masterId, setMasterId] = useState<number | null>(null);
   const [masterName, setMasterName] = useState("");
@@ -260,7 +259,6 @@ export const ExerciseGuideSheet = ({
     setViewerOpen(false);
     setLoadingMedia(true);
     setLoadingOverride(true);
-    setLoadingAdmin(true);
     setLoadingMaster(true);
     const loadMedia = async () => {
       try {
@@ -383,20 +381,6 @@ export const ExerciseGuideSheet = ({
         if (!cancelled) setLoadingOverride(false);
       }
     };
-    const loadAdmin = async () => {
-      try {
-        const user = await fetchCurrentUser();
-        if (cancelled) return;
-        const admin = user.user?.email === "ahoin001@gmail.com";
-        setIsAdmin(admin);
-        return admin;
-      } catch {
-        if (!cancelled) setIsAdmin(false);
-        return false;
-      } finally {
-        if (!cancelled) setLoadingAdmin(false);
-      }
-    };
     const loadMaster = async () => {
       try {
         const cached = masterCache.get(exercise.name);
@@ -446,9 +430,9 @@ export const ExerciseGuideSheet = ({
       }
     };
     void (async () => {
-      const [admin] = await Promise.all([loadAdmin(), loadMedia(), loadOverrides()]);
+      await Promise.all([loadMedia(), loadOverrides()]);
       if (cancelled) return;
-      if (admin) {
+      if (isAdmin) {
         await loadMaster();
       } else if (!cancelled) {
         setLoadingMaster(false);
@@ -457,12 +441,12 @@ export const ExerciseGuideSheet = ({
     return () => {
       cancelled = true;
     };
-  }, [exercise.name, isVisible, userId]);
+  }, [exercise.name, isVisible, userId, isAdmin]);
   const selectedItem =
     mediaItems.find((item) => item.id === selectedMediaId) ?? null;
   const selectedIsUser = Boolean(selectedItem?.user_id);
   const isContentLoading =
-    loadingMedia || loadingOverride || loadingAdmin || (isAdmin && loadingMaster);
+    loadingMedia || loadingOverride || (isAdmin && loadingMaster);
   const sectionVariants = {
     hidden: { opacity: 0, y: 6 },
     show: { opacity: 1, y: 0 },

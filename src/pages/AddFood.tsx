@@ -68,16 +68,6 @@ const AddFood = () => {
   } = foodCatalog;
   const { logSections, removeLogItem, updateLogItem } = nutrition;
 
-  // DEBUG: Track when logSections changes
-  useEffect(() => {
-    const totalItems = logSections.reduce((sum, s) => sum + s.items.length, 0);
-    console.log("[AddFood] logSections changed", {
-      sectionsCount: logSections.length,
-      totalItems,
-      selectedMealId: selectedMeal?.id,
-    });
-  }, [logSections, selectedMeal?.id]);
-
   const loggedInMeal = useMemo(() => {
     const mealId = selectedMeal?.id;
     const ids = new Set<string>();

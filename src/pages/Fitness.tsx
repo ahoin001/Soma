@@ -31,7 +31,8 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { toast } from "sonner";
-import { deleteExercise, fetchCurrentUser } from "@/lib/api";
+import { deleteExercise } from "@/lib/api";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { motion } from "framer-motion";
 
 const fitnessBlocks = [
@@ -87,7 +88,7 @@ const Fitness = () => {
   const [params, setParams] = useSearchParams();
   const [creating, setCreating] = useState(false);
   const [startingSession, setStartingSession] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = useIsAdmin();
 
   useEffect(() => {
     if (!query.trim()) return;
@@ -109,24 +110,6 @@ const Fitness = () => {
     setQuery(state.exerciseQuery);
     navigate(location.pathname, { replace: true });
   }, [location, navigate, setQuery]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const loadAdmin = async () => {
-      try {
-        const user = await fetchCurrentUser();
-        if (!cancelled) {
-          setIsAdmin(user.user?.email === "ahoin001@gmail.com");
-        }
-      } catch {
-        if (!cancelled) setIsAdmin(false);
-      }
-    };
-    void loadAdmin();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const previewItems = useMemo(() => results.slice(0, 120), [results]);
   const activePlanForHud =

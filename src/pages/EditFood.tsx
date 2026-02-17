@@ -19,6 +19,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useAppStore } from "@/state/AppStore";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { toast } from "sonner";
 import { ChevronLeft } from "lucide-react";
 import { calculateMacroPercent } from "@/data/foodApi";
@@ -38,12 +39,70 @@ import { servingUnits } from "@/lib/schemas/food";
 import type { EditFoodLocationState } from "@/types/navigation";
 import type { NutritionDraftForm } from "@/types/nutrition";
 
+// ─── Presentational components (keep page as orchestrator) ─────────────────
+
+function EditFoodHeader({
+  foodName,
+  onBack,
+}: {
+  foodName: string;
+  onBack: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-10 w-10 rounded-full bg-card/80 text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
+        onClick={onBack}
+      >
+        <ChevronLeft className="h-5 w-5" />
+      </Button>
+      <div>
+        <p className="text-xs uppercase tracking-[0.2em] text-primary/75">
+          Food editor
+        </p>
+        <h2 className="text-lg font-display font-semibold text-foreground">
+          {foodName}
+        </h2>
+      </div>
+    </div>
+  );
+}
+
+function EditFoodAdminBanner({
+  adminEditing,
+  onToggle,
+}: {
+  adminEditing: boolean;
+  onToggle: (checked: boolean) => void;
+}) {
+  return (
+    <Card className="mt-4 rounded-[24px] border border-primary/25 bg-primary/10 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/75">
+            Admin mode
+          </p>
+          <p className="text-sm font-semibold text-foreground">
+            Edit master nutrition
+          </p>
+        </div>
+        <Switch checked={adminEditing} onCheckedChange={onToggle} />
+      </div>
+    </Card>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────
+
 const EditFood = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { foodCatalog } = useAppStore();
-  const { email } = useAuth();
-  const isAdmin = email?.toLowerCase() === "ahoin001@gmail.com";
+  useAuth();
+  const isAdmin = useIsAdmin();
   const { upsertOverride, updateFoodMaster, getFoodById } = foodCatalog;
   const state = (location.state ?? {}) as EditFoodLocationState;
   const returnTo = state.returnTo ?? "/nutrition";
@@ -271,40 +330,10 @@ const EditFood = () => {
   return (
     <AppShell experience="nutrition" showNav={false}>
       <PageContainer>
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 rounded-full bg-card/80 text-foreground shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
-            onClick={() => navigate(returnTo)}
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-primary/75">
-              Food editor
-            </p>
-            <h2 className="text-lg font-display font-semibold text-foreground">
-              {currentFood.name}
-            </h2>
-          </div>
-        </div>
+        <EditFoodHeader foodName={currentFood.name} onBack={() => navigate(returnTo)} />
 
         {isAdmin && (
-          <Card className="mt-4 rounded-[24px] border border-primary/25 bg-primary/10 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/75">
-                  Admin mode
-                </p>
-                <p className="text-sm font-semibold text-foreground">
-                  Edit master nutrition
-                </p>
-              </div>
-              <Switch checked={adminEditing} onCheckedChange={setAdminEditing} />
-            </div>
-          </Card>
+          <EditFoodAdminBanner adminEditing={adminEditing} onToggle={setAdminEditing} />
         )}
 
         {adminEditing && (

@@ -1,40 +1,8 @@
 import type { LogSection } from "@/types/log";
+import type { FoodItem, MacroKey, MacroTarget, Meal } from "@/types/food";
 
-export type MacroKey = "carbs" | "protein" | "fat";
-
-export type MacroTarget = {
-  key: MacroKey;
-  label: string;
-  current: number;
-  goal: number;
-  unit: string;
-};
-
-export type Meal = {
-  id: string;
-  label: string;
-  recommended: string;
-  emoji: string;
-};
-
-export type FoodItem = {
-  id: string;
-  name: string;
-  brand?: string;
-  brandId?: string;
-  brandLogoUrl?: string;
-  portion: string;
-  portionLabel?: string;
-  portionGrams?: number;
-  kcal: number;
-  emoji: string;
-  barcode?: string;
-  source?: "local" | "api";
-  imageUrl?: string;
-  micronutrients?: Record<string, number | string>;
-  macros: Record<MacroKey, number>;
-  macroPercent: Record<MacroKey, number>;
-};
+// Re-export domain types so existing imports from @/data/mock keep working.
+export type { FoodItem, MacroKey, MacroTarget, Meal };
 
 export const dailySummary = {
   eaten: 23,

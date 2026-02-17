@@ -716,6 +716,15 @@ export const fetchNutritionWeekly = async (start: string) =>
 export const fetchNutritionStreak = async () =>
   apiFetch<{ current: number; best: number }>("/api/nutrition/streak");
 
+/** Fetch external Label Insight SVG server-side (avoids CORS). Returns raw SVG string. */
+export const fetchExternalSvgUrl = async (url: string) => {
+  const { svg } = await apiFetch<{ svg: string }>("/api/nutrition/fetch-external-svg", {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
+  return svg;
+};
+
 export const upsertNutritionTargets = async (payload: {
   localDate: string;
   kcalGoal?: number;

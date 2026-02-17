@@ -239,7 +239,12 @@ export const registerMutationHandler = (
 };
 
 /**
- * Process all pending mutations
+ * Process all pending mutations in creation order (by createdAt).
+ *
+ * Ordering: When both "food.create" and "nutrition.logFood" are queued (e.g. user
+ * created a food then logged it while offline), replay runs in queue order so
+ * "create food" is applied before "log food". Callers should queue create-then-log
+ * in that order to avoid foreign-key or missing-food errors.
  *
  * @param options.onProgress - Called after each mutation is processed
  * @param options.maxRetries - Maximum retry attempts before skipping (default: 3)

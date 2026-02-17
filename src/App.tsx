@@ -56,8 +56,7 @@ import { computeLogSections, computeTotals, toLocalDate } from "@/lib/nutritionD
 import { queryKeys } from "@/lib/queryKeys";
 import { defaultMacroTargets, defaultSummary } from "@/data/defaults";
 import type { FoodItem, Meal } from "@/data/mock";
-import type { FoodRecord } from "@/types/api";
-import { calculateMacroPercent } from "@/data/foodApi";
+import { recordToFoodItem } from "@/lib/foodMapping";
 import {
   setFitnessPlannerCache,
   setTrainingAnalyticsCache,
@@ -81,6 +80,7 @@ import Fitness from "./pages/Fitness";
 import FitnessRoutines from "./pages/FitnessRoutines";
 import FitnessProgress from "./pages/FitnessProgress";
 import FitnessLog from "./pages/FitnessLog";
+import Settings from "./pages/Settings";
 
 // ─── Secondary screens: lazy-loaded on demand ───────────────────────
 // These are accessed through specific user actions (create, edit, etc.)
@@ -94,6 +94,7 @@ const CreateExercise = lazy(() => import("./pages/CreateExercise"));
 const EditExercise = lazy(() => import("./pages/EditExercise"));
 const AddExerciseToWorkout = lazy(() => import("./pages/AddExerciseToWorkout"));
 const AdminExerciseThumbnails = lazy(() => import("./pages/AdminExerciseThumbnails"));
+const FoodImportAdmin = lazy(() => import("./pages/FoodImportAdmin"));
 const Auth = lazy(() => import("./pages/Auth"));
 
 /**
@@ -122,34 +123,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-const mapFoodRecord = (record: FoodRecord): FoodItem => {
-  const macros = {
-    carbs: Number(record.carbs_g ?? 0),
-    protein: Number(record.protein_g ?? 0),
-    fat: Number(record.fat_g ?? 0),
-  };
-  return {
-    id: record.id,
-    name: record.name,
-    brand: record.brand_name ?? record.brand ?? undefined,
-    brandId: record.brand_id ?? undefined,
-    brandLogoUrl: record.brand_logo_url ?? undefined,
-    portion:
-      record.portion_label ??
-      (record.portion_grams ? `${record.portion_grams} g` : "100 g"),
-    portionLabel: record.portion_label ?? undefined,
-    portionGrams: record.portion_grams ?? undefined,
-    kcal: Number(record.kcal ?? 0),
-    emoji: "🍽️",
-    barcode: record.barcode ?? undefined,
-    source: record.is_global ? "api" : "local",
-    imageUrl: record.image_url ?? undefined,
-    micronutrients: record.micronutrients ?? undefined,
-    macros,
-    macroPercent: calculateMacroPercent(macros),
-  };
-};
 
 // ─── Suspense fallback for lazy secondary screens ───────────────────
 // Uses AuraAppShell so the dock stays visible while a lazy chunk loads.
@@ -288,6 +261,7 @@ const AppRoutes = () => {
         <Route path="/nutrition/guides" element={transition(<Guides />)} />
         <Route path="/nutrition/groceries" element={transition(<Guides />)} />
         <Route path="/nutrition/add-food" element={transition(<AddFood />)} />
+        <Route path="/settings" element={transition(<Settings />)} />
 
         {/* ── Nutrition secondary (lazy) ── */}
         <Route
@@ -301,6 +275,10 @@ const AppRoutes = () => {
         <Route
           path="/nutrition/food/edit"
           element={transition(withSuspense(<EditFood />))}
+        />
+        <Route
+          path="/nutrition/admin/import"
+          element={transition(withSuspense(<FoodImportAdmin />))}
         />
 
         {/* ── Fitness dock tabs (eager) ── */}
@@ -560,7 +538,7 @@ const AppPrefetch = () => {
           queryKey: queryKeys.foodFavorites,
           queryFn: async () => {
             const response = await fetchFoodFavorites();
-            return response.items.map(mapFoodRecord);
+            return response.items.map(recordToFoodItem);
           },
           staleTime: 10 * 60 * 1000,
           gcTime: 60 * 60 * 1000,
@@ -571,7 +549,7 @@ const AppPrefetch = () => {
           queryKey: queryKeys.foodHistory,
           queryFn: async () => {
             const response = await fetchFoodHistory(50);
-            return response.items.map(mapFoodRecord);
+            return response.items.map(recordToFoodItem);
           },
           staleTime: 10 * 60 * 1000,
           gcTime: 60 * 60 * 1000,

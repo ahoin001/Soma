@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { FoodItem, MacroKey } from "@/data/mock";
 import { calculateMacroPercent } from "@/data/foodApi";
+import { recordToFoodItem } from "@/lib/foodMapping";
 import type { FoodRecord } from "@/types/api";
 import {
   createFood as createFoodApi,
@@ -78,42 +79,6 @@ const fuzzyMatchFoods = (foods: FoodItem[], query: string) => {
   return dedupeFoods(ranked);
 };
 
-const toFoodItem = (record: FoodRecord): FoodItem => {
-  const macros = {
-    carbs: Number(record.carbs_g ?? 0),
-    protein: Number(record.protein_g ?? 0),
-    fat: Number(record.fat_g ?? 0),
-  };
-  // Debug: Log micronutrients from API response
-  if (record.micronutrients && Object.keys(record.micronutrients).length > 0) {
-    console.log("[toFoodItem] Food has micronutrients:", {
-      id: record.id,
-      name: record.name,
-      micronutrients: record.micronutrients,
-    });
-  }
-  return {
-    id: record.id,
-    name: record.name,
-    brand: record.brand_name ?? record.brand ?? undefined,
-    brandId: record.brand_id ?? undefined,
-    brandLogoUrl: record.brand_logo_url ?? undefined,
-    portion:
-      record.portion_label ??
-      (record.portion_grams ? `${record.portion_grams} g` : "100 g"),
-    portionLabel: record.portion_label ?? undefined,
-    portionGrams: record.portion_grams ?? undefined,
-    kcal: Number(record.kcal ?? 0),
-    emoji: "🍽️",
-    barcode: record.barcode ?? undefined,
-    source: record.is_global ? "api" : "local",
-    imageUrl: record.image_url ?? undefined,
-    micronutrients: record.micronutrients ?? undefined,
-    macros,
-    macroPercent: calculateMacroPercent(macros),
-  };
-};
-
 const applyOverride = (food: FoodItem, override?: FoodOverride): FoodItem => {
   if (!override) return food;
   const macroPercent = calculateMacroPercent(override.macros);
@@ -169,7 +134,7 @@ export const useFoodCatalogQuery = () => {
     queryFn: async () => {
       await ensureUser();
       const response = await fetchFoodFavorites();
-      return response.items.map(toFoodItem);
+      return response.items.map(recordToFoodItem);
     },
     staleTime: 10 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
@@ -181,7 +146,7 @@ export const useFoodCatalogQuery = () => {
     queryFn: async () => {
       await ensureUser();
       const response = await fetchFoodHistory(50);
-      return response.items.map(toFoodItem);
+      return response.items.map(recordToFoodItem);
     },
     staleTime: 10 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
@@ -194,7 +159,7 @@ export const useFoodCatalogQuery = () => {
       if (!normalizedQuery) return [];
       await ensureUser();
       const response = await searchFoodsApi(normalizedQuery, 20, false);
-      let fetched = response.items.map(toFoodItem);
+      let fetched = response.items.map(recordToFoodItem);
 
       // Fallback for plural queries
       const fallbackQuery =
@@ -203,7 +168,7 @@ export const useFoodCatalogQuery = () => {
           : null;
       if (!fetched.length && fallbackQuery) {
         const fallbackResponse = await searchFoodsApi(fallbackQuery, 20, false);
-        fetched = fallbackResponse.items.map(toFoodItem);
+        fetched = fallbackResponse.items.map(recordToFoodItem);
       }
 
       return dedupeFoods(fetched);
@@ -317,7 +282,7 @@ export const useFoodCatalogQuery = () => {
         micronutrients: payload.micronutrients,
         imageUrl: payload.imageUrl,
       });
-      return toFoodItem(response.item);
+      return recordToFoodItem(response.item);
     },
     onSuccess: () => {
       // Invalidate all food queries to pick up new food
@@ -345,7 +310,7 @@ export const useFoodCatalogQuery = () => {
   const lookupBarcode = useCallback(async (barcode: string) => {
     try {
       const response = await fetchFoodByBarcode(barcode);
-      return response.item ? toFoodItem(response.item) : null;
+      return response.item ? recordToFoodItem(response.item) : null;
     } catch {
       return null;
     }
@@ -355,7 +320,7 @@ export const useFoodCatalogQuery = () => {
   const getFoodById = useCallback(async (foodId: string): Promise<FoodItem | null> => {
     try {
       const response = await fetchFoodByIdApi(foodId);
-      return response.item ? toFoodItem(response.item) : null;
+      return response.item ? recordToFoodItem(response.item) : null;
     } catch {
       return null;
     }
@@ -410,7 +375,7 @@ export const useFoodCatalogQuery = () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.foodHistory });
       void queryClient.invalidateQueries({ queryKey: ["foodSearch"] });
 
-      return toFoodItem(response.item);
+      return recordToFoodItem(response.item);
     },
     [overrides, queryClient]
   );
@@ -427,7 +392,7 @@ export const useFoodCatalogQuery = () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.foodHistory });
       void queryClient.invalidateQueries({ queryKey: ["foodSearch"] });
 
-      return toFoodItem(response.item);
+      return recordToFoodItem(response.item);
     },
     [queryClient]
   );

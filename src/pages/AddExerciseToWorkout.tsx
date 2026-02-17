@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/state/AppStore";
 import { toast } from "sonner";
-import { fetchCurrentUser, fetchExerciseByName, updateExerciseMaster } from "@/lib/api";
+import { fetchExerciseByName, updateExerciseMaster } from "@/lib/api";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { uploadImageFile } from "@/lib/uploadImage";
 
 const createId = () =>
@@ -53,8 +54,8 @@ const AddExerciseToWorkout = () => {
     searchExercises,
     setQuery,
   } = fitnessLibrary;
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loadingAdmin, setLoadingAdmin] = useState(false);
+  const isAdmin = useIsAdmin();
+  const [loadingMaster, setLoadingMaster] = useState(false);
   const [masterId, setMasterId] = useState<number | null>(null);
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
@@ -88,35 +89,29 @@ const AddExerciseToWorkout = () => {
   }, [query, searchExercises]);
 
   useEffect(() => {
-    if (!adminEdit) return;
+    if (!adminEdit || !isAdmin || !exerciseName.trim()) return;
     let cancelled = false;
-    const load = async () => {
-      try {
-        setLoadingAdmin(true);
-        const user = await fetchCurrentUser();
+    setLoadingMaster(true);
+    fetchExerciseByName(exerciseName)
+      .then((response) => {
         if (cancelled) return;
-        const admin = user.user?.email === "ahoin001@gmail.com";
-        setIsAdmin(admin);
-        if (!admin) return;
-        if (exerciseName.trim()) {
-          const response = await fetchExerciseByName(exerciseName);
-          const record = response.exercise as { id?: number; image_url?: string | null } | null;
-          setMasterId(record?.id ? Number(record.id) : null);
-          setThumbnailUrl(record?.image_url ?? "");
-        }
-      } catch {
+        const record = response.exercise as { id?: number; image_url?: string | null } | null;
+        setMasterId(record?.id ? Number(record.id) : null);
+        setThumbnailUrl(record?.image_url ?? "");
+      })
+      .catch(() => {
         if (!cancelled) {
-          setIsAdmin(false);
+          setMasterId(null);
+          setThumbnailUrl("");
         }
-      } finally {
-        if (!cancelled) setLoadingAdmin(false);
-      }
-    };
-    void load();
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingMaster(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [adminEdit, exerciseName]);
+  }, [adminEdit, isAdmin, exerciseName]);
 
   const handleBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) {
@@ -325,7 +320,7 @@ const AddExerciseToWorkout = () => {
                     toast("Unable to update thumbnail");
                   }
                 }}
-                disabled={loadingAdmin}
+                disabled={loadingMaster}
               >
                 Save thumbnail
               </Button>

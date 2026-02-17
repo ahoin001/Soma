@@ -288,4 +288,40 @@ router.post(
   }),
 );
 
+const fetchExternalSvgSchema = z.object({
+  url: z.string().url(),
+});
+
+/** Allowed host for external nutrition SVG (Label Insight). */
+const ALLOWED_SVG_HOST = "images-v2.labelinsight.com";
+
+router.post(
+  "/fetch-external-svg",
+  asyncHandler(async (req: Request, res: Response) => {
+    const { url } = fetchExternalSvgSchema.parse(req.body);
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") {
+      res.status(400).json({ error: "Only https URLs are allowed." });
+      return;
+    }
+    if (parsed.hostname !== ALLOWED_SVG_HOST) {
+      res.status(400).json({
+        error: `URL host must be ${ALLOWED_SVG_HOST}.`,
+      });
+      return;
+    }
+    const response = await fetch(url, {
+      headers: { Accept: "image/svg+xml, text/plain, */*" },
+    });
+    if (!response.ok) {
+      res.status(response.status).json({
+        error: `Failed to fetch SVG: ${response.statusText}`,
+      });
+      return;
+    }
+    const svg = await response.text();
+    res.json({ svg });
+  }),
+);
+
 export default router;

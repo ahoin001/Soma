@@ -6,6 +6,7 @@ import type { FoodItem } from "@/data/mock";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "@/state/AppStore";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useNavigate } from "react-router-dom";
 import { logDraftKey } from "@/lib/storageKeys";
 import { calculateMacroPercent } from "@/data/foodApi";
@@ -36,7 +37,7 @@ export const EditLogSheet = ({
   const [saving, setSaving] = useState(false);
   const { email } = useAuth();
   const navigate = useNavigate();
-  const isAdmin = email?.toLowerCase() === "ahoin001@gmail.com";
+  const isAdmin = useIsAdmin();
   const safeMultiplier = Number.isFinite(multiplier) ? multiplier : 1;
 
   useEffect(() => {

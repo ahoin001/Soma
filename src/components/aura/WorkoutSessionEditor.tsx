@@ -37,10 +37,10 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   ensureUser,
   fetchActivityGoals,
-  fetchCurrentUser,
   fetchExerciseByName,
   upsertActivityGoals,
 } from "@/lib/api";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { ADVANCED_LOGGING_KEY, workoutLastSetsKey } from "@/lib/storageKeys";
 import { playRestCompleteSound } from "@/lib/restCompleteSound";
 import { toast } from "sonner";
@@ -881,7 +881,6 @@ export const WorkoutSessionEditor = ({
   const [noteOpenIds, setNoteOpenIds] = useState<Set<string>>(() => new Set());
   const [savePulse, setSavePulse] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [thumbnailMap, setThumbnailMap] = useState<Record<string, string | null>>({});
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const addTapRef = useRef(false);
@@ -1035,23 +1034,7 @@ export const WorkoutSessionEditor = ({
     );
   }, [unitUsed]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadAdmin = async () => {
-      try {
-        const user = await fetchCurrentUser();
-        if (!cancelled) {
-          setIsAdmin(user.user?.email === "ahoin001@gmail.com");
-        }
-      } catch {
-        if (!cancelled) setIsAdmin(false);
-      }
-    };
-    void loadAdmin();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const isAdmin = useIsAdmin();
 
   const exerciseNamesKey = useMemo(
     () => exercises.map((exercise) => exercise.name).join("||"),

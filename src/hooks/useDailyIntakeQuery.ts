@@ -26,6 +26,7 @@ import {
 } from "@/lib/api";
 import type { LogItem, LogSection } from "@/types/log";
 import { queryKeys } from "@/lib/queryKeys";
+import { DEBUG_KEY } from "@/lib/storageKeys";
 import { queueMutation } from "@/lib/offlineQueue";
 import { computeLogSections, computeTotals, toLocalDate } from "@/lib/nutritionData";
 import type { LastLog, Summary, SyncState } from "@/types/nutrition";
@@ -45,6 +46,10 @@ type NutritionData = {
 const cloneMacros = (macros: MacroTarget[]) =>
   macros.map((macro) => ({ ...macro }));
 
+const isNutritionDebug = () =>
+  import.meta.env.DEV &&
+  typeof window !== "undefined" &&
+  window.localStorage?.getItem(DEBUG_KEY) === "true";
 
 // ============================================================================
 // Main Hook
@@ -67,21 +72,13 @@ export const useDailyIntakeQuery = (
   const nutritionQuery = useQuery({
     queryKey: queryKeys.nutrition(localDate),
     queryFn: async ({ signal }): Promise<NutritionData> => {
-      console.log("[nutritionQuery] queryFn START", { localDate });
-      
-      // Check if cancelled before starting
-      if (signal?.aborted) {
-        console.log("[nutritionQuery] queryFn ABORTED before start");
-        throw new Error("Query was cancelled");
-      }
-      
+      if (isNutritionDebug()) console.log("[nutritionQuery] queryFn START", { localDate });
+
+      if (signal?.aborted) throw new Error("Query was cancelled");
+
       await ensureUser();
-      
-      // Check if cancelled after auth
-      if (signal?.aborted) {
-        console.log("[nutritionQuery] queryFn ABORTED after auth");
-        throw new Error("Query was cancelled");
-      }
+
+      if (signal?.aborted) throw new Error("Query was cancelled");
       
       const [entriesRes, summaryRes, settingsRes] = await Promise.all([
         fetchMealEntries(localDate),
@@ -89,12 +86,7 @@ export const useDailyIntakeQuery = (
         fetchNutritionSettings(),
       ]);
       
-      // CRITICAL: Check if cancelled BEFORE processing and returning data
-      // This prevents stale fetch results from overwriting optimistic updates
-      if (signal?.aborted) {
-        console.log("[nutritionQuery] queryFn ABORTED after fetch - discarding results");
-        throw new Error("Query was cancelled");
-      }
+      if (signal?.aborted) throw new Error("Query was cancelled");
 
       const logSections = computeLogSections(
         entriesRes.entries,
@@ -147,18 +139,12 @@ export const useDailyIntakeQuery = (
 
       const micros = summaryRes.micros ?? null;
 
-      // Final cancellation check before returning
-      if (signal?.aborted) {
-        console.log("[nutritionQuery] queryFn ABORTED before return - discarding results");
-        throw new Error("Query was cancelled");
-      }
-      
-      console.log("[nutritionQuery] queryFn COMPLETE", {
-        sectionsCount: logSections.length,
-        totalItems: logSections.reduce((sum, s) => sum + s.items.length, 0),
-        entriesCount: entriesRes.entries.length,
-        itemsCount: entriesRes.items.length,
-      });
+      if (signal?.aborted) throw new Error("Query was cancelled");
+      if (isNutritionDebug())
+        console.log("[nutritionQuery] queryFn COMPLETE", {
+          sectionsCount: logSections.length,
+          totalItems: logSections.reduce((sum, s) => sum + s.items.length, 0),
+        });
       return { summary, macros, micros, logSections };
     },
     enabled: meals.length > 0,
@@ -206,7 +192,7 @@ export const useDailyIntakeQuery = (
       portionLabel?: string;
       portionGrams?: number | null;
     }) => {
-      console.log("[logFood] mutationFn START", { food: food.name, mealTypeId });
+      if (isNutritionDebug()) console.log("[logFood] mutationFn START", { food: food.name, mealTypeId });
       await ensureUser();
       const safeQuantity =
         Number.isFinite(quantity) && (quantity ?? 0) > 0 ? Number(quantity) : 1;
@@ -233,21 +219,19 @@ export const useDailyIntakeQuery = (
           },
         ],
       });
-      console.log("[logFood] mutationFn COMPLETE", { itemId: result.items[0]?.id });
+      if (isNutritionDebug()) console.log("[logFood] mutationFn COMPLETE", { itemId: result.items[0]?.id });
       return result;
     },
     onMutate: async ({ food, mealTypeId, quantity, portionLabel, portionGrams }) => {
-      console.log("[logFood] onMutate START", { food: food.name, mealTypeId });
-      
-      // CRITICAL: Cancel queries FIRST to prevent in-flight queries from overwriting
-      await queryClient.cancelQueries({ queryKey: queryKeys.nutrition(localDate) });
-      console.log("[logFood] onMutate: queries cancelled");
+      if (isNutritionDebug()) console.log("[logFood] onMutate START", { food: food.name, mealTypeId });
 
-      // Get previous data after cancellation
+      await queryClient.cancelQueries({ queryKey: queryKeys.nutrition(localDate) });
+      if (isNutritionDebug()) console.log("[logFood] onMutate: queries cancelled");
+
       const previous = queryClient.getQueryData<NutritionData>(
         queryKeys.nutrition(localDate)
       );
-      console.log("[logFood] onMutate: previous logSections count", previous?.logSections.length);
+      if (isNutritionDebug()) console.log("[logFood] onMutate: previous logSections count", previous?.logSections.length);
 
       // Find meal by id so section.meal matches a meal.label (MealLogPanel looks up by meal.label)
       const meal = meals.find((m) => m.id === mealTypeId);
@@ -326,7 +310,7 @@ export const useDailyIntakeQuery = (
               current: macro.current + (food.macros[macro.key] ?? 0) * safeQuantity,
             })),
           };
-          console.log("[logFood] onMutate: optimistic update applied", {
+          if (isNutritionDebug()) console.log("[logFood] onMutate: optimistic update applied", {
             sectionsCount: updated.logSections.length,
             totalItems: updated.logSections.reduce((sum, s) => sum + s.items.length, 0),
           });
@@ -335,11 +319,11 @@ export const useDailyIntakeQuery = (
       );
 
       setSyncPulse();
-      console.log("[logFood] onMutate COMPLETE");
+      if (isNutritionDebug()) console.log("[logFood] onMutate COMPLETE");
       return { previous };
     },
     onSuccess: (response, { food, mealTypeId }) => {
-      console.log("[logFood] onSuccess", { food: food.name, itemId: response.items[0]?.id });
+      if (isNutritionDebug()) console.log("[logFood] onSuccess", { food: food.name, itemId: response.items[0]?.id });
       lastLogRef.current = { food, itemId: response.items[0]?.id };
       
       // Update optimistic item with real ID from server (no refetch needed)
@@ -367,11 +351,11 @@ export const useDailyIntakeQuery = (
             };
           }
         );
-        console.log("[logFood] onSuccess: replaced optimistic ID with real ID", realItem.id);
+        if (isNutritionDebug()) console.log("[logFood] onSuccess: replaced optimistic ID with real ID", realItem.id);
       }
     },
     onError: (_err, { food, mealTypeId }, context) => {
-      console.log("[logFood] onError", { food: food.name, error: _err });
+      if (isNutritionDebug()) console.log("[logFood] onError", { food: food.name, error: _err });
       // If offline, keep optimistic update and queue for later
       if (!navigator.onLine) {
         void queueMutation("nutrition.logFood", { food, mealTypeId, localDate });
@@ -392,9 +376,7 @@ export const useDailyIntakeQuery = (
       });
     },
     onSettled: () => {
-      // DON'T immediately refetch - it causes race conditions with db replication
-      // Instead, mark as stale so next natural refetch gets fresh data
-      console.log("[logFood] onSettled: marking query as stale (no immediate refetch)");
+      if (isNutritionDebug()) console.log("[logFood] onSettled: marking query as stale (no immediate refetch)");
       void queryClient.invalidateQueries({ 
         queryKey: queryKeys.nutrition(localDate),
         refetchType: "none", // Mark stale but don't refetch immediately
@@ -405,17 +387,16 @@ export const useDailyIntakeQuery = (
   // --- Mutation: Remove log item ---
   const removeItemMutation = useMutation({
     mutationFn: async (item: LogItem) => {
-      console.log("[removeItem] mutationFn START", { itemId: item.id, name: item.name });
+      if (isNutritionDebug()) console.log("[removeItem] mutationFn START", { itemId: item.id, name: item.name });
       if (!item.id) throw new Error("Item has no ID");
       await deleteMealEntryItem(item.id);
-      console.log("[removeItem] mutationFn COMPLETE");
+      if (isNutritionDebug()) console.log("[removeItem] mutationFn COMPLETE");
     },
     onMutate: async (item) => {
-      console.log("[removeItem] onMutate START", { itemId: item.id, name: item.name });
-      
-      // CRITICAL: Cancel queries FIRST to prevent in-flight queries from overwriting
+      if (isNutritionDebug()) console.log("[removeItem] onMutate START", { itemId: item.id, name: item.name });
+
       await queryClient.cancelQueries({ queryKey: queryKeys.nutrition(localDate) });
-      console.log("[removeItem] onMutate: queries cancelled");
+      if (isNutritionDebug()) console.log("[removeItem] onMutate: queries cancelled");
 
       // Get previous data after cancellation
       const previous = queryClient.getQueryData<NutritionData>(
@@ -448,7 +429,7 @@ export const useDailyIntakeQuery = (
               current: totals[macro.key],
             })),
           };
-          console.log("[removeItem] onMutate: optimistic update applied", {
+          if (isNutritionDebug()) console.log("[removeItem] onMutate: optimistic update applied", {
             sectionsCount: updated.logSections.length,
             totalItems: updated.logSections.reduce((sum, s) => sum + s.items.length, 0),
           });
@@ -457,11 +438,11 @@ export const useDailyIntakeQuery = (
       );
 
       setSyncPulse();
-      console.log("[removeItem] onMutate COMPLETE");
+      if (isNutritionDebug()) console.log("[removeItem] onMutate COMPLETE");
       return { previous };
     },
     onError: (_err, item, context) => {
-      console.log("[removeItem] onError", { itemId: item.id, error: _err });
+      if (isNutritionDebug()) console.log("[removeItem] onError", { itemId: item.id, error: _err });
       // If offline, keep optimistic update and queue for later
       if (!navigator.onLine) {
         void queueMutation("nutrition.removeLogItem", { itemId: item.id });
@@ -481,11 +462,10 @@ export const useDailyIntakeQuery = (
       });
     },
     onSuccess: () => {
-      console.log("[removeItem] onSuccess: item successfully deleted");
+      if (isNutritionDebug()) console.log("[removeItem] onSuccess: item successfully deleted");
     },
     onSettled: () => {
-      // DON'T immediately refetch - it causes race conditions with db replication
-      console.log("[removeItem] onSettled: marking query as stale (no immediate refetch)");
+      if (isNutritionDebug()) console.log("[removeItem] onSettled: marking query as stale (no immediate refetch)");
       void queryClient.invalidateQueries({ 
         queryKey: queryKeys.nutrition(localDate),
         refetchType: "none", // Mark stale but don't refetch immediately
@@ -502,18 +482,17 @@ export const useDailyIntakeQuery = (
       item: LogItem;
       multiplier: number;
     }) => {
-      console.log("[updateItem] mutationFn START", { itemId: item.id, multiplier });
+      if (isNutritionDebug()) console.log("[updateItem] mutationFn START", { itemId: item.id, multiplier });
       if (!item.id) throw new Error("Item has no ID");
       await ensureUser();
       await updateMealEntryItem(item.id, { quantity: multiplier });
-      console.log("[updateItem] mutationFn COMPLETE");
+      if (isNutritionDebug()) console.log("[updateItem] mutationFn COMPLETE");
     },
     onMutate: async ({ item, multiplier }) => {
-      console.log("[updateItem] onMutate START", { itemId: item.id, multiplier });
-      
-      // CRITICAL: Cancel queries FIRST to prevent in-flight queries from overwriting
+      if (isNutritionDebug()) console.log("[updateItem] onMutate START", { itemId: item.id, multiplier });
+
       await queryClient.cancelQueries({ queryKey: queryKeys.nutrition(localDate) });
-      console.log("[updateItem] onMutate: queries cancelled");
+      if (isNutritionDebug()) console.log("[updateItem] onMutate: queries cancelled");
 
       // Get previous data after cancellation
       const previous = queryClient.getQueryData<NutritionData>(
@@ -546,20 +525,20 @@ export const useDailyIntakeQuery = (
               current: macro.current + (item.macros[macro.key] ?? 0) * delta,
             })),
           };
-          console.log("[updateItem] onMutate: optimistic update applied");
+          if (isNutritionDebug()) console.log("[updateItem] onMutate: optimistic update applied");
           return updated;
         }
       );
 
       setSyncPulse();
-      console.log("[updateItem] onMutate COMPLETE");
+      if (isNutritionDebug()) console.log("[updateItem] onMutate COMPLETE");
       return { previous };
     },
     onSuccess: () => {
-      console.log("[updateItem] onSuccess: item successfully updated");
+      if (isNutritionDebug()) console.log("[updateItem] onSuccess: item successfully updated");
     },
     onError: (_err, { item, multiplier }, context) => {
-      console.log("[updateItem] onError", { itemId: item.id, error: _err });
+      if (isNutritionDebug()) console.log("[updateItem] onError", { itemId: item.id, error: _err });
       // If offline, keep optimistic update and queue for later
       if (!navigator.onLine) {
         void queueMutation("nutrition.updateLogItem", { itemId: item.id, quantity: multiplier });
@@ -579,8 +558,7 @@ export const useDailyIntakeQuery = (
       });
     },
     onSettled: () => {
-      // DON'T immediately refetch - it causes race conditions with db replication
-      console.log("[updateItem] onSettled: marking query as stale (no immediate refetch)");
+      if (isNutritionDebug()) console.log("[updateItem] onSettled: marking query as stale (no immediate refetch)");
       void queryClient.invalidateQueries({ 
         queryKey: queryKeys.nutrition(localDate),
         refetchType: "none", // Mark stale but don't refetch immediately

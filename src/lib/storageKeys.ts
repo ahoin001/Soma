@@ -17,7 +17,7 @@ export const DEFAULT_HOME_KEY = "aurafit-default-home";
 export const THEME_PALETTE_KEY = "aurafit-theme-palette";
 
 // UI & sheets
-export const HEADER_STYLE_KEY = "aurafit-header-style";
+export const HEADER_STYLE_KEY = "aurafit-header-style"; // used by UserContext
 export const SHEET_DEBUG_KEY = "aurafit-sheet-debug";
 export const SHEET_NUTRITION_KEY = "aurafit-sheet:nutrition";
 export const SHEET_ADD_FOOD_KEY = "aurafit-sheet:add-food";

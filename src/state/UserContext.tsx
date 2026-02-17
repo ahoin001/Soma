@@ -26,6 +26,7 @@ import {
 import {
   DEFAULT_HOME_KEY,
   FOOD_IMAGES_KEY,
+  HEADER_STYLE_KEY,
   THEME_PALETTE_KEY,
   USER_PROFILE_KEY,
 } from "@/lib/storageKeys";
@@ -46,6 +47,7 @@ export type UserProfile = {
 
 export type UserSettings = {
   showFoodImages: boolean;
+  headerStyle: "immersive" | "card" | "media";
   defaultHome: "nutrition" | "fitness";
   themePalette: "emerald" | "ocean";
 };
@@ -59,6 +61,8 @@ type UserContextValue = {
   // Settings
   showFoodImages: boolean;
   setShowFoodImages: (next: boolean) => void;
+  headerStyle: "immersive" | "card" | "media";
+  setHeaderStyle: (next: "immersive" | "card" | "media") => void;
   defaultHome: "nutrition" | "fitness";
   setDefaultHome: (next: "nutrition" | "fitness") => void;
   themePalette: "emerald" | "ocean";
@@ -120,6 +124,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     return stored ? stored === "true" : true;
   });
 
+  const [headerStyle, setHeaderStyle] = useState<"immersive" | "card" | "media">(() => {
+    if (typeof window === "undefined") return "immersive";
+    const stored = window.localStorage.getItem(HEADER_STYLE_KEY);
+    return stored === "card" || stored === "media" ? stored : "immersive";
+  });
+
   const [defaultHome, setDefaultHome] = useState<"nutrition" | "fitness">(() => {
     if (typeof window === "undefined") return "nutrition";
     const stored = window.localStorage.getItem(DEFAULT_HOME_KEY);
@@ -148,6 +158,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(FOOD_IMAGES_KEY, String(showFoodImages));
   }, [showFoodImages]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(HEADER_STYLE_KEY, headerStyle);
+  }, [headerStyle]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -245,6 +260,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       updateUserProfile,
       showFoodImages,
       setShowFoodImages,
+      headerStyle,
+      setHeaderStyle,
       defaultHome,
       setDefaultHome,
       themePalette,
@@ -255,6 +272,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       userProfile,
       updateUserProfile,
       showFoodImages,
+      headerStyle,
       defaultHome,
       themePalette,
       isHydrated,
@@ -291,6 +309,8 @@ export const useUserSettings = () => {
   const {
     showFoodImages,
     setShowFoodImages,
+    headerStyle,
+    setHeaderStyle,
     defaultHome,
     setDefaultHome,
     themePalette,
@@ -299,6 +319,8 @@ export const useUserSettings = () => {
   return {
     showFoodImages,
     setShowFoodImages,
+    headerStyle,
+    setHeaderStyle,
     defaultHome,
     setDefaultHome,
     themePalette,

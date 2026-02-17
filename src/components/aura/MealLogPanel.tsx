@@ -39,18 +39,24 @@ export const MealLogPanel = ({
   pulseTrigger,
 }: MealLogPanelProps) => {
   const [openMeals, setOpenMeals] = useState<Record<string, boolean>>({});
-  const logMap = useMemo(() => {
-    const map = new Map<string, LogSection>();
-    logSections.forEach((section) => {
-      map.set(section.meal, section);
-    });
-    return map;
-  }, [logSections]);
 
-  // Sections that don't match any meal (e.g. API "Meal" or legacy) so they still show
-  const unmatchedSections = useMemo(() => {
+  const { logMap, unmatchedSections, mealStats } = useMemo(() => {
+    const map = new Map<string, LogSection>();
+    logSections.forEach((section) => map.set(section.meal, section));
     const matchedLabels = new Set(meals.map((m) => m.label));
-    return logSections.filter((s) => !matchedLabels.has(s.meal));
+    const unmatched = logSections.filter((s) => !matchedLabels.has(s.meal));
+    const stats: Record<string, { itemCount: number; kcalTotal: number }> = {};
+    meals.forEach((meal) => {
+      const section = map.get(meal.label);
+      const itemCount = section?.items.length ?? 0;
+      const kcalTotal =
+        section?.items.reduce((sum, item) => {
+          const q = item.quantity ?? 1;
+          return sum + item.kcal * q;
+        }, 0) ?? 0;
+      stats[meal.id] = { itemCount, kcalTotal };
+    });
+    return { logMap: map, unmatchedSections: unmatched, mealStats: stats };
   }, [logSections, meals]);
 
   return (
@@ -70,13 +76,11 @@ export const MealLogPanel = ({
 
       <div className="mt-4 space-y-3">
         {meals.map((meal) => {
+          const { itemCount, kcalTotal } = mealStats[meal.id] ?? {
+            itemCount: 0,
+            kcalTotal: 0,
+          };
           const section = logMap.get(meal.label);
-          const itemCount = section?.items.length ?? 0;
-          const kcalTotal =
-            section?.items.reduce((sum, item) => {
-              const quantity = item.quantity ?? 1;
-              return sum + item.kcal * quantity;
-            }, 0) ?? 0;
           const isOpen = openMeals[meal.id] ?? itemCount > 0;
           const shouldGlow = Boolean(animateTrigger) && pulseMealId === meal.id;
 

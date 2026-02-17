@@ -22,6 +22,7 @@ type DashboardHeaderProps = {
   macros: MacroTarget[];
   micros?: NutritionSummaryMicros | null;
   onProfileClick?: () => void;
+  onBellClick?: () => void;
   onLongPressMacros?: () => void;
   animateTrigger?: number;
   variant?: DashboardHeaderVariant;
@@ -38,6 +39,7 @@ export const DashboardHeader = ({
   macros,
   micros,
   onProfileClick,
+  onBellClick,
   onLongPressMacros,
   animateTrigger,
   variant = "immersive",
@@ -135,9 +137,12 @@ export const DashboardHeader = ({
             </div>
           </div>
           <Button
+            type="button"
             variant="ghost"
             size="icon"
             className="h-10 w-10 rounded-full bg-card/90 text-foreground shadow-[0_10px_25px_rgba(15,23,42,0.12)] hover:bg-card"
+            onClick={onBellClick}
+            aria-label="Admin food import"
           >
             <Bell className="h-5 w-5" />
           </Button>

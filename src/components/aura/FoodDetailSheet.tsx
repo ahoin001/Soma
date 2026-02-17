@@ -28,6 +28,7 @@ import {
   type ServingOption,
 } from "@/lib/servingCache";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useUserSettings } from "@/state";
 import { servingUnits } from "@/lib/schemas/food";
 
@@ -96,9 +97,9 @@ export const FoodDetailSheet = ({
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [amountPulse, setAmountPulse] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const { email } = useAuth();
+  useAuth();
   const { showFoodImages } = useUserSettings();
-  const isAdmin = email?.toLowerCase() === "ahoin001@gmail.com";
+  const isAdmin = useIsAdmin();
 
   useEffect(() => {
     if (!sparkle) return;
