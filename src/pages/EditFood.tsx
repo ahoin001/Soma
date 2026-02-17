@@ -110,7 +110,10 @@ const EditFood = () => {
       brand: currentFood.brand ?? "",
       brandId: currentFood.brandId ?? null,
       portion: currentFood.portionLabel ?? currentFood.portion,
-      portionGrams: currentFood.portionGrams ?? null,
+      portionGrams:
+        currentFood.portionGrams != null && currentFood.portionGrams !== ""
+          ? Number(currentFood.portionGrams)
+          : null,
       kcal: Number(currentFood.kcal) || 0,
       carbs: Number(m.carbs) || 0,
       protein: Number(m.protein) || 0,
@@ -1328,12 +1331,16 @@ const EditFood = () => {
                 };
                 setCurrentFood(optimistic);
                 try {
+                  const portionGrams =
+                    draft.portionGrams != null && draft.portionGrams !== ""
+                      ? Number(draft.portionGrams)
+                      : null;
                   const updated = await updateFoodMaster(currentFood.id, {
                     name: draft.name.trim() || currentFood.name,
                     brand: draft.brand.trim() || null,
                     brandId: draft.brandId ?? null,
                     portionLabel: draft.portion,
-                    portionGrams: draft.portionGrams ?? null,
+                    portionGrams,
                     kcal,
                     carbsG: carbs,
                     proteinG: protein,
