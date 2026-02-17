@@ -249,22 +249,19 @@ export const useFitnessPlanner = () => {
     async (routineId: string) => {
       let removed: Routine | null = null;
       const wasActive = activeRoutineId === routineId;
-      setRoutines((prev) => prev.filter((routine) => routine.id !== routineId));
-      setActiveRoutineId((prev) => (prev === routineId ? null : prev));
       setRoutines((prev) => {
         const existing = prev.find((routine) => routine.id === routineId) ?? null;
         if (existing) removed = existing;
         return prev.filter((routine) => routine.id !== routineId);
       });
+      setActiveRoutineId((prev) => (prev === routineId ? null : prev));
       try {
         await deleteFitnessRoutine(routineId);
         void refresh(true);
       } catch (error) {
         if (removed) {
-          setRoutines((prev) => [removed as Routine, ...prev]);
-        }
-        if (wasActive && removed) {
-          setActiveRoutineId(removed.id);
+          setRoutines((prev) => [removed, ...prev]);
+          if (wasActive) setActiveRoutineId(removed.id);
         }
         toast("Unable to delete routine", {
           action: {

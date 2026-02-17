@@ -302,6 +302,23 @@
 }
 
 @layer utilities {
+  /* Card elevation: default (main content) vs subtle (supporting blocks) */
+  .card-subtle {
+    @apply border-border/40 bg-muted/30;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  }
+  .card-default {
+    @apply border-border/60 bg-card;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  }
+  /* Section labels: reserve overline for major sections only */
+  .section-title {
+    @apply text-xs font-semibold uppercase tracking-[0.15em] text-primary/80;
+  }
+  .section-caption {
+    @apply text-xs font-medium text-muted-foreground;
+  }
+
   .aura-sheet-body {
     padding-left: 1.25rem;
     padding-right: 1.25rem;
@@ -438,6 +455,30 @@
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Skeleton shimmer: subtle, disabled when prefers-reduced-motion */
+  .skeleton-shimmer {
+    @apply relative overflow-hidden;
+  }
+  .skeleton-shimmer::after {
+    content: "";
+    @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  }
+  .dark .skeleton-shimmer::after {
+    @apply via-white/10;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-shimmer::after {
+      animation: none;
+      @apply hidden;
+    }
+  }
+  @keyframes skeleton-shimmer {
+    to {
+      transform: translateX(100%);
+    }
   }
 }
 

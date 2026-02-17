@@ -179,24 +179,33 @@ export function SearchEmptyState({
 }
 
 /**
- * Pre-configured empty state for empty lists
+ * Pre-configured empty state for empty lists.
+ * Pass optional title/description for contextual copy (e.g. meal-specific).
  */
 export function ListEmptyState({
   itemName = "items",
+  title: titleOverride,
+  description: descriptionOverride,
   onAdd,
   className,
 }: {
   itemName?: string;
+  title?: string;
+  description?: string;
   onAdd?: () => void;
   className?: string;
 }) {
+  const title = titleOverride ?? `No ${itemName} yet`;
+  const description = descriptionOverride ?? `Add your first ${itemName.replace(/s$/, "")} to get started.`;
+  const actionLabel = itemName === "items" ? "Log item" : `Add ${itemName.replace(/s$/, "")}`;
   return (
     <EmptyState
       icon={Inbox}
-      title={`No ${itemName} yet`}
-      description={`Add your first ${itemName.replace(/s$/, "")} to get started.`}
-      action={onAdd ? { label: `Add ${itemName.replace(/s$/, "")}`, onClick: onAdd, icon: Plus } : undefined}
+      title={title}
+      description={description}
+      action={onAdd ? { label: actionLabel, onClick: onAdd, icon: Plus } : undefined}
       className={className}
+      size="sm"
     />
   );
 }

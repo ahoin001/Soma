@@ -60,16 +60,14 @@ export const MealLogPanel = ({
   }, [logSections, meals]);
 
   return (
-    <Card className="relative mt-6 overflow-hidden rounded-[28px] border border-border/60 bg-card/85 px-5 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+    <Card className="card-default relative mt-4 overflow-hidden rounded-[28px] px-5 py-4 backdrop-blur-sm">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,_hsl(var(--primary)/0.14),_transparent_45%),radial-gradient(circle_at_85%_0%,_hsl(var(--accent)/0.12),_transparent_50%),radial-gradient(circle_at_70%_85%,_hsl(var(--secondary)/0.18),_transparent_55%)] opacity-70" />
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
-            Meals & log
-          </p>
-          <h3 className="text-lg font-display font-semibold text-foreground">
+          <p className="section-title">Meals & log</p>
+          <h2 className="text-lg font-display font-semibold text-foreground">
             Add and review
-          </h3>
+          </h2>
         </div>
         <CompletionRing value={completion} label={`${completion}%`} pulseTrigger={pulseTrigger} />
       </div>
@@ -190,8 +188,10 @@ export const MealLogPanel = ({
                     {!itemCount && (
                       <ListEmptyState
                         itemName="items"
+                        title={`Nothing in ${meal.label} yet`}
+                        description="Tap + to log your first item."
                         onAdd={() => onAddMeal(meal)}
-                        className="rounded-[16px] border border-dashed border-primary/35 bg-secondary/50 py-6"
+                        className="rounded-[16px] border border-dashed border-primary/35 bg-secondary/50 py-5"
                       />
                     )}
                   </div>

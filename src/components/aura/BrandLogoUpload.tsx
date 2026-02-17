@@ -74,10 +74,10 @@ export function BrandLogoUpload({
         onLogoChange(data.secure_url);
         setNotice("Logo saved.");
       } else {
-        setNotice("Upload failed.");
+        setNotice("Upload failed. Check your connection and try again.");
       }
     } catch {
-      setNotice("Upload failed.");
+      setNotice("Upload failed. Check your connection and try again.");
     } finally {
       setUploading(false);
       setProgress(0);
@@ -160,7 +160,7 @@ export function BrandLogoUpload({
       {notice && (
         <p className={cn(
           "text-xs",
-          notice === "Upload failed." ? "text-destructive" : "text-primary",
+          notice.startsWith("Upload failed") ? "text-destructive" : "text-primary",
         )}>
           {notice}
         </p>

@@ -399,10 +399,11 @@ const AppPrefetch = () => {
     // Critical path: data needed for login → home (Nutrition diary + summary). Run immediately.
     const runCriticalPrefetch = async () => {
       try {
-        await ensureUser();
+        const [, mealTypes] = await Promise.all([
+          ensureUser(),
+          ensureMealTypes(),
+        ]);
         if (cancelled) return;
-
-        const mealTypes = await ensureMealTypes();
         queryClient.setQueryData(queryKeys.mealTypes, mealTypes);
         const meals: Meal[] = mealTypes.items.map((item) => ({
           id: item.id,

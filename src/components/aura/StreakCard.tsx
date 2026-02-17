@@ -8,15 +8,13 @@ type StreakCardProps = {
 };
 
 export const StreakCard = ({ days, bestWeek, message }: StreakCardProps) => (
-  <Card className="mt-6 rounded-[28px] border border-border/60 bg-card px-5 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+  <Card className="card-subtle mt-4 rounded-[28px] px-5 py-4">
     <div className="flex items-center justify-between">
       <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
-          Streak
-        </p>
-        <h3 className="text-lg font-display font-semibold text-foreground">
+        <p className="section-caption">Streak</p>
+        <h2 className="text-lg font-display font-semibold text-foreground">
           {days} day flow
-        </h3>
+        </h2>
       </div>
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground">
         <Flame className="h-5 w-5" />

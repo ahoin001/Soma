@@ -88,7 +88,28 @@ const Fitness = () => {
   const [params, setParams] = useSearchParams();
   const [creating, setCreating] = useState(false);
   const [startingSession, setStartingSession] = useState(false);
+  const [sessionElapsed, setSessionElapsed] = useState("");
   const isAdmin = useIsAdmin();
+
+  useEffect(() => {
+    const session = fitnessPlanner.activeSession;
+    if (!session) {
+      setSessionElapsed("");
+      return;
+    }
+    const formatElapsed = (ms: number) => {
+      const totalM = Math.floor(ms / 60_000);
+      if (totalM < 60) return `${totalM}m`;
+      const h = Math.floor(totalM / 60);
+      const m = totalM % 60;
+      return m ? `${h}h ${m}m` : `${h}h`;
+    };
+    const tick = () =>
+      setSessionElapsed(formatElapsed(Date.now() - session.startedAt));
+    tick();
+    const id = window.setInterval(tick, 60_000);
+    return () => window.clearInterval(id);
+  }, [fitnessPlanner.activeSession?.id, fitnessPlanner.activeSession?.startedAt]);
 
   useEffect(() => {
     if (!query.trim()) return;
@@ -374,9 +395,18 @@ const Fitness = () => {
 
         {hasActiveSession && activeRoutine ? (
           <div className="mt-6 space-y-3">
-            <div className="rounded-[24px] border border-primary/30 bg-primary/12 px-4 py-4 text-foreground">
+            <motion.div
+              className="rounded-[24px] border border-primary/30 bg-primary/12 px-4 py-4 text-foreground"
+              animate={{ opacity: [1, 0.97, 1] }}
+              transition={{ duration: 2.2, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+            >
               <p className="text-xs uppercase tracking-[0.2em] text-primary/80">
                 Session in progress
+                {sessionElapsed ? (
+                  <span className="ml-2 font-normal text-primary/70">
+                    · {sessionElapsed}
+                  </span>
+                ) : null}
               </p>
               <p className="mt-1 text-lg font-semibold text-foreground">
                 {activeRoutine.name}
@@ -384,7 +414,7 @@ const Fitness = () => {
               <p className="text-xs text-muted-foreground">
                 Keep logging sets or finish when you are done.
               </p>
-            </div>
+            </motion.div>
             <LiveSessionPanel
               activeSession={fitnessPlanner.activeSession}
               activeRoutine={activeRoutine}

@@ -160,6 +160,8 @@ export const DashboardHeader = ({
           <motion.div
             className="absolute left-5 top-1/2 -translate-y-1/2 text-left"
             variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}
+            aria-live="polite"
+            aria-atomic="true"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary/75">
               Eaten
@@ -176,6 +178,9 @@ export const DashboardHeader = ({
             <motion.div
               className="absolute flex flex-col items-center text-center"
               variants={{ hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }}
+              aria-live="polite"
+              aria-atomic="true"
+              aria-label={`${remaining} calories remaining of ${goal} goal`}
             >
               <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-primary/80">
                 Remaining

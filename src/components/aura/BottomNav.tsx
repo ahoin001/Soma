@@ -26,16 +26,18 @@ const NavButton = ({
 }) => (
   <NavLink
     to={to}
-    className={`flex w-14 flex-col items-center gap-1 text-xs font-medium ${
+    className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-1 rounded-2xl px-2 text-xs font-medium transition-colors ${
       active
-        ? "text-foreground"
+        ? tone === "dark"
+          ? "bg-primary/15 text-foreground"
+          : "bg-primary/10 text-foreground"
         : tone === "dark"
           ? "text-foreground/65"
           : "text-muted-foreground"
     }`}
   >
-    <Icon className="h-5 w-5" />
-    {label}
+    <Icon className="h-5 w-5 shrink-0" />
+    <span className="leading-tight">{label}</span>
   </NavLink>
 );
 

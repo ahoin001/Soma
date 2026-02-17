@@ -598,7 +598,7 @@ const EditFood = () => {
                               setBrandWebsite(response.brand.website_url ?? "");
                               toast.success("Brand created");
                             } catch {
-                              setBrandNotice("Unable to create brand.");
+                              setBrandNotice("Unable to create brand. Check your connection and try again.");
                             }
                             return;
                           }
@@ -637,7 +637,7 @@ const EditFood = () => {
                             setBrandLogoUrl(prevLogo);
                             setOriginalBrandLogoUrl(prevOriginal);
                             setBrandNotice("Unable to update brand.");
-                            toast.error("Brand update failed");
+                            toast.error("Brand update failed. Please try again.");
                           }
                         }}
                       >
@@ -1203,15 +1203,13 @@ const EditFood = () => {
                   });
                   if (updated) {
                     setCurrentFood(updated);
-                    toast("Saved to database", {
-                      description: "Food details updated successfully.",
+                    toast.success("Food saved", {
+                      description: "Details updated successfully.",
                     });
                   }
                 } catch {
                   setCurrentFood(previousFood);
-                  toast.error("Save failed", {
-                    description: "Changes could not be saved. Please try again.",
-                  });
+                  toast.error("Save failed. Check your connection and try again.");
                 }
               } else {
                 const updated = upsertOverride(currentFood, {
@@ -1268,7 +1266,7 @@ const EditFood = () => {
                       toast.success("Food deleted.");
                       navigate(returnTo);
                     } catch {
-                      toast.error("Could not delete food.");
+                      toast.error("Could not delete food.", { description: "Check your connection and try again." });
                     } finally {
                       setDeleting(false);
                     }

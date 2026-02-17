@@ -70,13 +70,11 @@ export default function Settings() {
           </h1>
         </div>
 
-        <Card className="mt-4 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
-          <div className="flex items-center justify-between">
+        <Card className="card-default mt-4 rounded-[24px] px-4 py-4">
+          <p className="section-title">Preferences</p>
+          <div className="mt-4 flex items-center justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
-                Preferences
-              </p>
-              <p className="mt-1 text-sm font-semibold text-foreground">
+              <p className="text-sm font-medium text-foreground">
                 Show food images
               </p>
               <p className="text-xs text-muted-foreground">
@@ -89,13 +87,8 @@ export default function Settings() {
             />
           </div>
           <div className="mt-4 border-t border-border/60 pt-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70">
-              Immersive style
-            </p>
-            <p className="mt-1 text-sm font-semibold text-foreground">
-              Header look & feel
-            </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="section-caption">Header look & feel</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
               Try the three immersive PWA styles from the brief.
             </p>
             <SegmentedControl
@@ -110,10 +103,8 @@ export default function Settings() {
             />
           </div>
           <div className="mt-4 border-t border-border/60 pt-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70">
-              Default home
-            </p>
-            <p className="mt-1 text-sm font-semibold text-foreground">
+            <p className="section-caption">Default home</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
               Open the app on
             </p>
             <p className="text-xs text-muted-foreground">
@@ -133,10 +124,8 @@ export default function Settings() {
             />
           </div>
           <div className="mt-4 border-t border-border/60 pt-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70">
-              Theme mode
-            </p>
-            <p className="mt-1 text-sm font-semibold text-foreground">
+            <p className="section-caption">Theme mode</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
               Light, dark, or system
             </p>
             <p className="text-xs text-muted-foreground">
@@ -154,10 +143,8 @@ export default function Settings() {
             />
           </div>
           <div className="mt-4 border-t border-border/60 pt-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70">
-              Color palette
-            </p>
-            <p className="mt-1 text-sm font-semibold text-foreground">
+            <p className="section-caption">Color palette</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
               Choose your accent theme
             </p>
             <p className="text-xs text-muted-foreground">
@@ -177,10 +164,8 @@ export default function Settings() {
             />
           </div>
           <div className="mt-4 border-t border-border/60 pt-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70">
-              Experience transition
-            </p>
-            <p className="mt-1 text-sm font-semibold text-foreground">
+            <p className="section-caption">Experience transition</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
               Switching Nutrition ↔ Fitness
             </p>
             <p className="text-xs text-muted-foreground">

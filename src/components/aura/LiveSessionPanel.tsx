@@ -2,10 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { motion } from "framer-motion";
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { playRestCompleteSound, playSetLoggedSound } from "@/lib/restCompleteSound";
 import type { ActiveSession, Routine } from "@/types/fitness";
 
 const REST_PRESETS = [60, 90, 120] as const;
+const REST_RING_SIZE = 88;
+const REST_RING_STROKE = 6;
+const REST_RING_R = (REST_RING_SIZE - REST_RING_STROKE) / 2;
+const REST_RING_CIRCUMFERENCE = 2 * Math.PI * REST_RING_R;
 
 type LiveSessionPanelProps = {
   activeSession: ActiveSession | null;
@@ -28,12 +35,18 @@ export const LiveSessionPanel = ({
   const [reps, setReps] = useState("");
   const [restDuration, setRestDuration] = useState(90);
   const [restSecondsRemaining, setRestSecondsRemaining] = useState<number | null>(null);
+  const [justLogged, setJustLogged] = useState(false);
   const restEndedRef = useRef(false);
 
   const currentExercise = useMemo(() => {
     if (!activeSession || !activeRoutine) return null;
     return activeRoutine.exercises[activeSession.currentExerciseIndex] ?? null;
   }, [activeRoutine, activeSession]);
+
+  const setsLoggedForExercise = useMemo(() => {
+    if (!activeSession || !currentExercise) return 0;
+    return activeSession.sets.filter((s) => s.exerciseId === currentExercise.exerciseId).length;
+  }, [activeSession, currentExercise]);
 
   const canLog = Number(weight) > 0 && Number(reps) > 0 && currentExercise;
 
@@ -44,6 +57,7 @@ export const LiveSessionPanel = ({
         if (prev === null || prev <= 1) {
           if (prev === 1 && !restEndedRef.current) {
             restEndedRef.current = true;
+            playRestCompleteSound();
             if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
           }
           return null;
@@ -56,15 +70,21 @@ export const LiveSessionPanel = ({
 
   const handleLogSet = () => {
     if (!currentExercise || !canLog) return;
-    if (navigator.vibrate) {
-      navigator.vibrate(10);
-    }
+    playSetLoggedSound();
+    if (navigator.vibrate) navigator.vibrate(10);
     restEndedRef.current = false;
     onLogSet(currentExercise.exerciseId, Number(weight), Number(reps));
     setWeight("");
     setReps("");
     setRestSecondsRemaining(restDuration);
+    setJustLogged(true);
   };
+
+  useEffect(() => {
+    if (!justLogged) return;
+    const t = window.setTimeout(() => setJustLogged(false), 900);
+    return () => window.clearTimeout(t);
+  }, [justLogged]);
 
   const skipRest = () => setRestSecondsRemaining(null);
 
@@ -84,10 +104,49 @@ export const LiveSessionPanel = ({
                 <p className="text-xs uppercase tracking-[0.2em] text-primary/90">
                   Rest
                 </p>
-                <p className="mt-2 font-mono text-3xl font-semibold tabular-nums text-primary">
-                  {Math.floor(restSecondsRemaining / 60)}:
-                  {(restSecondsRemaining % 60).toString().padStart(2, "0")}
-                </p>
+                <div className="mt-3 flex justify-center">
+                  <div
+                    className="relative flex items-center justify-center"
+                    style={{ width: REST_RING_SIZE, height: REST_RING_SIZE }}
+                  >
+                    <svg
+                      className="-rotate-90"
+                      width={REST_RING_SIZE}
+                      height={REST_RING_SIZE}
+                      aria-hidden
+                    >
+                      <circle
+                        cx={REST_RING_SIZE / 2}
+                        cy={REST_RING_SIZE / 2}
+                        r={REST_RING_R}
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={REST_RING_STROKE}
+                        className="text-primary/20"
+                      />
+                      <circle
+                        cx={REST_RING_SIZE / 2}
+                        cy={REST_RING_SIZE / 2}
+                        r={REST_RING_R}
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={REST_RING_STROKE}
+                        strokeLinecap="round"
+                        className="text-primary transition-[stroke-dashoffset] duration-1000 ease-linear"
+                        strokeDasharray={REST_RING_CIRCUMFERENCE}
+                        strokeDashoffset={
+                          REST_RING_CIRCUMFERENCE -
+                          ((restDuration - restSecondsRemaining) / restDuration) *
+                            REST_RING_CIRCUMFERENCE
+                        }
+                      />
+                    </svg>
+                    <span className="absolute font-mono text-xl font-semibold tabular-nums text-primary">
+                      {Math.floor(restSecondsRemaining / 60)}:
+                      {(restSecondsRemaining % 60).toString().padStart(2, "0")}
+                    </span>
+                  </div>
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -106,8 +165,26 @@ export const LiveSessionPanel = ({
                   <p className="mt-2 text-lg font-semibold text-foreground">
                     {currentExercise.name}
                   </p>
-                  <p className="text-sm text-muted-foreground">
-                    Target {currentExercise.targetSets} sets
+                  <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>
+                      {setsLoggedForExercise} of {currentExercise.targetSets} sets
+                    </span>
+                    {currentExercise.targetSets > 0 && (
+                      <span
+                        className="inline-block h-1.5 flex-1 max-w-[80px] rounded-full bg-muted"
+                        aria-hidden
+                      >
+                        <span
+                          className="block h-full rounded-full bg-primary/70 transition-[width] duration-300"
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              (setsLoggedForExercise / currentExercise.targetSets) * 100
+                            )}%`,
+                          }}
+                        />
+                      </span>
+                    )}
                   </p>
                 </div>
 
@@ -141,11 +218,29 @@ export const LiveSessionPanel = ({
                 </div>
 
                 <Button
-                  className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                  className={cn(
+                    "w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90",
+                    justLogged && "bg-emerald-600 hover:bg-emerald-600"
+                  )}
                   onClick={handleLogSet}
-                  disabled={!canLog}
+                  disabled={!canLog && !justLogged}
                 >
-                  Log set
+                  <motion.span
+                    key={justLogged ? "logged" : "idle"}
+                    className="inline-flex items-center justify-center gap-2"
+                    initial={justLogged ? { scale: 0.95 } : false}
+                    animate={justLogged ? { scale: 1 } : undefined}
+                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  >
+                    {justLogged ? (
+                      <>
+                        <Check className="h-4 w-4" strokeWidth={2.5} />
+                        Logged!
+                      </>
+                    ) : (
+                      "Log set"
+                    )}
+                  </motion.span>
                 </Button>
 
                 <div className="flex items-center justify-between rounded-full border border-border/70 bg-card/55 px-3 py-2">

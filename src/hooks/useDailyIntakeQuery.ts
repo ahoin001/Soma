@@ -325,7 +325,9 @@ export const useDailyIntakeQuery = (
     onSuccess: (response, { food, mealTypeId }) => {
       if (isNutritionDebug()) console.log("[logFood] onSuccess", { food: food.name, itemId: response.items[0]?.id });
       lastLogRef.current = { food, itemId: response.items[0]?.id };
-      
+      const meal = meals.find((m) => m.id === mealTypeId);
+      toast.success(meal ? `Added to ${meal.label}` : "Logged");
+
       // Update optimistic item with real ID from server (no refetch needed)
       const realItem = response.items[0];
       if (realItem) {
@@ -368,7 +370,7 @@ export const useDailyIntakeQuery = (
         queryClient.setQueryData(queryKeys.nutrition(localDate), context.previous);
       }
 
-      toast("Unable to log food", {
+      toast.error("Unable to log food. Check your connection and try again.", {
         action: {
           label: "Retry",
           onClick: () => logFoodMutation.mutate({ food, mealTypeId }),
@@ -454,11 +456,8 @@ export const useDailyIntakeQuery = (
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.nutrition(localDate), context.previous);
       }
-      toast("Unable to remove item", {
-        action: {
-          label: "Retry",
-          onClick: () => removeItemMutation.mutate(item),
-        },
+      toast.error("Unable to remove item. Check your connection and try again.", {
+        action: { label: "Retry", onClick: () => removeItemMutation.mutate(item) },
       });
     },
     onSuccess: () => {
@@ -550,11 +549,8 @@ export const useDailyIntakeQuery = (
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.nutrition(localDate), context.previous);
       }
-      toast("Unable to update item", {
-        action: {
-          label: "Retry",
-          onClick: () => updateItemMutation.mutate({ item, multiplier }),
-        },
+      toast.error("Unable to update item. Check your connection and try again.", {
+        action: { label: "Retry", onClick: () => updateItemMutation.mutate({ item, multiplier }) },
       });
     },
     onSettled: () => {

@@ -31,15 +31,13 @@ export const StepsCard = ({
   }, [goal]);
 
   return (
-    <Card className="mt-6 overflow-hidden rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+    <Card className="card-default mt-4 overflow-hidden rounded-[28px] px-5 py-5">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
-            Steps
-          </p>
-          <h3 className="text-lg font-display font-semibold text-foreground">
+          <p className="section-title">Steps</p>
+          <h2 className="text-lg font-display font-semibold text-foreground">
             Daily movement
-          </h3>
+          </h2>
         </div>
         <div className="flex items-center gap-2 rounded-full bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground">
           <Watch className="h-4 w-4" />

@@ -41,7 +41,7 @@ type ActiveSheet = "detail" | "quick" | "edit" | "admin" | null;
 function NutritionPageSkeleton() {
   return (
     <div className="mx-auto w-full max-w-[420px] px-4 pb-10">
-      <div className="-mx-4">
+      <div className="-mx-4 skeleton-shimmer overflow-hidden rounded-b-[40px]">
         <div className="rounded-b-[40px] bg-gradient-to-b from-secondary/80 via-secondary/45 to-background pb-8 pt-[calc(3rem+var(--sat,env(safe-area-inset-top)))] dark:from-card dark:via-background/95 dark:to-background">
           <div className="flex justify-center px-5">
             <Skeleton className="h-24 w-24 rounded-full" />
@@ -52,10 +52,10 @@ function NutritionPageSkeleton() {
           </div>
         </div>
       </div>
-      <div className="mt-4 flex justify-center gap-2">
+      <div className="mt-4 flex justify-center gap-2 skeleton-shimmer overflow-hidden rounded-full max-w-[8rem] mx-auto">
         <Skeleton className="h-10 w-32 rounded-full" />
       </div>
-      <Card className="mt-6 overflow-hidden rounded-[28px] border border-border/60 bg-card/85 px-5 py-4">
+      <Card className="card-default skeleton-shimmer mt-4 overflow-hidden rounded-[28px] px-5 py-4">
         <div className="flex items-center justify-between">
           <div>
             <Skeleton className="h-3 w-24" />
@@ -69,9 +69,9 @@ function NutritionPageSkeleton() {
           ))}
         </div>
       </Card>
-      <div className="mt-6 flex gap-3">
-        <Skeleton className="h-24 flex-1 rounded-[24px]" />
-        <Skeleton className="h-24 flex-1 rounded-[24px]" />
+      <div className="mt-4 flex gap-3">
+        <Skeleton className="h-24 flex-1 rounded-[24px] skeleton-shimmer" />
+        <Skeleton className="h-24 flex-1 rounded-[24px] skeleton-shimmer" />
       </div>
     </div>
   );
@@ -467,20 +467,15 @@ const Nutrition = () => {
           onSetTotal={waterSummary.setWaterTotal}
           onGoalSave={(value) => waterSummary.updateGoal(value)}
         />
-        <Card className="mt-6 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
-          <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
-            Preferences
-          </p>
-          <p className="mt-1 text-sm font-semibold text-foreground">
-            Appearance, theme & default home
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Configure header style, theme mode, color palette, and more.
+        <Card className="card-subtle mt-4 rounded-[24px] px-4 py-3">
+          <p className="section-caption">Appearance & theme</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Header style, theme mode, color palette, default home.
           </p>
           <Button
             type="button"
-            variant="outline"
-            className="mt-4 w-full rounded-full"
+            variant="ghost"
+            className="mt-3 rounded-xl"
             onClick={() => navigate("/settings")}
           >
             Open Settings
@@ -492,34 +487,30 @@ const Nutrition = () => {
           message={insights.streak.message}
         />
 
-        <Card className="mt-6 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
-          <div className="flex flex-col gap-3">
-            <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
-              Account
-            </p>
-            <p className="text-sm font-semibold text-foreground">
-              {isSignedIn ? (email ?? "Signed in") : "Not signed in"}
-            </p>
-            {isSignedIn ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void logout()}
-                className="w-full rounded-full"
-              >
-                Log out
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate("/auth", { state: { from: "/nutrition" } })}
-                className="w-full rounded-full"
-              >
-                Sign in
-              </Button>
-            )}
-          </div>
+        <Card className="card-subtle mt-4 rounded-[24px] px-4 py-3">
+          <p className="section-caption">Account</p>
+          <p className="mt-0.5 text-sm font-medium text-foreground">
+            {isSignedIn ? (email ?? "Signed in") : "Not signed in"}
+          </p>
+          {isSignedIn ? (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => void logout()}
+              className="mt-3 rounded-xl"
+            >
+              Log out
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate("/auth", { state: { from: "/nutrition" } })}
+              className="mt-3 rounded-xl"
+            >
+              Sign in
+            </Button>
+          )}
         </Card>
         </div>
       </LoadingState>

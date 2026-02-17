@@ -107,15 +107,13 @@ export const WaterCard = ({
   const progress = goalMl > 0 ? Math.min((totalMl / goalMl) * 100, 100) : 0;
 
   return (
-    <Card className="mt-6 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+    <Card className="card-default mt-4 rounded-[28px] px-5 py-5">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
-            Daily wins
-          </p>
-          <h3 className="text-lg font-display font-semibold text-foreground">
+          <p className="section-title">Daily wins</p>
+          <h2 className="text-lg font-display font-semibold text-foreground">
             Water
-          </h3>
+          </h2>
           <p className="text-xs text-muted-foreground">
             {formatOz(totalMl)} &bull; {Math.round(progress)}% of goal
           </p>

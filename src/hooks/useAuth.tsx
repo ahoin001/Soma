@@ -86,6 +86,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
+    // No session token → not logged in; show auth screen immediately (no network round-trip).
+    if (!getSessionToken()) {
+      setState({ userId: null, email: null, status: "ready" });
+      return;
+    }
     void refresh();
   }, [refresh]);
 
