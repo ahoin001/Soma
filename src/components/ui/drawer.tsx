@@ -95,8 +95,11 @@ DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName;
 
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
->(({ className, children, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content> & {
+    /** Accessible name for screen readers. If omitted, "Panel" is used. */
+    title?: string;
+  }
+>(({ className, children, title, ...props }, ref) => {
   const contentRef = React.useRef<HTMLDivElement | null>(null);
   const setRefs = React.useCallback(
     (node: HTMLDivElement | null) => {
@@ -162,6 +165,9 @@ const DrawerContent = React.forwardRef<
         {...props}
       >
         <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
+        <DrawerPrimitive.Title className="sr-only">
+          {title ?? "Panel"}
+        </DrawerPrimitive.Title>
         {children}
       </DrawerPrimitive.Content>
     </DrawerPortal>

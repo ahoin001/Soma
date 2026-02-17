@@ -285,10 +285,11 @@ export const useFoodCatalogQuery = () => {
       return recordToFoodItem(response.item);
     },
     onSuccess: () => {
-      // Invalidate all food queries to pick up new food
+      // Invalidate food inventory and nutrition so app cache matches database
       void queryClient.invalidateQueries({ queryKey: queryKeys.foodFavorites });
       void queryClient.invalidateQueries({ queryKey: queryKeys.foodHistory });
       void queryClient.invalidateQueries({ queryKey: ["foodSearch"] });
+      void queryClient.invalidateQueries({ queryKey: ["nutrition"] });
     },
     onError: (_err, payload) => {
       if (!navigator.onLine) {
@@ -370,10 +371,11 @@ export const useFoodCatalogQuery = () => {
       setOverrides(nextOverrides);
       saveOverrides(nextOverrides);
 
-      // Invalidate queries
+      // Invalidate food inventory and nutrition so app cache matches database
       void queryClient.invalidateQueries({ queryKey: queryKeys.foodFavorites });
       void queryClient.invalidateQueries({ queryKey: queryKeys.foodHistory });
       void queryClient.invalidateQueries({ queryKey: ["foodSearch"] });
+      void queryClient.invalidateQueries({ queryKey: ["nutrition"] });
 
       return recordToFoodItem(response.item);
     },
@@ -387,10 +389,11 @@ export const useFoodCatalogQuery = () => {
       const response = await updateFoodImageApi(foodId, imageUrl);
       if (!response.item) return null;
 
-      // Invalidate queries
+      // Invalidate food inventory and nutrition so app cache matches database
       void queryClient.invalidateQueries({ queryKey: queryKeys.foodFavorites });
       void queryClient.invalidateQueries({ queryKey: queryKeys.foodHistory });
       void queryClient.invalidateQueries({ queryKey: ["foodSearch"] });
+      void queryClient.invalidateQueries({ queryKey: ["nutrition"] });
 
       return recordToFoodItem(response.item);
     },
@@ -402,11 +405,12 @@ export const useFoodCatalogQuery = () => {
     setSearchQuery(query);
   }, []);
 
-  // --- Refresh function (e.g. after delete); busts all food caches so next fetch is fresh ---
+  // --- Refresh function (e.g. after delete); busts all food and nutrition caches so next fetch is fresh ---
   const refreshLists = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.foodFavorites });
     void queryClient.invalidateQueries({ queryKey: queryKeys.foodHistory });
     void queryClient.invalidateQueries({ queryKey: ["foodSearch"] });
+    void queryClient.invalidateQueries({ queryKey: ["nutrition"] });
   }, [queryClient]);
 
   // Determine status

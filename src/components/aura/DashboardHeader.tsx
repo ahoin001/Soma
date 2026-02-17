@@ -211,8 +211,7 @@ export const DashboardHeader = ({
           </motion.div>
         </motion.div>
       </div>
-      {/* Macro cards: center of cards aligns with the bottom edge of the HUD.
-         Tap toggles your 3 chosen micros; long-press opens goal sheet. */}
+      {/* Macro cards: center aligns with the bottom edge of the HUD. Stay in place when micros expand. */}
       <div
         className="relative z-20 -mb-10 px-5"
         style={{ transform: "translateY(-50%)" }}
@@ -253,21 +252,25 @@ export const DashboardHeader = ({
             );
           })}
         </div>
+      </div>
 
+      {/* Micro cards: slide out from below macros and push page content down. */}
+      <div className="relative z-20 -mt-3 px-5 overflow-hidden">
         <AnimatePresence initial={false}>
-          {showMicros && micros && (() => {
-            const { slotKeys, goals } = getMicroState();
-            const microValues = micros as Record<string, number | undefined>;
-            return (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
-                className="mt-3 overflow-hidden"
-              >
-                <div className="grid grid-cols-3 gap-3">
-                  {slotKeys.map((key) => {
+          {showMicros && micros ? (
+            <motion.div
+              key="hud-micros"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="overflow-hidden"
+            >
+              <div className="grid grid-cols-3 gap-3 pb-1">
+                {(() => {
+                  const { slotKeys, goals } = getMicroState();
+                  const microValues = micros as Record<string, number | undefined>;
+                  return slotKeys.map((key) => {
                     const opt = MICRO_OPTIONS.find((o) => o.key === key);
                     const current = microValues?.[key] ?? 0;
                     if (!opt) return null;
@@ -306,36 +309,53 @@ export const DashboardHeader = ({
                     }
                     if (entry?.mode === "limit") {
                       const safeLimit = entry.value > 0 ? entry.value : 1;
-                      const percent = Math.min(100, (rounded / safeLimit) * 100);
+                      const percent = Math.min(150, (rounded / safeLimit) * 100);
                       const isOver = rounded > entry.value;
-                      const isWarning = !isOver && percent >= 80;
+                      const isWarning = !isOver && percent >= 70;
+                      const isGood = !isOver && percent < 70;
                       const barColor = isOver
                         ? "bg-destructive"
                         : isWarning
                           ? "bg-amber-500"
                           : "bg-primary";
+                      const statusLabel = isOver
+                        ? "Over"
+                        : isWarning
+                          ? "Close"
+                          : "Under";
+                      const statusColor = isOver
+                        ? "text-destructive font-semibold"
+                        : isWarning
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-primary";
                       return (
                         <div
                           key={key}
                           className={cn(
                             cardClass,
-                            isWarning && "border-amber-500/40 bg-amber-500/5",
-                            isOver && "border-destructive/40 bg-destructive/5",
+                            isGood && "border-primary/30 bg-primary/5",
+                            isWarning && "border-amber-500/50 bg-amber-500/10",
+                            isOver && "border-destructive/50 bg-destructive/10",
                           )}
                         >
-                          <p className="text-xs font-semibold text-foreground/85">
-                            {opt.label}
-                          </p>
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-xs font-semibold text-foreground/85">
+                              {opt.label}
+                            </p>
+                            <span className={cn("text-[10px] uppercase tracking-wide", statusColor)}>
+                              {statusLabel}
+                            </span>
+                          </div>
                           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-secondary">
                             <div
                               className={cn("h-full rounded-full transition-all", barColor)}
-                              style={{ width: `${percent}%` }}
+                              style={{ width: `${Math.min(100, percent)}%` }}
                             />
                           </div>
                           <p className="mt-2 text-[11px] text-muted-foreground">
                             <AnimatedNumber value={rounded} animateTrigger={animateTrigger} />/
                             <AnimatedNumber value={entry.value} animateTrigger={animateTrigger} /> {opt.unit}
-                            {isOver && " over"}
+                            {isOver && " over limit"}
                           </p>
                         </div>
                       );
@@ -350,11 +370,11 @@ export const DashboardHeader = ({
                         </p>
                       </div>
                     );
-                  })}
-                </div>
-              </motion.div>
-            );
-          })()}
+                  });
+                })()}
+              </div>
+            </motion.div>
+          ) : null}
         </AnimatePresence>
       </div>
     </header>

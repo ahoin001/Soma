@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { type FoodItem, type Meal } from "@/data/mock";
+import { searchFoods as searchFoodsApi } from "@/lib/api";
+import { recordToFoodItem } from "@/lib/foodMapping";
 import {
   AppShell,
   DashboardHeader,
@@ -26,11 +29,18 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useSheetManager } from "@/hooks/useSheetManager";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { LoadingState } from "@/components/ui/loading-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SHEET_NUTRITION_KEY } from "@/lib/storageKeys";
@@ -38,6 +48,46 @@ import { toLocalDate } from "@/lib/nutritionData";
 import type { NutritionDraft } from "@/types/nutrition";
 
 type ActiveSheet = "detail" | "quick" | "edit" | "admin" | null;
+
+/** Normalize for fuzzy match: lowercase, collapse spaces, strip non-alphanumeric */
+function normalizeForFuzzy(s: string) {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Score a food for fuzzy relevance to query tokens (partial match, word start, length). */
+function scoreFoodRelevance(food: FoodItem, tokens: string[]): number {
+  if (!tokens.length) return 0;
+  const haystack = normalizeForFuzzy(`${food.name} ${food.brand ?? ""}`);
+  if (!haystack) return 0;
+  let score = 0;
+  for (const token of tokens) {
+    if (!token) continue;
+    if (haystack.includes(token)) {
+      score += token.length >= 2 ? 2 : 1;
+      if (haystack.startsWith(token) || haystack.includes(` ${token}`)) score += 2;
+    }
+  }
+  return score;
+}
+
+/** Re-rank foods by fuzzy relevance to query, then by name length for ties. */
+function rankByRelevance(foods: FoodItem[], query: string): FoodItem[] {
+  const q = normalizeForFuzzy(query);
+  const tokens = q.split(" ").filter(Boolean);
+  if (!tokens.length) return foods;
+  return [...foods]
+    .map((food) => ({ food, score: scoreFoodRelevance(food, tokens) }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.food.name.length - b.food.name.length;
+    })
+    .map((item) => item.food);
+}
 
 function NutritionPageSkeleton() {
   return (
@@ -88,7 +138,19 @@ const Nutrition = () => {
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [editItem, setEditItem] = useState<LogItem | null>(null);
   const [adminQuery, setAdminQuery] = useState("");
+  const [adminQueryDebounced, setAdminQueryDebounced] = useState("");
+  const [adminSort, setAdminSort] = useState<"relevance" | "name_asc" | "name_desc">("relevance");
+  const [adminBrandFilter, setAdminBrandFilter] = useState("");
+  const [adminPage, setAdminPage] = useState(1);
   const navigate = useNavigate();
+
+  // Debounce admin search so we don't fire on every keystroke (fuzzy + partial match work better)
+  useEffect(() => {
+    if (activeSheet !== "admin") return;
+    const t = adminQuery.trim();
+    const timer = window.setTimeout(() => setAdminQueryDebounced(t), 350);
+    return () => window.clearTimeout(timer);
+  }, [activeSheet, adminQuery]);
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showWelcome, setShowWelcome] = useState(false);
@@ -158,14 +220,52 @@ const Nutrition = () => {
     }
   }, [apiResults, favorites, history, selectedFood]);
 
+  // Admin sheet: debounced search (limit 50) + client-side fuzzy re-rank for partial matches
+  const adminSearchQuery = useQuery({
+    queryKey: ["adminFoodSearch", adminQueryDebounced],
+    queryFn: async () => {
+      const res = await searchFoodsApi(adminQueryDebounced, 50, false);
+      return res.items.map(recordToFoodItem);
+    },
+    enabled: activeSheet === "admin" && adminQueryDebounced.length > 0,
+    staleTime: 60 * 1000,
+  });
+  const adminSearchResults = adminSearchQuery.data ?? [];
+
+  const adminUniqueBrands = useMemo(() => {
+    const brands = adminSearchResults
+      .map((f) => f.brand)
+      .filter((b): b is string => Boolean(b?.trim()));
+    return [...new Set(brands)].sort((a, b) => a.localeCompare(b));
+  }, [adminSearchResults]);
+
+  const adminFilteredAndSorted = useMemo(() => {
+    let list =
+      adminSort === "relevance"
+        ? rankByRelevance(adminSearchResults, adminQueryDebounced)
+        : [...adminSearchResults];
+    if (adminBrandFilter) {
+      list = list.filter((f) => f.brand === adminBrandFilter);
+    }
+    if (adminSort === "name_asc") {
+      list = [...list].sort((a, b) => a.name.localeCompare(b.name));
+    } else if (adminSort === "name_desc") {
+      list = [...list].sort((a, b) => b.name.localeCompare(a.name));
+    }
+    return list;
+  }, [adminSearchResults, adminBrandFilter, adminSort, adminQueryDebounced]);
+
+  const ADMIN_PAGE_SIZE = 15;
+  const adminTotalPages = Math.max(1, Math.ceil(adminFilteredAndSorted.length / ADMIN_PAGE_SIZE));
+  const adminPageSafe = Math.min(Math.max(1, adminPage), adminTotalPages);
+  const adminPaginated = useMemo(() => {
+    const start = (adminPageSafe - 1) * ADMIN_PAGE_SIZE;
+    return adminFilteredAndSorted.slice(start, start + ADMIN_PAGE_SIZE);
+  }, [adminFilteredAndSorted, adminPageSafe]);
+
   useEffect(() => {
-    if (activeSheet !== "admin") return;
-    const query = adminQuery.trim();
-    const timer = window.setTimeout(() => {
-      searchFoods(query);
-    }, query ? 300 : 0);
-    return () => window.clearTimeout(timer);
-  }, [activeSheet, adminQuery, searchFoods]);
+    setAdminPage(1);
+  }, [adminQueryDebounced, adminBrandFilter]);
 
   useEffect(() => {
     if (!mealPulse?.at) return;
@@ -561,8 +661,8 @@ const Nutrition = () => {
         open={activeSheet === "admin"}
         onOpenChange={(open) => (open ? openSheet("admin") : closeSheets())}
       >
-        <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6">
-          <div className="px-5 pb-6 pt-3">
+        <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6 max-h-[90vh] flex flex-col">
+          <div className="px-5 pb-6 pt-3 flex flex-col min-h-0 flex-1 overflow-hidden">
             <p className="text-xs uppercase tracking-[0.3em] text-primary/80">
               Admin
             </p>
@@ -572,48 +672,129 @@ const Nutrition = () => {
             <Input
               value={adminQuery}
               onChange={(event) => setAdminQuery(event.target.value)}
-              placeholder="Search foods..."
+              placeholder="Search foods (e.g. milk, chicken)..."
               className="mt-4 rounded-full"
             />
-            <div className="mt-4 space-y-3">
-              {apiResults.map((food) => (
-                <button
-                  key={food.id}
-                  type="button"
-                  onClick={() => {
-                    closeSheets();
-                    navigate("/nutrition/food/edit", {
-                      state: { food, returnTo: "/nutrition" },
-                    });
-                  }}
-                  className="flex w-full items-center justify-between rounded-[24px] border border-border/60 bg-card px-4 py-3 text-left shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-secondary text-xl">
-                      {showFoodImages && food.imageUrl ? (
-                        <FoodImage
-                          src={food.imageUrl}
-                          alt={food.name}
-                          className="h-full w-full object-contain"
-                        />
-                      ) : (
-                        food.emoji
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{food.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {food.portion} • {food.kcal} cal
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-semibold text-primary">Edit</span>
-                </button>
-              ))}
-              {adminQuery.trim() && apiResults.length === 0 && (
-                <p className="text-sm text-muted-foreground">No foods found.</p>
-              )}
+            {/* Filters always visible for consistent layout */}
+            <div className="mt-4 flex flex-wrap gap-2 shrink-0">
+              <Select
+                value={adminSort}
+                onValueChange={(v) => setAdminSort(v as "relevance" | "name_asc" | "name_desc")}
+              >
+                <SelectTrigger className="w-[130px] rounded-full">
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="relevance">Relevance</SelectItem>
+                  <SelectItem value="name_asc">A–Z</SelectItem>
+                  <SelectItem value="name_desc">Z–A</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={adminBrandFilter || "__all__"}
+                onValueChange={(v) => setAdminBrandFilter(v === "__all__" ? "" : v)}
+              >
+                <SelectTrigger className="min-w-[140px] rounded-full flex-1">
+                  <SelectValue placeholder="Brand" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All brands</SelectItem>
+                  {adminUniqueBrands.map((brand) => (
+                    <SelectItem key={brand} value={brand}>
+                      {brand}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+            {/* Fixed-height list area so layout doesn't jump when typing */}
+            <div className="mt-4 min-h-[280px] flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-muted/30">
+              <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
+                {!adminQueryDebounced && (
+                  <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+                    <p className="text-sm font-medium text-foreground/90">
+                      Search foods to find and edit
+                    </p>
+                    <p className="text-xs text-muted-foreground max-w-[240px]">
+                      Type a name or brand (e.g. milk, oat). Results update as you type.
+                    </p>
+                  </div>
+                )}
+                {adminQueryDebounced && adminSearchQuery.isLoading && (
+                  <div className="flex flex-col items-center justify-center gap-3 py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Searching…</p>
+                  </div>
+                )}
+                {adminQueryDebounced && !adminSearchQuery.isLoading && adminFilteredAndSorted.length === 0 && (
+                  <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+                    <p className="text-sm font-medium text-foreground/90">No foods found</p>
+                    <p className="text-xs text-muted-foreground max-w-[240px]">
+                      Try a different search or check spelling. Partial matches (e.g. &quot;mil&quot; for milk) are supported.
+                    </p>
+                  </div>
+                )}
+                {adminQueryDebounced && !adminSearchQuery.isLoading && adminPaginated.map((food) => (
+                  <button
+                    key={food.id}
+                    type="button"
+                    onClick={() => {
+                      closeSheets();
+                      navigate("/nutrition/food/edit", {
+                        state: { food, returnTo: "/nutrition" },
+                      });
+                    }}
+                    className="flex w-full items-center justify-between rounded-[24px] border border-border/60 bg-card px-4 py-3 text-left shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-secondary text-xl shrink-0">
+                        {showFoodImages && food.imageUrl ? (
+                          <FoodImage
+                            src={food.imageUrl}
+                            alt={food.name}
+                            className="h-full w-full object-contain"
+                          />
+                        ) : (
+                          food.emoji
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{food.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {food.brand ? `${food.brand} · ` : ""}{food.portion} · {food.kcal} cal
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-primary shrink-0">Edit</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {adminQueryDebounced && !adminSearchQuery.isLoading && adminFilteredAndSorted.length > 0 && (
+              <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/60 pt-3 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => setAdminPage((p) => Math.max(1, p - 1))}
+                  disabled={adminPageSafe <= 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  Page {adminPageSafe} of {adminTotalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => setAdminPage((p) => Math.min(adminTotalPages, p + 1))}
+                  disabled={adminPageSafe >= adminTotalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </div>
         </DrawerContent>
       </Drawer>

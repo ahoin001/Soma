@@ -182,6 +182,7 @@ export default function FoodImportAdmin() {
       queryClient.invalidateQueries({ queryKey: queryKeys.foodFavorites });
       queryClient.invalidateQueries({ queryKey: queryKeys.foodHistory });
       queryClient.invalidateQueries({ queryKey: ["foodSearch"] });
+      queryClient.invalidateQueries({ queryKey: ["nutrition"] });
       toast.success("Food saved to database.");
       setForm(null);
       setParsed(null);

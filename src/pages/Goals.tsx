@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AppShell } from "@/components/aura";
+import { useNavigate } from "react-router-dom";
+import { AppShell, PageContainer } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -14,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { toast } from "sonner";
 import { useAppStore } from "@/state/AppStore";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronLeft } from "lucide-react";
 import {
   ensureUser,
   upsertNutritionSettings,
@@ -507,6 +508,7 @@ const MacroTargetsSection = ({
 );
 
 const Goals = () => {
+  const navigate = useNavigate();
   const [goalType, setGoalType] = useState<GoalType>("balance");
   const [sex, setSex] = useState<Sex>("female");
   const [age, setAge] = useState("");
@@ -994,21 +996,35 @@ const Goals = () => {
 
   return (
     <AppShell experience="nutrition">
-      {/* pt includes safe-area for immersive edge-to-edge display */}
-      <div className="mx-auto w-full max-w-[420px] px-4 pb-10" style={{ paddingTop: "calc(1.5rem + var(--sat, env(safe-area-inset-top)))" }}>
-        <div className="rounded-[28px] bg-gradient-to-br from-background via-card to-secondary/60 px-5 py-6 shadow-[0_18px_40px_rgba(15,23,42,0.2)]">
-          <p className="text-xs uppercase tracking-[0.2em] text-primary/80">
-            Goals
-          </p>
-          <h1 className="text-2xl font-display font-semibold text-foreground">
-            Choose your path
+      <PageContainer>
+        <div className="flex items-center gap-2 py-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate(-1)}
+            aria-label="Back"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-lg font-display font-semibold text-foreground">
+            Nutrition goals
           </h1>
+        </div>
+
+        <div className="mt-6 rounded-[28px] bg-gradient-to-br from-background via-card to-secondary/60 px-5 py-6 shadow-[0_18px_40px_rgba(15,23,42,0.2)]">
+          <p className="text-xs uppercase tracking-[0.2em] text-primary/80">
+            Your path
+          </p>
+          <h2 className="mt-1 text-xl font-display font-semibold text-foreground">
+            Choose your focus
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Pick a focus and we will compute daily calories.
+            Pick cut, maintain, or bulk and we’ll compute daily calories.
           </p>
         </div>
 
-        <Card className="mt-6 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+        <Card className="mt-8 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
           <p className="text-xs uppercase tracking-[0.2em] text-primary/75">
             Goal type
           </p>
@@ -1024,7 +1040,7 @@ const Goals = () => {
           />
         </Card>
 
-        <Card className="mt-6 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+        <Card className="mt-8 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
           <p className="text-xs uppercase tracking-[0.2em] text-primary/75">
             Your stats
           </p>
@@ -1298,7 +1314,7 @@ const Goals = () => {
           </Collapsible>
         </Card>
 
-        <Card className="mt-6 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+        <Card className="mt-8 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
           <p className="text-xs uppercase tracking-[0.2em] text-primary/75">
             Calorie + macro targets
           </p>
@@ -1360,7 +1376,7 @@ const Goals = () => {
             />
           </div>
         </Card>
-      </div>
+      </PageContainer>
     </AppShell>
   );
 };

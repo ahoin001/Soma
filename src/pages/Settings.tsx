@@ -55,7 +55,7 @@ export default function Settings() {
     useExperienceTransitionConfig();
 
   return (
-    <AppShell>
+    <AppShell experience="nutrition">
       <div className="mx-auto w-full max-w-[420px] px-4 pb-10">
         <div className="flex items-center gap-2 py-3">
           <Button
