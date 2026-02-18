@@ -14,11 +14,54 @@ import type { LogItem } from "@/types/log";
 import { CREATED_FOOD_KEY, SHEET_ADD_FOOD_KEY } from "@/lib/storageKeys";
 import type { NutritionDraft } from "@/types/nutrition";
 import { ensureUser, fetchMealEntries } from "@/lib/api";
+import {
+  FOOD_GOAL_PRESETS,
+  getGoalPresetForSelection,
+  matchesAllFoodTags,
+  sortFoods,
+  type FoodGoalPresetId,
+  type FoodSortOption,
+  type FoodTagId,
+} from "@/lib/foodClassification";
 
 type ActiveTab = "search" | "recent" | "liked" | "history";
 
 type LocationState = {
   meal?: Meal;
+};
+
+const ALL_SORTS: FoodSortOption[] = [
+  "relevance",
+  "calories_asc",
+  "calories_desc",
+  "protein_desc",
+  "protein_asc",
+  "carbs_asc",
+  "carbs_desc",
+];
+
+const ALL_TAGS: FoodTagId[] = [
+  "high_protein",
+  "high_carb",
+  "low_carb",
+  "high_fat",
+  "low_fat",
+  "high_fiber",
+  "calorie_dense",
+  "low_calorie",
+];
+
+const parseSort = (value: string | null): FoodSortOption => {
+  if (!value) return "relevance";
+  return ALL_SORTS.includes(value as FoodSortOption) ? (value as FoodSortOption) : "relevance";
+};
+
+const parseTags = (value: string | null): FoodTagId[] => {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item): item is FoodTagId => ALL_TAGS.includes(item as FoodTagId));
 };
 
 const AddFood = () => {
@@ -35,6 +78,10 @@ const AddFood = () => {
     initialTab === "search" ? "recent" : initialTab,
   );
   const [searchQuery, setSearchQuery] = useState(searchParams.get("query") ?? "");
+  const [sortBy, setSortBy] = useState<FoodSortOption>(() => parseSort(searchParams.get("sort")));
+  const [selectedTags, setSelectedTags] = useState<FoodTagId[]>(() =>
+    parseTags(searchParams.get("tags")),
+  );
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(() => {
     const s = (location.state ?? {}) as LocationState;
     return s.meal ?? null;
@@ -196,6 +243,16 @@ const AddFood = () => {
       } else {
         nextParams.delete("query");
       }
+      if (sortBy !== "relevance") {
+        nextParams.set("sort", sortBy);
+      } else {
+        nextParams.delete("sort");
+      }
+      if (selectedTags.length > 0) {
+        nextParams.set("tags", selectedTags.join(","));
+      } else {
+        nextParams.delete("tags");
+      }
       setSearchParams(nextParams, { replace: true });
     }, query ? 200 : 0);
     return () => window.clearTimeout(timer);
@@ -205,7 +262,9 @@ const AddFood = () => {
     activeTab,
     returnTo,
     selectedMeal?.id,
+    selectedTags,
     searchParams,
+    sortBy,
     setSearchParams,
   ]);
 
@@ -408,20 +467,28 @@ const AddFood = () => {
 
   const filteredFoods = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
+    const applyFiltersAndSort = (foods: FoodItem[]) => {
+      const withFilters =
+        selectedTags.length > 0
+          ? foods.filter((food) => matchesAllFoodTags(food, selectedTags))
+          : foods;
+      return sortFoods(withFilters, sortBy);
+    };
+
     if (!query) {
       if (activeTab === "liked") {
-        return applyOverrides(favorites);
+        return applyFiltersAndSort(applyOverrides(favorites));
       }
       if (activeTab === "history") {
-        return addedFoods;
+        return applyFiltersAndSort(addedFoods);
       }
       if (activeTab === "recent") {
-        return applyOverrides(recentMealFoods);
+        return applyFiltersAndSort(applyOverrides(recentMealFoods));
       }
       if (activeTab === "search") {
-        return recentFoods;
+        return applyFiltersAndSort(recentFoods);
       }
-      return recentFoods;
+      return applyFiltersAndSort(recentFoods);
     }
     const merged = [...favorites, ...history, ...recentFoods, ...apiResults];
     const seen = new Set<string>();
@@ -430,7 +497,7 @@ const AddFood = () => {
       seen.add(food.id);
       return true;
     });
-    return applyOverrides(fuzzyFilter(unique, query));
+    return applyFiltersAndSort(applyOverrides(fuzzyFilter(unique, query)));
   }, [
     activeTab,
     addedFoods,
@@ -441,7 +508,31 @@ const AddFood = () => {
     recentFoods,
     recentMealFoods,
     searchQuery,
+    selectedTags,
+    sortBy,
   ]);
+
+  const goalPreset = useMemo(
+    () => getGoalPresetForSelection(selectedTags, sortBy),
+    [selectedTags, sortBy],
+  );
+
+  const handleGoalPresetChange = (presetId: FoodGoalPresetId | null) => {
+    if (!presetId) {
+      setSelectedTags([]);
+      setSortBy("relevance");
+      return;
+    }
+    const preset = FOOD_GOAL_PRESETS.find((entry) => entry.id === presetId);
+    if (!preset) return;
+    setSelectedTags(preset.tags);
+    setSortBy(preset.sortBy);
+  };
+
+  const handleClearFilters = () => {
+    setSelectedTags([]);
+    setSortBy("relevance");
+  };
 
 
   const resolveMealId = () => selectedMeal?.id ?? mealTypes.meals[0]?.id;
@@ -633,6 +724,16 @@ const AddFood = () => {
               if (searchQuery) {
                 nextParams.set("query", searchQuery);
               }
+              if (sortBy !== "relevance") {
+                nextParams.set("sort", sortBy);
+              } else {
+                nextParams.delete("sort");
+              }
+              if (selectedTags.length > 0) {
+                nextParams.set("tags", selectedTags.join(","));
+              } else {
+                nextParams.delete("tags");
+              }
               navigate(`/nutrition/add-food/scan?${nextParams.toString()}`);
             }}
           >
@@ -655,6 +756,17 @@ const AddFood = () => {
             searchStatus={searchStatus}
             searchError={searchError}
             foods={filteredFoods}
+            selectedTags={selectedTags}
+            onToggleTag={(tag) =>
+              setSelectedTags((prev) =>
+                prev.includes(tag) ? prev.filter((value) => value !== tag) : [...prev, tag],
+              )
+            }
+            onClearFilters={handleClearFilters}
+            goalPreset={goalPreset}
+            onGoalPresetChange={handleGoalPresetChange}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
             meal={selectedMeal}
             meals={mealTypes.meals}
             loggedFoodIds={loggedInMeal.ids}
@@ -693,6 +805,16 @@ const AddFood = () => {
                 } else {
                   nextParams.delete("query");
                 }
+                if (sortBy !== "relevance") {
+                  nextParams.set("sort", sortBy);
+                } else {
+                  nextParams.delete("sort");
+                }
+                if (selectedTags.length > 0) {
+                  nextParams.set("tags", selectedTags.join(","));
+                } else {
+                  nextParams.delete("tags");
+                }
                 navigate(`/nutrition/add-food/scan?${nextParams.toString()}`);
               })()
             }
@@ -708,6 +830,16 @@ const AddFood = () => {
                   nextParams.set("query", searchQuery);
                 } else {
                   nextParams.delete("query");
+                }
+                if (sortBy !== "relevance") {
+                  nextParams.set("sort", sortBy);
+                } else {
+                  nextParams.delete("sort");
+                }
+                if (selectedTags.length > 0) {
+                  nextParams.set("tags", selectedTags.join(","));
+                } else {
+                  nextParams.delete("tags");
                 }
                 navigate(`/nutrition/add-food/create?${nextParams.toString()}`);
               })()

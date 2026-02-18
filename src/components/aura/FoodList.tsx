@@ -6,6 +6,7 @@ import { useUserSettings } from "@/state";
 import { preloadFoodDetail } from "./FoodDetailSheet";
 import { FoodImage } from "./FoodImage";
 import { AnimatePresence, motion } from "framer-motion";
+import { deriveFoodTags, getFoodTagLabel } from "@/lib/foodClassification";
 
 export type FoodListProps = {
   foods: FoodItem[];
@@ -43,6 +44,7 @@ export const FoodList: FC<FoodListProps> = ({
             (food.id && loggedFoodIds?.has(food.id)) ||
             loggedFoodNames?.has(food.name.trim().toLowerCase());
           const canQuickRemove = isLogged && Boolean(onQuickRemove);
+          const tags = deriveFoodTags(food).slice(0, 3);
           return (
           <motion.div
             key={food.id}
@@ -98,6 +100,14 @@ export const FoodList: FC<FoodListProps> = ({
                         In {mealLabel}
                       </span>
                     ) : null}
+                    {tags.map((tag) => (
+                      <span
+                        key={`${food.id}:${tag}`}
+                        className="inline-flex items-center rounded-full border border-border/70 bg-secondary/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground"
+                      >
+                        {getFoodTagLabel(tag)}
+                      </span>
+                    ))}
                   </div>
                 </div>
               </button>

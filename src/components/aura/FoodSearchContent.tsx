@@ -3,6 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { FoodItem, Meal } from "@/data/mock";
 import { Barcode, CheckCircle2, Copy, Heart, PlusCircle, Search, X } from "lucide-react";
 import { FoodList } from "./FoodList.tsx";
@@ -10,6 +17,14 @@ import { MealIcon } from "./MealIcon";
 import { Pressable } from "./Pressable";
 import type { RefObject } from "react";
 import { cn } from "@/lib/utils";
+import {
+  FOOD_GOAL_PRESETS,
+  FOOD_TAG_DEFINITIONS,
+  getFoodTagLabel,
+  type FoodGoalPresetId,
+  type FoodSortOption,
+  type FoodTagId,
+} from "@/lib/foodClassification";
 
 type FoodSearchContentProps = {
   activeTab: "search" | "recent" | "liked" | "history";
@@ -20,6 +35,13 @@ type FoodSearchContentProps = {
   searchStatus: "idle" | "loading" | "error";
   searchError?: string | null;
   foods: FoodItem[];
+  selectedTags: FoodTagId[];
+  onToggleTag: (tag: FoodTagId) => void;
+  onClearFilters: () => void;
+  goalPreset: FoodGoalPresetId | null;
+  onGoalPresetChange: (preset: FoodGoalPresetId | null) => void;
+  sortBy: FoodSortOption;
+  onSortByChange: (sortBy: FoodSortOption) => void;
   meal: Meal | null;
   meals: Meal[];
   loggedFoodIds?: Set<string>;
@@ -46,6 +68,13 @@ export const FoodSearchContent = ({
   searchStatus,
   searchError,
   foods,
+  selectedTags,
+  onToggleTag,
+  onClearFilters,
+  goalPreset,
+  onGoalPresetChange,
+  sortBy,
+  onSortByChange,
   meal,
   meals,
   loggedFoodIds,
@@ -68,8 +97,26 @@ export const FoodSearchContent = ({
     hasQuery &&
     searchStatus !== "loading" &&
     foods.length === 0;
+  const hasActiveFilters = sortBy !== "relevance" || selectedTags.length > 0;
   const mode = activeTab === "search" ? "search" : "library";
   const tabsValue = mode === "search" ? libraryTab : activeTab;
+  const sortLabel =
+    sortBy === "relevance"
+      ? "Relevance"
+      : sortBy === "calories_asc"
+      ? "Calories low->high"
+      : sortBy === "calories_desc"
+      ? "Calories high->low"
+      : sortBy === "protein_desc"
+      ? "Protein high->low"
+      : sortBy === "protein_asc"
+      ? "Protein low->high"
+      : sortBy === "carbs_asc"
+      ? "Carbs low->high"
+      : "Carbs high->low";
+  const activePresetLabel = goalPreset
+    ? FOOD_GOAL_PRESETS.find((preset) => preset.id === goalPreset)?.label ?? null
+    : null;
 
   return (
     <div>
@@ -210,6 +257,99 @@ export const FoodSearchContent = ({
           {searchError}
         </p>
       )}
+
+      {mode === "search" ? (
+        <div className="mt-3 space-y-3 rounded-2xl border border-border/60 bg-card/60 p-3">
+          {hasActiveFilters ? (
+            <div className="rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs text-primary">
+              <span className="font-semibold">
+                {activePresetLabel ? `${activePresetLabel} mode` : "Custom filters"}
+              </span>
+              <span className="mx-1 text-primary/70">•</span>
+              <span>{selectedTags.length} tag{selectedTags.length === 1 ? "" : "s"}</span>
+              <span className="mx-1 text-primary/70">•</span>
+              <span>{sortLabel}</span>
+            </div>
+          ) : null}
+          <div className="flex items-center justify-between">
+            <Label className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+              Goal mode
+            </Label>
+            {hasActiveFilters ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 rounded-full px-3 text-[11px] font-semibold"
+                onClick={onClearFilters}
+              >
+                Clear filters
+              </Button>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {FOOD_GOAL_PRESETS.map((preset) => {
+              const isActive = goalPreset === preset.id;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => onGoalPresetChange(isActive ? null : preset.id)}
+                  aria-pressed={isActive}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                    isActive
+                      ? "border-primary/30 bg-primary/15 text-primary"
+                      : "border-border bg-background text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="grid grid-cols-[auto_1fr] items-center gap-2">
+            <Label className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+              Sort
+            </Label>
+            <Select value={sortBy} onValueChange={(value) => onSortByChange(value as FoodSortOption)}>
+              <SelectTrigger className="h-9 rounded-full border-border/70 bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="relevance">Relevance</SelectItem>
+                <SelectItem value="calories_asc">Calories (low to high)</SelectItem>
+                <SelectItem value="calories_desc">Calories (high to low)</SelectItem>
+                <SelectItem value="protein_desc">Protein (high to low)</SelectItem>
+                <SelectItem value="protein_asc">Protein (low to high)</SelectItem>
+                <SelectItem value="carbs_asc">Carbs (low to high)</SelectItem>
+                <SelectItem value="carbs_desc">Carbs (high to low)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {FOOD_TAG_DEFINITIONS.map((definition) => {
+              const isSelected = selectedTags.includes(definition.id);
+              return (
+                <button
+                  key={definition.id}
+                  type="button"
+                  onClick={() => onToggleTag(definition.id)}
+                  aria-pressed={isSelected}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                    isSelected
+                      ? "border-primary/30 bg-primary/15 text-primary"
+                      : "border-border bg-background text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {getFoodTagLabel(definition.id)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {mode === "search" ? (
         <div className="mt-4">

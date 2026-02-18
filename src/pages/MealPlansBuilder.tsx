@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   DndContext,
   KeyboardSensor,
@@ -32,7 +33,9 @@ import { cn } from "@/lib/utils";
 import { useMealPlans } from "@/hooks/useMealPlans";
 import type { FoodRecord } from "@/types/api";
 import {
+  ArrowLeft,
   CalendarDays,
+  ChevronRight,
   Copy,
   GripVertical,
   Minus,
@@ -42,7 +45,9 @@ import {
   Trash2,
   WandSparkles,
   ClipboardList,
+  Check,
 } from "lucide-react";
+import { toast } from "sonner";
 
 type WeekdayId = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -90,6 +95,15 @@ const SLOT_CHIP_CLASS: Record<MealPlanSlot, string> = {
 };
 
 const DEFAULT_TARGETS = { kcal: 2200, protein: 180, carbs: 220, fat: 70 };
+
+type ViewStep = "days" | "targets" | "meals";
+
+const PANEL_TRANSITION = {
+  initial: { opacity: 0, x: 24 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -16 },
+  transition: { duration: 0.25, ease: "easeOut" },
+};
 
 const WEEKDAYS: Array<{ id: WeekdayId; label: string; value: number }> = [
   { id: "sun", label: "Su", value: 0 },
@@ -217,6 +231,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
   } = useMealPlans();
 
   const [activeDayId, setActiveDayId] = useState<string | null>(null);
+  const [viewStep, setViewStep] = useState<ViewStep>("days");
   const [newDayName, setNewDayName] = useState("");
   const [targetDraft, setTargetDraft] = useState(DEFAULT_TARGETS);
   const [selectedWeekdays, setSelectedWeekdays] = useState<Record<WeekdayId, boolean>>({
@@ -365,7 +380,10 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
 
   const deleteActiveDay = () => {
     if (!activeDay || days.length <= 1) return;
-    void removeDay(activeDay.id);
+    void removeDay(activeDay.id).then(() => {
+      setViewStep("days");
+      setActiveDayId(null);
+    });
   };
 
   const duplicateActiveDay = () => {
@@ -584,15 +602,32 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
     );
   }
 
-  if (!activeDay) {
-    return null;
-  }
+  const kcalOver = activeDay ? dayTotals.kcal > activeDay.targets.kcal : false;
+  const proteinHit = activeDay ? dayTotals.protein >= activeDay.targets.protein : false;
 
-  const kcalOver = dayTotals.kcal > activeDay.targets.kcal;
-  const proteinHit = dayTotals.protein >= activeDay.targets.protein;
+  const goToTargets = (dayId: string) => {
+    setActiveDayId(dayId);
+    setViewStep("targets");
+    triggerLightFeedback();
+  };
+
+  const goToMeals = () => {
+    setViewStep("meals");
+    triggerLightFeedback();
+  };
+
+  const goBackToDays = () => {
+    setViewStep("days");
+    triggerLightFeedback();
+  };
+
+  const goBackToTargets = () => {
+    setViewStep("targets");
+    triggerLightFeedback();
+  };
 
   return (
-    <div className="mx-auto w-full max-w-[440px] px-5 pb-16">
+    <div className="mx-auto w-full max-w-[440px] px-5 pb-24">
       {showHeader && (
         <div className="rounded-[28px] border border-border/30 bg-gradient-to-br from-primary/15 via-primary/8 to-transparent px-6 py-8 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-widest text-primary/90">Meal plans</p>
@@ -605,289 +640,302 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
         </div>
       )}
 
-      {/* Group filter chips: All + groups (tags) */}
-      <div className={cn("overflow-x-auto pb-1 pt-1", showHeader ? "mt-6" : "mt-4")}>
-        <div className="flex gap-2 min-w-0">
-          <button
-            type="button"
-            onClick={() => setSelectedGroupFilterId(null)}
-            className={cn(
-              "shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition",
-              selectedGroupFilterId === null
-                ? "border-primary/50 bg-primary/15 text-primary"
-                : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-muted/60",
-            )}
+      <AnimatePresence mode="wait">
+        {/* ─── Step 1: Day manager ───────────────────────────────────────── */}
+        {viewStep === "days" && (
+          <motion.div
+            key="days"
+            className={cn(showHeader ? "mt-6" : "mt-4", "space-y-6")}
+            {...PANEL_TRANSITION}
           >
-            All
-          </button>
-          {groups.map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              onClick={() => setSelectedGroupFilterId(g.id)}
-              className={cn(
-                "shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition",
-                selectedGroupFilterId === g.id
-                  ? "border-primary/50 bg-primary/15 text-primary"
-                  : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-muted/60",
-              )}
-            >
-              {g.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <Card
-        className={cn(
-          "rounded-[28px] border border-border/40 bg-card/95 px-5 py-5 shadow-sm",
-          showHeader ? "mt-4" : "mt-4",
-        )}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-medium text-foreground">Plan days</p>
-          <div className="flex items-center gap-2">
-            <Button type="button" size="sm" variant="outline" className="rounded-full" onClick={duplicateActiveDay}>
-              <Copy className="mr-1.5 h-3.5 w-3.5" />
-              Duplicate
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="rounded-full"
-              onClick={deleteActiveDay}
-              disabled={days.length <= 1}
-            >
-              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              Delete
-            </Button>
-          </div>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {filteredDays.map((day) => (
-            <div
-              key={day.id}
-              className={cn(
-                "flex items-center gap-1 rounded-full border pr-1 transition",
-                day.id === activeDay.id
-                  ? "border-primary/50 bg-primary/15"
-                  : "border-border/50 bg-muted/40",
-              )}
-            >
-              <button
-                type="button"
-                onClick={() => setActiveDayId(day.id)}
-                className={cn(
-                  "rounded-full px-4 py-2 text-left text-xs font-medium transition",
-                  day.id === activeDay.id ? "text-primary" : "text-muted-foreground hover:bg-muted/60",
-                )}
-              >
-                {day.name}
-              </button>
-              {day.id === activeDay.id && (
-                <Button
+            <div className="overflow-x-auto pb-1 pt-1">
+              <div className="flex gap-2 min-w-0">
+                <button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 shrink-0 rounded-full text-primary hover:bg-primary/20"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveDayId(day.id);
-                    setEditingDayName(day.id);
-                    setDayNameDraft(day.name);
-                  }}
-                  aria-label="Rename day"
+                  onClick={() => setSelectedGroupFilterId(null)}
+                  className={cn(
+                    "shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition",
+                    selectedGroupFilterId === null
+                      ? "border-primary/50 bg-primary/15 text-primary"
+                      : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-muted/60",
+                  )}
                 >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-              )}
+                  All
+                </button>
+                {groups.map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setSelectedGroupFilterId(g.id)}
+                    className={cn(
+                      "shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition",
+                      selectedGroupFilterId === g.id
+                        ? "border-primary/50 bg-primary/15 text-primary"
+                        : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-muted/60",
+                    )}
+                  >
+                    {g.name}
+                  </button>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
-        <div className="mt-4 flex items-center gap-2">
-          <Input
-            value={newDayName}
-            onChange={(event) => setNewDayName(event.target.value)}
-            placeholder="New day (e.g. Training day 1)"
-            className="h-10 rounded-full border-border/50"
-            onKeyDown={(e) => e.key === "Enter" && createPlanDay()}
-          />
-          <Button type="button" className="rounded-full" onClick={createPlanDay}>
-            <Plus className="mr-1.5 h-4 w-4" />
-            Add
-          </Button>
-        </div>
-      </Card>
 
-      <Card className="mt-6 rounded-[28px] border border-border/40 bg-card/95 px-5 py-5 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium uppercase tracking-widest text-primary/90">Targets</p>
-            {editingDayName === activeDay.id ? (
-              <div className="mt-2 flex items-center gap-2">
-                <Input
-                  value={dayNameDraft}
-                  onChange={(e) => setDayNameDraft(e.target.value)}
-                  onBlur={commitRenameDay}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") commitRenameDay();
-                    if (e.key === "Escape") setEditingDayName(null);
-                  }}
-                  className="h-9 rounded-full border-border/50 text-sm"
-                  autoFocus
-                />
+            <Card className="rounded-[28px] border border-border/40 bg-card/95 px-5 py-5 shadow-sm">
+              <p className="text-sm font-medium text-foreground">Plan days</p>
+              <p className="mt-1 text-xs text-muted-foreground">Select a day to set targets and meals.</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {filteredDays.map((day) => (
+                  <div
+                    key={day.id}
+                    className={cn(
+                      "flex items-center gap-1 rounded-full border pr-1 transition",
+                      day.id === activeDayId
+                        ? "border-primary/50 bg-primary/15"
+                        : "border-border/50 bg-muted/40",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => goToTargets(day.id)}
+                      className={cn(
+                        "rounded-full px-4 py-2 text-left text-xs font-medium transition flex items-center gap-1.5",
+                        day.id === activeDayId ? "text-primary" : "text-muted-foreground hover:bg-muted/60",
+                      )}
+                    >
+                      {day.name}
+                      <ChevronRight className="h-3.5 w-3.5 opacity-70" />
+                    </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingDayName(day.id);
+                        setDayNameDraft(day.name);
+                      }}
+                      aria-label="Rename day"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
               </div>
-            ) : (
-              <div className="mt-2 flex items-center gap-2">
-                <p className="text-base font-semibold text-foreground">{activeDay.name}</p>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
-                  onClick={startRenameDay}
-                  aria-label="Rename day"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
+              {editingDayName && (
+                <div className="mt-3 flex items-center gap-2">
+                  <Input
+                    value={dayNameDraft}
+                    onChange={(e) => setDayNameDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitRenameDay();
+                      if (e.key === "Escape") setEditingDayName(null);
+                    }}
+                    className="h-9 rounded-full text-sm"
+                    placeholder="Day name"
+                  />
+                  <Button type="button" size="sm" className="rounded-full" onClick={commitRenameDay}>
+                    Save
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" className="rounded-full" onClick={() => setEditingDayName(null)}>
+                    Cancel
+                  </Button>
+                </div>
+              )}
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <Input
+                  value={newDayName}
+                  onChange={(event) => setNewDayName(event.target.value)}
+                  placeholder="New day (e.g. Training day 1)"
+                  className="h-10 flex-1 min-w-0 rounded-full border-border/50"
+                  onKeyDown={(e) => e.key === "Enter" && createPlanDay()}
+                />
+                <Button type="button" className="rounded-full shrink-0" onClick={createPlanDay}>
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  Add day
                 </Button>
               </div>
-            )}
-          </div>
-          <CalendarDays className="h-5 w-5 shrink-0 text-primary/70" />
-        </div>
-        <div className="mt-4 rounded-2xl border border-border/40 bg-muted/20 px-4 py-3">
-          <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Group</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <select
-              value={activeDay.groupId ?? ""}
-              onChange={(e) => assignDayToGroup(e.target.value || null)}
-              className="h-9 rounded-full border border-border/50 bg-background px-3 text-sm"
-            >
-              <option value="">No group</option>
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
-            <Input
-              value={newGroupName}
-              onChange={(e) => setNewGroupName(e.target.value)}
-              placeholder="New group name"
-              className="h-9 w-32 rounded-full border-border/50 text-sm"
-              onKeyDown={(e) => e.key === "Enter" && createGroupAndAssign()}
-            />
-            <Button type="button" size="sm" className="rounded-full" onClick={createGroupAndAssign}>
-              Add
-            </Button>
-          </div>
-        </div>
-        {/* Progress rings: kcal and protein vs targets */}
-        <div className="mt-4 flex flex-wrap items-center gap-6">
-          <div className="flex items-center gap-2">
-            <ProgressRing
-              value={Math.min(dayTotals.kcal / (activeDay.targets.kcal || 1), 1.5)}
-              maxDisplay={1}
-              strokeClassName={kcalOver ? "stroke-rose-500" : "stroke-primary"}
-              size={44}
-              strokeWidth={4}
-            />
-            <span className="text-xs font-medium text-muted-foreground">kcal</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <ProgressRing
-              value={Math.min(dayTotals.protein / (activeDay.targets.protein || 1), 1.5)}
-              maxDisplay={1}
-              strokeClassName={proteinHit ? "stroke-emerald-500" : "stroke-amber-500"}
-              size={44}
-              strokeWidth={4}
-            />
-            <span className="text-xs font-medium text-muted-foreground">protein</span>
-          </div>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <TargetField
-            label="Calories target"
-            suffix="kcal"
-            value={String(targetDraft.kcal)}
-            onChange={(value) => updateTargetsDraft("kcal", value)}
-            onBlur={() => commitTarget("kcal")}
-            placeholder="2200"
-          />
-          <TargetField
-            label="Protein target"
-            suffix="g"
-            value={String(targetDraft.protein)}
-            onChange={(value) => updateTargetsDraft("protein", value)}
-            onBlur={() => commitTarget("protein")}
-            placeholder="180"
-          />
-          <TargetField
-            label="Carbs target"
-            suffix="g"
-            value={String(targetDraft.carbs)}
-            onChange={(value) => updateTargetsDraft("carbs", value)}
-            onBlur={() => commitTarget("carbs")}
-            placeholder="220"
-          />
-          <TargetField
-            label="Fat target"
-            suffix="g"
-            value={String(targetDraft.fat)}
-            onChange={(value) => updateTargetsDraft("fat", value)}
-            onBlur={() => commitTarget("fat")}
-            placeholder="70"
-          />
-        </div>
-        <div className="mt-5 grid grid-cols-2 gap-2.5 text-xs">
-          <Badge
-            variant="secondary"
-            className={cn(
-              "justify-between rounded-full px-3 py-1.5",
-              kcalOver
-                ? "border border-rose-200 bg-rose-100 text-rose-700"
-                : "bg-secondary text-secondary-foreground",
-            )}
-          >
-            kcal <span>{Math.round(dayTotals.kcal)} / {activeDay.targets.kcal}</span>
-          </Badge>
-          <Badge
-            variant="secondary"
-            className={cn(
-              "justify-between rounded-full border px-3 py-1.5",
-              proteinHit
-                ? "border-emerald-200 bg-emerald-100 text-emerald-700"
-                : "border-amber-200 bg-amber-100 text-amber-700",
-            )}
-          >
-            protein <span>{Math.round(dayTotals.protein)}g / {activeDay.targets.protein}g</span>
-          </Badge>
-          <Badge variant="secondary" className="justify-between rounded-full px-3 py-1.5">
-            carbs <span>{Math.round(dayTotals.carbs)}g / {activeDay.targets.carbs}g</span>
-          </Badge>
-          <Badge variant="secondary" className="justify-between rounded-full px-3 py-1.5">
-            fat <span>{Math.round(dayTotals.fat)}g / {activeDay.targets.fat}g</span>
-          </Badge>
-        </div>
-        {proteinHit && !kcalOver && (
-          <p className="mt-3 text-xs font-medium text-emerald-600">
-            This day looks on target for your goals—use it as your reference when eating.
-          </p>
+              {activeDayId && (
+                <div className="mt-4 flex items-center gap-2 border-t border-border/40 pt-4">
+                  <Button type="button" size="sm" variant="outline" className="rounded-full" onClick={duplicateActiveDay}>
+                    <Copy className="mr-1.5 h-3.5 w-3.5" />
+                    Duplicate
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full text-destructive hover:text-destructive"
+                    onClick={deleteActiveDay}
+                    disabled={days.length <= 1}
+                  >
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                    Delete
+                  </Button>
+                  <select
+                    value={activeDay?.groupId ?? ""}
+                    onChange={(e) => activeDay && patchDay(activeDay.id, { groupId: e.target.value || null })}
+                    className="h-9 rounded-full border border-border/50 bg-background px-3 text-sm"
+                  >
+                    <option value="">No group</option>
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </Card>
+
+            {/* Week reference — subsection of day manager */}
+            <Card className="rounded-[28px] border border-border/40 bg-card/95 px-5 py-5 shadow-sm">
+              <div className="flex items-center gap-2">
+                <WandSparkles className="h-5 w-5 shrink-0 text-primary/70" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Reference for the week</p>
+                  <p className="text-xs text-muted-foreground">Which template to use on which day (doesn’t log food).</p>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {WEEKDAYS.map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => toggleWeekday(id)}
+                    className={cn(
+                      "rounded-full border px-4 py-2 text-xs font-medium transition",
+                      selectedWeekdays[id]
+                        ? "border-primary/50 bg-primary/15 text-primary"
+                        : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-muted/60",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <Button type="button" size="sm" className="rounded-full" onClick={applyActiveDayToWeekSelection} disabled={!activeDayId}>
+                  Set as reference
+                </Button>
+                {WEEKDAYS.map(({ id, label }) => (
+                  <Button key={`clear-${id}`} type="button" variant="ghost" size="sm" className="h-7 rounded-full px-3 text-[11px]" onClick={() => clearMappedWeekday(id)}>
+                    Clear {label}
+                  </Button>
+                ))}
+              </div>
+            </Card>
+          </motion.div>
         )}
-        <Button
-          type="button"
-          variant="outline"
-          className="mt-4 w-full rounded-full border-primary/40"
-          onClick={() => setLogPlanSheetOpen(true)}
-        >
-          <ClipboardList className="mr-2 h-4 w-4" />
-          Log this plan…
-        </Button>
-        <p className="mt-2 text-center text-[11px] text-muted-foreground">
-          Choose a date, then add meals as suggestions on the Nutrition page.
-        </p>
-      </Card>
+
+        {/* ─── Step 2: Targets (when a day is selected) ───────────────────── */}
+        {viewStep === "targets" && activeDay && (
+          <motion.div
+            key="targets"
+            className={cn(showHeader ? "mt-6" : "mt-4", "space-y-6")}
+            {...PANEL_TRANSITION}
+          >
+            <div className="flex items-center gap-3">
+              <Button type="button" variant="ghost" size="icon" className="rounded-full shrink-0" onClick={goBackToDays} aria-label="Back to days">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium uppercase tracking-widest text-primary/90">Targets</p>
+                <h2 className="text-lg font-display font-semibold text-foreground truncate">{activeDay.name}</h2>
+              </div>
+              <Button type="button" variant="ghost" size="icon" className="rounded-full shrink-0" onClick={duplicateActiveDay} aria-label="Duplicate day">
+                <Copy className="h-4 w-4" />
+              </Button>
+              <Button type="button" variant="ghost" size="icon" className="rounded-full shrink-0 text-destructive hover:text-destructive" onClick={deleteActiveDay} disabled={days.length <= 1} aria-label="Delete day">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <Card className="rounded-[28px] border border-border/40 bg-card/95 px-5 py-5 shadow-sm">
+              <div className="flex items-center justify-between gap-2">
+                <select
+                  value={activeDay.groupId ?? ""}
+                  onChange={(e) => assignDayToGroup(e.target.value || null)}
+                  className="h-9 rounded-full border border-border/50 bg-background px-3 text-sm"
+                >
+                  <option value="">No group</option>
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+                <CalendarDays className="h-5 w-5 shrink-0 text-primary/70" />
+              </div>
+                    <div className="mt-4 flex flex-wrap items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <ProgressRing
+                    value={Math.min(dayTotals.kcal / (activeDay.targets.kcal || 1), 1.5)}
+                    maxDisplay={1}
+                    strokeClassName={kcalOver ? "stroke-rose-500" : "stroke-primary"}
+                    size={44}
+                    strokeWidth={4}
+                  />
+                  <span className="text-xs font-medium text-muted-foreground">kcal</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ProgressRing
+                    value={Math.min(dayTotals.protein / (activeDay.targets.protein || 1), 1.5)}
+                    maxDisplay={1}
+                    strokeClassName={proteinHit ? "stroke-emerald-500" : "stroke-amber-500"}
+                    size={44}
+                    strokeWidth={4}
+                  />
+                  <span className="text-xs font-medium text-muted-foreground">protein</span>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <TargetField label="Calories target" suffix="kcal" value={String(targetDraft.kcal)} onChange={(v) => updateTargetsDraft("kcal", v)} onBlur={() => commitTarget("kcal")} placeholder="2200" />
+                <TargetField label="Protein target" suffix="g" value={String(targetDraft.protein)} onChange={(v) => updateTargetsDraft("protein", v)} onBlur={() => commitTarget("protein")} placeholder="180" />
+                <TargetField label="Carbs target" suffix="g" value={String(targetDraft.carbs)} onChange={(v) => updateTargetsDraft("carbs", v)} onBlur={() => commitTarget("carbs")} placeholder="220" />
+                <TargetField label="Fat target" suffix="g" value={String(targetDraft.fat)} onChange={(v) => updateTargetsDraft("fat", v)} onBlur={() => commitTarget("fat")} placeholder="70" />
+              </div>
+              <div className="mt-5 grid grid-cols-2 gap-2.5 text-xs">
+                <Badge variant="secondary" className={cn("justify-between rounded-full px-3 py-1.5", kcalOver ? "border border-rose-200 bg-rose-100 text-rose-700" : "bg-secondary text-secondary-foreground")}>
+                  kcal <span>{Math.round(dayTotals.kcal)} / {activeDay.targets.kcal}</span>
+                </Badge>
+                <Badge variant="secondary" className={cn("justify-between rounded-full border px-3 py-1.5", proteinHit ? "border-emerald-200 bg-emerald-100 text-emerald-700" : "border-amber-200 bg-amber-100 text-amber-700")}>
+                  protein <span>{Math.round(dayTotals.protein)}g / {activeDay.targets.protein}g</span>
+                </Badge>
+                <Badge variant="secondary" className="justify-between rounded-full px-3 py-1.5">carbs <span>{Math.round(dayTotals.carbs)}g / {activeDay.targets.carbs}g</span></Badge>
+                <Badge variant="secondary" className="justify-between rounded-full px-3 py-1.5">fat <span>{Math.round(dayTotals.fat)}g / {activeDay.targets.fat}g</span></Badge>
+              </div>
+              {proteinHit && !kcalOver && (
+                <p className="mt-3 text-xs font-medium text-emerald-600">This day looks on target—use it as your reference when eating.</p>
+              )}
+              <Button type="button" className="mt-6 w-full rounded-full" onClick={goToMeals}>
+                Next: Set up meals
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+              <Button type="button" variant="outline" className="mt-3 w-full rounded-full border-primary/40" onClick={() => setLogPlanSheetOpen(true)}>
+                <ClipboardList className="mr-2 h-4 w-4" />
+                Log this plan to a date…
+              </Button>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* ─── Step 3: Day of eating (meals) ────────────────────────────── */}
+        {viewStep === "meals" && activeDay && (
+          <motion.div
+            key="meals"
+            className={cn(showHeader ? "mt-6" : "mt-4", "pb-24")}
+            {...PANEL_TRANSITION}
+          >
+            <div className="flex items-center gap-3">
+              <Button type="button" variant="ghost" size="icon" className="rounded-full shrink-0" onClick={goBackToTargets} aria-label="Back to targets">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium uppercase tracking-widest text-primary/90">Day of eating</p>
+                <h2 className="text-lg font-display font-semibold text-foreground truncate">{activeDay.name}</h2>
+              </div>
+            </div>
+
+            <p className="mt-3 text-sm text-muted-foreground">
+              Add foods to each meal. Tap ± to change servings; drag to reorder.
+            </p>
 
       <Drawer open={logPlanSheetOpen} onOpenChange={setLogPlanSheetOpen}>
         <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6 overflow-hidden">
@@ -992,89 +1040,18 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
         </DrawerContent>
       </Drawer>
 
-      <Card className="mt-6 rounded-[28px] border border-border/40 bg-card/95 px-5 py-5 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-widest text-primary/90">Reference for the week</p>
-            <p className="mt-2 text-sm font-medium text-foreground">
-              Use <span className="text-primary">{activeDay.name}</span> as your guide for selected days
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              This only sets which template to reference—it doesn’t log food to your diary.
-            </p>
-          </div>
-          <WandSparkles className="h-5 w-5 shrink-0 text-primary/70" />
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {WEEKDAYS.map(({ id, label }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => toggleWeekday(id)}
-              className={cn(
-                "rounded-full border px-4 py-2 text-xs font-medium transition",
-                selectedWeekdays[id]
-                  ? "border-primary/50 bg-primary/15 text-primary"
-                  : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-muted/60",
-              )}
+            <motion.div
+              className="mt-6"
+              initial="hidden"
+              animate="show"
+              variants={{ show: { transition: { staggerChildren: 0.04 } } }}
             >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="mt-4 flex items-center justify-between gap-2">
-          <Button type="button" className="rounded-full" onClick={applyActiveDayToWeekSelection}>
-            Set as reference
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            This week:{" "}
-            {WEEKDAYS.map(({ value, label }) => {
-              const assigned = days.find(
-                (day) => day.id === weekAssignments.find((entry) => entry.weekday === value)?.dayId,
-              );
-              return (
-                <span key={value} className="mr-2 inline-flex items-center gap-1">
-                  <span className="font-semibold">{label}</span>
-                  <span>{assigned ? assigned.name : "—"}</span>
-                </span>
-              );
-            })}
-          </p>
-        </div>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {WEEKDAYS.map(({ id, label }) => (
-            <Button
-              key={`clear-${id}`}
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 rounded-full px-3 text-[11px]"
-              onClick={() => clearMappedWeekday(id)}
-            >
-              Clear {label}
-            </Button>
-          ))}
-        </div>
-      </Card>
-
-      <div className="mt-8">
-        <div className="rounded-[28px] border border-border/40 bg-card/80 px-5 py-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-widest text-primary/80">Day of eating</p>
-          <h2 className="mt-2 text-lg font-display font-semibold tracking-tight text-foreground">
-            {activeDay.name}
-          </h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            A guideline to hit your targets—use as a reference when planning meals. Drag to reorder; tap ± to change serving size.
-          </p>
-        </div>
-      </div>
-
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext
           items={dayMeals.map((meal) => `meal:${meal.id}`)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="mt-5 space-y-4">
+          <div className="space-y-4">
             {dayMeals.map((meal) => {
               const mealItems = mealItemsMap.get(meal.id) ?? [];
               const mealTotals = getTotals(mealItems);
@@ -1084,12 +1061,12 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
               }));
 
               return (
+                <motion.div key={meal.id} variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
                 <SortableMealCard
-                  key={meal.id}
                   id={`meal:${meal.id}`}
                   className={cn(
-                    "rounded-[24px] border border-border/40 bg-card/95 px-4 py-4 shadow-sm",
-                    pulseMealId === meal.id && "ring-2 ring-primary/30",
+                    "rounded-[24px] border border-border/40 bg-card/95 px-4 py-4 shadow-sm transition-shadow",
+                    pulseMealId === meal.id && "ring-2 ring-primary/30 shadow-md",
                   )}
                 >
                   <div className="flex items-center justify-between gap-3">
@@ -1249,11 +1226,13 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                     ))}
                   </div>
                 </SortableMealCard>
+                </motion.div>
               );
             })}
           </div>
         </SortableContext>
       </DndContext>
+            </motion.div>
 
       <Drawer open={foodSheetOpen} onOpenChange={setFoodSheetOpen}>
         <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6 overflow-hidden">
@@ -1326,6 +1305,24 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
           </div>
         </DrawerContent>
       </Drawer>
+
+            {/* Sticky Save — finalize day */}
+            <div className="sticky bottom-0 left-0 right-0 z-10 mt-6 flex justify-center pt-4 pb-6 bg-gradient-to-t from-background via-background/98 to-transparent">
+              <Button
+                type="button"
+                className="rounded-full shadow-lg min-w-[200px]"
+                onClick={() => {
+                  triggerLightFeedback();
+                  toast.success("Changes saved", { description: `${activeDay?.name ?? "Day"} is up to date.` });
+                }}
+              >
+                <Check className="mr-2 h-4 w-4" />
+                Save changes
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

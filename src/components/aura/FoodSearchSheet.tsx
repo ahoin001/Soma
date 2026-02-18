@@ -6,6 +6,7 @@ import { CreateFoodSheet } from "./CreateFoodSheet";
 import { FoodSearchContent } from "./FoodSearchContent";
 import { SHEET_FOOD_SEARCH_KEY } from "@/lib/storageKeys";
 import { useSheetManager } from "@/hooks/useSheetManager";
+import type { FoodGoalPresetId, FoodSortOption, FoodTagId } from "@/lib/foodClassification";
 
 type FoodSearchSheetProps = {
   open: boolean;
@@ -17,6 +18,13 @@ type FoodSearchSheetProps = {
   searchStatus: "idle" | "loading" | "error";
   searchError?: string | null;
   foods: FoodItem[];
+  selectedTags: FoodTagId[];
+  onToggleTag: (tag: FoodTagId) => void;
+  onClearFilters: () => void;
+  goalPreset: FoodGoalPresetId | null;
+  onGoalPresetChange: (preset: FoodGoalPresetId | null) => void;
+  sortBy: FoodSortOption;
+  onSortByChange: (sortBy: FoodSortOption) => void;
   meal: Meal | null;
   meals: Meal[];
   loggedFoodIds?: Set<string>;
@@ -45,6 +53,13 @@ export const FoodSearchSheet = ({
   searchStatus,
   searchError,
   foods,
+  selectedTags,
+  onToggleTag,
+  onClearFilters,
+  goalPreset,
+  onGoalPresetChange,
+  sortBy,
+  onSortByChange,
   meal,
   meals,
   loggedFoodIds,
@@ -65,6 +80,13 @@ export const FoodSearchSheet = ({
     searchStatus={searchStatus}
     searchError={searchError}
     foods={foods}
+    selectedTags={selectedTags}
+    onToggleTag={onToggleTag}
+    onClearFilters={onClearFilters}
+    goalPreset={goalPreset}
+    onGoalPresetChange={onGoalPresetChange}
+    sortBy={sortBy}
+    onSortByChange={onSortByChange}
     meal={meal}
     meals={meals}
     loggedFoodIds={loggedFoodIds}
@@ -86,6 +108,13 @@ const FoodSearchSheetContent = ({
   searchStatus,
   searchError,
   foods,
+  selectedTags,
+  onToggleTag,
+  onClearFilters,
+  goalPreset,
+  onGoalPresetChange,
+  sortBy,
+  onSortByChange,
   meal,
   meals,
   loggedFoodIds,
@@ -124,6 +153,13 @@ const FoodSearchSheetContent = ({
               searchStatus={searchStatus}
               searchError={searchError}
               foods={foods}
+              selectedTags={selectedTags}
+              onToggleTag={onToggleTag}
+              onClearFilters={onClearFilters}
+              goalPreset={goalPreset}
+              onGoalPresetChange={onGoalPresetChange}
+              sortBy={sortBy}
+              onSortByChange={onSortByChange}
               meal={meal}
               meals={meals}
               loggedFoodIds={loggedFoodIds}
