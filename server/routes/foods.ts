@@ -22,13 +22,21 @@ function escapeLikePattern(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+/** Return userId only if it's a valid UUID; otherwise null (avoids 500 when client sends e.g. "user_xxx"). */
+function parseUserId(header: string | undefined): string | null {
+  if (!header || typeof header !== "string") return null;
+  const trimmed = header.trim();
+  return UUID_REGEX.test(trimmed) ? trimmed : null;
+}
+
 router.get(
   "/search",
   asyncHandler(async (req: Request, res: Response) => {
     const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
     const limitRaw = typeof req.query.limit === "string" ? req.query.limit : "";
     const limit = Math.min(Math.max(Number(limitRaw || 20), 1), 50);
-    const userId = req.header("x-user-id") ?? null;
+    const userId = parseUserId(req.header("x-user-id"));
 
     const cacheKey = `foods:search:${userId ?? "anon"}:${q}:${limit}:local`;
     const cached = searchCache.get(cacheKey);
@@ -40,25 +48,27 @@ router.get(
 
     const likePattern = q ? `%${escapeLikePattern(q)}%` : "";
     const likePrefix = q ? escapeLikePattern(q) : "";
+    // userId is either null or a valid UUID (from parseUserId); never a non-UUID string
     const result = await query(
       `
       SELECT
-        f.*,
+        f.id, f.name, f.brand, f.barcode, f.source, f.is_global, f.created_by_user_id,
+        f.portion_label, f.portion_grams, f.kcal, f.carbs_g, f.protein_g, f.fat_g,
+        f.micronutrients, f.image_url, f.created_at, f.updated_at,
         b.name AS brand_name,
         b.logo_url AS brand_logo_url
       FROM foods f
       LEFT JOIN brands b ON b.id = f.brand_id
       WHERE
-        (f.is_global = true OR ($2::uuid IS NOT NULL AND f.created_by_user_id = $2))
-        AND ($1 = '' OR
-             (f.name ILIKE $4 ESCAPE E'\\' OR f.brand ILIKE $4 ESCAPE E'\\' OR b.name ILIKE $4 ESCAPE E'\\'))
+        (f.is_global = true OR (f.created_by_user_id IS NOT NULL AND f.created_by_user_id = $2::uuid))
+        AND ($1 = '' OR f.name ILIKE $4 OR f.brand ILIKE $4 OR b.name ILIKE $4)
       ORDER BY
         ($1 <> '' AND LOWER(f.name) LIKE LOWER($5) || '%') DESC,
         f.is_global DESC,
         f.name ASC
       LIMIT $3;
       `,
-      [q, userId, limit, likePattern, likePrefix],
+      [q, userId ?? null, limit, likePattern, likePrefix],
     );
 
     if (result.rows.length > 0 || !q) {
@@ -93,7 +103,7 @@ router.get(
   "/barcode/:code",
   asyncHandler(async (req: Request, res: Response) => {
     const code = req.params.code;
-    const userId = req.header("x-user-id") ?? null;
+    const userId = parseUserId(req.header("x-user-id"));
     const cacheKey = `foods:barcode:${userId ?? "anon"}:${code}`;
     const cached = searchCache.get(cacheKey);
     if (cached) {

@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { type FoodItem, type Meal } from "@/data/mock";
-import { searchFoods as searchFoodsApi } from "@/lib/api";
-import { recordToFoodItem } from "@/lib/foodMapping";
 import {
   AppShell,
   DashboardHeader,
@@ -151,6 +148,7 @@ const Nutrition = () => {
     const timer = window.setTimeout(() => setAdminQueryDebounced(t), 350);
     return () => window.clearTimeout(timer);
   }, [activeSheet, adminQuery]);
+
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showWelcome, setShowWelcome] = useState(false);
@@ -171,6 +169,8 @@ const Nutrition = () => {
     upsertOverride,
     updateFoodMaster,
     searchFoods,
+    error: catalogError,
+    isSearching,
   } = foodCatalog;
   const {
     summary,
@@ -192,6 +192,14 @@ const Nutrition = () => {
   const [goalSheetOpen, setGoalSheetOpen] = useState(false);
   const meals = mealTypes.meals;
   const { favorites, history, refreshLists, setFavorite } = foodCatalog;
+
+  // Drive the shared food catalog search from admin so admin uses the same pipeline as Add Food
+  useEffect(() => {
+    if (activeSheet === "admin") {
+      searchFoods(adminQueryDebounced);
+    }
+  }, [activeSheet, adminQueryDebounced, searchFoods]);
+
   const stepsSummary = useStepsSummary(selectedDate);
   const waterSummary = useWaterSummary(selectedDate);
   
@@ -220,17 +228,12 @@ const Nutrition = () => {
     }
   }, [apiResults, favorites, history, selectedFood]);
 
-  // Admin sheet: debounced search (limit 50) + client-side fuzzy re-rank for partial matches
-  const adminSearchQuery = useQuery({
-    queryKey: ["adminFoodSearch", adminQueryDebounced],
-    queryFn: async () => {
-      const res = await searchFoodsApi(adminQueryDebounced, 50, false);
-      return res.items.map(recordToFoodItem);
-    },
-    enabled: activeSheet === "admin" && adminQueryDebounced.length > 0,
-    staleTime: 60 * 1000,
-  });
-  const adminSearchResults = adminSearchQuery.data ?? [];
+  // Admin uses same search as Add Food: food catalog hook (same API, overrides, limit 20)
+  const adminSearchResults =
+    activeSheet === "admin" ? apiResults : [];
+  const adminSearchLoading =
+    activeSheet === "admin" && adminQueryDebounced.length > 0 && isSearching;
+  const adminSearchError = activeSheet === "admin" ? catalogError : null;
 
   const adminUniqueBrands = useMemo(() => {
     const brands = adminSearchResults
@@ -720,13 +723,19 @@ const Nutrition = () => {
                     </p>
                   </div>
                 )}
-                {adminQueryDebounced && adminSearchQuery.isLoading && (
+                {adminQueryDebounced && adminSearchLoading && (
                   <div className="flex flex-col items-center justify-center gap-3 py-12">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">Searching…</p>
                   </div>
                 )}
-                {adminQueryDebounced && !adminSearchQuery.isLoading && adminFilteredAndSorted.length === 0 && (
+                {adminQueryDebounced && adminSearchError && (
+                  <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+                    <p className="text-sm font-medium text-destructive">Search failed</p>
+                    <p className="text-xs text-muted-foreground max-w-[240px]">{adminSearchError}</p>
+                  </div>
+                )}
+                {adminQueryDebounced && !adminSearchLoading && !adminSearchError && adminFilteredAndSorted.length === 0 && (
                   <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
                     <p className="text-sm font-medium text-foreground/90">No foods found</p>
                     <p className="text-xs text-muted-foreground max-w-[240px]">
@@ -734,7 +743,7 @@ const Nutrition = () => {
                     </p>
                   </div>
                 )}
-                {adminQueryDebounced && !adminSearchQuery.isLoading && adminPaginated.map((food) => (
+                {adminQueryDebounced && !adminSearchLoading && !adminSearchError && adminPaginated.map((food) => (
                   <button
                     key={food.id}
                     type="button"
@@ -770,7 +779,7 @@ const Nutrition = () => {
                 ))}
               </div>
             </div>
-            {adminQueryDebounced && !adminSearchQuery.isLoading && adminFilteredAndSorted.length > 0 && (
+            {adminQueryDebounced && !adminSearchLoading && !adminSearchError && adminFilteredAndSorted.length > 0 && (
               <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/60 pt-3 shrink-0">
                 <Button
                   variant="outline"

@@ -120,6 +120,9 @@ app.use(
     _next: NextFunction,
   ) => {
     const error = err as Error & { status?: number };
+    if (error.status === undefined || error.status >= 500) {
+      console.error("[API error]", error.message, error.stack);
+    }
     res.status(error.status ?? 500).json({
       error: error.message ?? "Unexpected server error.",
     });
