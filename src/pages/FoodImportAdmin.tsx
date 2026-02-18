@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { createFood, fetchExternalSvgUrl } from "@/lib/api";
+import { createBrand, createFood, fetchExternalSvgUrl } from "@/lib/api";
 import { uploadImageFile } from "@/lib/uploadImage";
 import {
   parseBjsFoodHtml,
@@ -166,9 +166,17 @@ export default function FoodImportAdmin() {
 
     setSaving(true);
     try {
+      let brandId: string | undefined;
+      const brandName = form.brand.trim();
+      if (brandName) {
+        const { brand } = await createBrand({ name: brandName });
+        brandId = brand.id;
+      }
+
       await createFood({
         name,
-        brand: form.brand.trim() || undefined,
+        brand: brandName || undefined,
+        brandId,
         portionLabel: form.servingSize.trim() || undefined,
         portionGrams: form.servingGrams.trim() ? Number(form.servingGrams) : undefined,
         kcal,
@@ -179,10 +187,17 @@ export default function FoodImportAdmin() {
         imageUrl: form.imageUrl.trim() || undefined,
         source: "admin-import",
       });
+
       queryClient.invalidateQueries({ queryKey: queryKeys.foodFavorites });
       queryClient.invalidateQueries({ queryKey: queryKeys.foodHistory });
       queryClient.invalidateQueries({ queryKey: ["foodSearch"] });
       queryClient.invalidateQueries({ queryKey: ["nutrition"] });
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: queryKeys.foodFavorites }),
+        queryClient.refetchQueries({ queryKey: queryKeys.foodHistory }),
+        queryClient.refetchQueries({ queryKey: ["foodSearch"] }),
+        queryClient.refetchQueries({ queryKey: ["nutrition"] }),
+      ]);
       toast.success("Food saved to database.");
       setForm(null);
       setParsed(null);
