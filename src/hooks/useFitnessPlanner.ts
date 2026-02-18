@@ -22,6 +22,7 @@ import {
   removeFitnessRoutineExercise,
   renameFitnessRoutine,
   startFitnessSession,
+  swapSessionExercise as swapSessionExerciseApi,
   updateFitnessRoutineExercise,
 } from "@/lib/api";
 import { getFitnessPlannerCache, setFitnessPlannerCache } from "@/lib/fitnessCache";
@@ -32,7 +33,13 @@ export const useFitnessPlanner = () => {
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [history, setHistory] = useState<SessionHistory[]>([]);
   const [sessionExercises, setSessionExercises] = useState<
-    Array<{ id: string; exercise_id: number | null; exercise_name: string; item_order: number }>
+    Array<{
+      id: string;
+      exercise_id: number | null;
+      exercise_name: string;
+      item_order: number;
+      source_template_exercise_id?: string | null;
+    }>
   >([]);
   const [weightUnit, setWeightUnit] = useState<"lb" | "kg">("lb");
   const createTempId = () =>
@@ -478,7 +485,7 @@ export const useFitnessPlanner = () => {
   );
 
   const startSessionFromTemplate = useCallback(
-    async (name: string, exercises: string[]) => {
+    async (name: string, exercises: string[], templateId?: string) => {
       const previousSession = activeSession;
       const previousExercises = sessionExercises;
       const tempId = createTempId();
@@ -498,7 +505,11 @@ export const useFitnessPlanner = () => {
         sets: [],
       });
       try {
-        await startFitnessSession({ exercises });
+        if (templateId) {
+          await startFitnessSession({ templateId });
+        } else {
+          await startFitnessSession({ exercises });
+        }
         await refresh(true);
         return;
       } catch (error) {
@@ -507,7 +518,7 @@ export const useFitnessPlanner = () => {
         toast("Unable to start session", {
           action: {
             label: "Retry",
-            onClick: () => void startSessionFromTemplate(name, exercises),
+            onClick: () => void startSessionFromTemplate(name, exercises, templateId),
           },
         });
         void refresh(true);
@@ -515,6 +526,25 @@ export const useFitnessPlanner = () => {
       }
     },
     [activeSession, refresh, sessionExercises],
+  );
+
+  const swapExerciseInSession = useCallback(
+    async (sessionExerciseId: string, newExerciseId: number) => {
+      if (!activeSession?.id) return null;
+      try {
+        const result = await swapSessionExerciseApi(
+          activeSession.id,
+          sessionExerciseId,
+          newExerciseId,
+        );
+        await refresh(true);
+        return result.lastPerformed ?? null;
+      } catch {
+        toast.error("Could not swap exercise");
+        return null;
+      }
+    },
+    [activeSession?.id, refresh],
   );
 
   const logSet = useCallback(
@@ -668,6 +698,7 @@ export const useFitnessPlanner = () => {
       setActiveRoutineId,
       startSession,
       startSessionFromTemplate,
+      swapExerciseInSession,
       logSet,
       advanceExercise,
       finishSession,
@@ -690,6 +721,7 @@ export const useFitnessPlanner = () => {
       setActiveRoutineId,
       startSession,
       startSessionFromTemplate,
+      swapExerciseInSession,
       logSet,
       advanceExercise,
       finishSession,

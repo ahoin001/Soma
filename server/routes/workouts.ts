@@ -90,16 +90,49 @@ router.get(
       const exercises = templateIds.length
         ? await client.query(
             `
-            SELECT id, template_id, exercise_name, item_order
-            FROM workout_template_exercises
-            WHERE template_id = ANY($1::uuid[])
-            ORDER BY template_id, item_order ASC;
+            SELECT wte.id, wte.template_id, wte.exercise_id, wte.exercise_name, wte.item_order
+            FROM workout_template_exercises wte
+            WHERE wte.template_id = ANY($1::uuid[])
+            ORDER BY wte.template_id, wte.item_order ASC;
             `,
             [templateIds],
           )
         : { rows: [] };
 
-      return { plans: plans.rows, templates: templates.rows, exercises: exercises.rows };
+      const templateExerciseIds = exercises.rows.map((r: { id: string }) => r.id);
+      const alternates =
+        templateExerciseIds.length > 0
+          ? await client.query(
+              `
+              SELECT a.template_exercise_id, e.id AS exercise_id, e.name AS exercise_name
+              FROM workout_template_exercise_alternates a
+              JOIN exercises e ON e.id = a.alternate_exercise_id
+              WHERE a.template_exercise_id = ANY($1::uuid[])
+              ORDER BY a.template_exercise_id, a.sort_order, e.name;
+              `,
+              [templateExerciseIds],
+            )
+          : { rows: [] };
+
+      const alternatesByTemplateExercise = new Map<string, Array<{ id: number; name: string }>>();
+      for (const row of alternates.rows as Array<{ template_exercise_id: string; exercise_id: number; exercise_name: string }>) {
+        const list = alternatesByTemplateExercise.get(row.template_exercise_id) ?? [];
+        list.push({ id: row.exercise_id, name: row.exercise_name });
+        alternatesByTemplateExercise.set(row.template_exercise_id, list);
+      }
+
+      const exercisesWithAlternates = exercises.rows.map(
+        (r: { id: string; template_id: string; exercise_id: number | null; exercise_name: string; item_order: number }) => ({
+          id: r.id,
+          template_id: r.template_id,
+          exercise_id: r.exercise_id,
+          exercise_name: r.exercise_name,
+          item_order: r.item_order,
+          alternates: alternatesByTemplateExercise.get(r.id) ?? [],
+        }),
+      );
+
+      return { plans: plans.rows, templates: templates.rows, exercises: exercisesWithAlternates };
     });
 
     res.json(result);
@@ -303,6 +336,63 @@ router.put(
         `,
         params,
       );
+    });
+
+    res.json({ ok: true });
+  }),
+);
+
+router.put(
+  "/templates/:templateId/exercises/:templateExerciseId/alternates",
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = getUserId(req);
+    const { templateId, templateExerciseId } = req.params;
+    const payload = z
+      .object({ alternateExerciseIds: z.array(z.number().int().positive()) })
+      .parse(req.body);
+
+    await withTransaction(async (client) => {
+      const template = await client.query(
+        `
+        SELECT wt.id FROM workout_templates wt
+        JOIN workout_plans wp ON wp.id = wt.plan_id
+        WHERE wt.id = $1 AND wp.user_id = $2 AND wt.deleted_at IS NULL;
+        `,
+        [templateId, userId],
+      );
+      if (!template.rows[0]) {
+        const err = new Error("Template not found.");
+        (err as Error & { status?: number }).status = 404;
+        throw err;
+      }
+
+      const slot = await client.query(
+        `SELECT id FROM workout_template_exercises WHERE id = $1 AND template_id = $2;`,
+        [templateExerciseId, templateId],
+      );
+      if (!slot.rows[0]) {
+        const err = new Error("Template exercise not found.");
+        (err as Error & { status?: number }).status = 404;
+        throw err;
+      }
+
+      await client.query(
+        `DELETE FROM workout_template_exercise_alternates WHERE template_exercise_id = $1;`,
+        [templateExerciseId],
+      );
+
+      if (payload.alternateExerciseIds.length > 0) {
+        const values = payload.alternateExerciseIds
+          .map((_, i) => `($1, $${i + 2}, ${i})`)
+          .join(", ");
+        await client.query(
+          `
+          INSERT INTO workout_template_exercise_alternates (template_exercise_id, alternate_exercise_id, sort_order)
+          VALUES ${values};
+          `,
+          [templateExerciseId, ...payload.alternateExerciseIds],
+        );
+      }
     });
 
     res.json({ ok: true });

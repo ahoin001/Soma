@@ -2,6 +2,7 @@
  * Health guide articles for the Guides > Articles tab.
  */
 import type { ReactNode } from "react";
+import { CalorieCarbCyclingArticleBody } from "@/components/aura/articles/CalorieCarbCyclingArticleBody";
 import { FaceRoundnessArticleBody } from "@/components/aura/articles/FaceRoundnessArticleBody";
 import { RecompArticleBody } from "@/components/aura/articles/RecompArticleBody";
 import { SkinnyFatToLeanArticleBody } from "@/components/aura/articles/SkinnyFatToLeanArticleBody";
@@ -40,6 +41,14 @@ export const guideArticles: GuideArticle[] = [
       "Pros and cons, best practices, and a personalized calculator so you know exactly how to approach recomp—maintenance calories, protein, and training.",
     category: "Fitness",
     body: <RecompArticleBody />,
+  },
+  {
+    id: "calorie-carb-cycling",
+    title: "Calorie & Carb Cycling for Skinny Fat",
+    description:
+      "Eat more on training days and less on rest days. Science of GLUT4 and insulin sensitivity, plus a calculator for your own training/rest targets.",
+    category: "Fitness",
+    body: <CalorieCarbCyclingArticleBody />,
   },
   {
     id: "sodium-sharp-face",

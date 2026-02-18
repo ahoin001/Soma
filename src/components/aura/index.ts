@@ -22,6 +22,7 @@ export {
   type SessionSummaryStats,
 } from "./SessionSummaryScreen";
 export { ReplaceExerciseSheet } from "./ReplaceExerciseSheet";
+export { ExerciseSwapModal, type AlternateOption } from "./ExerciseSwapModal";
 export { DateSwitcher } from "./DateSwitcher";
 export { CreateFoodSheet } from "./CreateFoodSheet";
 export { EditLogSheet } from "./EditLogSheet";

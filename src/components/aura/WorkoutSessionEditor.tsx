@@ -14,6 +14,7 @@ import type {
 } from "@/types/fitness";
 import { GripVertical, MoreHorizontal, PencilLine, Plus, Trash2 } from "lucide-react";
 import { ReplaceExerciseSheet } from "./ReplaceExerciseSheet";
+import { ExerciseSwapModal } from "./ExerciseSwapModal";
 import { preloadExerciseGuide } from "./ExerciseGuideSheet";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -151,6 +152,10 @@ type ExerciseCardProps = {
   onSetComplete?: (exerciseId: string, setId: string) => void;
   /** Session mode: toggle completed state for a set */
   onToggleSetCompleted?: (exerciseId: string, setId: string, completed: boolean) => void;
+  /** Session mode: alternate exercises for this slot; when set, show "Swap" action */
+  alternates?: Array<{ id: number; name: string }>;
+  /** Session mode: open swap modal for this slot */
+  onOpenSwap?: () => void;
 };
 
 const SortableExercise = ({
@@ -220,6 +225,8 @@ const ExerciseCard = memo(
     restDurationSec = 90,
     onSetComplete,
     onToggleSetCompleted,
+    alternates,
+    onOpenSwap,
   }: ExerciseCardProps) => {
     const totalSets = (exercise.sets ?? []).length;
     const isSession = mode === "session";
@@ -256,22 +263,37 @@ const ExerciseCard = memo(
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <button
-                type="button"
-                className="text-left text-lg font-semibold text-white hover:text-emerald-200"
-                onClick={() => onOpenGuide?.({ id: exercise.id, name: exercise.name })}
-                onPointerDown={() => {
-                  if (exercise.name) {
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="text-left text-lg font-semibold text-white hover:text-emerald-200"
+                  onClick={() => onOpenGuide?.({ id: exercise.id, name: exercise.name })}
+                  onPointerDown={() => {
+                    if (exercise.name) {
+                      preloadExerciseGuide(exercise.name);
+                    }
+                  }}
+                  onMouseEnter={() => {
                     preloadExerciseGuide(exercise.name);
-                  }
-                }}
-                onMouseEnter={() => {
-                  preloadExerciseGuide(exercise.name);
-                }}
-                data-swipe-ignore
-              >
-                {exercise.name}
-              </button>
+                  }}
+                  data-swipe-ignore
+                >
+                  {exercise.name}
+                </button>
+                {isSession && alternates && alternates.length > 0 && onOpenSwap && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenSwap();
+                    }}
+                    className="shrink-0 rounded-full border border-white/20 bg-white/5 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-white/80 hover:bg-white/10 hover:text-white"
+                    data-swipe-ignore
+                  >
+                    Swap
+                  </button>
+                )}
+              </div>
               <div className="mt-1 flex items-center gap-2">
                 {isSession && totalSets > 0 ? (
                   <>
@@ -815,6 +837,7 @@ const getInitials = (value: string) =>
 export type SessionExerciseForPersist = {
   id: string;
   exercise_name: string;
+  source_template_exercise_id?: string | null;
 };
 
 type PersistSetPayload = Array<{
@@ -853,6 +876,11 @@ type WorkoutSessionEditorProps = {
   }) => void;
   /** Session mode: called when user chooses "Discard & leave" (end session without saving form, then parent navigates). */
   onDiscardAndLeave?: () => void;
+  /** Session mode: swap this slot to an alternate exercise; returns lastPerformed for pre-fill if needed. */
+  onSwapExercise?: (
+    sessionExerciseId: string,
+    newExerciseId: number,
+  ) => Promise<{ weightDisplay: number | null; unitUsed: string; reps: number | null } | null>;
 };
 
 export const WorkoutSessionEditor = ({
@@ -872,6 +900,7 @@ export const WorkoutSessionEditor = ({
   sessionStartedAt,
   onFinishWithStats,
   onDiscardAndLeave,
+  onSwapExercise,
 }: WorkoutSessionEditorProps) => {
   const { workoutDrafts, setWorkoutDraft, clearWorkoutDraft } = useAppStore();
   const [exercises, setExercises] = useState<EditableExercise[]>([]);
@@ -914,6 +943,13 @@ export const WorkoutSessionEditor = ({
   const [finishConfirmOpen, setFinishConfirmOpen] = useState(false);
   /** Session mode: confirm when user tries to leave the session (back or navigate away) */
   const [leaveSessionConfirmOpen, setLeaveSessionConfirmOpen] = useState(false);
+  /** Session mode: swap modal state */
+  const [swapModal, setSwapModal] = useState<{
+    sessionExerciseId: string;
+    originalName: string;
+    alternates: Array<{ id: number; name: string }>;
+  } | null>(null);
+  const [swapLoading, setSwapLoading] = useState(false);
   const sensors = useSensors(
     useSensor(SmartPointerSensor, {
       activationConstraint: { distance: 4 },
@@ -987,6 +1023,16 @@ export const WorkoutSessionEditor = ({
       }),
     );
   }, [workout, mode, workoutDrafts, buildSignature, clearWorkoutDraft]);
+
+  useEffect(() => {
+    if (mode !== "session" || !sessionExercises?.length || exercises.length !== sessionExercises.length) return;
+    setExercises((prev) =>
+      prev.map((ex, i) => ({
+        ...ex,
+        name: sessionExercises[i].exercise_name,
+      })),
+    );
+  }, [mode, sessionExercises]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1677,7 +1723,7 @@ export const WorkoutSessionEditor = ({
                   className="space-y-4 overscroll-contain"
                   style={{ overscrollBehaviorY: "contain" }}
                 >
-                  {exercises.map((exercise) => (
+                  {exercises.map((exercise, index) => (
                     <SortableExercise
                       key={exercise.id}
                       id={exercise.id}
@@ -1732,6 +1778,19 @@ export const WorkoutSessionEditor = ({
                         restDurationSec={restDuration}
                         onSetComplete={handleSetCompleteStartRest}
                         onToggleSetCompleted={handleToggleSetCompleted}
+                        alternates={workout?.exercises?.[index]?.alternates}
+                        onOpenSwap={
+                          mode === "session" &&
+                          sessionExercises?.[index] &&
+                          (workout?.exercises?.[index]?.alternates?.length ?? 0) > 0
+                            ? () =>
+                                setSwapModal({
+                                  sessionExerciseId: sessionExercises![index].id,
+                                  originalName: exercise.name,
+                                  alternates: workout!.exercises![index].alternates ?? [],
+                                })
+                            : undefined
+                        }
                       />
                     </SortableExercise>
                   ))}
@@ -1755,7 +1814,7 @@ export const WorkoutSessionEditor = ({
               animate={shouldAnimateList ? "show" : undefined}
               className="space-y-4"
             >
-              {exercises.map((exercise) => (
+              {exercises.map((exercise, index) => (
                 <ExerciseCard
                   key={exercise.id}
                   exercise={exercise}
@@ -1786,6 +1845,19 @@ export const WorkoutSessionEditor = ({
                   restDurationSec={restDuration}
                   onSetComplete={handleSetCompleteStartRest}
                   onToggleSetCompleted={handleToggleSetCompleted}
+                  alternates={workout?.exercises?.[index]?.alternates}
+                  onOpenSwap={
+                    mode === "session" &&
+                    sessionExercises?.[index] &&
+                    (workout?.exercises?.[index]?.alternates?.length ?? 0) > 0
+                      ? () =>
+                          setSwapModal({
+                            sessionExerciseId: sessionExercises![index].id,
+                            originalName: exercise.name,
+                            alternates: workout!.exercises![index].alternates ?? [],
+                          })
+                      : undefined
+                  }
                 />
               ))}
             </motion.div>
@@ -1814,6 +1886,26 @@ export const WorkoutSessionEditor = ({
           handleReplace(name);
         }}
       />
+
+      {mode === "session" && onSwapExercise && (
+        <ExerciseSwapModal
+          open={swapModal !== null}
+          onOpenChange={(open) => !open && setSwapModal(null)}
+          originalExerciseName={swapModal?.originalName ?? ""}
+          alternates={swapModal?.alternates ?? []}
+          onSelect={async (alt) => {
+            if (!swapModal) return;
+            setSwapLoading(true);
+            try {
+              await onSwapExercise(swapModal.sessionExerciseId, alt.id);
+            } finally {
+              setSwapLoading(false);
+              setSwapModal(null);
+            }
+          }}
+          isLoading={swapLoading}
+        />
+      )}
 
       <AlertDialog open={finishConfirmOpen} onOpenChange={setFinishConfirmOpen}>
         <AlertDialogContent className="border-white/10 bg-slate-950 text-white">

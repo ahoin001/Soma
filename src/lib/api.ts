@@ -929,8 +929,10 @@ export const fetchWorkoutPlans = async () =>
     exercises: Array<{
       id: string;
       template_id: string;
+      exercise_id?: number | null;
       exercise_name: string;
       item_order: number;
+      alternates?: Array<{ id: number; name: string }>;
     }>;
   }>("/api/workouts/plans");
 
@@ -1055,7 +1057,13 @@ export const removeFitnessRoutineExercise = async (
 export const fetchActiveFitnessSession = async () =>
   apiFetch<{
     session: { id: string; routine_id: string | null; started_at: string } | null;
-    exercises: Array<{ id: string; exercise_id: number | null; exercise_name: string; item_order: number }>;
+    exercises: Array<{
+      id: string;
+      exercise_id: number | null;
+      exercise_name: string;
+      item_order: number;
+      source_template_exercise_id?: string | null;
+    }>;
     sets: Array<{ id: string; session_exercise_id: string; weight: number; reps: number }>;
   }>("/api/fitness/sessions/active");
 
@@ -1079,6 +1087,19 @@ export const startFitnessSession = async (payload: {
   apiFetch<{ session: { id: string } }>("/api/fitness/sessions", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+
+export const swapSessionExercise = async (
+  sessionId: string,
+  sessionExerciseId: string,
+  newExerciseId: number,
+) =>
+  apiFetch<{
+    exercise: { id: string; exercise_id: number | null; exercise_name: string; item_order: number; source_template_exercise_id?: string | null; substituted_from_template_exercise_id?: string | null };
+    lastPerformed: { weightDisplay: number | null; unitUsed: string; reps: number | null } | null;
+  }>(`/api/fitness/sessions/${sessionId}/exercises/${sessionExerciseId}/swap`, {
+    method: "POST",
+    body: JSON.stringify({ newExerciseId }),
   });
 
 export const logFitnessSet = async (payload: {

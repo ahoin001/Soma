@@ -321,6 +321,33 @@ router.post(
             [sessionId, exerciseId, exercise.exercise_name, index],
           );
         }
+      } else if (payload.templateId) {
+        const templateExercises = await client.query(
+          `
+          SELECT id, exercise_id, exercise_name, item_order
+          FROM workout_template_exercises
+          WHERE template_id = $1
+          ORDER BY item_order ASC;
+          `,
+          [payload.templateId],
+        );
+        for (const [index, row] of templateExercises.rows.entries()) {
+          const exerciseId =
+            row.exercise_id ?? (await getOrCreateExerciseId(client, userId, row.exercise_name));
+          await client.query(
+            `
+            INSERT INTO session_exercises (
+              session_id,
+              exercise_id,
+              exercise_name,
+              item_order,
+              source_template_exercise_id
+            )
+            VALUES ($1, $2, $3, $4, $5);
+            `,
+            [sessionId, exerciseId, row.exercise_name, index, row.id],
+          );
+        }
       } else if (payload.exercises?.length) {
         for (const [index, name] of payload.exercises.entries()) {
           const exerciseId = await getOrCreateExerciseId(client, userId, name);
@@ -389,6 +416,96 @@ router.post(
       ),
     );
     res.status(201).json({ set: result.rows[0] });
+  }),
+);
+
+router.post(
+  "/sessions/:sessionId/exercises/:sessionExerciseId/swap",
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = getUserId(req);
+    const { sessionId, sessionExerciseId } = req.params;
+    const payload = z.object({ newExerciseId: z.number().int().positive() }).parse(req.body);
+
+    const result = await withTransaction(async (client) => {
+      const session = await client.query(
+        `
+        SELECT id FROM workout_sessions
+        WHERE id = $1 AND user_id = $2 AND ended_at IS NULL;
+        `,
+        [sessionId, userId],
+      );
+      if (!session.rows[0]) {
+        const err = new Error("Session not found or not active.");
+        (err as Error & { status?: number }).status = 404;
+        throw err;
+      }
+
+      const current = await client.query(
+        `
+        SELECT id, source_template_exercise_id
+        FROM session_exercises
+        WHERE id = $1 AND session_id = $2;
+        `,
+        [sessionExerciseId, sessionId],
+      );
+      if (!current.rows[0]) {
+        const err = new Error("Exercise slot not found.");
+        (err as Error & { status?: number }).status = 404;
+        throw err;
+      }
+
+      const exerciseRow = await client.query(
+        `SELECT id, name FROM exercises WHERE id = $1;`,
+        [payload.newExerciseId],
+      );
+      if (!exerciseRow.rows[0]) {
+        const err = new Error("Exercise not found.");
+        (err as Error & { status?: number }).status = 404;
+        throw err;
+      }
+      const newName = exerciseRow.rows[0].name as string;
+
+      await client.query(
+        `
+        UPDATE session_exercises
+        SET
+          exercise_id = $1,
+          exercise_name = $2,
+          substituted_from_template_exercise_id = COALESCE(substituted_from_template_exercise_id, source_template_exercise_id)
+        WHERE id = $3 AND session_id = $4;
+        `,
+        [payload.newExerciseId, newName, sessionExerciseId, sessionId],
+      );
+
+      const updated = await client.query(
+        `SELECT * FROM session_exercises WHERE id = $1;`,
+        [sessionExerciseId],
+      );
+
+      const lastSet = await client.query(
+        `
+        SELECT ss.weight_display, ss.unit_used, ss.reps
+        FROM session_sets ss
+        JOIN session_exercises se ON se.id = ss.session_exercise_id
+        JOIN workout_sessions ws ON ws.id = se.session_id
+        WHERE ws.user_id = $1 AND se.exercise_id = $2
+        ORDER BY ss.completed_at DESC
+        LIMIT 1;
+        `,
+        [userId, payload.newExerciseId],
+      );
+      const lastPerformed = lastSet.rows[0]
+        ? {
+            weightDisplay: lastSet.rows[0].weight_display != null ? Number(lastSet.rows[0].weight_display) : null,
+            unitUsed: (lastSet.rows[0].unit_used as string) || "lb",
+            reps: lastSet.rows[0].reps != null ? Number(lastSet.rows[0].reps) : null,
+          }
+        : null;
+
+      return { exercise: updated.rows[0], lastPerformed };
+    });
+
+    res.json(result);
   }),
 );
 

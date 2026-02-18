@@ -195,7 +195,8 @@ const WorkoutDetails = () => {
           try {
             await fitnessPlanner.startSessionFromTemplate(
               activeWorkout.name,
-              (activeWorkout.exercises ?? []).map((exercise) => exercise.name),
+              (activeWorkout.exercises ?? []).map((e) => e.name),
+              activeWorkout.id,
             );
             navigate(`/fitness/workouts/${activePlan.id}/${activeWorkout.id}/session`);
           } catch {
@@ -215,6 +216,9 @@ const WorkoutDetails = () => {
         }
         onPersistSets={
           editorMode === "session" ? fitnessPlanner.persistTemplateSessionSets : undefined
+        }
+        onSwapExercise={
+          editorMode === "session" ? fitnessPlanner.swapExerciseInSession : undefined
         }
         sessionStartedAt={
           editorMode === "session" ? fitnessPlanner.activeSession?.startedAt ?? undefined : undefined

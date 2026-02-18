@@ -13,6 +13,8 @@ export type ExerciseSearchStatus = "idle" | "loading" | "error";
 export type WorkoutExerciseEntry = {
   id: string;
   name: string;
+  /** Alternate exercises (per template slot) the user can swap to in-session */
+  alternates?: Array<{ id: number; name: string }>;
   note?: string;
   steps?: string[];
   guideUrl?: string;

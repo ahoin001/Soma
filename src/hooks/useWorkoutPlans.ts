@@ -69,6 +69,7 @@ export const useWorkoutPlans = () => {
           exercises: (exercisesByTemplate.get(template.id) ?? []).map((exercise) => ({
             id: exercise.id,
             name: exercise.exercise_name,
+            alternates: exercise.alternates ?? [],
           })),
         }));
         return { id: plan.id, name: plan.name, workouts };
