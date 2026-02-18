@@ -56,7 +56,7 @@ const parseEntry = (raw: unknown): MicroGoalEntry | null => {
   return null;
 };
 
-type StoredMicroState = {
+export type StoredMicroState = {
   slotKeys: string[];
   goals: Record<string, MicroGoalEntry>;
 };
@@ -104,7 +104,7 @@ export const loadMicroGoals = (): MicroGoals => {
   };
 };
 
-function saveMicroState({ slotKeys, goals }: StoredMicroState) {
+export function saveMicroState({ slotKeys, goals }: StoredMicroState) {
   if (typeof window === "undefined") return;
   const payload: Record<string, unknown> = { slotKeys };
   for (const [key, entry] of Object.entries(goals)) {
@@ -115,7 +115,15 @@ function saveMicroState({ slotKeys, goals }: StoredMicroState) {
 
 const saveMicroGoals = (goals: MicroGoals) => {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(MICRO_GOALS_KEY, JSON.stringify(goals));
+  const current = loadMicroState();
+  const merged: Record<string, unknown> = { slotKeys: current.slotKeys };
+  for (const [k, v] of Object.entries(current.goals)) {
+    if (v) merged[k] = v;
+  }
+  if (goals.fiber_g) merged.fiber_g = goals.fiber_g;
+  if (goals.sodium_mg) merged.sodium_mg = goals.sodium_mg;
+  if (goals.sugar_g) merged.sugar_g = goals.sugar_g;
+  window.localStorage.setItem(MICRO_GOALS_KEY, JSON.stringify(merged));
 };
 
 function MicroRow({
@@ -406,6 +414,38 @@ export const MacroMicroGoalSheet = ({
                     return opt ? `${opt.label} ${Math.round(cur)} ${opt.unit}` : null;
                   }).filter(Boolean).join(" · ") || "—"}
                 </p>
+                {/* Recommended preset: 2:1 potassium to sodium */}
+                <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
+                  <span className="text-[11px] font-medium text-foreground">
+                    Recommended: 2:1 potassium to sodium
+                  </span>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="h-7 rounded-full text-[11px] font-medium"
+                    onClick={() => {
+                      const { goals, slotKeys: currentSlotKeys } = loadMicroState();
+                      const sodiumEntry = goals.sodium_mg;
+                      const sodiumVal = sodiumEntry?.value ?? 2300;
+                      const potassiumVal = Math.round(2 * sodiumVal);
+                      const newGoals: Record<string, MicroGoalEntry> = {
+                        ...goals,
+                        potassium_mg: { value: potassiumVal, mode: "goal" },
+                      };
+                      saveMicroState({ slotKeys: currentSlotKeys, goals: newGoals });
+                      saveMicroGoals({
+                        fiber_g: newGoals.fiber_g ?? null,
+                        sodium_mg: newGoals.sodium_mg ?? null,
+                        sugar_g: newGoals.sugar_g ?? null,
+                      });
+                      setSlotValues((prev) => ({ ...prev, potassium_mg: String(potassiumVal) }));
+                      setSlotModes((prev) => ({ ...prev, potassium_mg: "goal" }));
+                    }}
+                  >
+                    Apply preset
+                  </Button>
+                </div>
                 <div className="space-y-4">
                   {slotKeys.map((slotKey, index) => {
                     const opt = MICRO_OPTIONS.find((o) => o.key === slotKey) ?? MICRO_OPTIONS[0];

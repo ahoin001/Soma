@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   DndContext,
   KeyboardSensor,
@@ -26,6 +27,7 @@ import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { ListEmptyState } from "@/components/ui/empty-state";
 import { fetchFoodHistory, searchFoods } from "@/lib/api";
+import { toLocalDate } from "@/lib/nutritionData";
 import { cn } from "@/lib/utils";
 import { useMealPlans } from "@/hooks/useMealPlans";
 import type { FoodRecord } from "@/types/api";
@@ -33,11 +35,13 @@ import {
   CalendarDays,
   Copy,
   GripVertical,
+  Minus,
   Pencil,
   Plus,
   Search,
   Trash2,
   WandSparkles,
+  ClipboardList,
 } from "lucide-react";
 
 type WeekdayId = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
@@ -127,6 +131,52 @@ const inferSlot = (food: DbFoodOption): MealPlanSlot => {
   return "balance";
 };
 
+/** Circular progress: value 0..maxDisplay (e.g. 1 = 100%). Ring fills proportionally. */
+const ProgressRing = ({
+  value,
+  maxDisplay = 1,
+  strokeClassName,
+  size = 40,
+  strokeWidth = 3,
+}: {
+  value: number;
+  maxDisplay?: number;
+  strokeClassName: string;
+  size?: number;
+  strokeWidth?: number;
+}) => {
+  const r = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * r;
+  const clamped = Math.max(0, Math.min(value, maxDisplay));
+  const progress = maxDisplay > 0 ? clamped / maxDisplay : 0;
+  const strokeDashoffset = circumference * (1 - progress);
+  return (
+    <svg width={size} height={size} className="shrink-0 -rotate-90" aria-hidden>
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        className="text-muted/30"
+      />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        strokeDasharray={circumference}
+        strokeDashoffset={strokeDashoffset}
+        strokeLinecap="round"
+        className={cn("transition-[stroke-dashoffset]", strokeClassName)}
+      />
+    </svg>
+  );
+};
+
 const triggerLightFeedback = () => {
   if (typeof window === "undefined") return;
   if (typeof window.navigator?.vibrate === "function") {
@@ -158,6 +208,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
     patchGroup,
     removeGroup,
     addItem,
+    patchItem,
     removeItem,
     reorderMeals,
     reorderItems,
@@ -189,6 +240,10 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
   const [dayNameDraft, setDayNameDraft] = useState("");
   const [newGroupName, setNewGroupName] = useState("");
   const searchRequestRef = useRef(0);
+  const navigate = useNavigate();
+  const [selectedGroupFilterId, setSelectedGroupFilterId] = useState<string | null>(null);
+  const [logPlanSheetOpen, setLogPlanSheetOpen] = useState(false);
+  const [logPlanCustomDate, setLogPlanCustomDate] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -203,10 +258,22 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
     }
   }, [days, activeDayId]);
 
+  const filteredDays = useMemo(() => {
+    if (!selectedGroupFilterId) return days;
+    return days.filter((day) => day.groupId === selectedGroupFilterId);
+  }, [days, selectedGroupFilterId]);
+
   const activeDay = useMemo(
     () => days.find((day) => day.id === activeDayId) ?? null,
     [days, activeDayId],
   );
+
+  useEffect(() => {
+    if (!filteredDays.length) return;
+    if (!activeDayId || !filteredDays.some((d) => d.id === activeDayId)) {
+      setActiveDayId(filteredDays[0].id);
+    }
+  }, [filteredDays, activeDayId]);
 
   const activeMealForFoodSheet = useMemo(
     () => meals.find((meal) => meal.id === foodSheetMealId) ?? null,
@@ -487,7 +554,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
               Build day templates
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Save meal-plan days you can follow when you need ideas.
+              Day templates to hit your targets—use as a reference when planning what to eat.
             </p>
           </div>
         )}
@@ -533,15 +600,48 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
             Build day templates
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Save meal-plan days you can follow when you need ideas.
+            Day templates to hit your targets—use as a reference when planning what to eat.
           </p>
         </div>
       )}
 
+      {/* Group filter chips: All + groups (tags) */}
+      <div className={cn("overflow-x-auto pb-1 pt-1", showHeader ? "mt-6" : "mt-4")}>
+        <div className="flex gap-2 min-w-0">
+          <button
+            type="button"
+            onClick={() => setSelectedGroupFilterId(null)}
+            className={cn(
+              "shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition",
+              selectedGroupFilterId === null
+                ? "border-primary/50 bg-primary/15 text-primary"
+                : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-muted/60",
+            )}
+          >
+            All
+          </button>
+          {groups.map((g) => (
+            <button
+              key={g.id}
+              type="button"
+              onClick={() => setSelectedGroupFilterId(g.id)}
+              className={cn(
+                "shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition",
+                selectedGroupFilterId === g.id
+                  ? "border-primary/50 bg-primary/15 text-primary"
+                  : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-muted/60",
+              )}
+            >
+              {g.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <Card
         className={cn(
           "rounded-[28px] border border-border/40 bg-card/95 px-5 py-5 shadow-sm",
-          showHeader ? "mt-8" : "mt-6",
+          showHeader ? "mt-4" : "mt-4",
         )}
       >
         <div className="flex items-center justify-between gap-3">
@@ -565,7 +665,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          {days.map((day) => (
+          {filteredDays.map((day) => (
             <div
               key={day.id}
               className={cn(
@@ -683,6 +783,29 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
             </Button>
           </div>
         </div>
+        {/* Progress rings: kcal and protein vs targets */}
+        <div className="mt-4 flex flex-wrap items-center gap-6">
+          <div className="flex items-center gap-2">
+            <ProgressRing
+              value={Math.min(dayTotals.kcal / (activeDay.targets.kcal || 1), 1.5)}
+              maxDisplay={1}
+              strokeClassName={kcalOver ? "stroke-rose-500" : "stroke-primary"}
+              size={44}
+              strokeWidth={4}
+            />
+            <span className="text-xs font-medium text-muted-foreground">kcal</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <ProgressRing
+              value={Math.min(dayTotals.protein / (activeDay.targets.protein || 1), 1.5)}
+              maxDisplay={1}
+              strokeClassName={proteinHit ? "stroke-emerald-500" : "stroke-amber-500"}
+              size={44}
+              strokeWidth={4}
+            />
+            <span className="text-xs font-medium text-muted-foreground">protein</span>
+          </div>
+        </div>
         <div className="mt-4 grid grid-cols-2 gap-3">
           <TargetField
             label="Calories target"
@@ -747,14 +870,137 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
             fat <span>{Math.round(dayTotals.fat)}g / {activeDay.targets.fat}g</span>
           </Badge>
         </div>
+        {proteinHit && !kcalOver && (
+          <p className="mt-3 text-xs font-medium text-emerald-600">
+            This day looks on target for your goals—use it as your reference when eating.
+          </p>
+        )}
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-4 w-full rounded-full border-primary/40"
+          onClick={() => setLogPlanSheetOpen(true)}
+        >
+          <ClipboardList className="mr-2 h-4 w-4" />
+          Log this plan…
+        </Button>
+        <p className="mt-2 text-center text-[11px] text-muted-foreground">
+          Choose a date, then add meals as suggestions on the Nutrition page.
+        </p>
       </Card>
+
+      <Drawer open={logPlanSheetOpen} onOpenChange={setLogPlanSheetOpen}>
+        <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6 overflow-hidden">
+          <div className="aura-sheet-scroll px-4 pb-4">
+            <div className="pt-1">
+              <p className="text-xs uppercase tracking-[0.2em] text-primary">Log this plan</p>
+              <h3 className="mt-1 text-lg font-display font-semibold text-foreground">
+                {activeDay?.name ?? "Plan"}
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Pick which day to log this plan to. You can then add meals one-by-one or log the full day.
+              </p>
+            </div>
+            <div className="mt-6 flex flex-col gap-3">
+              <Button
+                type="button"
+                className="w-full rounded-full"
+                onClick={() => {
+                  if (!activeDay) return;
+                  const planItems = items.filter((item) => dayMeals.some((m) => m.id === item.mealId));
+                  setLogPlanSheetOpen(false);
+                  navigate("/nutrition", {
+                    state: {
+                      suggestedPlanDay: {
+                        id: activeDay.id,
+                        name: activeDay.name,
+                        meals: dayMeals,
+                        items: planItems,
+                      },
+                      targetDate: toLocalDate(new Date()),
+                    },
+                  });
+                }}
+              >
+                Log to Today
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full rounded-full"
+                onClick={() => {
+                  if (!activeDay) return;
+                  const planItems = items.filter((item) => dayMeals.some((m) => m.id === item.mealId));
+                  const tomorrow = new Date();
+                  tomorrow.setDate(tomorrow.getDate() + 1);
+                  setLogPlanSheetOpen(false);
+                  navigate("/nutrition", {
+                    state: {
+                      suggestedPlanDay: {
+                        id: activeDay.id,
+                        name: activeDay.name,
+                        meals: dayMeals,
+                        items: planItems,
+                      },
+                      targetDate: toLocalDate(tomorrow),
+                    },
+                  });
+                }}
+              >
+                Log to Tomorrow
+              </Button>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="log-plan-date" className="text-xs font-medium text-muted-foreground">
+                  Or pick a date
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    id="log-plan-date"
+                    type="date"
+                    className="rounded-full flex-1"
+                    value={logPlanCustomDate}
+                    onChange={(e) => setLogPlanCustomDate(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="rounded-full shrink-0"
+                    disabled={!logPlanCustomDate}
+                    onClick={() => {
+                      if (!activeDay || !logPlanCustomDate) return;
+                      const planItems = items.filter((item) => dayMeals.some((m) => m.id === item.mealId));
+                      setLogPlanSheetOpen(false);
+                      navigate("/nutrition", {
+                        state: {
+                          suggestedPlanDay: {
+                            id: activeDay.id,
+                            name: activeDay.name,
+                            meals: dayMeals,
+                            items: planItems,
+                          },
+                          targetDate: logPlanCustomDate,
+                        },
+                      });
+                    }}
+                  >
+                    Log
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       <Card className="mt-6 rounded-[28px] border border-border/40 bg-card/95 px-5 py-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-medium uppercase tracking-widest text-primary/90">Quick apply to week</p>
+            <p className="text-xs font-medium uppercase tracking-widest text-primary/90">Reference for the week</p>
             <p className="mt-2 text-sm font-medium text-foreground">
-              Apply <span className="text-primary">{activeDay.name}</span> to selected days
+              Use <span className="text-primary">{activeDay.name}</span> as your guide for selected days
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              This only sets which template to reference—it doesn’t log food to your diary.
             </p>
           </div>
           <WandSparkles className="h-5 w-5 shrink-0 text-primary/70" />
@@ -778,10 +1024,10 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
         </div>
         <div className="mt-4 flex items-center justify-between gap-2">
           <Button type="button" className="rounded-full" onClick={applyActiveDayToWeekSelection}>
-            Apply selected
+            Set as reference
           </Button>
           <p className="text-xs text-muted-foreground">
-            Week map:{" "}
+            This week:{" "}
             {WEEKDAYS.map(({ value, label }) => {
               const assigned = days.find(
                 (day) => day.id === weekAssignments.find((entry) => entry.weekday === value)?.dayId,
@@ -789,7 +1035,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
               return (
                 <span key={value} className="mr-2 inline-flex items-center gap-1">
                   <span className="font-semibold">{label}</span>
-                  <span>{assigned ? assigned.name : "-"}</span>
+                  <span>{assigned ? assigned.name : "—"}</span>
                 </span>
               );
             })}
@@ -818,7 +1064,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
             {activeDay.name}
           </h2>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            Drag meals and foods to reorder. Foods are grouped by dominant macro.
+            A guideline to hit your targets—use as a reference when planning meals. Drag to reorder; tap ± to change serving size.
           </p>
         </div>
       </div>
@@ -902,7 +1148,9 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                         <p className="text-[11px] font-semibold uppercase tracking-[0.2em]">{slot.label}</p>
                         <div className="mt-2 space-y-1.5">
                           {slot.items.length === 0 ? (
-                            <p className="text-[11px] opacity-70">No items yet</p>
+                            <p className="text-[11px] opacity-70">
+                              No items yet. Add food to get closer to your targets.
+                            </p>
                           ) : (
                             <SortableContext
                               items={slot.items.map((item) => `item:${item.id}`)}
@@ -910,8 +1158,66 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                             >
                               {slot.items.map((item) => {
                                 const qty = item.quantity || 1;
+                                const step = 0.25;
+                                const setQuantity = (newQty: number) => {
+                                  const clamped = Math.max(0.25, Math.min(20, Math.round(newQty * 100) / 100));
+                                  void patchItem(item.id, { quantity: clamped });
+                                };
                                 return (
-                                  <SortableMealItemRow key={item.id} id={`item:${item.id}`}>
+                                  <SortableMealItemRow
+                                    key={item.id}
+                                    id={`item:${item.id}`}
+                                    rightContent={
+                                      <div className="flex shrink-0 items-center gap-0.5">
+                                        <div className="flex items-center rounded-full border border-border/60 bg-muted/40">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 rounded-l-full"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              triggerLightFeedback();
+                                              setQuantity(qty - step);
+                                            }}
+                                            aria-label="Decrease quantity"
+                                          >
+                                            <Minus className="h-3 w-3" />
+                                          </Button>
+                                          <span className="min-w-[2.25rem] py-0.5 text-center text-xs tabular-nums text-foreground">
+                                            {qty % 1 === 0 ? qty : qty.toFixed(2)}
+                                          </span>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 rounded-r-full"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              triggerLightFeedback();
+                                              setQuantity(qty + step);
+                                            }}
+                                            aria-label="Increase quantity"
+                                          >
+                                            <Plus className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7 shrink-0 rounded-full"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            removeMealItem(item.id);
+                                          }}
+                                          aria-label="Remove food"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </div>
+                                    }
+                                  >
                                     <div className="min-w-0 flex-1">
                                       <div className="flex flex-wrap items-center gap-1.5">
                                         <p className="truncate text-xs font-medium text-slate-700">
@@ -927,21 +1233,12 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                                         </span>
                                       </div>
                                       <p className="mt-0.5 text-[10px] text-slate-500">
-                                        Qty {qty.toFixed(2)} · {Math.round(item.kcal * qty)} cal · P{" "}
+                                        {Math.round(item.kcal * qty)} cal · P{" "}
                                         {Math.round(item.protein * qty)} · C{" "}
                                         {Math.round(item.carbs * qty)} · F{" "}
                                         {Math.round(item.fat * qty)}
                                       </p>
                                     </div>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7 shrink-0 rounded-full"
-                                      onClick={() => removeMealItem(item.id)}
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
                                   </SortableMealItemRow>
                                 );
                               })}
@@ -1097,9 +1394,11 @@ const SortableMealCard = ({
 const SortableMealItemRow = ({
   id,
   children,
+  rightContent,
 }: {
   id: string;
   children: ReactNode;
+  rightContent?: ReactNode;
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
   const style = { transform: CSS.Transform.toString(transform), transition };
@@ -1114,6 +1413,7 @@ const SortableMealItemRow = ({
         <GripVertical className="h-3.5 w-3.5 shrink-0 text-slate-500/70" />
         {children}
       </div>
+      {rightContent}
     </div>
   );
 };

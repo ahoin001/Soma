@@ -1,8 +1,15 @@
 import { useCallback, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Bell, User } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Bell, ListOrdered, Target, User } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import type { TopSource } from "@/lib/nutritionData";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { CalorieGauge } from "./CalorieGauge";
 import { ExperienceSwitch } from "./ExperienceSwitch";
@@ -23,9 +30,14 @@ type DashboardHeaderProps = {
   micros?: NutritionSummaryMicros | null;
   onProfileClick?: () => void;
   onBellClick?: () => void;
+  onGoalsClick?: () => void;
   onLongPressMacros?: () => void;
   animateTrigger?: number;
   variant?: DashboardHeaderVariant;
+  /** Top contributing foods per macro (carbs, protein, fat). Enables "sources" popover on cards. */
+  topSourcesMacro?: Record<string, TopSource[]>;
+  /** Top contributing foods per micro key (e.g. fiber_g, sodium_mg). Enables "sources" popover on micro cards. */
+  topSourcesMicro?: Record<string, TopSource[]>;
 };
 
 const LONG_PRESS_MS = 400;
@@ -40,13 +52,21 @@ export const DashboardHeader = ({
   micros,
   onProfileClick,
   onBellClick,
+  onGoalsClick,
   onLongPressMacros,
   animateTrigger,
   variant = "immersive",
+  topSourcesMacro,
+  topSourcesMicro,
 }: DashboardHeaderProps) => {
   const [showMicros, setShowMicros] = useState(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartRef = useRef<number | null>(null);
+  const navigate = useNavigate();
+  const handleGoalsClick = useCallback(() => {
+    if (onGoalsClick) onGoalsClick();
+    else navigate("/nutrition/goals");
+  }, [onGoalsClick, navigate]);
 
   const handlePointerDown = useCallback(() => {
     touchStartRef.current = Date.now();
@@ -136,16 +156,30 @@ export const DashboardHeader = ({
               <ExperienceSwitch />
             </div>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 rounded-full bg-card/90 text-foreground shadow-[0_10px_25px_rgba(15,23,42,0.12)] hover:bg-card"
-            onClick={onBellClick}
-            aria-label="Admin food import"
-          >
-            <Bell className="h-5 w-5" />
-          </Button>
+          <div className="flex flex-col items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 rounded-full bg-card/90 text-foreground shadow-[0_10px_25px_rgba(15,23,42,0.12)] hover:bg-card"
+              onClick={onBellClick}
+              aria-label="Admin food import"
+            >
+              <Bell className="h-5 w-5" />
+            </Button>
+            {macros.length > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 rounded-full bg-card/90 text-foreground shadow-[0_10px_25px_rgba(15,23,42,0.12)] hover:bg-card"
+                onClick={handleGoalsClick}
+                aria-label="Open nutrition goals"
+              >
+                <Target className="h-5 w-5" />
+              </Button>
+            )}
+          </div>
         </div>
 
         <motion.div
@@ -230,14 +264,59 @@ export const DashboardHeader = ({
           {macros.map((macro) => {
             const progress =
               macro.goal > 0 ? Math.min((macro.current / macro.goal) * 100, 100) : 0;
-            return (
+            const sources = topSourcesMacro?.[macro.key];
+            const hasSources = Array.isArray(sources) && sources.length > 0;
+            const card = (
               <div
                 key={macro.key}
-                className="rounded-[20px] border border-border/70 bg-card/90 px-3 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur"
+                className="relative rounded-[20px] border border-border/70 bg-card/90 px-3 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur"
               >
-                <p className="text-xs font-semibold text-foreground/85">
-                  {macro.label}
-                </p>
+                <div className="flex items-start justify-between gap-1">
+                  <p className="text-xs font-semibold text-foreground/85">
+                    {macro.label}
+                  </p>
+                  {hasSources && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="rounded p-0.5 text-muted-foreground hover:bg-primary/15 hover:text-primary"
+                          aria-label={`Top sources for ${macro.label}`}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onPointerUp={(e) => e.stopPropagation()}
+                        >
+                          <ListOrdered className="h-3.5 w-3.5" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-72 p-0"
+                        align="start"
+                        side="bottom"
+                        sideOffset={8}
+                      >
+                        <div className="border-b px-3 py-2">
+                          <p className="text-sm font-semibold text-foreground">
+                            Top sources — {macro.label}
+                          </p>
+                        </div>
+                        <ul className="max-h-64 overflow-y-auto py-1">
+                          {sources.map((s, i) => (
+                            <li
+                              key={`${s.name}-${i}`}
+                              className="flex items-center justify-between gap-2 px-3 py-2 text-xs"
+                            >
+                              <span className="truncate text-foreground">{s.name}</span>
+                              <span className="shrink-0 text-muted-foreground">
+                                {s.quantity > 1 ? `×${s.quantity} ` : ""}
+                                {Math.round(s.contribution * 10) / 10} {macro.unit}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
                 <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-secondary">
                   <div
                     className="h-full rounded-full bg-primary transition-all"
@@ -250,6 +329,7 @@ export const DashboardHeader = ({
                 </p>
               </div>
             );
+            return card;
           })}
         </div>
       </div>
@@ -282,17 +362,62 @@ export const DashboardHeader = ({
                       const safeGoal = entry.value > 0 ? entry.value : 1;
                       const percent = Math.min(100, (rounded / safeGoal) * 100);
                       const met = rounded >= entry.value;
+                      const microSources = topSourcesMicro?.[key];
+                      const hasMicroSources = Array.isArray(microSources) && microSources.length > 0;
                       return (
                         <div
                           key={key}
                           className={cn(
                             cardClass,
+                            "relative",
                             met && "border-primary/30 bg-primary/5",
                           )}
                         >
-                          <p className="text-xs font-semibold text-foreground/85">
-                            {opt.label}
-                          </p>
+                          <div className="flex items-start justify-between gap-1">
+                            <p className="text-xs font-semibold text-foreground/85">
+                              {opt.label}
+                            </p>
+                            {hasMicroSources && (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="rounded p-0.5 text-muted-foreground hover:bg-primary/15 hover:text-primary"
+                                    onClick={(e) => e.stopPropagation()}
+                                    aria-label={`Top sources for ${opt.label}`}
+                                  >
+                                    <ListOrdered className="h-3.5 w-3.5" />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  className="w-72 p-0"
+                                  align="start"
+                                  side="bottom"
+                                  sideOffset={8}
+                                >
+                                  <div className="border-b px-3 py-2">
+                                    <p className="text-sm font-semibold text-foreground">
+                                      Top sources — {opt.label}
+                                    </p>
+                                  </div>
+                                  <ul className="max-h-64 overflow-y-auto py-1">
+                                    {microSources.map((s, i) => (
+                                      <li
+                                        key={`${s.name}-${i}`}
+                                        className="flex items-center justify-between gap-2 px-3 py-2 text-xs"
+                                      >
+                                        <span className="truncate text-foreground">{s.name}</span>
+                                        <span className="shrink-0 text-muted-foreground">
+                                          {s.quantity > 1 ? `×${s.quantity} ` : ""}
+                                          {Math.round(s.contribution * 10) / 10} {opt.unit}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                          </div>
                           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-secondary">
                             <div
                               className="h-full rounded-full bg-primary transition-all"
@@ -328,20 +453,65 @@ export const DashboardHeader = ({
                         : isWarning
                           ? "text-amber-600 dark:text-amber-400"
                           : "text-primary";
+                      const microSources = topSourcesMicro?.[key];
+                      const hasMicroSources = Array.isArray(microSources) && microSources.length > 0;
                       return (
                         <div
                           key={key}
                           className={cn(
                             cardClass,
+                            "relative",
                             isGood && "border-primary/30 bg-primary/5",
                             isWarning && "border-amber-500/50 bg-amber-500/10",
                             isOver && "border-destructive/50 bg-destructive/10",
                           )}
                         >
                           <div className="flex items-center justify-between gap-1">
-                            <p className="text-xs font-semibold text-foreground/85">
-                              {opt.label}
-                            </p>
+                            <div className="flex items-start gap-1">
+                              <p className="text-xs font-semibold text-foreground/85">
+                                {opt.label}
+                              </p>
+                              {hasMicroSources && (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className="rounded p-0.5 text-muted-foreground hover:bg-primary/15 hover:text-primary"
+                                      onClick={(e) => e.stopPropagation()}
+                                      aria-label={`Top sources for ${opt.label}`}
+                                    >
+                                      <ListOrdered className="h-3.5 w-3.5" />
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    className="w-72 p-0"
+                                    align="start"
+                                    side="bottom"
+                                    sideOffset={8}
+                                  >
+                                    <div className="border-b px-3 py-2">
+                                      <p className="text-sm font-semibold text-foreground">
+                                        Top sources — {opt.label}
+                                      </p>
+                                    </div>
+                                    <ul className="max-h-64 overflow-y-auto py-1">
+                                      {microSources.map((s, i) => (
+                                        <li
+                                          key={`${s.name}-${i}`}
+                                          className="flex items-center justify-between gap-2 px-3 py-2 text-xs"
+                                        >
+                                          <span className="truncate text-foreground">{s.name}</span>
+                                          <span className="shrink-0 text-muted-foreground">
+                                            {s.quantity > 1 ? `×${s.quantity} ` : ""}
+                                            {Math.round(s.contribution * 10) / 10} {opt.unit}
+                                          </span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+                            </div>
                             <span className={cn("text-[10px] uppercase tracking-wide", statusColor)}>
                               {statusLabel}
                             </span>
@@ -360,11 +530,55 @@ export const DashboardHeader = ({
                         </div>
                       );
                     }
+                    const microSources = topSourcesMicro?.[key];
+                    const hasMicroSources = Array.isArray(microSources) && microSources.length > 0;
                     return (
-                      <div key={key} className={cardClass}>
-                        <p className="text-xs font-semibold text-foreground/85">
-                          {opt.label}
-                        </p>
+                      <div key={key} className={cn(cardClass, "relative")}>
+                        <div className="flex items-start justify-between gap-1">
+                          <p className="text-xs font-semibold text-foreground/85">
+                            {opt.label}
+                          </p>
+                          {hasMicroSources && (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="rounded p-0.5 text-muted-foreground hover:bg-primary/15 hover:text-primary"
+                                  onClick={(e) => e.stopPropagation()}
+                                  aria-label={`Top sources for ${opt.label}`}
+                                >
+                                  <ListOrdered className="h-3.5 w-3.5" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                className="w-72 p-0"
+                                align="start"
+                                side="bottom"
+                                sideOffset={8}
+                              >
+                                <div className="border-b px-3 py-2">
+                                  <p className="text-sm font-semibold text-foreground">
+                                    Top sources — {opt.label}
+                                  </p>
+                                </div>
+                                <ul className="max-h-64 overflow-y-auto py-1">
+                                  {microSources.map((s, i) => (
+                                    <li
+                                      key={`${s.name}-${i}`}
+                                      className="flex items-center justify-between gap-2 px-3 py-2 text-xs"
+                                    >
+                                      <span className="truncate text-foreground">{s.name}</span>
+                                      <span className="shrink-0 text-muted-foreground">
+                                        {s.quantity > 1 ? `×${s.quantity} ` : ""}
+                                        {Math.round(s.contribution * 10) / 10} {opt.unit}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </PopoverContent>
+                            </Popover>
+                          )}
+                        </div>
                         <p className="mt-2 text-[11px] text-muted-foreground">
                           <AnimatedNumber value={rounded} animateTrigger={animateTrigger} /> {opt.unit}
                         </p>
@@ -373,6 +587,20 @@ export const DashboardHeader = ({
                   });
                 })()}
               </div>
+              {/* Potassium:sodium ratio hint when both are tracked */}
+              {(() => {
+                const k = typeof micros?.potassium_mg === "number" ? micros.potassium_mg : 0;
+                const na = typeof micros?.sodium_mg === "number" ? micros.sodium_mg : 0;
+                if (na <= 0 || !Number.isFinite(k)) return null;
+                const ratio = k / na;
+                const target = 2;
+                const met = ratio >= target;
+                return (
+                  <p className="mt-2 text-center text-[10px] text-muted-foreground">
+                    K:Na {ratio.toFixed(1)}:1 {met ? "✓" : `(aim ${target}:1)`}
+                  </p>
+                );
+              })()}
             </motion.div>
           ) : null}
         </AnimatePresence>

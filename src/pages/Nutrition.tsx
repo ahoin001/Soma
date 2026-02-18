@@ -24,6 +24,14 @@ import { useStepsSummary, useWaterSummary } from "@/hooks/useTracking";
 import { useNutritionInsights } from "@/hooks/useNutritionInsights";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,8 +49,47 @@ import { Loader2, Sparkles } from "lucide-react";
 import { LoadingState } from "@/components/ui/loading-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SHEET_NUTRITION_KEY } from "@/lib/storageKeys";
-import { toLocalDate } from "@/lib/nutritionData";
+import {
+  getTopSourcesForMacro,
+  getTopSourcesForMicro,
+  toLocalDate,
+} from "@/lib/nutritionData";
+import { getMicroSlotKeys } from "@/components/aura/MacroMicroGoalSheet";
 import type { NutritionDraft } from "@/types/nutrition";
+import type { MealPlanItem, MealPlanMeal } from "@/hooks/useMealPlans";
+
+/** Build a FoodItem from a meal plan item so we can call logFood. */
+function planItemToFoodItem(item: MealPlanItem): FoodItem {
+  const macros = { carbs: item.carbs, protein: item.protein, fat: item.fat };
+  const totalCal = item.carbs * 4 + item.protein * 4 + item.fat * 9;
+  const macroPercent = totalCal
+    ? {
+        carbs: (item.carbs * 4 / totalCal) * 100,
+        protein: (item.protein * 4 / totalCal) * 100,
+        fat: (item.fat * 9 / totalCal) * 100,
+      }
+    : { carbs: 33.33, protein: 33.33, fat: 33.34 };
+  return {
+    id: item.foodId ?? `plan-${item.id}`,
+    name: item.foodName,
+    portion: "1 serving",
+    portionLabel: "1 serving",
+    kcal: item.kcal,
+    emoji: "🍽️",
+    macros,
+    macroPercent,
+  };
+}
+
+type SuggestedPlanDayState = {
+  suggestedPlanDay: {
+    id: string;
+    name: string;
+    meals: MealPlanMeal[];
+    items: MealPlanItem[];
+  };
+  targetDate?: string; // YYYY-MM-DD
+};
 
 type ActiveSheet = "detail" | "quick" | "edit" | "admin" | null;
 
@@ -153,6 +200,13 @@ const Nutrition = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showWelcome, setShowWelcome] = useState(false);
   const locationState = location.state as { justLoggedIn?: boolean; isNewUser?: boolean } | null;
+  const locationStateSuggested = location.state as SuggestedPlanDayState | null;
+  const suggestedPlanDay = locationStateSuggested?.suggestedPlanDay ?? null;
+  const targetDateFromState = locationStateSuggested?.targetDate ?? null;
+  const [dismissedPlanDayId, setDismissedPlanDayId] = useState<string | null>(null);
+  const [addingToMealLabel, setAddingToMealLabel] = useState<string | null>(null);
+  const [logFullDayConflictOpen, setLogFullDayConflictOpen] = useState(false);
+  const [isLoggingFullDay, setIsLoggingFullDay] = useState(false);
   const {
     nutrition,
     foodCatalog,
@@ -193,6 +247,23 @@ const Nutrition = () => {
   const meals = mealTypes.meals;
   const { favorites, history, refreshLists, setFavorite } = foodCatalog;
 
+  const topSourcesMacro = useMemo(
+    () => ({
+      carbs: getTopSourcesForMacro(logSections, "carbs"),
+      protein: getTopSourcesForMacro(logSections, "protein"),
+      fat: getTopSourcesForMacro(logSections, "fat"),
+    }),
+    [logSections]
+  );
+  const topSourcesMicro = useMemo(() => {
+    const keys = getMicroSlotKeys();
+    const out: Record<string, ReturnType<typeof getTopSourcesForMicro>> = {};
+    for (const key of keys) {
+      out[key] = getTopSourcesForMicro(logSections, key);
+    }
+    return out;
+  }, [logSections]);
+
   // Drive the shared food catalog search from admin so admin uses the same pipeline as Add Food
   useEffect(() => {
     if (activeSheet === "admin") {
@@ -216,6 +287,81 @@ const Nutrition = () => {
   useEffect(() => {
     void refreshLists();
   }, [refreshLists]);
+
+  // When arriving with a suggested plan day + targetDate, switch view to that date
+  useEffect(() => {
+    if (suggestedPlanDay && targetDateFromState) {
+      const [y, m, d] = targetDateFromState.split("-").map(Number);
+      if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
+        setSelectedDate(new Date(y, m - 1, d));
+      }
+    }
+  }, [suggestedPlanDay?.id, targetDateFromState, setSelectedDate]);
+
+  const addPlanMealToDiary = (planMeal: MealPlanMeal, mealTypeId: string) => {
+    if (!suggestedPlanDay) return;
+    const planItems = suggestedPlanDay.items.filter((i) => i.mealId === planMeal.id);
+    if (!planItems.length) return;
+    setAddingToMealLabel(planMeal.label);
+    for (const item of planItems) {
+      logFood(planItemToFoodItem(item), mealTypeId, { quantity: item.quantity });
+    }
+    setMealPulse(mealTypeId);
+    toast(`Added ${planItems.length} item(s) to ${planMeal.label}`, {
+      description: "Use Undo on the next toast if needed.",
+    });
+    setAddingToMealLabel(null);
+  };
+
+  const matchPlanMealToUserMeal = (planMealLabel: string): Meal | null => {
+    const lower = planMealLabel.toLowerCase();
+    return meals.find((m) => m.label.toLowerCase() === lower) ?? meals[0] ?? null;
+  };
+
+  const addAllPlanMealsToDiary = () => {
+    if (!suggestedPlanDay) return;
+    setIsLoggingFullDay(true);
+    let totalAdded = 0;
+    for (const planMeal of suggestedPlanDay.meals) {
+      const userMeal = matchPlanMealToUserMeal(planMeal.label);
+      if (!userMeal) continue;
+      const planItems = suggestedPlanDay.items.filter((i) => i.mealId === planMeal.id);
+      for (const item of planItems) {
+        logFood(planItemToFoodItem(item), userMeal.id, { quantity: item.quantity });
+        totalAdded += 1;
+      }
+    }
+    setMealPulse(meals[0]?.id ?? null);
+    toast(`Logged full day: ${totalAdded} item(s) from ${suggestedPlanDay.name}`, {
+      description: "Use Undo on the diary to remove items if needed.",
+    });
+    setIsLoggingFullDay(false);
+  };
+
+  const handleLogFullDayClick = () => {
+    const totalItems = logSections.flatMap((s) => s.items).length;
+    if (totalItems > 0) {
+      setLogFullDayConflictOpen(true);
+    } else {
+      addAllPlanMealsToDiary();
+    }
+  };
+
+  const handleLogFullDayAppend = () => {
+    setLogFullDayConflictOpen(false);
+    addAllPlanMealsToDiary();
+  };
+
+  const handleLogFullDayReplace = () => {
+    setLogFullDayConflictOpen(false);
+    const allItems = logSections.flatMap((s) => s.items);
+    for (const item of allItems) {
+      removeLogItem(item);
+    }
+    setTimeout(() => {
+      addAllPlanMealsToDiary();
+    }, 400);
+  };
 
   useEffect(() => {
     if (!selectedFood) return;
@@ -330,7 +476,7 @@ const Nutrition = () => {
     const params = new URLSearchParams();
     params.set("mealId", meal.id);
     params.set("returnTo", "/nutrition");
-    navigate(`/nutrition/add-food?${params.toString()}`);
+    navigate(`/nutrition/add-food?${params.toString()}`, { state: { meal } });
   };
 
   const openDetail = (food: FoodItem) => {
@@ -522,7 +668,13 @@ const Nutrition = () => {
             micros={micros}
             animateTrigger={animateTrigger}
             variant={headerStyle}
+            topSourcesMacro={topSourcesMacro}
+            topSourcesMicro={topSourcesMicro}
             onLongPressMacros={() => setGoalSheetOpen(true)}
+            onGoalsClick={() => {
+              closeSheets();
+              navigate("/nutrition/goals");
+            }}
             onProfileClick={
               isAdmin
                 ? () => {
@@ -539,6 +691,109 @@ const Nutrition = () => {
         </div>
 
         <DateSwitcher value={selectedDate} onChange={setSelectedDate} />
+
+        {suggestedPlanDay && dismissedPlanDayId !== suggestedPlanDay.id && (
+          <Card className="mt-4 rounded-[24px] border-primary/30 bg-primary/5 px-4 py-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                  Suggested from plan
+                </p>
+                <h3 className="mt-1 text-base font-semibold text-foreground">
+                  {suggestedPlanDay.name}
+                </h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Add meals below or log the full day in one tap.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                onClick={() => setDismissedPlanDayId(suggestedPlanDay.id)}
+                aria-label="Dismiss suggestions"
+              >
+                Dismiss
+              </Button>
+            </div>
+            <Button
+              type="button"
+              className="mt-4 w-full rounded-full"
+              disabled={isLoggingFullDay}
+              onClick={handleLogFullDayClick}
+            >
+              {isLoggingFullDay ? "Logging…" : "Log full day"}
+            </Button>
+            <div className="mt-4 space-y-3">
+              {suggestedPlanDay.meals.map((planMeal) => {
+                const planItems = suggestedPlanDay.items.filter((i) => i.mealId === planMeal.id);
+                const userMeal = matchPlanMealToUserMeal(planMeal.label);
+                const isAdding = addingToMealLabel === planMeal.label;
+                if (planItems.length === 0) return null;
+                return (
+                  <div
+                    key={planMeal.id}
+                    className="rounded-2xl border border-border/60 bg-card/80 px-3 py-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-foreground">
+                        {planMeal.emoji ?? "🍽️"} {planMeal.label}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="rounded-full"
+                        disabled={!userMeal || isAdding}
+                        onClick={() => userMeal && addPlanMealToDiary(planMeal, userMeal.id)}
+                      >
+                        {isAdding ? "Adding…" : `Add to ${planMeal.label}`}
+                      </Button>
+                    </div>
+                    <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+                      {planItems.slice(0, 5).map((item) => (
+                        <li key={item.id}>
+                          {item.foodName} × {(item.quantity || 1) % 1 === 0 ? item.quantity : (item.quantity || 1).toFixed(2)}
+                        </li>
+                      ))}
+                      {planItems.length > 5 && (
+                        <li>+{planItems.length - 5} more</li>
+                      )}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+
+        <Dialog open={logFullDayConflictOpen} onOpenChange={setLogFullDayConflictOpen}>
+          <DialogContent className="rounded-3xl border border-border/60 bg-card">
+            <DialogHeader>
+              <DialogTitle>This day already has logged items</DialogTitle>
+              <DialogDescription>
+                Append the plan to your existing log, or replace the day with only the plan&apos;s items?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2 sm:gap-2">
+              <Button
+                type="button"
+                className="rounded-full"
+                onClick={handleLogFullDayAppend}
+              >
+                Append
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full"
+                onClick={handleLogFullDayReplace}
+              >
+                Replace
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <MealLogPanel
           meals={meals}

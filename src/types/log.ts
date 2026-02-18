@@ -14,6 +14,8 @@ export type LogItem = {
     protein: number;
     fat: number;
   };
+  /** Per-serving micronutrients (e.g. fiber_g, sodium_mg). Contribution = value * quantity. */
+  micronutrients?: Record<string, number>;
   emoji: string;
   imageUrl?: string | null;
 };

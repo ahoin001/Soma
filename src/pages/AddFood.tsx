@@ -18,6 +18,7 @@ import { ensureUser, fetchMealEntries } from "@/lib/api";
 type ActiveTab = "search" | "recent" | "liked" | "history";
 
 type LocationState = {
+  meal?: Meal;
 };
 
 const AddFood = () => {
@@ -34,7 +35,10 @@ const AddFood = () => {
     initialTab === "search" ? "recent" : initialTab,
   );
   const [searchQuery, setSearchQuery] = useState(searchParams.get("query") ?? "");
-  const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
+  const [selectedMeal, setSelectedMeal] = useState<Meal | null>(() => {
+    const s = (location.state ?? {}) as LocationState;
+    return s.meal ?? null;
+  });
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [editItem, setEditItem] = useState<LogItem | null>(null);
   const [recentMealFoods, setRecentMealFoods] = useState<FoodItem[]>([]);
@@ -215,8 +219,9 @@ const AddFood = () => {
         setSelectedMeal(match);
         return;
       }
+      return;
     }
-    setSelectedMeal(meals[0]);
+    setSelectedMeal((prev) => prev ?? meals[0]);
   }, [mealTypes.meals, searchParams]);
 
   useEffect(() => {

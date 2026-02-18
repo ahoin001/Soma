@@ -35,7 +35,7 @@ const Guides = () => {
             {tab === "groceries"
               ? "Build your bag, create plan days, or read guides."
               : tab === "plans"
-                ? "Build day templates with goals and meal ideas."
+                ? "Day templates to hit your targets—reference when planning meals."
                 : "Quality health info, then build your days."}
           </p>
         </div>

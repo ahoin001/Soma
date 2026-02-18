@@ -1,6 +1,17 @@
 import type { Meal } from "@/data/mock";
 import type { MealEntryItemRecord, MealEntryRecord } from "@/types/api";
-import type { LogSection } from "@/types/log";
+import type { LogItem, LogSection } from "@/types/log";
+
+/** Coerce micronutrients from API (unknown) to Record<string, number> for per-serving values. */
+function toMicroRecord(raw: Record<string, unknown> | null | undefined): Record<string, number> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const out: Record<string, number> = {};
+  for (const [key, val] of Object.entries(raw)) {
+    const n = typeof val === "number" && Number.isFinite(val) ? val : Number(val);
+    if (Number.isFinite(n)) out[key] = n;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
 
 /**
  * Local date formatter for nutrition queries.
@@ -54,12 +65,15 @@ export const computeLogSections = (
     if (!target) continue;
     target.latestLoggedAt = Math.max(target.latestLoggedAt, loggedAt);
     target.section.items.push(
-      ...entryItems.map((item) => {
+      ...entryItems.map((item): LogItem => {
         const quantity = Number(item.quantity ?? 1) || 1;
         const kcal = Number(item.kcal ?? 0) || 0;
         const carbs = Number(item.carbs_g ?? 0) || 0;
         const protein = Number(item.protein_g ?? 0) || 0;
         const fat = Number(item.fat_g ?? 0) || 0;
+        const micronutrients = toMicroRecord(
+          item.micronutrients as Record<string, unknown> | null | undefined
+        );
         return {
           id: item.id,
           foodId: item.food_id ?? null,
@@ -72,6 +86,7 @@ export const computeLogSections = (
           portionGrams: item.portion_grams ?? null,
           kcal,
           macros: { carbs, protein, fat },
+          micronutrients,
           emoji: mealEmoji,
           imageUrl: item.image_url ?? null,
         };
@@ -121,3 +136,54 @@ export const computeTotals = (sections: LogSection[]) =>
       }, acc),
     { kcal: 0, carbs: 0, protein: 0, fat: 0 }
   );
+
+export type TopSource = { name: string; quantity: number; contribution: number };
+
+const MACRO_KEYS = ["carbs", "protein", "fat"] as const;
+type MacroKey = (typeof MACRO_KEYS)[number];
+
+/**
+ * Top sources for a macro (e.g. protein). Contribution = per-serving value × quantity.
+ * Sorted by contribution descending; max 10.
+ */
+export function getTopSourcesForMacro(
+  sections: LogSection[],
+  macroKey: MacroKey,
+  limit = 10
+): TopSource[] {
+  const list: TopSource[] = [];
+  for (const section of sections) {
+    for (const item of section.items) {
+      const qty = Number(item.quantity ?? 1) || 1;
+      const per = item.macros?.[macroKey] ?? 0;
+      const contribution = per * qty;
+      if (contribution <= 0) continue;
+      list.push({ name: item.name, quantity: qty, contribution });
+    }
+  }
+  list.sort((a, b) => b.contribution - a.contribution);
+  return list.slice(0, limit);
+}
+
+/**
+ * Top sources for a micronutrient (e.g. fiber_g, sodium_mg). Contribution = per-serving value × quantity.
+ * Sorted by contribution descending; max 10.
+ */
+export function getTopSourcesForMicro(
+  sections: LogSection[],
+  microKey: string,
+  limit = 10
+): TopSource[] {
+  const list: TopSource[] = [];
+  for (const section of sections) {
+    for (const item of section.items) {
+      const qty = Number(item.quantity ?? 1) || 1;
+      const per = item.micronutrients?.[microKey] ?? 0;
+      const contribution = per * qty;
+      if (contribution <= 0) continue;
+      list.push({ name: item.name, quantity: qty, contribution });
+    }
+  }
+  list.sort((a, b) => b.contribution - a.contribution);
+  return list.slice(0, limit);
+}

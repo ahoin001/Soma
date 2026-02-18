@@ -64,11 +64,21 @@ const activityOptions: Array<{
   },
 ];
 
+import {
+  getMicroState,
+  MICRO_OPTIONS,
+  saveMicroState,
+} from "@/components/aura/MacroMicroGoalSheet";
 import { GOALS_DRAFT_KEY, MICRO_GOALS_KEY } from "@/lib/storageKeys";
 import { cn } from "@/lib/utils";
 import { TrendingDown, TrendingUp } from "lucide-react";
-import { MicroGoalProgress } from "@/components/aura/MicroGoalProgress";
-import { MicroLimitBudget } from "@/components/aura/MicroLimitBudget";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const cmToImperial = (cm: number) => {
   const totalInches = cm / 2.54;
@@ -225,21 +235,6 @@ type MacroTargetsSectionProps = {
   onSave: () => void;
   disableSave: boolean;
   missingStats: string[];
-  advancedOpen: boolean;
-  onAdvancedOpenChange: (next: boolean) => void;
-  recommendations: MicroRecommendation[];
-  fiber: string;
-  fiberMode: MicroTargetMode;
-  onFiberChange: (v: string) => void;
-  onFiberModeChange: (m: MicroTargetMode) => void;
-  sodium: string;
-  sodiumMode: MicroTargetMode;
-  onSodiumChange: (v: string) => void;
-  onSodiumModeChange: (m: MicroTargetMode) => void;
-  sugar: string;
-  sugarMode: MicroTargetMode;
-  onSugarChange: (v: string) => void;
-  onSugarModeChange: (m: MicroTargetMode) => void;
 };
 
 function MicroRow({
@@ -314,21 +309,6 @@ const MacroTargetsSection = ({
   onSave,
   disableSave,
   missingStats,
-  advancedOpen,
-  onAdvancedOpenChange,
-  recommendations,
-  fiber,
-  fiberMode,
-  onFiberChange,
-  onFiberModeChange,
-  sodium,
-  sodiumMode,
-  onSodiumChange,
-  onSodiumModeChange,
-  sugar,
-  sugarMode,
-  onSugarChange,
-  onSugarModeChange,
 }: MacroTargetsSectionProps) => (
   <div>
     <p className="text-xs uppercase tracking-[0.2em] text-primary/75">Macro targets</p>
@@ -371,131 +351,6 @@ const MacroTargetsSection = ({
         />
       </div>
     </div>
-
-    <Collapsible
-      open={advancedOpen}
-      onOpenChange={onAdvancedOpenChange}
-      className="mt-4 rounded-[20px] border border-border/70 bg-secondary/40 p-3"
-    >
-      <CollapsibleTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          className="w-full justify-between rounded-full bg-card text-secondary-foreground hover:bg-card/80"
-        >
-          Advanced micronutrient recommendations
-          <ChevronDown
-            className={cn("h-4 w-4 transition-transform", advancedOpen && "rotate-180")}
-          />
-        </Button>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="mt-3 space-y-4">
-        <div className="space-y-2">
-          {recommendations.map((item) => (
-            <div
-              key={item.label}
-              className="rounded-2xl border border-border/60 bg-card/80 px-3 py-3"
-            >
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="text-sm font-medium text-foreground">{item.label}</p>
-                <p className="text-sm font-semibold text-primary">{item.value}</p>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">{item.note}</p>
-            </div>
-          ))}
-        </div>
-        {(fiber.trim() && Number.isFinite(Number(fiber))) ||
-         (sodium.trim() && Number.isFinite(Number(sodium))) ||
-         (sugar.trim() && Number.isFinite(Number(sugar))) ? (
-          <div className="space-y-3">
-            <p className="text-[11px] text-muted-foreground">
-              Your targets. Daily progress is shown on the Nutrition page.
-            </p>
-            {fiber.trim() && Number.isFinite(Number(fiber)) &&
-              (fiberMode === "goal" ? (
-                <MicroGoalProgress
-                  label="Fiber"
-                  current={0}
-                  goal={Number(fiber)}
-                  unit="g"
-                />
-              ) : (
-                <MicroLimitBudget
-                  label="Fiber"
-                  current={0}
-                  limit={Number(fiber)}
-                  unit="g"
-                />
-              ))}
-            {sodium.trim() && Number.isFinite(Number(sodium)) &&
-              (sodiumMode === "goal" ? (
-                <MicroGoalProgress
-                  label="Sodium"
-                  current={0}
-                  goal={Number(sodium)}
-                  unit="mg"
-                />
-              ) : (
-                <MicroLimitBudget
-                  label="Sodium"
-                  current={0}
-                  limit={Number(sodium)}
-                  unit="mg"
-                />
-              ))}
-            {sugar.trim() && Number.isFinite(Number(sugar)) &&
-              (sugarMode === "goal" ? (
-                <MicroGoalProgress
-                  label="Added sugar"
-                  current={0}
-                  goal={Number(sugar)}
-                  unit="g"
-                />
-              ) : (
-                <MicroLimitBudget
-                  label="Added sugar"
-                  current={0}
-                  limit={Number(sugar)}
-                  unit="g"
-                />
-              ))}
-          </div>
-        ) : null}
-        <div className="rounded-xl border border-border/60 bg-card/70 px-3 py-3">
-          <p className="mb-3 text-xs font-semibold text-muted-foreground">Optional: set your own targets</p>
-          <div className="space-y-3">
-            <MicroRow
-              id="fiber"
-              label="Fiber"
-              unit="g"
-              value={fiber}
-              onChange={onFiberChange}
-              mode={fiberMode}
-              onModeChange={onFiberModeChange}
-            />
-            <MicroRow
-              id="sodium"
-              label="Sodium"
-              unit="mg"
-              value={sodium}
-              onChange={onSodiumChange}
-              mode={sodiumMode}
-              onModeChange={onSodiumModeChange}
-            />
-            <MicroRow
-              id="sugar"
-              label="Added sugar"
-              unit="g"
-              value={sugar}
-              onChange={onSugarChange}
-              mode={sugarMode}
-              onModeChange={onSugarModeChange}
-            />
-          </div>
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-
     <Button
       type="button"
       className="mt-4 w-full rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
@@ -537,6 +392,21 @@ const Goals = () => {
   const [sodiumMode, setSodiumMode] = useState<MicroTargetMode>("limit");
   const [sugar, setSugar] = useState("");
   const [sugarMode, setSugarMode] = useState<MicroTargetMode>("limit");
+  const [microSlotKeys, setMicroSlotKeys] = useState<string[]>(() => {
+    const ms = getMicroState();
+    return ms.slotKeys.length >= 3 ? ms.slotKeys : ["fiber_g", "sodium_mg", "sugar_g"];
+  });
+  const [microSlotData, setMicroSlotData] = useState<Record<string, { value: string; mode: MicroTargetMode }>>(() => {
+    const ms = getMicroState();
+    const out: Record<string, { value: string; mode: MicroTargetMode }> = {};
+    const keys = ms.slotKeys.length >= 3 ? ms.slotKeys : ["fiber_g", "sodium_mg", "sugar_g"];
+    for (const key of keys) {
+      const e = ms.goals[key];
+      if (e) out[key] = { value: String(e.value), mode: e.mode };
+    }
+    return out;
+  });
+  const [microSectionOpen, setMicroSectionOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const draftTimerRef = useRef<number | null>(null);
   const { nutrition, userProfile, setUserProfile } = useAppStore();
@@ -574,6 +444,7 @@ const Goals = () => {
       macrosTouched: boolean;
       optionalOpen: boolean;
       advancedNutritionOpen: boolean;
+      microSectionOpen: boolean;
       fiber: string;
       fiberMode: MicroTargetMode;
       sodium: string;
@@ -593,7 +464,7 @@ const Goals = () => {
       }
     }
 
-    if (!hasSavedProfile && Object.keys(draft).length > 0) {
+    if (Object.keys(draft).length > 0) {
       if (draft.goalType) setGoalType(draft.goalType);
       if (draft.sex) setSex(draft.sex);
       if (draft.age !== undefined) setAge(draft.age);
@@ -616,47 +487,57 @@ const Goals = () => {
       if (draft.macrosTouched !== undefined) setMacrosTouched(draft.macrosTouched);
       if (draft.optionalOpen !== undefined) setOptionalOpen(draft.optionalOpen);
       if (draft.advancedNutritionOpen !== undefined) setAdvancedNutritionOpen(draft.advancedNutritionOpen);
+      if (draft.microSectionOpen !== undefined) setMicroSectionOpen(draft.microSectionOpen);
       if (draft.fiber !== undefined) setFiber(draft.fiber);
       if (draft.fiberMode !== undefined) setFiberMode(draft.fiberMode);
       if (draft.sodium !== undefined) setSodium(draft.sodium);
       if (draft.sodiumMode !== undefined) setSodiumMode(draft.sodiumMode);
       if (draft.sugar !== undefined) setSugar(draft.sugar);
       if (draft.sugarMode !== undefined) setSugarMode(draft.sugarMode);
-      setHydrated(true);
-      return;
+    } else {
+      const microGoals = loadMicroGoals();
+      if (microGoals.fiber_g) {
+        setFiber(String(microGoals.fiber_g.value));
+        setFiberMode(microGoals.fiber_g.mode);
+      }
+      if (microGoals.sodium_mg) {
+        setSodium(String(microGoals.sodium_mg.value));
+        setSodiumMode(microGoals.sodium_mg.mode);
+      }
+      if (microGoals.sugar_g) {
+        setSugar(String(microGoals.sugar_g.value));
+        setSugarMode(microGoals.sugar_g.mode);
+      }
+      if (userProfile.sex) setSex(userProfile.sex);
+      if (userProfile.age) setAge(String(userProfile.age));
+      if (userProfile.activity) setActivity(userProfile.activity);
+      if (userProfile.goal) setGoalType(userProfile.goal);
+      if (Number.isFinite(userProfile.heightCm)) {
+        const cmValue = Math.round(userProfile.heightCm ?? 0);
+        setHeightCm(String(cmValue));
+        const { feet, inches } = cmToImperial(cmValue);
+        setHeightFt(String(feet));
+        setHeightIn(String(inches));
+        setHeightUnit("metric");
+      }
+      if (Number.isFinite(userProfile.weightKg)) {
+        const kgValue = Number(userProfile.weightKg ?? 0);
+        setWeightKg(String(Math.round(kgValue)));
+        setWeightLb(String(Math.round(kgValue / 0.453592)));
+      }
     }
 
-    const microGoals = loadMicroGoals();
-    if (microGoals.fiber_g) {
-      setFiber(String(microGoals.fiber_g.value));
-      setFiberMode(microGoals.fiber_g.mode);
-    }
-    if (microGoals.sodium_mg) {
-      setSodium(String(microGoals.sodium_mg.value));
-      setSodiumMode(microGoals.sodium_mg.mode);
-    }
-    if (microGoals.sugar_g) {
-      setSugar(String(microGoals.sugar_g.value));
-      setSugarMode(microGoals.sugar_g.mode);
-    }
-
-    if (userProfile.sex) setSex(userProfile.sex);
-    if (userProfile.age) setAge(String(userProfile.age));
-    if (userProfile.activity) setActivity(userProfile.activity);
-    if (userProfile.goal) setGoalType(userProfile.goal);
-    if (Number.isFinite(userProfile.heightCm)) {
-      const cmValue = Math.round(userProfile.heightCm ?? 0);
-      setHeightCm(String(cmValue));
-      const { feet, inches } = cmToImperial(cmValue);
-      setHeightFt(String(feet));
-      setHeightIn(String(inches));
-      setHeightUnit(draft.heightUnit ?? "metric");
-    }
-    if (Number.isFinite(userProfile.weightKg)) {
-      const kgValue = Number(userProfile.weightKg ?? 0);
-      setWeightKg(String(Math.round(kgValue)));
-      setWeightLb(String(Math.round(kgValue / 0.453592)));
-    }
+    const ms = getMicroState();
+    setMicroSlotKeys(ms.slotKeys.length >= 3 ? ms.slotKeys : ["fiber_g", "sodium_mg", "sugar_g"]);
+    setMicroSlotData((prev) => {
+      const next = { ...prev };
+      const keys = ms.slotKeys.length >= 3 ? ms.slotKeys : ["fiber_g", "sodium_mg", "sugar_g"];
+      for (const key of keys) {
+        const e = ms.goals[key];
+        next[key] = e ? { value: String(e.value), mode: e.mode } : { value: "", mode: "goal" };
+      }
+      return next;
+    });
     setHydrated(true);
   }, [hydrated, userProfile]);
 
@@ -718,6 +599,7 @@ const Goals = () => {
           macrosTouched,
           optionalOpen,
           advancedNutritionOpen,
+          microSectionOpen,
           fiber,
           fiberMode,
           sodium,
@@ -749,6 +631,7 @@ const Goals = () => {
     kcalGoal,
     macrosTouched,
     advancedNutritionOpen,
+    microSectionOpen,
     optionalOpen,
     fiber,
     fiberMode,
@@ -902,6 +785,18 @@ const Goals = () => {
     setFat(String(dynamicTargets.fatG));
   }, [dynamicTargets, macrosTouched]);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    const goals: Record<string, { value: number; mode: MicroTargetMode }> = {};
+    for (const key of microSlotKeys) {
+      const d = microSlotData[key];
+      if (d && String(d.value).trim() && Number.isFinite(Number(d.value))) {
+        goals[key] = { value: Number(d.value), mode: d.mode };
+      }
+    }
+    saveMicroState({ slotKeys: microSlotKeys, goals });
+  }, [hydrated, microSlotKeys, microSlotData]);
+
   const selectedActivity = useMemo(
     () => activityOptions.find((option) => option.value === activity),
     [activity],
@@ -984,11 +879,14 @@ const Goals = () => {
       weightKg: Number.isFinite(weightNum) ? weightNum : undefined,
       activity,
     });
-    saveMicroGoals({
-      fiber_g: fiber.trim() && Number.isFinite(Number(fiber)) ? { value: Number(fiber), mode: fiberMode } : null,
-      sodium_mg: sodium.trim() && Number.isFinite(Number(sodium)) ? { value: Number(sodium), mode: sodiumMode } : null,
-      sugar_g: sugar.trim() && Number.isFinite(Number(sugar)) ? { value: Number(sugar), mode: sugarMode } : null,
-    });
+    const microGoals: Record<string, { value: number; mode: MicroTargetMode }> = {};
+    for (const key of microSlotKeys) {
+      const d = microSlotData[key];
+      if (d && d.value.trim() && Number.isFinite(Number(d.value))) {
+        microGoals[key] = { value: Number(d.value), mode: d.mode };
+      }
+    }
+    saveMicroState({ slotKeys: microSlotKeys, goals: microGoals });
     toast("Goals saved", {
       description: `Daily goal set to ${Math.round(goalNum)} cal.`,
     });
@@ -1011,6 +909,50 @@ const Goals = () => {
             Nutrition goals
           </h1>
         </div>
+
+        {/* Daily targets at a glance — matches HUD/sheet so this page is the single source of truth */}
+        <Card className="mt-4 rounded-[24px] border border-border/60 bg-card/95 px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/75">
+            Daily targets
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <div>
+              <span className="text-muted-foreground">Calories</span>
+              <p className="font-semibold tabular-nums text-foreground">
+                {Math.round(activeCalorieGoal || 0).toLocaleString()} cal
+              </p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Protein</span>
+              <p className="font-semibold tabular-nums text-foreground">{protein || "—"} g</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Carbs</span>
+              <p className="font-semibold tabular-nums text-foreground">{carbs || "—"} g</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Fat</span>
+              <p className="font-semibold tabular-nums text-foreground">{fat || "—"} g</p>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-border/50 pt-3">
+            {microSlotKeys.map((key) => {
+              const opt = MICRO_OPTIONS.find((o) => o.key === key);
+              const data = microSlotData[key];
+              if (!opt) return null;
+              const mode = data?.mode ?? "goal";
+              const val = data?.value ?? "";
+              return (
+                <span
+                  key={key}
+                  className="rounded-full bg-muted/70 px-2.5 py-1 text-xs font-medium text-foreground"
+                >
+                  {opt.label} {mode === "limit" ? "≤" : "≥"} {val || "—"} {opt.unit}
+                </span>
+              );
+            })}
+          </div>
+        </Card>
 
         <div className="mt-6 rounded-[28px] bg-gradient-to-br from-background via-card to-secondary/60 px-5 py-6 shadow-[0_18px_40px_rgba(15,23,42,0.2)]">
           <p className="text-xs uppercase tracking-[0.2em] text-primary/80">
@@ -1358,23 +1300,121 @@ const Goals = () => {
               }}
               disableSave={!dynamicTargets}
               missingStats={missingStats}
-              advancedOpen={advancedNutritionOpen}
-              onAdvancedOpenChange={setAdvancedNutritionOpen}
-              recommendations={microRecommendations}
-              fiber={fiber}
-              fiberMode={fiberMode}
-              onFiberChange={setFiber}
-              onFiberModeChange={setFiberMode}
-              sodium={sodium}
-              sodiumMode={sodiumMode}
-              onSodiumChange={setSodium}
-              onSodiumModeChange={setSodiumMode}
-              sugar={sugar}
-              sugarMode={sugarMode}
-              onSugarChange={setSugar}
-              onSugarModeChange={setSugarMode}
             />
           </div>
+        </Card>
+
+        {/* Micronutrients: separate section so main flow stays calories + macros; micros are an advanced touch */}
+        <Card className="mt-8 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+          <Collapsible open={microSectionOpen} onOpenChange={setMicroSectionOpen}>
+            <CollapsibleTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full justify-between rounded-full py-2 text-left"
+              >
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/75">
+                    Micronutrients
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Choose which 3 to show on your dashboard. Goal = meet or exceed; Limit = stay under.
+                  </p>
+                </div>
+                <ChevronDown
+                  className={cn("h-4 w-4 shrink-0 transition-transform", microSectionOpen && "rotate-180")}
+                />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4 space-y-4">
+              {[0, 1, 2].map((index) => {
+                const slotKey = microSlotKeys[index] ?? "fiber_g";
+                const opt = MICRO_OPTIONS.find((o) => o.key === slotKey) ?? MICRO_OPTIONS[0];
+                const data = microSlotData[slotKey] ?? { value: "", mode: "goal" as MicroTargetMode };
+                const usedKeys = new Set(microSlotKeys);
+                return (
+                  <div
+                    key={`${index}-${slotKey}`}
+                    className="flex flex-col gap-2 rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-xs font-medium text-foreground">Track</Label>
+                      <Select
+                        value={slotKey}
+                        onValueChange={(next) => {
+                          const nextKeys = [...microSlotKeys];
+                          nextKeys[index] = next;
+                          setMicroSlotKeys(nextKeys);
+                          setMicroSlotData((p) => {
+                            if (p[next]) return p;
+                            return { ...p, [next]: { value: "", mode: "goal" } };
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="h-8 rounded-lg border-border/60 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MICRO_OPTIONS.map((o) => (
+                            <SelectItem
+                              key={o.key}
+                              value={o.key}
+                              disabled={o.key !== slotKey && usedKeys.has(o.key)}
+                            >
+                              {o.label} ({o.unit})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="flex rounded-full border border-border/60 bg-background p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMicroSlotData((p) => ({ ...p, [slotKey]: { ...(p[slotKey] ?? { value: "", mode: "goal" }), mode: "goal" } }));
+                          }}
+                          className={cn(
+                            "flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium transition",
+                            data.mode === "goal" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          <TrendingUp className="h-3 w-3" />
+                          Goal
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMicroSlotData((p) => ({ ...p, [slotKey]: { ...(p[slotKey] ?? { value: "", mode: "goal" }), mode: "limit" } }));
+                          }}
+                          className={cn(
+                            "flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium transition",
+                            data.mode === "limit" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          <TrendingDown className="h-3 w-3" />
+                          Limit
+                        </button>
+                      </div>
+                      <Input
+                        type="number"
+                        min={0}
+                        inputMode="numeric"
+                        value={data.value}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setMicroSlotData((p) => ({ ...p, [slotKey]: { ...(p[slotKey] ?? { value: "", mode: "goal" }), value: v } }));
+                        }}
+                        onBlur={() => {}}
+                        className="h-8 flex-1 rounded-lg border-border/60 text-xs"
+                        placeholder={data.mode === "limit" ? "e.g. 2300" : "—"}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </CollapsibleContent>
+          </Collapsible>
         </Card>
       </PageContainer>
     </AppShell>
