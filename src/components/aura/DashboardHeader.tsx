@@ -9,6 +9,7 @@ import {
 import { Bell, ListOrdered, Target, User } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { triggerActionHaptic, triggerSoftHaptic, triggerToggleHaptic } from "@/lib/haptics";
 import type { TopSource } from "@/lib/nutritionData";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { CalorieGauge } from "./CalorieGauge";
@@ -72,6 +73,7 @@ export const DashboardHeader = ({
     touchStartRef.current = Date.now();
     longPressTimerRef.current = setTimeout(() => {
       longPressTimerRef.current = null;
+      triggerActionHaptic();
       onLongPressMacros?.();
     }, LONG_PRESS_MS);
   }, [onLongPressMacros]);
@@ -81,7 +83,10 @@ export const DashboardHeader = ({
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
       const elapsed = touchStartRef.current ? Date.now() - touchStartRef.current : 0;
-      if (elapsed < LONG_PRESS_MS) setShowMicros((prev) => !prev);
+      if (elapsed < LONG_PRESS_MS) {
+        triggerToggleHaptic();
+        setShowMicros((prev) => !prev);
+      }
     }
     touchStartRef.current = null;
   }, []);
@@ -138,8 +143,11 @@ export const DashboardHeader = ({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-full bg-card/90 text-foreground shadow-[0_10px_25px_rgba(15,23,42,0.12)] hover:bg-card"
-            onClick={onProfileClick}
+            className="h-10 w-10 rounded-full bg-card/90 text-foreground shadow-[0_10px_25px_rgba(15,23,42,0.12)] transition duration-150 hover:bg-card active:scale-95 motion-reduce:transform-none"
+            onClick={() => {
+              triggerSoftHaptic();
+              onProfileClick?.();
+            }}
             aria-label="Open profile actions"
           >
             <User className="h-5 w-5" />
@@ -161,8 +169,11 @@ export const DashboardHeader = ({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-full bg-card/90 text-foreground shadow-[0_10px_25px_rgba(15,23,42,0.12)] hover:bg-card"
-              onClick={onBellClick}
+              className="h-10 w-10 rounded-full bg-card/90 text-foreground shadow-[0_10px_25px_rgba(15,23,42,0.12)] transition duration-150 hover:bg-card active:scale-95 motion-reduce:transform-none"
+              onClick={() => {
+                triggerSoftHaptic();
+                onBellClick?.();
+              }}
               aria-label="Admin food import"
             >
               <Bell className="h-5 w-5" />
@@ -172,8 +183,11 @@ export const DashboardHeader = ({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-10 w-10 rounded-full bg-card/90 text-foreground shadow-[0_10px_25px_rgba(15,23,42,0.12)] hover:bg-card"
-                onClick={handleGoalsClick}
+                className="h-10 w-10 rounded-full bg-card/90 text-foreground shadow-[0_10px_25px_rgba(15,23,42,0.12)] transition duration-150 hover:bg-card active:scale-95 motion-reduce:transform-none"
+                onClick={() => {
+                  triggerActionHaptic();
+                  handleGoalsClick();
+                }}
                 aria-label="Open nutrition goals"
               >
                 <Target className="h-5 w-5" />
@@ -282,6 +296,7 @@ export const DashboardHeader = ({
                           type="button"
                           className="rounded p-0.5 text-muted-foreground hover:bg-primary/15 hover:text-primary"
                           aria-label={`Top sources for ${macro.label}`}
+                          onClick={() => triggerToggleHaptic()}
                           onPointerDown={(e) => e.stopPropagation()}
                           onPointerUp={(e) => e.stopPropagation()}
                         >
@@ -369,7 +384,10 @@ export const DashboardHeader = ({
                           <button
                             type="button"
                             className="rounded-md p-1 text-muted-foreground hover:bg-primary/15 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              triggerToggleHaptic();
+                            }}
                             aria-label={`Top sources for ${opt.label}`}
                           >
                             <ListOrdered className="h-3.5 w-3.5" />

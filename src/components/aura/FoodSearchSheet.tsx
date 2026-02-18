@@ -25,6 +25,7 @@ type FoodSearchSheetProps = {
   onGoalPresetChange: (preset: FoodGoalPresetId | null) => void;
   sortBy: FoodSortOption;
   onSortByChange: (sortBy: FoodSortOption) => void;
+  onCycleSort: () => void;
   meal: Meal | null;
   meals: Meal[];
   loggedFoodIds?: Set<string>;
@@ -60,6 +61,7 @@ export const FoodSearchSheet = ({
   onGoalPresetChange,
   sortBy,
   onSortByChange,
+  onCycleSort,
   meal,
   meals,
   loggedFoodIds,
@@ -87,6 +89,7 @@ export const FoodSearchSheet = ({
     onGoalPresetChange={onGoalPresetChange}
     sortBy={sortBy}
     onSortByChange={onSortByChange}
+    onCycleSort={onCycleSort}
     meal={meal}
     meals={meals}
     loggedFoodIds={loggedFoodIds}
@@ -115,6 +118,7 @@ const FoodSearchSheetContent = ({
   onGoalPresetChange,
   sortBy,
   onSortByChange,
+  onCycleSort,
   meal,
   meals,
   loggedFoodIds,
@@ -160,6 +164,7 @@ const FoodSearchSheetContent = ({
               onGoalPresetChange={onGoalPresetChange}
               sortBy={sortBy}
               onSortByChange={onSortByChange}
+              onCycleSort={onCycleSort}
               meal={meal}
               meals={meals}
               loggedFoodIds={loggedFoodIds}

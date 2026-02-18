@@ -15,6 +15,7 @@ import { forwardRef, useMemo, useState } from "react";
 import { ListEmptyState } from "@/components/ui/empty-state";
 import { FoodImage } from "./FoodImage";
 import { MealIcon } from "./MealIcon";
+import { triggerActionHaptic, triggerToggleHaptic } from "@/lib/haptics";
 
 export type MealLogPanelProps = {
   meals: Meal[];
@@ -114,8 +115,9 @@ export const MealLogPanel = ({
                     <Button
                       type="button"
                       variant="ghost"
-                      className="group h-auto flex-1 justify-between gap-3 rounded-[18px] px-3 py-3 text-left transition-colors hover:text-foreground/85 active:text-foreground"
+                      className="group h-auto flex-1 justify-between gap-3 rounded-[18px] px-3 py-3 text-left transition-colors hover:text-foreground/85 active:scale-[0.99] active:text-foreground motion-reduce:transform-none"
                       aria-label={`Toggle ${meal.label} details`}
+                      onClick={() => triggerToggleHaptic()}
                     >
                       <div className="flex items-center gap-3">
                         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-card text-lg shadow-[0_8px_18px_rgba(15,23,42,0.08)] text-primary">
@@ -156,10 +158,13 @@ export const MealLogPanel = ({
                   </CollapsibleTrigger>
                   <Button
                     type="button"
-                    onClick={() => onAddMeal(meal)}
+                    onClick={() => {
+                      triggerActionHaptic();
+                      onAddMeal(meal);
+                    }}
                     aria-label={`Add to ${meal.label}`}
                     size="icon"
-                  className="h-11 w-11 shrink-0 rounded-full bg-primary/15 text-primary shadow-[0_6px_16px_rgba(15,23,42,0.14)] hover:bg-primary/25"
+                  className="h-11 w-11 shrink-0 rounded-full bg-primary/15 text-primary shadow-[0_6px_16px_rgba(15,23,42,0.14)] transition duration-150 hover:bg-primary/25 active:scale-95 motion-reduce:transform-none"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -224,8 +229,9 @@ export const MealLogPanel = ({
                       <Button
                         type="button"
                         variant="ghost"
-                        className="group h-auto flex-1 justify-between gap-3 rounded-[18px] px-3 py-3 text-left"
+                        className="group h-auto flex-1 justify-between gap-3 rounded-[18px] px-3 py-3 text-left transition duration-150 active:scale-[0.99] motion-reduce:transform-none"
                         aria-label={`Toggle ${section.meal} details`}
+                        onClick={() => triggerToggleHaptic()}
                       >
                         <div className="flex items-center gap-3">
                           <div className="h-11 w-11 rounded-full bg-card text-lg shadow-[0_8px_18px_rgba(15,23,42,0.08)] flex items-center justify-center">
@@ -330,7 +336,10 @@ const LogRow = forwardRef<
       transition={{ type: "spring", stiffness: 260, damping: 20 }}
       type="button"
       className="relative w-full overflow-hidden rounded-[16px] border border-border/70 bg-card/80 px-3 py-3 text-sm text-foreground shadow-[0_6px_14px_rgba(15,23,42,0.06)] backdrop-blur-sm transition-shadow hover:shadow-[0_10px_20px_rgba(15,23,42,0.1)] cursor-pointer"
-      onClick={onEdit}
+      onClick={() => {
+        triggerActionHaptic();
+        onEdit();
+      }}
     >
       <motion.span
         className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl"

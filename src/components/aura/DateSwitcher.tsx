@@ -11,6 +11,7 @@ import {
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { SHEET_CALENDAR_KEY } from "@/lib/storageKeys";
 import { useSheetManager } from "@/hooks/useSheetManager";
+import { triggerActionHaptic, triggerToggleHaptic } from "@/lib/haptics";
 
 const isSameDay = (left: Date, right: Date) =>
   left.getFullYear() === right.getFullYear() &&
@@ -48,6 +49,7 @@ export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
   }, [selectedDate]);
 
   const shiftDate = (delta: number) => {
+    triggerToggleHaptic();
     setSelectedDate((prev) => {
       const next = new Date(prev);
       next.setDate(prev.getDate() + delta);
@@ -70,7 +72,7 @@ export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 rounded-full"
+          className="h-8 w-8 rounded-full transition duration-150 active:scale-95 motion-reduce:transform-none"
           onClick={() => shiftDate(-1)}
         >
           <ChevronLeft className="h-4 w-4" />
@@ -78,7 +80,8 @@ export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
         <DrawerTrigger asChild>
           <Button
             variant="ghost"
-            className="flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold text-foreground"
+            className="flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold text-foreground transition duration-150 active:scale-95 motion-reduce:transform-none"
+            onClick={() => triggerToggleHaptic()}
           >
             <CalendarDays className="h-4 w-4 text-primary" />
             {label}
@@ -87,7 +90,7 @@ export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 rounded-full"
+          className="h-8 w-8 rounded-full transition duration-150 active:scale-95 motion-reduce:transform-none"
           onClick={() => shiftDate(1)}
         >
           <ChevronRight className="h-4 w-4" />
@@ -108,6 +111,7 @@ export const DateSwitcher = ({ value, onChange }: DateSwitcherProps) => {
             selected={selectedDate}
             onSelect={(date) => {
               if (!date) return;
+              triggerActionHaptic();
               setSelectedDate(date);
               onChange?.(date);
               closeSheets();

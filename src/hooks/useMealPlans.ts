@@ -5,10 +5,13 @@ import {
   clearMealPlanWeekday,
   createMealPlanDay,
   createMealPlanGroup,
+  createMealPlanPreset,
   deleteMealPlanDay,
   deleteMealPlanGroup,
   deleteMealPlanItem,
+  deleteMealPlanPreset,
   duplicateMealPlanDay,
+  fetchMealPlanPresets,
   fetchMealPlans,
   reorderMealPlanItems,
   reorderMealPlanMeals,
@@ -21,21 +24,38 @@ import type {
   MealPlanGroupRecord,
   MealPlanItemRecord,
   MealPlanMealRecord,
+  MealPlanTargetPresetRecord,
   MealPlanWeekAssignmentRecord,
 } from "@/types/api";
 
 export type MealPlanSlot = "protein" | "carbs" | "balance";
 
+export type MealPlanTargets = {
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  kcalMin?: number | null;
+  kcalMax?: number | null;
+  proteinMin?: number | null;
+  proteinMax?: number | null;
+  carbsMin?: number | null;
+  carbsMax?: number | null;
+  fatMin?: number | null;
+  fatMax?: number | null;
+};
+
 export type MealPlanDay = {
   id: string;
   name: string;
   groupId: string | null;
-  targets: {
-    kcal: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-  };
+  targets: MealPlanTargets;
+};
+
+export type MealPlanTargetPreset = {
+  id: string;
+  name: string;
+  targets: MealPlanTargets;
 };
 
 export type MealPlanGroup = {
@@ -78,6 +98,11 @@ const toNum = (value: number | string | null | undefined, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const toNumOrNull = (value: number | string | null | undefined): number | null => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 const mapDay = (row: MealPlanDayRecord): MealPlanDay => ({
   id: row.id,
   name: row.name,
@@ -87,6 +112,33 @@ const mapDay = (row: MealPlanDayRecord): MealPlanDay => ({
     protein: toNum(row.target_protein_g),
     carbs: toNum(row.target_carbs_g),
     fat: toNum(row.target_fat_g),
+    kcalMin: toNumOrNull(row.target_kcal_min) ?? undefined,
+    kcalMax: toNumOrNull(row.target_kcal_max) ?? undefined,
+    proteinMin: toNumOrNull(row.target_protein_g_min) ?? undefined,
+    proteinMax: toNumOrNull(row.target_protein_g_max) ?? undefined,
+    carbsMin: toNumOrNull(row.target_carbs_g_min) ?? undefined,
+    carbsMax: toNumOrNull(row.target_carbs_g_max) ?? undefined,
+    fatMin: toNumOrNull(row.target_fat_g_min) ?? undefined,
+    fatMax: toNumOrNull(row.target_fat_g_max) ?? undefined,
+  },
+});
+
+const mapPreset = (row: MealPlanTargetPresetRecord): MealPlanTargetPreset => ({
+  id: row.id,
+  name: row.name,
+  targets: {
+    kcal: toNum(row.target_kcal),
+    protein: toNum(row.target_protein_g),
+    carbs: toNum(row.target_carbs_g),
+    fat: toNum(row.target_fat_g),
+    kcalMin: toNumOrNull(row.target_kcal_min) ?? undefined,
+    kcalMax: toNumOrNull(row.target_kcal_max) ?? undefined,
+    proteinMin: toNumOrNull(row.target_protein_g_min) ?? undefined,
+    proteinMax: toNumOrNull(row.target_protein_g_max) ?? undefined,
+    carbsMin: toNumOrNull(row.target_carbs_g_min) ?? undefined,
+    carbsMax: toNumOrNull(row.target_carbs_g_max) ?? undefined,
+    fatMin: toNumOrNull(row.target_fat_g_min) ?? undefined,
+    fatMax: toNumOrNull(row.target_fat_g_max) ?? undefined,
   },
 });
 
@@ -129,6 +181,7 @@ export const useMealPlans = () => {
   const [meals, setMeals] = useState<MealPlanMeal[]>([]);
   const [items, setItems] = useState<MealPlanItem[]>([]);
   const [weekAssignments, setWeekAssignments] = useState<MealPlanWeekAssignment[]>([]);
+  const [presets, setPresets] = useState<MealPlanTargetPreset[]>([]);
   const [status, setStatus] = useState<MealPlansState>("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -136,12 +189,16 @@ export const useMealPlans = () => {
     setStatus("loading");
     setError(null);
     try {
-      const response = await fetchMealPlans();
-      setGroups((response.groups ?? []).map(mapGroup));
-      setDays((response.days ?? []).map(mapDay));
-      setMeals((response.meals ?? []).map(mapMeal));
-      setItems((response.items ?? []).map(mapItem));
-      setWeekAssignments((response.weekAssignments ?? []).map(mapWeek));
+      const [plansRes, presetsRes] = await Promise.all([
+        fetchMealPlans(),
+        fetchMealPlanPresets().catch(() => ({ presets: [] as MealPlanTargetPresetRecord[] })),
+      ]);
+      setGroups((plansRes.groups ?? []).map(mapGroup));
+      setDays((plansRes.days ?? []).map(mapDay));
+      setMeals((plansRes.meals ?? []).map(mapMeal));
+      setItems((plansRes.items ?? []).map(mapItem));
+      setWeekAssignments((plansRes.weekAssignments ?? []).map(mapWeek));
+      setPresets((presetsRes.presets ?? []).map(mapPreset));
       setStatus("idle");
     } catch (loadError) {
       const detail =
@@ -371,6 +428,40 @@ export const useMealPlans = () => {
     });
   }, []);
 
+  const createPreset = useCallback(
+    async (payload: { name: string; targets: MealPlanTargets }) => {
+      const t = payload.targets;
+      const response = await createMealPlanPreset({
+        name: payload.name,
+        targets: {
+          kcal: t.kcal,
+          protein: t.protein,
+          carbs: t.carbs,
+          fat: t.fat,
+          kcalMin: t.kcalMin ?? null,
+          kcalMax: t.kcalMax ?? null,
+          proteinMin: t.proteinMin ?? null,
+          proteinMax: t.proteinMax ?? null,
+          carbsMin: t.carbsMin ?? null,
+          carbsMax: t.carbsMax ?? null,
+          fatMin: t.fatMin ?? null,
+          fatMax: t.fatMax ?? null,
+        },
+      });
+      if (response.preset) {
+        setPresets((prev) => [...prev, mapPreset(response.preset)]);
+        return mapPreset(response.preset);
+      }
+      return null;
+    },
+    [],
+  );
+
+  const deletePreset = useCallback(async (presetId: string) => {
+    await deleteMealPlanPreset(presetId);
+    setPresets((prev) => prev.filter((p) => p.id !== presetId));
+  }, []);
+
   return useMemo(
     () => ({
       groups,
@@ -378,6 +469,7 @@ export const useMealPlans = () => {
       meals,
       items,
       weekAssignments,
+      presets,
       status,
       error,
       reload,
@@ -390,6 +482,8 @@ export const useMealPlans = () => {
       removeGroup,
       addItem,
       patchItem,
+      createPreset,
+      deletePreset,
       removeItem,
       reorderMeals,
       reorderItems,

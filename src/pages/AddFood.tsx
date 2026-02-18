@@ -534,6 +534,12 @@ const AddFood = () => {
     setSortBy("relevance");
   };
 
+  const handleCycleSort = () => {
+    const index = ALL_SORTS.indexOf(sortBy);
+    const nextIndex = index >= 0 ? (index + 1) % ALL_SORTS.length : 0;
+    setSortBy(ALL_SORTS[nextIndex]);
+  };
+
 
   const resolveMealId = () => selectedMeal?.id ?? mealTypes.meals[0]?.id;
 
@@ -767,6 +773,7 @@ const AddFood = () => {
             onGoalPresetChange={handleGoalPresetChange}
             sortBy={sortBy}
             onSortByChange={setSortBy}
+            onCycleSort={handleCycleSort}
             meal={selectedMeal}
             meals={mealTypes.meals}
             loggedFoodIds={loggedInMeal.ids}

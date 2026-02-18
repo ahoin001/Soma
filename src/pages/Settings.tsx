@@ -42,6 +42,8 @@ export default function Settings() {
   const {
     showFoodImages,
     setShowFoodImages,
+    hapticsEnabled,
+    setHapticsEnabled,
     foodImageBackground,
     setFoodImageBackground,
     headerStyle,
@@ -86,6 +88,20 @@ export default function Settings() {
             <Switch
               checked={showFoodImages}
               onCheckedChange={setShowFoodImages}
+            />
+          </div>
+          <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-4">
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Haptic feedback
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Subtle touch feedback on key actions and toggles.
+              </p>
+            </div>
+            <Switch
+              checked={hapticsEnabled}
+              onCheckedChange={setHapticsEnabled}
             />
           </div>
           {showFoodImages && (

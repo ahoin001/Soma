@@ -75,6 +75,14 @@ router.get(
           target_protein_g,
           target_carbs_g,
           target_fat_g,
+          target_kcal_min,
+          target_kcal_max,
+          target_protein_g_min,
+          target_protein_g_max,
+          target_carbs_g_min,
+          target_carbs_g_max,
+          target_fat_g_min,
+          target_fat_g_max,
           group_id,
           created_at,
           updated_at
@@ -258,6 +266,14 @@ const createDaySchema = z.object({
       protein: z.number().nonnegative().optional(),
       carbs: z.number().nonnegative().optional(),
       fat: z.number().nonnegative().optional(),
+      kcalMin: z.number().nonnegative().optional(),
+      kcalMax: z.number().nonnegative().optional(),
+      proteinMin: z.number().nonnegative().optional(),
+      proteinMax: z.number().nonnegative().optional(),
+      carbsMin: z.number().nonnegative().optional(),
+      carbsMax: z.number().nonnegative().optional(),
+      fatMin: z.number().nonnegative().optional(),
+      fatMax: z.number().nonnegative().optional(),
     })
     .optional(),
 });
@@ -277,9 +293,17 @@ router.post(
           target_protein_g,
           target_carbs_g,
           target_fat_g,
+          target_kcal_min,
+          target_kcal_max,
+          target_protein_g_min,
+          target_protein_g_max,
+          target_carbs_g_min,
+          target_carbs_g_max,
+          target_fat_g_min,
+          target_fat_g_max,
           group_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING *;
         `,
         [
@@ -289,6 +313,14 @@ router.post(
           payload.targets?.protein ?? 0,
           payload.targets?.carbs ?? 0,
           payload.targets?.fat ?? 0,
+          payload.targets?.kcalMin ?? null,
+          payload.targets?.kcalMax ?? null,
+          payload.targets?.proteinMin ?? null,
+          payload.targets?.proteinMax ?? null,
+          payload.targets?.carbsMin ?? null,
+          payload.targets?.carbsMax ?? null,
+          payload.targets?.fatMin ?? null,
+          payload.targets?.fatMax ?? null,
           payload.groupId ?? null,
         ],
       );
@@ -333,6 +365,14 @@ const patchDaySchema = z.object({
       protein: z.number().nonnegative().optional(),
       carbs: z.number().nonnegative().optional(),
       fat: z.number().nonnegative().optional(),
+      kcalMin: z.number().nonnegative().nullable().optional(),
+      kcalMax: z.number().nonnegative().nullable().optional(),
+      proteinMin: z.number().nonnegative().nullable().optional(),
+      proteinMax: z.number().nonnegative().nullable().optional(),
+      carbsMin: z.number().nonnegative().nullable().optional(),
+      carbsMax: z.number().nonnegative().nullable().optional(),
+      fatMin: z.number().nonnegative().nullable().optional(),
+      fatMax: z.number().nonnegative().nullable().optional(),
     })
     .optional(),
 });
@@ -350,23 +390,49 @@ router.patch(
         UPDATE meal_plan_days
         SET
           name = COALESCE($3, name),
-          target_kcal = COALESCE($4, target_kcal),
-          target_protein_g = COALESCE($5, target_protein_g),
-          target_carbs_g = COALESCE($6, target_carbs_g),
-          target_fat_g = COALESCE($7, target_fat_g),
           updated_at = now()
         WHERE id = $1 AND user_id = $2;
         `,
-        [
-          dayId,
-          userId,
-          payload.name ?? null,
-          payload.targets?.kcal ?? null,
-          payload.targets?.protein ?? null,
-          payload.targets?.carbs ?? null,
-          payload.targets?.fat ?? null,
-        ],
+        [dayId, userId, payload.name ?? null],
       );
+      if (payload.targets !== undefined) {
+        await client.query(
+          `
+          UPDATE meal_plan_days
+          SET
+            target_kcal = COALESCE($3, target_kcal),
+            target_protein_g = COALESCE($4, target_protein_g),
+            target_carbs_g = COALESCE($5, target_carbs_g),
+            target_fat_g = COALESCE($6, target_fat_g),
+            target_kcal_min = $7,
+            target_kcal_max = $8,
+            target_protein_g_min = $9,
+            target_protein_g_max = $10,
+            target_carbs_g_min = $11,
+            target_carbs_g_max = $12,
+            target_fat_g_min = $13,
+            target_fat_g_max = $14,
+            updated_at = now()
+          WHERE id = $1 AND user_id = $2;
+          `,
+          [
+            dayId,
+            userId,
+            payload.targets.kcal ?? null,
+            payload.targets.protein ?? null,
+            payload.targets.carbs ?? null,
+            payload.targets.fat ?? null,
+            payload.targets.kcalMin ?? null,
+            payload.targets.kcalMax ?? null,
+            payload.targets.proteinMin ?? null,
+            payload.targets.proteinMax ?? null,
+            payload.targets.carbsMin ?? null,
+            payload.targets.carbsMax ?? null,
+            payload.targets.fatMin ?? null,
+            payload.targets.fatMax ?? null,
+          ],
+        );
+      }
       if (Object.prototype.hasOwnProperty.call(payload, "groupId")) {
         await client.query(
           `
@@ -428,9 +494,17 @@ router.post(
           target_protein_g,
           target_carbs_g,
           target_fat_g,
+          target_kcal_min,
+          target_kcal_max,
+          target_protein_g_min,
+          target_protein_g_max,
+          target_carbs_g_min,
+          target_carbs_g_max,
+          target_fat_g_min,
+          target_fat_g_max,
           group_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING *;
         `,
         [
@@ -440,6 +514,14 @@ router.post(
           source.target_protein_g,
           source.target_carbs_g,
           source.target_fat_g,
+          source.target_kcal_min ?? null,
+          source.target_kcal_max ?? null,
+          source.target_protein_g_min ?? null,
+          source.target_protein_g_max ?? null,
+          source.target_carbs_g_min ?? null,
+          source.target_carbs_g_max ?? null,
+          source.target_fat_g_min ?? null,
+          source.target_fat_g_max ?? null,
           source.group_id ?? null,
         ],
       );
@@ -933,6 +1015,130 @@ router.delete(
         `,
         [userId, weekday],
       ),
+    );
+    res.status(204).send();
+  }),
+);
+
+// ─── Target presets ───────────────────────────────────────────────────────
+const createPresetSchema = z.object({
+  name: z.string().min(1),
+  targets: z.object({
+    kcal: z.number().nonnegative(),
+    protein: z.number().nonnegative(),
+    carbs: z.number().nonnegative(),
+    fat: z.number().nonnegative(),
+    kcalMin: z.number().nonnegative().nullable().optional(),
+    kcalMax: z.number().nonnegative().nullable().optional(),
+    proteinMin: z.number().nonnegative().nullable().optional(),
+    proteinMax: z.number().nonnegative().nullable().optional(),
+    carbsMin: z.number().nonnegative().nullable().optional(),
+    carbsMax: z.number().nonnegative().nullable().optional(),
+    fatMin: z.number().nonnegative().nullable().optional(),
+    fatMax: z.number().nonnegative().nullable().optional(),
+  }),
+});
+
+router.get(
+  "/presets",
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = getUserId(req);
+    const result = await query(
+      `
+      SELECT
+        id,
+        user_id,
+        name,
+        target_kcal,
+        target_protein_g,
+        target_carbs_g,
+        target_fat_g,
+        target_kcal_min,
+        target_kcal_max,
+        target_protein_g_min,
+        target_protein_g_max,
+        target_carbs_g_min,
+        target_carbs_g_max,
+        target_fat_g_min,
+        target_fat_g_max,
+        sort_order,
+        created_at,
+        updated_at
+      FROM meal_plan_target_presets
+      WHERE user_id = $1
+      ORDER BY sort_order ASC, created_at ASC;
+      `,
+      [userId],
+    );
+    res.json({ presets: result.rows });
+  }),
+);
+
+router.post(
+  "/presets",
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = getUserId(req);
+    const payload = createPresetSchema.parse(req.body);
+    const result = await withTransaction(async (client) => {
+      const count = await client.query(
+        `SELECT COUNT(*) AS n FROM meal_plan_target_presets WHERE user_id = $1;`,
+        [userId],
+      );
+      const sortOrder = Number(count.rows[0]?.n ?? 0);
+      const preset = await client.query(
+        `
+        INSERT INTO meal_plan_target_presets (
+          user_id,
+          name,
+          target_kcal,
+          target_protein_g,
+          target_carbs_g,
+          target_fat_g,
+          target_kcal_min,
+          target_kcal_max,
+          target_protein_g_min,
+          target_protein_g_max,
+          target_carbs_g_min,
+          target_carbs_g_max,
+          target_fat_g_min,
+          target_fat_g_max,
+          sort_order
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        RETURNING *;
+        `,
+        [
+          userId,
+          payload.name,
+          payload.targets.kcal,
+          payload.targets.protein,
+          payload.targets.carbs,
+          payload.targets.fat,
+          payload.targets.kcalMin ?? null,
+          payload.targets.kcalMax ?? null,
+          payload.targets.proteinMin ?? null,
+          payload.targets.proteinMax ?? null,
+          payload.targets.carbsMin ?? null,
+          payload.targets.carbsMax ?? null,
+          payload.targets.fatMin ?? null,
+          payload.targets.fatMax ?? null,
+          sortOrder,
+        ],
+      );
+      return preset.rows[0];
+    });
+    res.status(201).json({ preset: result });
+  }),
+);
+
+router.delete(
+  "/presets/:presetId",
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = getUserId(req);
+    const presetId = req.params.presetId;
+    await query(
+      `DELETE FROM meal_plan_target_presets WHERE id = $1 AND user_id = $2;`,
+      [presetId, userId],
     );
     res.status(204).send();
   }),

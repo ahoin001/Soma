@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import type { Meal } from "@/data/mock";
 import { PlusCircle, Search } from "lucide-react";
 import { MealIcon } from "./MealIcon";
+import { triggerActionHaptic, triggerToggleHaptic } from "@/lib/haptics";
 
 type QuickActionSheetProps = {
   open: boolean;
@@ -47,11 +48,14 @@ export const QuickActionSheet = ({
               <button
                 key={meal.id}
                 type="button"
-                onClick={() => onSelectMeal(meal)}
-                className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                onClick={() => {
+                  triggerToggleHaptic();
+                  onSelectMeal(meal);
+                }}
+                className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition motion-reduce:transform-none ${
                   selectedMeal?.id === meal.id
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-card text-secondary-foreground"
+                    ? "border-primary bg-primary/10 text-primary active:scale-95"
+                    : "border-border bg-card text-secondary-foreground active:scale-95"
                 }`}
               >
                 <MealIcon mealId={meal.id} size={18} className="shrink-0" />
@@ -64,8 +68,11 @@ export const QuickActionSheet = ({
         <div className="mt-5 grid grid-cols-2 gap-3">
           <Button
             type="button"
-            className="h-auto flex-col items-start rounded-[22px] bg-card px-4 py-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
-            onClick={onAddFood}
+            className="h-auto flex-col items-start rounded-[22px] bg-card px-4 py-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition duration-150 active:scale-[0.98] motion-reduce:transform-none"
+            onClick={() => {
+              triggerActionHaptic();
+              onAddFood();
+            }}
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-primary">
               <Search className="h-4 w-4" />
@@ -79,8 +86,11 @@ export const QuickActionSheet = ({
           </Button>
           <Button
             type="button"
-            className="h-auto flex-col items-start rounded-[22px] bg-card px-4 py-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
-            onClick={onCreateFood}
+            className="h-auto flex-col items-start rounded-[22px] bg-card px-4 py-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition duration-150 active:scale-[0.98] motion-reduce:transform-none"
+            onClick={() => {
+              triggerActionHaptic();
+              onCreateFood();
+            }}
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-primary">
               <PlusCircle className="h-4 w-4" />

@@ -24,6 +24,12 @@ import { MealIcon } from "@/components/aura/MealIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { ListEmptyState } from "@/components/ui/empty-state";
@@ -94,7 +100,20 @@ const SLOT_CHIP_CLASS: Record<MealPlanSlot, string> = {
   balance: "bg-amber-100 text-amber-800 border-amber-200/80",
 };
 
-const DEFAULT_TARGETS = { kcal: 2200, protein: 180, carbs: 220, fat: 70 };
+const DEFAULT_TARGETS = {
+  kcal: 2200,
+  protein: 180,
+  carbs: 220,
+  fat: 70,
+  kcalMin: undefined as number | null | undefined,
+  kcalMax: undefined as number | null | undefined,
+  proteinMin: undefined as number | null | undefined,
+  proteinMax: undefined as number | null | undefined,
+  carbsMin: undefined as number | null | undefined,
+  carbsMax: undefined as number | null | undefined,
+  fatMin: undefined as number | null | undefined,
+  fatMax: undefined as number | null | undefined,
+};
 
 type ViewStep = "days" | "targets" | "meals";
 
@@ -120,6 +139,17 @@ const coerceNumber = (value: string, fallback: number) => {
   if (!Number.isFinite(parsed) || parsed < 0) return fallback;
   return parsed;
 };
+
+const RANGE_KEYS = [
+  "kcalMin",
+  "kcalMax",
+  "proteinMin",
+  "proteinMax",
+  "carbsMin",
+  "carbsMax",
+  "fatMin",
+  "fatMax",
+] as const;
 
 const toNum = (value: unknown, fallback = 0) => {
   const parsed = Number(value);
@@ -228,6 +258,9 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
     reorderItems,
     applyToWeekdays,
     clearWeekday,
+    presets,
+    createPreset,
+    deletePreset,
   } = useMealPlans();
 
   const [activeDayId, setActiveDayId] = useState<string | null>(null);
@@ -259,6 +292,8 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
   const [selectedGroupFilterId, setSelectedGroupFilterId] = useState<string | null>(null);
   const [logPlanSheetOpen, setLogPlanSheetOpen] = useState(false);
   const [logPlanCustomDate, setLogPlanCustomDate] = useState("");
+  const [savePresetOpen, setSavePresetOpen] = useState(false);
+  const [presetNameDraft, setPresetNameDraft] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -394,14 +429,54 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
     });
   };
 
+  const targetDraftRef = useRef(targetDraft);
+  useEffect(() => {
+    targetDraftRef.current = targetDraft;
+  }, [targetDraft]);
+
   const updateTargetsDraft = (key: keyof typeof DEFAULT_TARGETS, raw: string) => {
-    setTargetDraft((prev) => ({ ...prev, [key]: coerceNumber(raw, prev[key]) }));
+    setTargetDraft((prev) => {
+      const isRange = RANGE_KEYS.includes(key as (typeof RANGE_KEYS)[number]);
+      const value =
+        isRange && raw.trim() === ""
+          ? null
+          : coerceNumber(raw, typeof prev[key] === "number" ? (prev[key] as number) : 0);
+      return { ...prev, [key]: value };
+    });
   };
 
-  const commitTarget = (key: keyof typeof DEFAULT_TARGETS) => {
+  const commitAllTargets = () => {
     if (!activeDay) return;
+    const d = targetDraftRef.current;
     void patchDay(activeDay.id, {
-      targets: { ...activeDay.targets, [key]: targetDraft[key] },
+      targets: {
+        kcal: d.kcal,
+        protein: d.protein,
+        carbs: d.carbs,
+        fat: d.fat,
+        kcalMin: d.kcalMin ?? null,
+        kcalMax: d.kcalMax ?? null,
+        proteinMin: d.proteinMin ?? null,
+        proteinMax: d.proteinMax ?? null,
+        carbsMin: d.carbsMin ?? null,
+        carbsMax: d.carbsMax ?? null,
+        fatMin: d.fatMin ?? null,
+        fatMax: d.fatMax ?? null,
+      },
+    });
+  };
+
+  const applyPreset = (preset: { targets: typeof DEFAULT_TARGETS }) => {
+    setTargetDraft((prev) => ({ ...prev, ...preset.targets }));
+    triggerLightFeedback();
+  };
+
+  const handleSaveAsPreset = () => {
+    const name = presetNameDraft.trim() || "My preset";
+    void createPreset({ name, targets: targetDraftRef.current }).then(() => {
+      setSavePresetOpen(false);
+      setPresetNameDraft("");
+      toast.success("Preset saved", { description: name });
     });
   };
 
@@ -885,12 +960,43 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                   <span className="text-xs font-medium text-muted-foreground">protein</span>
                 </div>
               </div>
+              {/* Apply preset */}
+              {presets.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1.5">Apply preset</p>
+                  <select
+                    className="h-9 w-full rounded-full border border-border/50 bg-background px-3 text-sm"
+                    value=""
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      if (!id) return;
+                      const p = presets.find((x) => x.id === id);
+                      if (p) applyPreset(p);
+                      e.target.value = "";
+                    }}
+                  >
+                    <option value="">Choose a preset…</option>
+                    {presets.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="mt-4 grid grid-cols-2 gap-3">
-                <TargetField label="Calories target" suffix="kcal" value={String(targetDraft.kcal)} onChange={(v) => updateTargetsDraft("kcal", v)} onBlur={() => commitTarget("kcal")} placeholder="2200" />
-                <TargetField label="Protein target" suffix="g" value={String(targetDraft.protein)} onChange={(v) => updateTargetsDraft("protein", v)} onBlur={() => commitTarget("protein")} placeholder="180" />
-                <TargetField label="Carbs target" suffix="g" value={String(targetDraft.carbs)} onChange={(v) => updateTargetsDraft("carbs", v)} onBlur={() => commitTarget("carbs")} placeholder="220" />
-                <TargetField label="Fat target" suffix="g" value={String(targetDraft.fat)} onChange={(v) => updateTargetsDraft("fat", v)} onBlur={() => commitTarget("fat")} placeholder="70" />
+                <TargetField label="Calories" suffix="kcal" value={String(targetDraft.kcal)} onChange={(v) => updateTargetsDraft("kcal", v)} onBlur={commitAllTargets} placeholder="2200" />
+                <TargetFieldWithRange label="Calories range" suffix="kcal" minValue={targetDraft.kcalMin} maxValue={targetDraft.kcalMax} onMinChange={(v) => updateTargetsDraft("kcalMin", v)} onMaxChange={(v) => updateTargetsDraft("kcalMax", v)} onBlur={commitAllTargets} />
+                <TargetField label="Protein" suffix="g" value={String(targetDraft.protein)} onChange={(v) => updateTargetsDraft("protein", v)} onBlur={commitAllTargets} placeholder="180" />
+                <TargetFieldWithRange label="Protein range" suffix="g" minValue={targetDraft.proteinMin} maxValue={targetDraft.proteinMax} onMinChange={(v) => updateTargetsDraft("proteinMin", v)} onMaxChange={(v) => updateTargetsDraft("proteinMax", v)} onBlur={commitAllTargets} />
+                <TargetField label="Carbs" suffix="g" value={String(targetDraft.carbs)} onChange={(v) => updateTargetsDraft("carbs", v)} onBlur={commitAllTargets} placeholder="220" />
+                <TargetFieldWithRange label="Carbs range" suffix="g" minValue={targetDraft.carbsMin} maxValue={targetDraft.carbsMax} onMinChange={(v) => updateTargetsDraft("carbsMin", v)} onMaxChange={(v) => updateTargetsDraft("carbsMax", v)} onBlur={commitAllTargets} />
+                <TargetField label="Fat" suffix="g" value={String(targetDraft.fat)} onChange={(v) => updateTargetsDraft("fat", v)} onBlur={commitAllTargets} placeholder="70" />
+                <TargetFieldWithRange label="Fat range" suffix="g" minValue={targetDraft.fatMin} maxValue={targetDraft.fatMax} onMinChange={(v) => updateTargetsDraft("fatMin", v)} onMaxChange={(v) => updateTargetsDraft("fatMax", v)} onBlur={commitAllTargets} />
               </div>
+
+              <Button type="button" variant="outline" className="mt-4 w-full rounded-full" onClick={() => setSavePresetOpen(true)}>
+                Save current targets as preset
+              </Button>
               <div className="mt-5 grid grid-cols-2 gap-2.5 text-xs">
                 <Badge variant="secondary" className={cn("justify-between rounded-full px-3 py-1.5", kcalOver ? "border border-rose-200 bg-rose-100 text-rose-700" : "bg-secondary text-secondary-foreground")}>
                   kcal <span>{Math.round(dayTotals.kcal)} / {activeDay.targets.kcal}</span>
@@ -1323,6 +1429,33 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Save as preset dialog */}
+      <Dialog open={savePresetOpen} onOpenChange={setSavePresetOpen}>
+        <DialogContent className="rounded-[24px] border-border/40 bg-card max-w-[min(360px,92vw)]">
+          <DialogHeader>
+            <DialogTitle>Save as preset</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Save your current target numbers (and ranges) so you can apply them to other days.
+          </p>
+          <Input
+            value={presetNameDraft}
+            onChange={(e) => setPresetNameDraft(e.target.value)}
+            placeholder="Preset name (e.g. High protein)"
+            className="rounded-full"
+            onKeyDown={(e) => e.key === "Enter" && handleSaveAsPreset()}
+          />
+          <div className="flex gap-2 justify-end">
+            <Button type="button" variant="outline" className="rounded-full" onClick={() => setSavePresetOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" className="rounded-full" onClick={handleSaveAsPreset}>
+              Save preset
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -1356,6 +1489,50 @@ const TargetField = ({
         className="h-8 rounded-full border-border/60 bg-card/85"
       />
       <span className="min-w-8 text-right text-xs font-semibold text-muted-foreground">{suffix}</span>
+    </div>
+  </div>
+);
+
+const TargetFieldWithRange = ({
+  label,
+  suffix,
+  minValue,
+  maxValue,
+  onMinChange,
+  onMaxChange,
+  onBlur,
+}: {
+  label: string;
+  suffix: string;
+  minValue: number | null | undefined;
+  maxValue: number | null | undefined;
+  onMinChange: (value: string) => void;
+  onMaxChange: (value: string) => void;
+  onBlur: () => void;
+}) => (
+  <div className="rounded-2xl border border-border/40 bg-muted/20 px-3 py-2.5">
+    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      {label}
+    </p>
+    <div className="mt-1 flex items-center gap-2">
+      <Input
+        value={minValue != null && minValue !== 0 ? String(minValue) : ""}
+        onChange={(e) => onMinChange(e.target.value)}
+        onBlur={onBlur}
+        placeholder="Min"
+        inputMode="decimal"
+        className="h-8 flex-1 rounded-full border-border/60 bg-card/85"
+      />
+      <span className="text-muted-foreground/70">–</span>
+      <Input
+        value={maxValue != null && maxValue !== 0 ? String(maxValue) : ""}
+        onChange={(e) => onMaxChange(e.target.value)}
+        onBlur={onBlur}
+        placeholder="Max"
+        inputMode="decimal"
+        className="h-8 flex-1 rounded-full border-border/60 bg-card/85"
+      />
+      <span className="min-w-6 text-right text-xs font-semibold text-muted-foreground">{suffix}</span>
     </div>
   </div>
 );

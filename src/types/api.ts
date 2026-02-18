@@ -86,7 +86,36 @@ export type MealPlanDayRecord = {
   target_protein_g: number | string;
   target_carbs_g: number | string;
   target_fat_g: number | string;
+  target_kcal_min?: number | string | null;
+  target_kcal_max?: number | string | null;
+  target_protein_g_min?: number | string | null;
+  target_protein_g_max?: number | string | null;
+  target_carbs_g_min?: number | string | null;
+  target_carbs_g_max?: number | string | null;
+  target_fat_g_min?: number | string | null;
+  target_fat_g_max?: number | string | null;
   group_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MealPlanTargetPresetRecord = {
+  id: string;
+  user_id: string;
+  name: string;
+  target_kcal: number | string;
+  target_protein_g: number | string;
+  target_carbs_g: number | string;
+  target_fat_g: number | string;
+  target_kcal_min?: number | string | null;
+  target_kcal_max?: number | string | null;
+  target_protein_g_min?: number | string | null;
+  target_protein_g_max?: number | string | null;
+  target_carbs_g_min?: number | string | null;
+  target_carbs_g_max?: number | string | null;
+  target_fat_g_min?: number | string | null;
+  target_fat_g_max?: number | string | null;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 };

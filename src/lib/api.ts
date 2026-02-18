@@ -8,6 +8,7 @@ import type {
   MealPlanGroupRecord,
   MealPlanItemRecord,
   MealPlanMealRecord,
+  MealPlanTargetPresetRecord,
   MealPlanWeekAssignmentRecord,
   MealTypeRecord,
 } from "@/types/api";
@@ -384,15 +385,25 @@ export const fetchMealPlans = async () =>
     weekAssignments: MealPlanWeekAssignmentRecord[];
   }>("/api/meal-plans");
 
+export type MealPlanTargetsInput = {
+  kcal?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  kcalMin?: number | null;
+  kcalMax?: number | null;
+  proteinMin?: number | null;
+  proteinMax?: number | null;
+  carbsMin?: number | null;
+  carbsMax?: number | null;
+  fatMin?: number | null;
+  fatMax?: number | null;
+};
+
 export const createMealPlanDay = async (payload: {
   name: string;
   groupId?: string | null;
-  targets?: {
-    kcal?: number;
-    protein?: number;
-    carbs?: number;
-    fat?: number;
-  };
+  targets?: MealPlanTargetsInput;
 }) =>
   apiFetch<{ day: MealPlanDayRecord; meals: MealPlanMealRecord[] }>("/api/meal-plans/days", {
     method: "POST",
@@ -404,18 +415,41 @@ export const updateMealPlanDay = async (
   payload: {
     name?: string;
     groupId?: string | null;
-    targets?: {
-      kcal?: number;
-      protein?: number;
-      carbs?: number;
-      fat?: number;
-    };
+    targets?: MealPlanTargetsInput;
   },
 ) =>
   apiFetch<{ day: MealPlanDayRecord }>(`/api/meal-plans/days/${dayId}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
   });
+
+export const fetchMealPlanPresets = async () =>
+  apiFetch<{ presets: MealPlanTargetPresetRecord[] }>("/api/meal-plans/presets");
+
+export const createMealPlanPreset = async (payload: {
+  name: string;
+  targets: {
+    kcal: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    kcalMin?: number | null;
+    kcalMax?: number | null;
+    proteinMin?: number | null;
+    proteinMax?: number | null;
+    carbsMin?: number | null;
+    carbsMax?: number | null;
+    fatMin?: number | null;
+    fatMax?: number | null;
+  };
+}) =>
+  apiFetch<{ preset: MealPlanTargetPresetRecord }>("/api/meal-plans/presets", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+export const deleteMealPlanPreset = async (presetId: string) =>
+  apiFetch<{ ok: boolean }>(`/api/meal-plans/presets/${presetId}`, { method: "DELETE" });
 
 export const createMealPlanGroup = async (payload: { name: string }) =>
   apiFetch<{ group: MealPlanGroupRecord }>("/api/meal-plans/groups", {

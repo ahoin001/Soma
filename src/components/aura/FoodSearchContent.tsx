@@ -17,6 +17,7 @@ import { MealIcon } from "./MealIcon";
 import { Pressable } from "./Pressable";
 import type { RefObject } from "react";
 import { cn } from "@/lib/utils";
+import { triggerActionHaptic, triggerToggleHaptic } from "@/lib/haptics";
 import {
   FOOD_GOAL_PRESETS,
   FOOD_TAG_DEFINITIONS,
@@ -42,6 +43,7 @@ type FoodSearchContentProps = {
   onGoalPresetChange: (preset: FoodGoalPresetId | null) => void;
   sortBy: FoodSortOption;
   onSortByChange: (sortBy: FoodSortOption) => void;
+  onCycleSort: () => void;
   meal: Meal | null;
   meals: Meal[];
   loggedFoodIds?: Set<string>;
@@ -75,6 +77,7 @@ export const FoodSearchContent = ({
   onGoalPresetChange,
   sortBy,
   onSortByChange,
+  onCycleSort,
   meal,
   meals,
   loggedFoodIds,
@@ -262,13 +265,38 @@ export const FoodSearchContent = ({
         <div className="mt-3 space-y-3 rounded-2xl border border-border/60 bg-card/60 p-3">
           {hasActiveFilters ? (
             <div className="rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs text-primary">
-              <span className="font-semibold">
-                {activePresetLabel ? `${activePresetLabel} mode` : "Custom filters"}
-              </span>
-              <span className="mx-1 text-primary/70">•</span>
-              <span>{selectedTags.length} tag{selectedTags.length === 1 ? "" : "s"}</span>
-              <span className="mx-1 text-primary/70">•</span>
-              <span>{sortLabel}</span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerToggleHaptic();
+                    onGoalPresetChange(null);
+                  }}
+                  className="rounded-full bg-primary/15 px-2.5 py-1 font-semibold transition duration-150 hover:bg-primary/20 active:scale-95 motion-reduce:transform-none"
+                >
+                  {activePresetLabel ? `${activePresetLabel} mode` : "Custom filters"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerActionHaptic();
+                    onClearFilters();
+                  }}
+                  className="rounded-full bg-primary/15 px-2.5 py-1 transition duration-150 hover:bg-primary/20 active:scale-95 motion-reduce:transform-none"
+                >
+                  {selectedTags.length} tag{selectedTags.length === 1 ? "" : "s"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerToggleHaptic();
+                    onCycleSort();
+                  }}
+                  className="rounded-full bg-primary/15 px-2.5 py-1 transition duration-150 hover:bg-primary/20 active:scale-95 motion-reduce:transform-none"
+                >
+                  {sortLabel}
+                </button>
+              </div>
             </div>
           ) : null}
           <div className="flex items-center justify-between">
@@ -281,7 +309,10 @@ export const FoodSearchContent = ({
                 variant="ghost"
                 size="sm"
                 className="h-7 rounded-full px-3 text-[11px] font-semibold"
-                onClick={onClearFilters}
+                onClick={() => {
+                  triggerActionHaptic();
+                  onClearFilters();
+                }}
               >
                 Clear filters
               </Button>
@@ -294,10 +325,13 @@ export const FoodSearchContent = ({
                 <button
                   key={preset.id}
                   type="button"
-                  onClick={() => onGoalPresetChange(isActive ? null : preset.id)}
+                  onClick={() => {
+                    triggerToggleHaptic();
+                    onGoalPresetChange(isActive ? null : preset.id);
+                  }}
                   aria-pressed={isActive}
                   className={cn(
-                    "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                    "rounded-full border px-3 py-1 text-xs font-semibold transition duration-150 active:scale-95 motion-reduce:transform-none",
                     isActive
                       ? "border-primary/30 bg-primary/15 text-primary"
                       : "border-border bg-background text-muted-foreground hover:text-foreground",
@@ -334,10 +368,13 @@ export const FoodSearchContent = ({
                 <button
                   key={definition.id}
                   type="button"
-                  onClick={() => onToggleTag(definition.id)}
+                  onClick={() => {
+                    triggerToggleHaptic();
+                    onToggleTag(definition.id);
+                  }}
                   aria-pressed={isSelected}
                   className={cn(
-                    "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                    "rounded-full border px-3 py-1 text-xs font-semibold transition duration-150 active:scale-95 motion-reduce:transform-none",
                     isSelected
                       ? "border-primary/30 bg-primary/15 text-primary"
                       : "border-border bg-background text-muted-foreground hover:text-foreground",
