@@ -17,6 +17,7 @@ import {
   setSessionToken,
   setUserId,
 } from "@/lib/api";
+import { setSessionExpiredCallback } from "@/lib/sessionExpired";
 
 type AuthState = {
   userId: string | null;
@@ -87,6 +88,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch {
       setState({ userId: null, email: null, status: "ready" });
     }
+  }, []);
+
+  useEffect(() => {
+    setSessionExpiredCallback(() => {
+      setState({ userId: null, email: null, status: "ready" });
+    });
+    return () => setSessionExpiredCallback(null);
   }, []);
 
   useEffect(() => {

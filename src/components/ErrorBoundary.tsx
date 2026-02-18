@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, LogIn, RefreshCw } from "lucide-react";
+import { SessionExpiredError } from "@/lib/api";
 
 type ErrorBoundaryProps = {
   children: ReactNode;
@@ -10,6 +11,11 @@ type ErrorBoundaryProps = {
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
   /** Scope name for logging (e.g., "Nutrition", "Fitness") */
   scope?: string;
+};
+
+type PageErrorBoundaryProps = ErrorBoundaryProps & {
+  /** When set, "Go Home" / "Sign in again" use this instead of full reload (e.g. navigate('/auth')). */
+  onGoHome?: () => void;
 };
 
 type ErrorBoundaryState = {
@@ -102,8 +108,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 /**
  * Page-level error boundary with full-screen fallback
  */
-export class PageErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
+export class PageErrorBoundary extends Component<PageErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: PageErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null };
   }
@@ -133,15 +139,41 @@ export class PageErrorBoundary extends Component<ErrorBoundaryProps, ErrorBounda
   };
 
   handleGoHome = () => {
-    // Go to auth so recovery is predictable: one place to re-enter the app.
-    // /nutrition would redirect to /auth if not signed in, causing erratic PWA behavior.
-    window.location.href = "/auth";
+    if (this.props.onGoHome) {
+      this.props.onGoHome();
+    } else {
+      window.location.href = "/auth";
+    }
   };
 
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;
+      }
+
+      const isSessionExpired = this.state.error instanceof SessionExpiredError;
+
+      if (isSessionExpired) {
+        return (
+          <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
+            <div className="rounded-full bg-primary/10 p-4">
+              <LogIn className="h-10 w-10 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-foreground">
+                Session expired
+              </h2>
+              <p className="max-w-md text-muted-foreground">
+                You were signed out. Sign in again to continue.
+              </p>
+            </div>
+            <Button onClick={this.handleGoHome} variant="default" className="gap-2">
+              <LogIn className="h-4 w-4" />
+              Sign in again
+            </Button>
+          </div>
+        );
       }
 
       return (

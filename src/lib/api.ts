@@ -11,7 +11,16 @@ import type {
   MealPlanWeekAssignmentRecord,
   MealTypeRecord,
 } from "@/types/api";
+import { notifySessionExpired } from "@/lib/sessionExpired";
 import { SESSION_TOKEN_KEY, USER_ID_KEY } from "@/lib/storageKeys";
+
+/** Thrown when the server returns 401. Auth layer clears session and shows sign-in. */
+export class SessionExpiredError extends Error {
+  constructor() {
+    super("Session expired");
+    this.name = "SessionExpiredError";
+  }
+}
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
@@ -134,6 +143,13 @@ const apiFetch = async <T>(path: string, options?: RequestInit) => {
     headers,
   });
 
+  if (response.status === 401) {
+    setSessionToken(null);
+    clearStoredUserId();
+    notifySessionExpired();
+    throw new SessionExpiredError();
+  }
+
   if (!response.ok) {
     const text = await response.text();
     throw new Error(text || `Request failed: ${response.status}`);
@@ -168,10 +184,9 @@ export const ensureUser = async (displayName = "You") => {
 
 /**
  * Timeout for auth check so the app doesn't hang on slow/cold API.
- * Auth can be slow due to: API cold start (serverless), network RTT, or backend load.
- * On timeout we return { user: null } so the app shows the auth screen instead of infinite loading.
+ * PWA/Capacitor: keep low so we show auth quickly when server is unreachable.
  */
-const AUTH_ME_TIMEOUT_MS = 4000;
+const AUTH_ME_TIMEOUT_MS = 2500;
 
 export const fetchCurrentUser = async (): Promise<{
   user: { id: string; email: string | null; emailVerified?: boolean } | null;
@@ -210,6 +225,8 @@ export const fetchCurrentUser = async (): Promise<{
     };
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
+      setSessionToken(null);
+      clearStoredUserId();
       return { user: null };
     }
     throw err;

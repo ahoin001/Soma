@@ -15,6 +15,7 @@ import {
   Route,
   Navigate,
   useLocation,
+  useNavigate,
   useNavigationType,
 } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,6 +51,7 @@ import {
   fetchWaterLogs,
   fetchWeightLogs,
   fetchWorkoutPlans,
+  SessionExpiredError,
 } from "@/lib/api";
 import { getMealRecommendation } from "@/lib/nutrition";
 import { computeLogSections, computeTotals, toLocalDate } from "@/lib/nutritionData";
@@ -113,7 +115,8 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 30 * 1000, // 30 seconds - data is fresh
       gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache
-      retry: 3,
+      retry: (failureCount, error) =>
+        !(error instanceof SessionExpiredError) && failureCount < 3,
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
@@ -684,7 +687,7 @@ const AuthRoute = () => {
   );
 };
 
-// ─── App shell ──────────────────────────────────────────────────────
+// ─── App shell (must be inside BrowserRouter) ────────────────────────
 const AppShellRoot = () => {
   const auth = useAuth();
   const authReady = auth.status === "ready";
@@ -695,24 +698,48 @@ const AppShellRoot = () => {
 
   const isSignedIn = Boolean(auth.userId);
 
+  return isSignedIn ? (
+    <>
+      <AppPrefetch />
+      <ExperienceBackdrop />
+      <OnboardingDialog />
+      <AppRoutes />
+    </>
+  ) : (
+    <Suspense fallback={<AuthLoading />}>
+      <Routes>
+        <Route path="/auth" element={<Auth />} />
+        <Route path="*" element={<Navigate to="/auth" replace />} />
+      </Routes>
+    </Suspense>
+  );
+};
+
+/** Wraps app content so PageErrorBoundary can use in-app navigate instead of full reload. */
+const AppWithErrorBoundary = () => {
+  const navigate = useNavigate();
   return (
-    <BrowserRouter>
-      {isSignedIn ? (
-        <>
-          <AppPrefetch />
-          <ExperienceBackdrop />
-          <OnboardingDialog />
-          <AppRoutes />
-        </>
-      ) : (
-        <Suspense fallback={<AuthLoading />}>
-            <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="*" element={<Navigate to="/auth" replace />} />
-            </Routes>
-          </Suspense>
-      )}
-        </BrowserRouter>
+    <PageErrorBoundary
+      scope="App"
+      onGoHome={() => navigate("/auth", { replace: true })}
+      onError={(error, errorInfo) => {
+        if (import.meta.env.DEV) {
+          console.error("[GlobalError]", error, errorInfo.componentStack);
+        }
+      }}
+    >
+      <Toaster />
+      <Sonner />
+      <AuthProvider>
+        <UserProvider>
+          <UIProvider>
+            <AppStoreProvider>
+              <AppShellRoot />
+            </AppStoreProvider>
+          </UIProvider>
+        </UserProvider>
+      </AuthProvider>
+    </PageErrorBoundary>
   );
 };
 
@@ -737,30 +764,12 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <PageErrorBoundary
-          scope="App"
-          onError={(error, errorInfo) => {
-            // Future: Send to error tracking service (Sentry, etc.)
-            if (import.meta.env.DEV) {
-              console.error("[GlobalError]", error, errorInfo.componentStack);
-            }
-          }}
-        >
-          <Toaster />
-          <Sonner />
-          <AuthProvider>
-            <UserProvider>
-              <UIProvider>
-                <AppStoreProvider>
-                  <AppShellRoot />
-      </AppStoreProvider>
-              </UIProvider>
-            </UserProvider>
-          </AuthProvider>
-        </PageErrorBoundary>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+        <BrowserRouter>
+          <AppWithErrorBoundary />
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
 };
 
 export default App;
