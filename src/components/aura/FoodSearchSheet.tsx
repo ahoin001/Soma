@@ -1,12 +1,14 @@
-import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import { Drawer, DrawerContent, DrawerStickyActions } from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
 import type { FoodItem, Meal } from "@/data/mock";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { BarcodeScanSheet } from "./BarcodeScanSheet";
 import { CreateFoodSheet } from "./CreateFoodSheet";
 import { FoodSearchContent } from "./FoodSearchContent";
 import { SHEET_FOOD_SEARCH_KEY } from "@/lib/storageKeys";
 import { useSheetManager } from "@/hooks/useSheetManager";
 import type { FoodSortOption, FoodTagId } from "@/lib/foodClassification";
+import { useRememberedTab } from "@/hooks/useRememberedTab";
 
 type FoodSearchSheetProps = {
   open: boolean;
@@ -125,9 +127,13 @@ const FoodSearchSheetContent = ({
   const { activeSheet, openSheet, closeSheets } = useSheetManager<
     "barcode" | "create"
   >(null, { storageKey: SHEET_FOOD_SEARCH_KEY, persist: true });
-  const [lastBrowseTab, setLastBrowseTab] = useState<"recent" | "liked" | "history">(
-    activeTab === "search" ? "recent" : activeTab,
-  );
+  const [lastBrowseTab, setLastBrowseTab] = useRememberedTab<
+    "recent" | "liked" | "history"
+  >({
+    key: "browse",
+    values: ["recent", "liked", "history"] as const,
+    defaultValue: activeTab === "search" ? "recent" : activeTab,
+  });
 
   useEffect(() => {
     if (activeTab !== "search") {
@@ -138,7 +144,7 @@ const FoodSearchSheetContent = ({
   return (
     <>
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6 overflow-hidden">
+        <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-0 overflow-hidden">
           <div className="aura-sheet-scroll">
             <FoodSearchContent
               activeTab={activeTab}
@@ -172,6 +178,16 @@ const FoodSearchSheetContent = ({
               }}
               inputRef={inputRef}
             />
+            <DrawerStickyActions className="px-0">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full rounded-full"
+                onClick={() => onOpenChange(false)}
+              >
+                Close
+              </Button>
+            </DrawerStickyActions>
           </div>
         </DrawerContent>
       </Drawer>

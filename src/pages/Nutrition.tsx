@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { type FoodItem, type Meal } from "@/data/mock";
 import {
   AppShell,
@@ -57,6 +57,9 @@ import {
 import { getMicroSlotKeys } from "@/components/aura/MacroMicroGoalSheet";
 import type { NutritionDraft } from "@/types/nutrition";
 import type { MealPlanItem, MealPlanMeal } from "@/hooks/useMealPlans";
+import { nutritionQuerySchema } from "@/lib/routeSchemas";
+import { setQueryFromState } from "@/lib/routeQuery";
+import { useRouteQueryState } from "@/hooks/useRouteQueryState";
 
 /** Build a FoodItem from a meal plan item so we can call logFood. */
 function planItemToFoodItem(item: MealPlanItem): FoodItem {
@@ -197,7 +200,8 @@ const Nutrition = () => {
   }, [activeSheet, adminQuery]);
 
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { query: queryState, searchParams, setSearchParams } =
+    useRouteQueryState(nutritionQuerySchema);
   const [showWelcome, setShowWelcome] = useState(false);
   const locationState = location.state as { justLoggedIn?: boolean; isNewUser?: boolean } | null;
   const locationStateSuggested = location.state as SuggestedPlanDayState | null;
@@ -286,6 +290,67 @@ const Nutrition = () => {
   const pulseMealId = mealPulse?.mealId;
   const isEditOpen = activeSheet === "edit" && Boolean(editItem);
   const isDetailOpen = activeSheet === "detail" && Boolean(selectedFood);
+
+  const clearSheetParams = () => {
+    const next = setQueryFromState(searchParams, nutritionQuerySchema, {
+      sheet: undefined,
+      foodId: undefined,
+      sheetItemId: undefined,
+      editItemId: undefined,
+    });
+    setSearchParams(next, { replace: true });
+  };
+
+  const closeAllSheets = () => {
+    closeSheets();
+    clearSheetParams();
+  };
+
+  const openQuickSheet = () => {
+    openSheet("quick");
+    const next = setQueryFromState(searchParams, nutritionQuerySchema, {
+      sheet: "quick",
+      foodId: undefined,
+      sheetItemId: undefined,
+      editItemId: queryState.editItemId,
+    });
+    setSearchParams(next, { replace: true });
+  };
+
+  const openAdminSheet = () => {
+    openSheet("admin");
+    const next = setQueryFromState(searchParams, nutritionQuerySchema, {
+      sheet: "admin",
+      foodId: undefined,
+      sheetItemId: undefined,
+      editItemId: queryState.editItemId,
+    });
+    setSearchParams(next, { replace: true });
+  };
+
+  const openDetailSheet = (food: FoodItem) => {
+    setSelectedFood(food);
+    openSheet("detail");
+    const next = setQueryFromState(searchParams, nutritionQuerySchema, {
+      sheet: "detail",
+      foodId: food.id,
+      sheetItemId: undefined,
+      editItemId: queryState.editItemId,
+    });
+    setSearchParams(next, { replace: true });
+  };
+
+  const openEditSheet = (item: LogItem) => {
+    setEditItem(item);
+    openSheet("edit");
+    const next = setQueryFromState(searchParams, nutritionQuerySchema, {
+      sheet: "edit",
+      foodId: undefined,
+      sheetItemId: item.id || undefined,
+      editItemId: queryState.editItemId,
+    });
+    setSearchParams(next, { replace: true });
+  };
 
   useEffect(() => {
     void refreshLists();
@@ -452,7 +517,7 @@ const Nutrition = () => {
   }, [locationState?.justLoggedIn]);
 
   useEffect(() => {
-    const editItemId = searchParams.get("editItemId");
+    const editItemId = queryState.editItemId;
     if (!editItemId) return;
     const match = logSections
       .flatMap((section) => section.items)
@@ -468,19 +533,87 @@ const Nutrition = () => {
     const next = new URLSearchParams(searchParams);
     next.delete("editItemId");
     setSearchParams(next, { replace: true });
-  }, [logSections, searchParams, setSearchParams]);
+  }, [logSections, queryState.editItemId, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const sheet = queryState.sheet;
+    if (!sheet) return;
+
+    if (sheet === "quick") {
+      if (activeSheet !== "quick") setActiveSheet("quick");
+      return;
+    }
+
+    if (sheet === "admin") {
+      if (activeSheet !== "admin") setActiveSheet("admin");
+      return;
+    }
+
+    if (sheet === "detail") {
+      const foodId = queryState.foodId;
+      if (!foodId) return;
+      const merged = [...apiResults, ...favorites, ...history];
+      const match = merged.find((food) => food.id === foodId);
+      if (match) {
+        setSelectedFood(match);
+        if (activeSheet !== "detail") setActiveSheet("detail");
+      }
+      return;
+    }
+
+    if (sheet === "edit") {
+      const sheetItemId = queryState.sheetItemId;
+      if (!sheetItemId) return;
+      const match = logSections
+        .flatMap((section) => section.items)
+        .find((item) => item.id === sheetItemId);
+      if (match) {
+        setEditItem(match);
+        if (activeSheet !== "edit") setActiveSheet("edit");
+      }
+    }
+  }, [
+    activeSheet,
+    apiResults,
+    favorites,
+    history,
+    logSections,
+    queryState.foodId,
+    queryState.sheet,
+    queryState.sheetItemId,
+    setActiveSheet,
+  ]);
+
+  useEffect(() => {
+    const next = setQueryFromState(searchParams, nutritionQuerySchema, {
+      sheet: activeSheet === null ? undefined : activeSheet,
+      foodId: activeSheet === "detail" ? selectedFood?.id : undefined,
+      sheetItemId: activeSheet === "edit" ? editItem?.id : undefined,
+      editItemId: queryState.editItemId,
+    });
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [
+    activeSheet,
+    editItem?.id,
+    queryState.editItemId,
+    searchParams,
+    selectedFood?.id,
+    setSearchParams,
+  ]);
 
   useEffect(() => {
     if (activeSheet === "edit" && !editItem) {
-      closeSheets();
+      closeAllSheets();
     }
-  }, [activeSheet, closeSheets, editItem]);
+  }, [activeSheet, editItem, searchParams]);
 
   useEffect(() => {
     if (activeSheet === "detail" && !selectedFood) {
-      closeSheets();
+      closeAllSheets();
     }
-  }, [activeSheet, closeSheets, selectedFood]);
+  }, [activeSheet, searchParams, selectedFood]);
 
   useEffect(() => {
     if (!meals.length || selectedMeal) return;
@@ -488,7 +621,7 @@ const Nutrition = () => {
   }, [meals, selectedMeal]);
 
   const openSearch = (meal: Meal) => {
-    closeSheets();
+    closeAllSheets();
     setSelectedMeal(meal);
     const params = new URLSearchParams();
     params.set("mealId", meal.id);
@@ -497,9 +630,8 @@ const Nutrition = () => {
   };
 
   const openDetail = (food: FoodItem) => {
-    closeSheets();
-    setSelectedFood(food);
-    openSheet("detail");
+    closeAllSheets();
+    openDetailSheet(food);
   };
 
   const handleTrack = async (
@@ -565,8 +697,7 @@ const Nutrition = () => {
   };
 
   const handleEditItem = (item: LogItem) => {
-    setEditItem(item);
-    openSheet("edit");
+    openEditSheet(item);
   };
 
   const handleRemoveItem = (item: LogItem) => {
@@ -579,7 +710,7 @@ const Nutrition = () => {
     <AppShell
       experience="nutrition"
       onAddAction={() => {
-        closeSheets();
+        closeAllSheets();
         navigate("/nutrition/add-food");
       }}
     >
@@ -688,19 +819,19 @@ const Nutrition = () => {
             topSourcesMacro={topSourcesMacro}
             topSourcesMicro={topSourcesMicro}
             onLongPressMacros={() => {
-              closeSheets();
+              closeAllSheets();
               navigate("/nutrition/goals");
             }}
             onGoalsClick={() => {
-              closeSheets();
+              closeAllSheets();
               navigate("/nutrition/goals");
             }}
             onProfileClick={
               isAdmin
                 ? () => {
-                    closeSheets();
+                    closeAllSheets();
                     setAdminQuery("");
-                    openSheet("admin");
+                    openAdminSheet();
                   }
                 : undefined
             }
@@ -896,7 +1027,10 @@ const Nutrition = () => {
 
       <FoodDetailSheet
         open={isDetailOpen}
-        onOpenChange={(open) => (open ? openSheet("detail") : closeSheets())}
+        onOpenChange={(open) => {
+          if (open && selectedFood) openDetailSheet(selectedFood);
+          else closeAllSheets();
+        }}
         food={selectedFood}
         macros={macros}
         onTrack={handleTrack}
@@ -911,12 +1045,12 @@ const Nutrition = () => {
 
       <QuickActionSheet
         open={activeSheet === "quick"}
-        onOpenChange={(open) => (open ? openSheet("quick") : closeSheets())}
+        onOpenChange={(open) => (open ? openQuickSheet() : closeAllSheets())}
         meals={meals}
         selectedMeal={selectedMeal}
         onSelectMeal={setSelectedMeal}
         onAddFood={() => {
-          closeSheets();
+          closeAllSheets();
           const params = new URLSearchParams();
           if (selectedMeal?.id) {
             params.set("mealId", selectedMeal.id);
@@ -925,7 +1059,7 @@ const Nutrition = () => {
           navigate(`/nutrition/add-food?${params.toString()}`);
         }}
         onCreateFood={() => {
-          closeSheets();
+          closeAllSheets();
           const params = new URLSearchParams();
           if (selectedMeal?.id) {
             params.set("mealId", selectedMeal.id);
@@ -937,7 +1071,7 @@ const Nutrition = () => {
 
       <Drawer
         open={activeSheet === "admin"}
-        onOpenChange={(open) => (open ? openSheet("admin") : closeSheets())}
+        onOpenChange={(open) => (open ? openAdminSheet() : closeAllSheets())}
       >
         <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6 max-h-[90vh] flex flex-col">
           <div className="px-5 pb-6 pt-3 flex flex-col min-h-0 flex-1 overflow-hidden">
@@ -1023,7 +1157,7 @@ const Nutrition = () => {
                     key={food.id}
                     type="button"
                     onClick={() => {
-                      closeSheets();
+                      closeAllSheets();
                       navigate("/nutrition/food/edit", {
                         state: { food, returnTo: "/nutrition" },
                       });
@@ -1090,7 +1224,10 @@ const Nutrition = () => {
 
       <EditLogSheet
         open={isEditOpen}
-        onOpenChange={(open) => (open ? openSheet("edit") : closeSheets())}
+        onOpenChange={(open) => {
+          if (open && editItem) openEditSheet(editItem);
+          else closeAllSheets();
+        }}
         item={editItem}
         onSave={(item, multiplier) => {
           // Optimistic - fires immediately, errors handled by mutation's onError

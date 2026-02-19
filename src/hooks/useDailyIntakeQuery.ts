@@ -1,6 +1,12 @@
 /**
  * Daily Intake Hook - React Query Version
  *
+ * ARCHITECTURE CONTRACT (do not break without migration):
+ * - This hook is the single owner of daily nutrition state.
+ * - UI totals (summary/macros/micros) must be derived from `logSections`.
+ * - No external hydration/backdoor setters should mutate nutrition cache shape.
+ * - Optimistic updates must update `logSections`, then recompute totals from it.
+ *
  * Manages nutrition tracking for a given date:
  * - Summary (kcal eaten/left/goal)
  * - Macros (carbs, protein, fat with current/goal)
@@ -12,7 +18,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { appToast } from "@/lib/toast";
 import type { FoodItem, MacroTarget, Meal } from "@/data/mock";
-import type { MealEntryItemRecord, MealEntryRecord } from "@/types/api";
 import {
   createMealEntry,
   deleteMealEntryItem,
@@ -28,7 +33,13 @@ import type { LogItem, LogSection } from "@/types/log";
 import { queryKeys } from "@/lib/queryKeys";
 import { DEBUG_KEY, LAST_NUTRITION_DATE_KEY } from "@/lib/storageKeys";
 import { queueMutation } from "@/lib/offlineQueue";
-import { computeLogSections, computeMicroTotals, computeTotals, toLocalDate } from "@/lib/nutritionData";
+import {
+  computeLogSections,
+  computeMicroTotals,
+  computeTotals,
+  normalizeMicroRecord,
+  toLocalDate,
+} from "@/lib/nutritionData";
 import { normalizeFoodImageUrl } from "@/lib/foodImageUrl";
 import type { LastLog, Summary, SyncState } from "@/types/nutrition";
 import type { NutritionSummaryMicros } from "@/lib/api";
@@ -149,8 +160,8 @@ export const useDailyIntakeQuery = (
                 ),
       }));
 
-      // Prefer DB-aggregated typed micros when available; fallback to local derived totals.
-      const micros = (summaryRes.micros ?? computeMicroTotals(logSections)) as NutritionSummaryMicros;
+      // Contract: micros are derived from diary-visible logSections, never from a parallel source.
+      const micros = computeMicroTotals(logSections) as NutritionSummaryMicros;
 
       if (signal?.aborted) throw new Error("Query was cancelled");
       if (isNutritionDebug())
@@ -275,6 +286,9 @@ export const useDailyIntakeQuery = (
           protein: food.macros.protein,
           fat: food.macros.fat,
         },
+        micronutrients: normalizeMicroRecord(
+          (food.micronutrients as Record<string, unknown> | undefined) ?? undefined,
+        ),
         emoji: mealEmoji,
         imageUrl: normalizeFoodImageUrl(food.imageUrl) ?? null,
       };
@@ -761,63 +775,6 @@ export const useDailyIntakeQuery = (
     void queryClient.invalidateQueries({ queryKey: queryKeys.nutrition(localDate) });
   }, [localDate, queryClient]);
 
-  // --- Legacy hydration (for backward compatibility with AppStore) ---
-  const hydrateEntries = useCallback(
-    (entries: MealEntryRecord[], items: MealEntryItemRecord[]) => {
-      const logSections = computeLogSections(entries, items, meals);
-      const totals = computeTotals(logSections);
-      queryClient.setQueryData<NutritionData>(
-        queryKeys.nutrition(localDate),
-        (old) => ({
-          micros: computeMicroTotals(logSections) as NutritionSummaryMicros,
-          summary: old?.summary ?? initialSummary,
-          macros: (old?.macros ?? initialMacros).map((macro) => ({
-            ...macro,
-            current: totals[macro.key],
-          })),
-          logSections,
-        })
-      );
-    },
-    [localDate, meals, queryClient, initialSummary, initialMacros]
-  );
-
-  const hydrateSummary = useCallback(
-    (payload?: {
-      totals?: { kcal?: number; carbs_g?: number; protein_g?: number; fat_g?: number };
-      targets?: {
-        kcal_goal?: number | null;
-        carbs_g?: number | null;
-        protein_g?: number | null;
-        fat_g?: number | null;
-      } | null;
-      settings?: {
-        kcal_goal?: number | null;
-        carbs_g?: number | null;
-        protein_g?: number | null;
-        fat_g?: number | null;
-      } | null;
-    }) => {
-      if (!payload?.totals) return;
-      // This is handled by the query now, but we keep for backward compat
-      void queryClient.invalidateQueries({ queryKey: queryKeys.nutrition(localDate) });
-    },
-    [localDate, queryClient]
-  );
-
-  const hydrateTargets = useCallback(
-    (_targets?: {
-      kcal_goal?: number | null;
-      carbs_g?: number | null;
-      protein_g?: number | null;
-      fat_g?: number | null;
-    } | null) => {
-      // This is handled by the query now, but we keep for backward compat
-      void queryClient.invalidateQueries({ queryKey: queryKeys.nutrition(localDate) });
-    },
-    [localDate, queryClient]
-  );
-
   // --- Return same interface as original hook ---
   return {
     summary,
@@ -851,9 +808,6 @@ export const useDailyIntakeQuery = (
     updateLogItem: (item: LogItem, multiplier: number) => {
       updateItemMutation.mutate({ item, multiplier });
     },
-    hydrateSummary,
-    hydrateEntries,
-    hydrateTargets,
     copyDayFrom: (sourceLocalDate: string) => copyDayMutation.mutate(sourceLocalDate),
     isCopyingDay: copyDayMutation.isPending,
     // Additional query state for components that need it

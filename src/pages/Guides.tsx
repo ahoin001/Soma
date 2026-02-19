@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { AppShell } from "@/components/aura";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { GroceriesContent } from "./Groceries";
@@ -8,16 +7,41 @@ import { cn } from "@/lib/utils";
 import { BookOpen, CalendarDays, ChevronDown, ShoppingBag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRememberedTab } from "@/hooks/useRememberedTab";
+import { useRememberedState } from "@/hooks/useRememberedState";
+import { useEffect } from "react";
+import { guidesQuerySchema } from "@/lib/routeSchemas";
+import { useRouteQueryState } from "@/hooks/useRouteQueryState";
 
 type TabId = "groceries" | "plans" | "articles";
 
 const Guides = () => {
+  const { query, mergeQueryState } = useRouteQueryState(guidesQuerySchema, {
+    defaults: { tab: "groceries" },
+  });
   const [tab, setTab] = useRememberedTab<TabId>({
     key: "primary",
     values: ["groceries", "plans", "articles"] as const,
     defaultValue: "groceries",
   });
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useRememberedState<string | null>({
+    key: "expanded-article",
+    defaultValue: null,
+    parse: (raw) => (typeof raw === "string" ? raw : null),
+  });
+
+  // URL -> state (supports deep links and POP navigation)
+  useEffect(() => {
+    if (query.tab) setTab(query.tab);
+    setExpandedId(query.article ?? null);
+  }, [query.article, query.tab, setExpandedId, setTab]);
+
+  // state -> URL (shareable/restorable page context)
+  useEffect(() => {
+    mergeQueryState({
+      tab,
+      article: tab === "articles" ? expandedId ?? undefined : undefined,
+    });
+  }, [expandedId, mergeQueryState, tab]);
 
   return (
     <AppShell experience="nutrition">

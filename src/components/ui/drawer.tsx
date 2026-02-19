@@ -197,6 +197,14 @@ const DrawerFooter = ({
 );
 DrawerFooter.displayName = "DrawerFooter";
 
+const DrawerStickyActions = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("aura-sheet-actions", className)} {...props} />
+);
+DrawerStickyActions.displayName = "DrawerStickyActions";
+
 const DrawerTitle = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Title>
@@ -233,6 +241,7 @@ export {
   DrawerContent,
   DrawerHeader,
   DrawerFooter,
+  DrawerStickyActions,
   DrawerTitle,
   DrawerDescription,
 };

@@ -11,6 +11,7 @@ import { useTheme } from "next-themes";
 // framer-motion is used by PageTransition / ExperienceSwitch — not directly here
 import {
   BrowserRouter,
+  HashRouter,
   Routes,
   Route,
   Navigate,
@@ -141,6 +142,13 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+const isNativeCapacitor = () => {
+  if (typeof window === "undefined") return false;
+  const cap = (window as { Capacitor?: { isNativePlatform?: () => boolean } })
+    .Capacitor;
+  return Boolean(cap?.isNativePlatform?.());
+};
 
 const isPersistableSignedInRoute = (path: string) =>
   path.startsWith("/nutrition") ||
@@ -835,6 +843,10 @@ const AppWithErrorBoundary = () => {
 };
 
 const App = () => {
+  const routerMode = import.meta.env.VITE_ROUTER_MODE;
+  const useHashRouting = routerMode === "hash" || isNativeCapacitor();
+  const Router = useHashRouting ? HashRouter : BrowserRouter;
+
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     console.info("[AuraFit] app boot");
@@ -862,9 +874,9 @@ const App = () => {
       }}
     >
       <TooltipProvider>
-        <BrowserRouter>
+        <Router basename={import.meta.env.BASE_URL}>
           <AppWithErrorBoundary />
-        </BrowserRouter>
+        </Router>
       </TooltipProvider>
     </PersistQueryClientProvider>
   );

@@ -5,8 +5,8 @@ import {
   RoutineBuilderPanel,
   VirtualizedExerciseList,
 } from "@/components/aura";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SearchField } from "@/components/ui/search-field";
 import { useAppStore } from "@/state/AppStore";
 import type { Exercise } from "@/types/fitness";
 
@@ -64,13 +64,15 @@ const FitnessRoutines = () => {
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Atlas picker
             </p>
-            <Input
+            <SearchField
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onValueChange={setQuery}
               placeholder="Search exercises to add"
-              className="mt-3 border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
-            />
-            <div className="mt-3">
+              sticky
+              stickyClassName="mt-3"
+              selfContainedScroll
+              contentClassName="space-y-3"
+            >
               {status === "loading" ? (
                 <p className="text-sm text-muted-foreground">Searching...</p>
               ) : error ? (
@@ -86,7 +88,7 @@ const FitnessRoutines = () => {
                   Start typing to select an exercise.
                 </p>
               )}
-            </div>
+            </SearchField>
           </div>
 
           <RoutineBuilderPanel

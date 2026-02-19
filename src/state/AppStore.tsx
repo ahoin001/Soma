@@ -4,8 +4,6 @@ import { defaultMacroTargets, defaultSummary } from "@/data/defaults";
 import {
   ensureUser,
   fetchLatestWeightLog,
-  fetchMealEntries,
-  fetchNutritionSummary,
   fetchUserProfile,
 } from "@/lib/api";
 import { useDailyIntake } from "@/hooks/useDailyIntake";
@@ -15,7 +13,6 @@ import { useFitnessPlanner } from "@/hooks/useFitnessPlanner";
 import { useMealTypes } from "@/hooks/useMealTypes";
 import { useWorkoutPlans } from "@/hooks/useWorkoutPlans";
 import {
-  DEBUG_KEY,
   FOOD_IMAGES_KEY,
   USER_PROFILE_KEY,
   WORKOUT_DRAFTS_KEY_V2,
@@ -110,11 +107,6 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
   });
   const mealTypes = useMealTypes();
   const nutrition = useDailyIntake(defaultSummary, defaultMacroTargets, mealTypes.meals);
-  const {
-    hydrateEntries: hydrateNutritionEntries,
-    hydrateSummary: hydrateNutritionSummary,
-    hydrateTargets: hydrateNutritionTargets,
-  } = nutrition;
   const foodCatalog = useFoodCatalog();
   const fitnessLibrary = useExerciseLibrary();
   const fitnessPlanner = useFitnessPlanner();
@@ -260,32 +252,19 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
       }
       return Math.round(weight * 10) / 10;
     };
-    const toLocalDate = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    };
     const hydrateProfile = async () => {
       try {
+        // Contract: AppStore hydrates profile/preferences only.
+        // Nutrition hydration is owned by useDailyIntakeQuery to avoid split-brain state.
         await ensureUser();
-        const today = toLocalDate(new Date());
-        const [profileRes, weightRes, nutritionSummary, mealEntries] = await Promise.all([
+        const [profileRes, weightRes] = await Promise.all([
           fetchUserProfile(),
           fetchLatestWeightLog(),
-          fetchNutritionSummary(today),
-          fetchMealEntries(today),
         ]);
         if (!active) return;
         const profile = profileRes.profile;
         const weightEntry = weightRes.entry;
-        const settings = nutritionSummary.settings ?? null;
-        if (!profile && !weightEntry && !settings && !nutritionSummary.totals) {
-          if (mealEntries.entries.length) {
-            hydrateNutritionEntries(mealEntries.entries, mealEntries.items);
-          }
-          return;
-        }
+        if (!profile && !weightEntry) return;
         setUserProfile((prev) => ({
           ...prev,
           displayName: profile?.display_name ?? prev.displayName ?? "You",
@@ -303,42 +282,6 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
               ? normalizeWeight(weightEntry.weight, weightEntry.unit) ?? prev.weightKg
               : prev.weightKg,
         }));
-
-        if (settings) {
-          hydrateNutritionTargets(settings);
-        } else if (import.meta.env.DEV) {
-          const enabled =
-            typeof window !== "undefined" &&
-            window.localStorage.getItem(DEBUG_KEY) === "true";
-          if (enabled) {
-            console.info("[AuraFit] missing nutrition settings on hydrate");
-          }
-        }
-
-        hydrateNutritionSummary({
-          totals: nutritionSummary.totals,
-          targets: nutritionSummary.targets ?? null,
-          settings: nutritionSummary.settings ?? null,
-        });
-
-        if (import.meta.env.DEV) {
-          const enabled =
-            typeof window !== "undefined" &&
-            window.localStorage.getItem(DEBUG_KEY) === "true";
-          if (enabled) {
-            const kcal = Number(nutritionSummary.settings?.kcal_goal ?? Number.NaN);
-            const invalidKcal = !Number.isFinite(kcal) || kcal <= 0;
-            if (invalidKcal) {
-              console.info("[AuraFit] nutrition settings kcal_goal invalid", {
-                kcal_goal: nutritionSummary.settings?.kcal_goal ?? null,
-              });
-            }
-          }
-        }
-
-        if (mealEntries.entries.length) {
-          hydrateNutritionEntries(mealEntries.entries, mealEntries.items);
-        }
       } catch {
         // ignore hydration failures
       }
@@ -348,9 +291,6 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
       active = false;
     };
   }, [
-    hydrateNutritionEntries,
-    hydrateNutritionSummary,
-    hydrateNutritionTargets,
     setUserProfile,
   ]);
 

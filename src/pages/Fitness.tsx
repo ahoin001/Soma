@@ -10,7 +10,7 @@ import {
   VirtualizedExerciseList,
 } from "@/components/aura";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchField } from "@/components/ui/search-field";
 import {
   Card,
   CardContent,
@@ -34,6 +34,7 @@ import { appToast } from "@/lib/toast";
 import { deleteExercise } from "@/lib/api";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { motion } from "framer-motion";
+import { useRememberedState } from "@/hooks/useRememberedState";
 
 const fitnessBlocks = [
   {
@@ -82,14 +83,25 @@ const Fitness = () => {
   const navigationType = useNavigationType();
   const location = useLocation();
   const abortRef = useRef<AbortController | null>(null);
-  const [expandedPlans, setExpandedPlans] = useState<string[]>([
-    workoutPlans[0]?.id ?? "",
-  ]);
+  const [expandedPlans, setExpandedPlans] = useRememberedState<string[]>({
+    key: "expanded-plans",
+    defaultValue: [],
+    parse: (raw) =>
+      Array.isArray(raw)
+        ? raw.filter((item): item is string => typeof item === "string")
+        : [],
+  });
   const [params, setParams] = useSearchParams();
   const [creating, setCreating] = useState(false);
   const [startingSession, setStartingSession] = useState(false);
   const [sessionElapsed, setSessionElapsed] = useState("");
   const isAdmin = useIsAdmin();
+
+  useEffect(() => {
+    if (expandedPlans.length > 0) return;
+    const firstPlanId = workoutPlans[0]?.id;
+    if (firstPlanId) setExpandedPlans([firstPlanId]);
+  }, [expandedPlans.length, setExpandedPlans, workoutPlans]);
 
   useEffect(() => {
     const session = fitnessPlanner.activeSession;
@@ -523,42 +535,46 @@ const Fitness = () => {
                       Search the exercise library by name or muscle group.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                  <Input
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search exercises (e.g., bench press)"
-                    className="border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
-                  />
-                  <Button
-                    variant="secondary"
-                    className="w-full rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                    onClick={() => navigate("/fitness/exercises/create")}
-                  >
-                    Create exercise
-                  </Button>
-                  {creating ? (
-                    <p className="text-xs text-muted-foreground">
-                      Preparing your workout...
-                    </p>
-                  ) : null}
-                  {status === "error" ? (
-                    <p className="text-sm text-destructive">{error}</p>
-                  ) : null}
-                  {status === "loading" ? (
-                    <p className="text-sm text-muted-foreground">Loading exercises...</p>
-                  ) : null}
-                  {previewItems.length ? (
-                    <VirtualizedExerciseList
-                      items={previewItems}
-                      selectedId={selectedExercise?.id ?? null}
-                      onSelect={handleSelectExercise}
-                    />
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Start typing to explore the Atlas.
-                    </p>
-                  )}
+                  <CardContent>
+                    <SearchField
+                      value={query}
+                      onValueChange={setQuery}
+                      placeholder="Search exercises (e.g., bench press)"
+                      sticky
+                      stickyClassName="-mt-1"
+                      selfContainedScroll
+                      contentClassName="space-y-4"
+                    >
+                      <Button
+                        variant="secondary"
+                        className="w-full rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                        onClick={() => navigate("/fitness/exercises/create")}
+                      >
+                        Create exercise
+                      </Button>
+                      {creating ? (
+                        <p className="text-xs text-muted-foreground">
+                          Preparing your workout...
+                        </p>
+                      ) : null}
+                      {status === "error" ? (
+                        <p className="text-sm text-destructive">{error}</p>
+                      ) : null}
+                      {status === "loading" ? (
+                        <p className="text-sm text-muted-foreground">Loading exercises...</p>
+                      ) : null}
+                      {previewItems.length ? (
+                        <VirtualizedExerciseList
+                          items={previewItems}
+                          selectedId={selectedExercise?.id ?? null}
+                          onSelect={handleSelectExercise}
+                        />
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Start typing to explore the Atlas.
+                        </p>
+                      )}
+                    </SearchField>
                   </CardContent>
                 </Card>
               </motion.div>

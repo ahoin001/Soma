@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import type { FoodItem, Meal } from "@/data/mock";
 import { AppShell, EditLogSheet, FoodDetailSheet, PageContainer } from "@/components/aura";
 import { FoodSearchContent } from "@/components/aura/FoodSearchContent";
@@ -15,12 +15,16 @@ import { CREATED_FOOD_KEY, SHEET_ADD_FOOD_KEY } from "@/lib/storageKeys";
 import { normalizeFoodImageUrl } from "@/lib/foodImageUrl";
 import type { NutritionDraft } from "@/types/nutrition";
 import { fetchMealEntries } from "@/lib/api";
+import { useRememberedTab } from "@/hooks/useRememberedTab";
 import {
   matchesAllFoodTags,
   sortFoods,
   type FoodSortOption,
   type FoodTagId,
 } from "@/lib/foodClassification";
+import { addFoodQuerySchema, FOOD_SORTS } from "@/lib/routeSchemas";
+import { setQueryFromState } from "@/lib/routeQuery";
+import { useRouteQueryState } from "@/hooks/useRouteQueryState";
 
 type ActiveTab = "search" | "recent" | "liked" | "history";
 
@@ -28,60 +32,40 @@ type LocationState = {
   meal?: Meal;
 };
 
-const ALL_SORTS: FoodSortOption[] = [
-  "relevance",
-  "calories_asc",
-  "calories_desc",
-  "protein_desc",
-  "protein_asc",
-  "carbs_asc",
-  "carbs_desc",
-];
-
-const ALL_TAGS: FoodTagId[] = [
-  "high_protein",
-  "high_carb",
-  "low_carb",
-  "high_fat",
-  "low_fat",
-  "high_fiber",
-  "calorie_dense",
-  "low_calorie",
-  "high_potassium",
-  "high_sodium",
-  "low_sodium",
-];
-
-const parseSort = (value: string | null): FoodSortOption => {
-  if (!value) return "relevance";
-  return ALL_SORTS.includes(value as FoodSortOption) ? (value as FoodSortOption) : "relevance";
-};
-
-const parseTags = (value: string | null): FoodTagId[] => {
-  if (!value) return [];
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter((item): item is FoodTagId => ALL_TAGS.includes(item as FoodTagId));
-};
+const ALL_SORTS: FoodSortOption[] = [...FOOD_SORTS] as FoodSortOption[];
 
 const AddFood = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { query: queryState, searchParams, setSearchParams } =
+    useRouteQueryState(addFoodQuerySchema, {
+      defaults: {
+        tab: "recent",
+        sort: "relevance",
+      },
+    });
   const state = (location.state ?? {}) as LocationState;
-  const returnTo = searchParams.get("returnTo") ?? "/nutrition";
+  const returnTo = queryState.returnTo ?? "/nutrition";
   const inputRef = useRef<HTMLInputElement | null>(null);
   const { nutrition, foodCatalog, mealTypes, setMealPulse } = useAppStore();
-  const initialTab = (searchParams.get("tab") as ActiveTab) ?? "recent";
+  const [rememberedBrowseTab, setRememberedBrowseTab] = useRememberedTab<
+    Exclude<ActiveTab, "search">
+  >({
+    key: "browse",
+    values: ["recent", "liked", "history"] as const,
+    defaultValue: "recent",
+  });
+  const initialTab = (queryState.tab as ActiveTab | undefined) ?? rememberedBrowseTab;
   const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
   const [lastBrowseTab, setLastBrowseTab] = useState<Exclude<ActiveTab, "search">>(
-    initialTab === "search" ? "recent" : initialTab,
+    initialTab === "search" ? rememberedBrowseTab : initialTab,
   );
-  const [searchQuery, setSearchQuery] = useState(searchParams.get("query") ?? "");
-  const [sortBy, setSortBy] = useState<FoodSortOption>(() => parseSort(searchParams.get("sort")));
-  const [selectedTags, setSelectedTags] = useState<FoodTagId[]>(() =>
-    parseTags(searchParams.get("tags")),
+  const [searchQuery, setSearchQuery] = useState(queryState.query ?? "");
+  const [sortBy, setSortBy] = useState<FoodSortOption>(
+    () => (queryState.sort as FoodSortOption | undefined) ?? "relevance",
+  );
+  const [selectedTags, setSelectedTags] = useState<FoodTagId[]>(
+    () => (queryState.tags as FoodTagId[] | undefined) ?? [],
   );
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(() => {
     const s = (location.state ?? {}) as LocationState;
@@ -183,6 +167,79 @@ const AddFood = () => {
     });
   }, [addedFoods, recentMealFoods]);
 
+  const clearSheetParams = () => {
+    const next = setQueryFromState(
+      searchParams,
+      addFoodQuerySchema,
+      {
+        tab: activeTab,
+        query: searchQuery || undefined,
+        sort: sortBy === "relevance" ? undefined : sortBy,
+        tags: selectedTags.length ? selectedTags : undefined,
+        mealId: selectedMeal?.id,
+        returnTo: returnTo === "/nutrition" ? undefined : returnTo,
+        sheet: undefined,
+        foodId: undefined,
+        sheetItemId: undefined,
+      },
+      {
+        tab: "recent",
+        sort: "relevance",
+      },
+    );
+    setSearchParams(next, { replace: true });
+  };
+
+  const openDetailSheet = (food: FoodItem) => {
+    setSelectedFood(food);
+    openSheet("detail");
+    const next = setQueryFromState(
+      searchParams,
+      addFoodQuerySchema,
+      {
+        tab: activeTab,
+        query: searchQuery || undefined,
+        sort: sortBy === "relevance" ? undefined : sortBy,
+        tags: selectedTags.length ? selectedTags : undefined,
+        mealId: selectedMeal?.id,
+        returnTo: returnTo === "/nutrition" ? undefined : returnTo,
+        sheet: "detail",
+        foodId: food.id,
+        sheetItemId: undefined,
+      },
+      {
+        tab: "recent",
+        sort: "relevance",
+      },
+    );
+    setSearchParams(next, { replace: true });
+  };
+
+  const openEditSheet = (item: LogItem) => {
+    setEditItem(item);
+    openSheet("edit");
+    const next = setQueryFromState(
+      searchParams,
+      addFoodQuerySchema,
+      {
+        tab: activeTab,
+        query: searchQuery || undefined,
+        sort: sortBy === "relevance" ? undefined : sortBy,
+        tags: selectedTags.length ? selectedTags : undefined,
+        mealId: selectedMeal?.id,
+        returnTo: returnTo === "/nutrition" ? undefined : returnTo,
+        sheet: "edit",
+        foodId: undefined,
+        sheetItemId: item.id || undefined,
+      },
+      {
+        tab: "recent",
+        sort: "relevance",
+      },
+    );
+    setSearchParams(next, { replace: true });
+  };
+
   useEffect(() => {
     void refreshLists();
   }, [refreshLists]);
@@ -199,16 +256,57 @@ const AddFood = () => {
   }, [apiResults, favorites, history, selectedFood]);
 
   useEffect(() => {
+    const sheet = queryState.sheet;
+    if (!sheet) return;
+
+    if (sheet === "detail") {
+      const foodId = queryState.foodId;
+      if (!foodId) return;
+      const merged = [...apiResults, ...favorites, ...history, ...recentFoods];
+      const match = merged.find((item) => item.id === foodId);
+      if (match) {
+        setSelectedFood(match);
+        openSheet("detail");
+      }
+      return;
+    }
+
+    if (sheet === "edit") {
+      const sheetItemId = queryState.sheetItemId;
+      if (!sheetItemId) return;
+      const match = logSections
+        .flatMap((section) => section.items)
+        .find((item) => item.id === sheetItemId);
+      if (match) {
+        setEditItem(match);
+        openSheet("edit");
+      }
+    }
+  }, [
+    apiResults,
+    favorites,
+    history,
+    logSections,
+    openSheet,
+    queryState.foodId,
+    queryState.sheet,
+    queryState.sheetItemId,
+    recentFoods,
+  ]);
+
+  useEffect(() => {
     if (activeTab !== "search") {
       setLastBrowseTab(activeTab);
+      setRememberedBrowseTab(activeTab);
     }
-  }, [activeTab]);
+  }, [activeTab, setRememberedBrowseTab]);
 
   useEffect(() => {
     if (activeSheet === "detail" && !selectedFood) {
       closeSheets();
+      clearSheetParams();
     }
-  }, [activeSheet, closeSheets, selectedFood]);
+  }, [activeSheet, closeSheets, searchParams, selectedFood]);
 
   useEffect(() => {
     const hasQuery = searchQuery.trim().length > 0;
@@ -239,6 +337,23 @@ const AddFood = () => {
       } else {
         nextParams.delete("tab");
       }
+              if (activeSheet) {
+                nextParams.set("sheet", activeSheet);
+                if (activeSheet === "detail" && selectedFood?.id) {
+                  nextParams.set("foodId", selectedFood.id);
+                } else {
+                  nextParams.delete("foodId");
+                }
+                if (activeSheet === "edit" && editItem?.id) {
+                  nextParams.set("sheetItemId", editItem.id);
+                } else {
+                  nextParams.delete("sheetItemId");
+                }
+              } else {
+                nextParams.delete("sheet");
+                nextParams.delete("foodId");
+                nextParams.delete("sheetItemId");
+              }
       if (searchQuery) {
         nextParams.set("query", searchQuery);
       } else {
@@ -267,12 +382,15 @@ const AddFood = () => {
     searchParams,
     sortBy,
     setSearchParams,
+    activeSheet,
+    selectedFood?.id,
+    editItem?.id,
   ]);
 
   useEffect(() => {
     const meals = mealTypes.meals;
     if (!meals.length) return;
-    const mealId = searchParams.get("mealId");
+    const mealId = queryState.mealId;
     if (mealId) {
       const match = meals.find((meal) => meal.id === mealId);
       if (match) {
@@ -282,7 +400,7 @@ const AddFood = () => {
       return;
     }
     setSelectedMeal((prev) => prev ?? meals[0]);
-  }, [mealTypes.meals, searchParams]);
+  }, [mealTypes.meals, queryState.mealId]);
 
   useEffect(() => {
     const mealId = selectedMeal?.id;
@@ -456,8 +574,7 @@ const AddFood = () => {
     try {
       const parsed = JSON.parse(raw) as { food?: FoodItem };
       if (!parsed.food) return;
-      setSelectedFood(parsed.food);
-      openSheet("detail");
+      openDetailSheet(parsed.food);
       window.localStorage.removeItem(CREATED_FOOD_KEY);
     } catch {
       window.localStorage.removeItem(CREATED_FOOD_KEY);
@@ -553,8 +670,7 @@ const AddFood = () => {
         action: {
           label: "Adjust servings",
           onClick: () => {
-            setEditItem(existing);
-            openSheet("edit");
+            openEditSheet(existing);
           },
         },
       });
@@ -565,6 +681,7 @@ const AddFood = () => {
     setMealPulse(mealId);
     appToast.info("Logged to diary", { description: "Food added to your day." });
     closeSheets();
+    clearSheetParams();
     navigate(returnTo, { replace: true });
   };
 
@@ -581,8 +698,7 @@ const AddFood = () => {
         action: {
           label: "Adjust servings",
           onClick: () => {
-            setEditItem(existing);
-            openSheet("edit");
+            openEditSheet(existing);
           },
         },
       });
@@ -766,12 +882,10 @@ const AddFood = () => {
               const mealId = resolveMealId();
               const existing = mealId ? findExistingLogItem(food, mealId) : null;
               if (existing) {
-                setEditItem(existing);
-                openSheet("edit");
+                openEditSheet(existing);
                 return;
               }
-              setSelectedFood(food);
-              openSheet("detail");
+              openDetailSheet(food);
             }}
             onQuickAddFood={handleQuickAdd}
             onQuickRemoveFood={activeTab === "history" ? handleQuickRemove : undefined}
@@ -838,7 +952,13 @@ const AddFood = () => {
 
       <FoodDetailSheet
         open={isDetailOpen}
-        onOpenChange={(open) => (open ? openSheet("detail") : closeSheets())}
+        onOpenChange={(open) => {
+          if (open && selectedFood) openDetailSheet(selectedFood);
+          else {
+            closeSheets();
+            clearSheetParams();
+          }
+        }}
         food={selectedFood}
         macros={nutrition.macros}
         onTrack={handleTrack}
@@ -853,7 +973,13 @@ const AddFood = () => {
 
       <EditLogSheet
         open={isEditOpen}
-        onOpenChange={(open) => (open ? openSheet("edit") : closeSheets())}
+        onOpenChange={(open) => {
+          if (open && editItem) openEditSheet(editItem);
+          else {
+            closeSheets();
+            clearSheetParams();
+          }
+        }}
         item={editItem}
         onSave={(item, multiplier) => {
           // Optimistic - fires immediately, errors handled by mutation's onError
@@ -865,6 +991,7 @@ const AddFood = () => {
           removeLogItem(item);
           appToast.info(`${item.name} removed`);
           closeSheets();
+          clearSheetParams();
         }}
       />
     </AppShell>

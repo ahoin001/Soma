@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchField } from "@/components/ui/search-field";
 import { appToast } from "@/lib/toast";
 import { ExerciseImage } from "@/components/aura/ExerciseImage";
 import { fetchAdminExercises, updateExerciseMaster } from "@/lib/api";
@@ -132,94 +133,98 @@ const AdminExerciseThumbnails = () => {
           <div className="h-10 w-10" />
         </div>
 
-        <div className="mt-6 space-y-4">
-          <Input
+        <div className="mt-6">
+          <SearchField
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onValueChange={setQuery}
             placeholder="Search exercises"
-            className="border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
-          />
-          {rows.length === 0 && status === "loading" ? (
-            <p className="text-sm text-muted-foreground">Loading exercises...</p>
-          ) : null}
-          {rows.length === 0 && status !== "loading" ? (
-            <p className="text-sm text-muted-foreground">No exercises found.</p>
-          ) : null}
-          {rows.map((item) => {
-            const draft = dirty[item.id] ?? item.image_url ?? "";
-            const isDirty = draft.trim() !== (item.image_url ?? "");
-            const uploading = Boolean(uploadingById[item.id]);
-            const progress = progressById[item.id] ?? 0;
-            const notice = noticeById[item.id] ?? "";
-            return (
-              <div
-                key={item.id}
-                className="rounded-[24px] border border-border/70 bg-card/55 px-4 py-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-foreground">
-                      {item.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{item.category ?? "General"}</p>
-                  </div>
-                  <ExerciseImage
-                    src={item.image_url}
-                    alt={`${item.name} thumbnail`}
-                    className="h-10 w-10 rounded-2xl border border-border/70 object-cover"
-                    containerClassName="h-10 w-10 rounded-2xl shrink-0"
-                    fallback={
-                      <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                        None
-                      </span>
-                    }
-                  />
-                </div>
-                <Input
-                  value={draft}
-                  onChange={(event) =>
-                    setDirty((prev) => ({ ...prev, [item.id]: event.target.value }))
-                  }
-                  placeholder="Thumbnail image URL"
-                  className="mt-3 border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
-                />
-                <label className="mt-3 flex cursor-pointer items-center justify-between rounded-2xl border border-border/70 bg-card/60 px-4 py-3 text-xs font-semibold text-foreground/80">
-                  <span>{uploading ? "Uploading..." : "Upload thumbnail"}</span>
-                  <span className="text-primary">Browse</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (!file) return;
-                      void handleUpload(item.id, file);
-                    }}
-                  />
-                </label>
-                {uploading ? (
-                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-primary/15">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all"
-                      style={{ width: `${progress}%` }}
+            sticky
+            stickyClassName="-mt-1"
+            selfContainedScroll
+            contentClassName="space-y-4"
+          >
+            {rows.length === 0 && status === "loading" ? (
+              <p className="text-sm text-muted-foreground">Loading exercises...</p>
+            ) : null}
+            {rows.length === 0 && status !== "loading" ? (
+              <p className="text-sm text-muted-foreground">No exercises found.</p>
+            ) : null}
+            {rows.map((item) => {
+              const draft = dirty[item.id] ?? item.image_url ?? "";
+              const isDirty = draft.trim() !== (item.image_url ?? "");
+              const uploading = Boolean(uploadingById[item.id]);
+              const progress = progressById[item.id] ?? 0;
+              const notice = noticeById[item.id] ?? "";
+              return (
+                <div
+                  key={item.id}
+                  className="rounded-[24px] border border-border/70 bg-card/55 px-4 py-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {item.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{item.category ?? "General"}</p>
+                    </div>
+                    <ExerciseImage
+                      src={item.image_url}
+                      alt={`${item.name} thumbnail`}
+                      className="h-10 w-10 rounded-2xl border border-border/70 object-cover"
+                      containerClassName="h-10 w-10 rounded-2xl shrink-0"
+                      fallback={
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                          None
+                        </span>
+                      }
                     />
                   </div>
-                ) : null}
-                {notice ? (
-                  <p className="mt-2 text-xs text-primary">{notice}</p>
-                ) : null}
-                {isDirty ? (
-                  <Button
-                    className="mt-3 w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
-                    onClick={() => handleSave(item.id)}
-                    disabled={status === "saving"}
-                  >
-                    {status === "saving" ? "Saving..." : "Save thumbnail"}
-                  </Button>
-                ) : null}
-              </div>
-            );
-          })}
+                  <Input
+                    value={draft}
+                    onChange={(event) =>
+                      setDirty((prev) => ({ ...prev, [item.id]: event.target.value }))
+                    }
+                    placeholder="Thumbnail image URL"
+                    className="mt-3 border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
+                  />
+                  <label className="mt-3 flex cursor-pointer items-center justify-between rounded-2xl border border-border/70 bg-card/60 px-4 py-3 text-xs font-semibold text-foreground/80">
+                    <span>{uploading ? "Uploading..." : "Upload thumbnail"}</span>
+                    <span className="text-primary">Browse</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        void handleUpload(item.id, file);
+                      }}
+                    />
+                  </label>
+                  {uploading ? (
+                    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-primary/15">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  ) : null}
+                  {notice ? (
+                    <p className="mt-2 text-xs text-primary">{notice}</p>
+                  ) : null}
+                  {isDirty ? (
+                    <Button
+                      className="mt-3 w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                      onClick={() => handleSave(item.id)}
+                      disabled={status === "saving"}
+                    >
+                      {status === "saving" ? "Saving..." : "Save thumbnail"}
+                    </Button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </SearchField>
         </div>
       </div>
     </AppShell>

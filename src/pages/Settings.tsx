@@ -13,6 +13,7 @@ import { useUserSettings, useExperienceTransitionConfig } from "@/state";
 import { useTheme } from "next-themes";
 import { ChevronDown, ChevronLeft } from "lucide-react";
 import { AppShell } from "@/components/aura";
+import { useRememberedState } from "@/hooks/useRememberedState";
 
 const headerStyleOptions: SegmentedOption[] = [
   { value: "immersive", label: "Immersive" },
@@ -38,6 +39,12 @@ const themePaletteOptions: SegmentedOption[] = [
 
 export default function Settings() {
   const navigate = useNavigate();
+  const [advancedTransitionOpen, setAdvancedTransitionOpen] =
+    useRememberedState<boolean>({
+      key: "advanced-transition-open",
+      defaultValue: false,
+      parse: (raw) => raw === true,
+    });
   const { theme, setTheme, resolvedTheme } = useTheme();
   const {
     showFoodImages,
@@ -228,7 +235,11 @@ export default function Settings() {
             <p className="text-xs text-muted-foreground">
               Circular reveal is now the default. Tweak the feel below.
             </p>
-            <Collapsible className="mt-3">
+            <Collapsible
+              className="mt-3"
+              open={advancedTransitionOpen}
+              onOpenChange={setAdvancedTransitionOpen}
+            >
               <CollapsibleTrigger className="group flex w-full items-center justify-between rounded-[14px] border border-border/60 bg-muted/50 px-3 py-2 text-xs font-semibold text-foreground">
                 <span>Advanced tuning</span>
                 <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />

@@ -81,6 +81,8 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRememberedTab } from "@/hooks/useRememberedTab";
+import { goalsQuerySchema } from "@/lib/routeSchemas";
+import { useRouteQueryState } from "@/hooks/useRouteQueryState";
 
 const cmToImperial = (cm: number) => {
   const totalInches = cm / 2.54;
@@ -367,6 +369,9 @@ const MacroTargetsSection = ({
 const Goals = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { query, mergeQueryState } = useRouteQueryState(goalsQuerySchema, {
+    defaults: { section: "energy" },
+  });
   const [goalType, setGoalType] = useState<GoalType>("balance");
   const [sex, setSex] = useState<Sex>("female");
   const [age, setAge] = useState("");
@@ -429,6 +434,14 @@ const Goals = () => {
       });
     }
   }, [location.hash]);
+
+  useEffect(() => {
+    if (query.section) setSectionTab(query.section);
+  }, [query.section, setSectionTab]);
+
+  useEffect(() => {
+    mergeQueryState({ section: sectionTab });
+  }, [mergeQueryState, sectionTab]);
 
   useEffect(() => {
     if (hydrated) return;

@@ -17,18 +17,26 @@ export const useRememberedTab = <T extends string>({
     () => `tab:${location.pathname}:${key}`,
     [key, location.pathname],
   );
+  const isBrowser = typeof window !== "undefined";
 
-  const [value, setValue] = useState<T>(() => {
-    if (typeof window === "undefined") return defaultValue;
-    const raw = window.sessionStorage.getItem(storageKey);
+  const readStored = (nextKey: string): T => {
+    if (!isBrowser) return defaultValue;
+    const raw = window.localStorage.getItem(nextKey);
     if (raw && values.includes(raw as T)) return raw as T;
     return defaultValue;
-  });
+  };
+
+  const [value, setValue] = useState<T>(() => readStored(storageKey));
 
   useEffect(() => {
-    if (!values.includes(value)) return;
-    window.sessionStorage.setItem(storageKey, value);
-  }, [storageKey, value, values]);
+    setValue(readStored(storageKey));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!isBrowser || !values.includes(value)) return;
+    window.localStorage.setItem(storageKey, value);
+  }, [isBrowser, storageKey, value, values]);
 
   return [value, setValue] as const;
 };

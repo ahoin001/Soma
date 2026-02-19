@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useEffect } from "react";
 import { AppShell } from "@/components/aura";
 import {
   ProgressChartPanel,
@@ -17,25 +18,77 @@ import {
 } from "@/hooks/useWeightProgress";
 import { useNutritionTrend } from "@/hooks/useNutritionTrend";
 import { useWeightLogs } from "@/hooks/useTracking";
+import { useRememberedTab } from "@/hooks/useRememberedTab";
+import { progressQuerySchema } from "@/lib/routeSchemas";
+import { useRouteQueryState } from "@/hooks/useRouteQueryState";
 
 const Progress = () => {
+  const { query, mergeQueryState } = useRouteQueryState(progressQuerySchema, {
+    defaults: {
+      chart: "weight",
+      range: "14",
+      micro: "sodium_mg",
+    },
+  });
   const { entries, addEntry, removeEntry } = useWeightLogs();
   const [weight, setWeight] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [editWeights, setEditWeights] = useState<Record<string, string>>({});
   const [activeWeightDate, setActiveWeightDate] = useState<string | null>(null);
-  const [trendRange, setTrendRange] = useState<7 | 14 | 30>(14);
-  const [activeChart, setActiveChart] = useState<
+  const [trendRange, setTrendRange] = useRememberedTab<"7" | "14" | "30">({
+    key: "range",
+    values: ["7", "14", "30"] as const,
+    defaultValue: "14",
+  });
+  const [activeChart, setActiveChart] = useRememberedTab<
     "weight" | "calories" | "macros" | "micros"
-  >("weight");
-  const [selectedMicro, setSelectedMicro] = useState<
+  >({
+    key: "chart",
+    values: ["weight", "calories", "macros", "micros"] as const,
+    defaultValue: "weight",
+  });
+  const [selectedMicro, setSelectedMicro] = useRememberedTab<
     keyof import("@/types/progress").NutritionTrendMicros
-  >("sodium_mg");
+  >({
+    key: "micro",
+    values: [
+      "sodium_mg",
+      "fiber_g",
+      "sugar_g",
+      "potassium_mg",
+      "cholesterol_mg",
+      "saturated_fat_g",
+    ] as const,
+    defaultValue: "sodium_mg",
+  });
+
+  useEffect(() => {
+    if (query.chart) setActiveChart(query.chart);
+    if (query.range) setTrendRange(query.range);
+    if (query.micro) setSelectedMicro(query.micro);
+  }, [query.chart, query.micro, query.range, setActiveChart, setSelectedMicro, setTrendRange]);
+
+  useEffect(() => {
+    mergeQueryState({
+      chart: activeChart,
+      range: trendRange,
+      micro: selectedMicro,
+    });
+  }, [
+    activeChart,
+    selectedMicro,
+    mergeQueryState,
+    trendRange,
+  ]);
 
   const { userProfile, nutrition } = useAppStore();
 
   const caloriesByDate = useCaloriesByDate(activeWeightDate);
-  const rangeDates = useMemo(() => buildDateRange(trendRange), [trendRange]);
+  const parsedTrendRange = Number(trendRange) as 7 | 14 | 30;
+  const rangeDates = useMemo(
+    () => buildDateRange(parsedTrendRange),
+    [parsedTrendRange],
+  );
   const nutritionTrend = useNutritionTrend(rangeDates);
 
   const {
@@ -43,7 +96,7 @@ const Progress = () => {
     stats,
     latest,
     lastEntries,
-  } = useWeightStats(entries, trendRange);
+  } = useWeightStats(entries, parsedTrendRange);
 
   const guidance = useWeightGuidance(entries, userProfile.goal);
 
@@ -137,10 +190,10 @@ const Progress = () => {
             {activeChart === "weight"
               ? "Log any time. The chart adapts to gaps."
               : activeChart === "calories"
-                ? `Daily intake over the last ${trendRange} days.`
+                ? `Daily intake over the last ${parsedTrendRange} days.`
                 : activeChart === "macros"
-                  ? `Macro balance across the last ${trendRange} days.`
-                  : `Micronutrients over the last ${trendRange} days.`}
+                  ? `Macro balance across the last ${parsedTrendRange} days.`
+                  : `Micronutrients over the last ${parsedTrendRange} days.`}
           </p>
 
           {entries.length === 0 && (
@@ -160,8 +213,8 @@ const Progress = () => {
           <ProgressChartPanel
             activeChart={activeChart}
             onActiveChartChange={setActiveChart}
-            trendRange={trendRange}
-            onTrendRangeChange={setTrendRange}
+            trendRange={parsedTrendRange}
+            onTrendRangeChange={(v) => setTrendRange(String(v) as "7" | "14" | "30")}
             weightEntries={filteredWeightEntries}
             caloriesByDate={caloriesByDate}
             onActiveWeightDateChange={setActiveWeightDate}

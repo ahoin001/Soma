@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell, VirtualizedExerciseList } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchField } from "@/components/ui/search-field";
 import { useAppStore } from "@/state/AppStore";
 import { appToast } from "@/lib/toast";
 import { fetchExerciseByName, updateExerciseMaster } from "@/lib/api";
@@ -207,20 +208,22 @@ const AddExerciseToWorkout = () => {
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 Choose exercise
               </p>
-              <Input
+              <SearchField
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onValueChange={setQuery}
                 placeholder="Search exercises"
-                className="mt-3 border-border/70 bg-secondary/35 text-foreground placeholder:text-muted-foreground"
-              />
-              {status === "error" ? (
-                <p className="mt-2 text-sm text-destructive">{error}</p>
-              ) : null}
-              {status === "loading" ? (
-                <p className="mt-2 text-sm text-muted-foreground">Loading exercises...</p>
-              ) : null}
-              {previewItems.length ? (
-                <div className="mt-3">
+                sticky
+                stickyClassName="mt-3"
+                selfContainedScroll
+                contentClassName="space-y-3"
+              >
+                {status === "error" ? (
+                  <p className="text-sm text-destructive">{error}</p>
+                ) : null}
+                {status === "loading" ? (
+                  <p className="text-sm text-muted-foreground">Loading exercises...</p>
+                ) : null}
+                {previewItems.length ? (
                   <VirtualizedExerciseList
                     items={previewItems}
                     onSelect={(exercise) => {
@@ -230,25 +233,25 @@ const AddExerciseToWorkout = () => {
                       }
                     }}
                   />
-                </div>
-              ) : (
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Start typing to search the Atlas.
-                </p>
-              )}
-              {query.trim().length > 1 ? (
-                <Button
-                  className="mt-3 w-full rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                  onClick={() => {
-                    setSelectedName(query.trim());
-                    if (targetPlan && targetWorkout) {
-                      void handleAdd(targetPlan.id, targetWorkout.id, query.trim());
-                    }
-                  }}
-                >
-                  Create "{query.trim()}"
-                </Button>
-              ) : null}
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Start typing to search the Atlas.
+                  </p>
+                )}
+                {query.trim().length > 1 ? (
+                  <Button
+                    className="w-full rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                    onClick={() => {
+                      setSelectedName(query.trim());
+                      if (targetPlan && targetWorkout) {
+                        void handleAdd(targetPlan.id, targetWorkout.id, query.trim());
+                      }
+                    }}
+                  >
+                    Create "{query.trim()}"
+                  </Button>
+                ) : null}
+              </SearchField>
             </div>
           ) : null}
           {adminEdit && isAdmin ? (

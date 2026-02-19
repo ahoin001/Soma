@@ -323,7 +323,7 @@
     padding-left: 1.25rem;
     padding-right: 1.25rem;
     padding-top: 0.5rem;
-    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    padding-bottom: 0;
   }
 
   .aura-sheet-scroll {
@@ -332,14 +332,14 @@
     padding-left: 1.25rem;
     padding-right: 1.25rem;
     padding-top: 0.5rem;
-    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    padding-bottom: 0;
   }
 
   .aura-sheet-body-fit {
     padding-left: 1.25rem;
     padding-right: 1.25rem;
     padding-top: 0.5rem;
-    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    padding-bottom: 0;
   }
 
   .aura-sheet-scroll-fit {
@@ -348,7 +348,31 @@
     padding-left: 1.25rem;
     padding-right: 1.25rem;
     padding-top: 0.5rem;
-    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    padding-bottom: 0;
+  }
+
+  /* Optional reusable sticky search region for long sheet/list UIs */
+  .aura-sticky-search {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    border-bottom: 1px solid hsl(var(--border) / 0.6);
+    background: hsl(var(--background) / 0.88);
+    backdrop-filter: blur(10px);
+    padding: 0.5rem 1rem 0.75rem;
+  }
+
+  /* Optional sticky actions container when a sheet needs floating primary actions */
+  .aura-sheet-actions {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    margin-top: 0.75rem;
+    padding: 0.5rem 0 max(0.75rem, env(safe-area-inset-bottom));
   }
 
 

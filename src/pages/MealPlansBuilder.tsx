@@ -30,7 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import { Drawer, DrawerContent, DrawerStickyActions } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { ListEmptyState } from "@/components/ui/empty-state";
 import { fetchFoodHistory, searchFoods } from "@/lib/api";
@@ -44,7 +44,6 @@ import {
   CalendarDays,
   ChevronRight,
   Copy,
-  GripVertical,
   Pencil,
   Plus,
   Search,
@@ -1100,7 +1099,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
               variants={{ show: { transition: { staggerChildren: 0.04 } } }}
             >
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {dayMeals.map((meal) => {
               const mealItems = mealItemsMap.get(meal.id) ?? [];
               const mealTotals = getTotals(mealItems);
@@ -1136,41 +1135,50 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                     </div>
                   </div>
 
-                  <div className="mt-3 flex flex-wrap items-center gap-1.5 px-3">
-                    <span className="rounded-full border border-border/50 bg-muted/50 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                      {mealItems.length} items - {Math.round(mealTotals.kcal)} cal
-                    </span>
-                    <span
-                      className={cn(
-                        "rounded-full border px-2.5 py-0.5 text-[10px] font-medium",
-                        SLOT_CHIP_CLASS.protein,
-                      )}
+                  <div className="mt-3 px-3">
+                    <motion.div
+                      className="rounded-[18px] border border-border/60 bg-card/70 px-3 py-3 shadow-[0_6px_16px_rgba(15,23,42,0.06)]"
+                      animate={pulseMealId === meal.id ? { scale: [1, 1.02, 1] } : undefined}
+                      transition={{ duration: 0.32, ease: "easeOut" }}
                     >
-                      P {Math.round(mealTotals.protein)}g
-                    </span>
-                    <span
-                      className={cn(
-                        "rounded-full border px-2.5 py-0.5 text-[10px] font-medium",
-                        SLOT_CHIP_CLASS.carbs,
-                      )}
-                    >
-                      C {Math.round(mealTotals.carbs)}g
-                    </span>
-                    <span
-                      className={cn(
-                        "rounded-full border px-2.5 py-0.5 text-[10px] font-medium",
-                        SLOT_CHIP_CLASS.balance,
-                      )}
-                    >
-                      F {Math.round(mealTotals.fat)}g
-                    </span>
+                      <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/75">
+                        <span>Meal summary</span>
+                        <span className="text-muted-foreground">{mealItems.length} items</span>
+                      </div>
+                      <div className="mt-2 grid grid-cols-4 gap-2 text-center">
+                        <div className="rounded-[12px] bg-secondary/70 px-2 py-2">
+                          <p className="text-[9px] uppercase tracking-[0.16em] text-primary/70">Cal</p>
+                          <p className="mt-0.5 text-[11px] font-semibold text-foreground">
+                            {Math.round(mealTotals.kcal)}
+                          </p>
+                        </div>
+                        <div className="rounded-[12px] bg-secondary/70 px-2 py-2">
+                          <p className="text-[9px] uppercase tracking-[0.16em] text-primary/70">P</p>
+                          <p className="mt-0.5 text-[11px] font-semibold text-foreground">
+                            {Math.round(mealTotals.protein)}g
+                          </p>
+                        </div>
+                        <div className="rounded-[12px] bg-secondary/70 px-2 py-2">
+                          <p className="text-[9px] uppercase tracking-[0.16em] text-primary/70">C</p>
+                          <p className="mt-0.5 text-[11px] font-semibold text-foreground">
+                            {Math.round(mealTotals.carbs)}g
+                          </p>
+                        </div>
+                        <div className="rounded-[12px] bg-secondary/70 px-2 py-2">
+                          <p className="text-[9px] uppercase tracking-[0.16em] text-primary/70">F</p>
+                          <p className="mt-0.5 text-[11px] font-semibold text-foreground">
+                            {Math.round(mealTotals.fat)}g
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
                   </div>
 
-                  <div className="mt-3 space-y-2 px-3 pb-3">
+                  <div className="mt-2.5 space-y-1.5 px-3 pb-3">
                     {grouped.map((slot) => (
-                      <div key={slot.id} className={cn("rounded-2xl border bg-background/55 px-3 py-2.5", slot.tone)}>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.2em]">{slot.label}</p>
-                        <div className="mt-2 space-y-1.5">
+                      <div key={slot.id} className={cn("rounded-[14px] border border-border/45 bg-background/45 px-2.5 py-2", slot.tone)}>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground/75">{slot.label}</p>
+                        <div className="mt-1.5 space-y-1">
                           {slot.items.length === 0 ? (
                             <p className="text-[11px] opacity-70">
                               No items yet. Add food to get closer to your targets.
@@ -1186,6 +1194,8 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                                 const setQuantity = (newQty: number) => {
                                   const clamped = Math.max(0.25, Math.min(20, Math.round(newQty * 100) / 100));
                                   void patchItem(item.id, { quantity: clamped });
+                                  setPulseMealId(meal.id);
+                                  window.setTimeout(() => setPulseMealId((prev) => (prev === meal.id ? null : prev)), 280);
                                 };
                                 return (
                                   <SortableMealItemRow
@@ -1200,7 +1210,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                                           step={0.25}
                                           defaultValue={String(qty)}
                                           inputMode="decimal"
-                                          className="h-8 w-[74px] rounded-full border-border/60 bg-background text-center text-xs tabular-nums"
+                                          className="h-[22px] w-[50px] rounded-full border-border/60 bg-background px-1 text-center text-[10px] tabular-nums"
                                           onClick={(e) => e.stopPropagation()}
                                           onBlur={(e) => {
                                             triggerLightFeedback();
@@ -1230,24 +1240,25 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                                     }
                                   >
                                     <div className="min-w-0 flex-1">
-                                      <div className="flex flex-wrap items-center gap-1.5">
-                                        <p className="truncate text-xs font-medium text-slate-700">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <p className="truncate text-xs font-semibold text-slate-700">
                                           {item.foodName}
                                         </p>
-                                        <span
-                                          className={cn(
-                                            "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium",
-                                            SLOT_CHIP_CLASS[item.slot],
-                                          )}
-                                        >
-                                          {SLOT_CONFIG.find((s) => s.id === item.slot)?.label ?? item.slot}
+                                        <span className="shrink-0 text-[10px] font-semibold text-primary/90">
+                                          {Math.round(item.kcal * qty)} cal
                                         </span>
                                       </div>
-                                      <p className="mt-0.5 text-[10px] text-slate-500">
-                                        Qty {qty % 1 === 0 ? qty : qty.toFixed(2)} - {Math.round(item.kcal * qty)} cal - P{" "}
-                                        {Math.round(item.protein * qty)} - C {Math.round(item.carbs * qty)} - F{" "}
-                                        {Math.round(item.fat * qty)}
-                                      </p>
+                                      <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-slate-500">
+                                        <span className="rounded-full bg-secondary/70 px-2 py-0.5">
+                                          P {Math.round(item.protein * qty)}g
+                                        </span>
+                                        <span className="rounded-full bg-secondary/70 px-2 py-0.5">
+                                          C {Math.round(item.carbs * qty)}g
+                                        </span>
+                                        <span className="rounded-full bg-secondary/70 px-2 py-0.5">
+                                          F {Math.round(item.fat * qty)}g
+                                        </span>
+                                      </div>
                                     </div>
                                   </SortableMealItemRow>
                                 );
@@ -1268,34 +1279,36 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
 
       <Drawer open={foodSheetOpen} onOpenChange={setFoodSheetOpen}>
         <DrawerContent className="max-h-[86svh] rounded-t-[36px] border-none bg-background pb-0 overflow-hidden">
-          <div className="aura-sheet-scroll max-h-[calc(86svh-56px)] px-4 pb-3">
+          <div className="aura-sheet-scroll max-h-[calc(86svh-56px)] px-4 pb-0">
             <div className="pt-1">
               <p className="text-xs uppercase tracking-[0.2em] text-primary">Meal food search</p>
               <h3 className="text-lg font-display font-semibold text-foreground">
-                {activeMealForFoodSheet?.emoji ?? "🍽️"} {activeMealForFoodSheet?.label ?? "Select meal"}
+                {activeMealForFoodSheet?.emoji ?? "Meal"} {activeMealForFoodSheet?.label ?? "Select meal"}
               </h3>
               <p className="mt-1 text-xs text-muted-foreground">
                 Search foods in your database and add to this meal.
               </p>
             </div>
 
-            <div className="mt-3 grid grid-cols-[1fr_88px] gap-2">
-              <Input
-                value={foodQuery}
-                onChange={(event) => setFoodQuery(event.target.value)}
-                placeholder="Search foods..."
-                className="h-10 rounded-full"
-              />
-              <Input
-                value={foodQuantityDraft}
-                onChange={(event) => setFoodQuantityDraft(event.target.value)}
-                placeholder="Qty"
-                type="number"
-                min={0.25}
-                step={0.25}
-                inputMode="decimal"
-                className="h-10 rounded-full"
-              />
+            <div className="aura-sticky-search mt-3">
+              <div className="grid grid-cols-[1fr_88px] gap-2">
+                <Input
+                  value={foodQuery}
+                  onChange={(event) => setFoodQuery(event.target.value)}
+                  placeholder="Search foods..."
+                  className="h-10 rounded-full"
+                />
+                <Input
+                  value={foodQuantityDraft}
+                  onChange={(event) => setFoodQuantityDraft(event.target.value)}
+                  placeholder="Qty"
+                  type="number"
+                  min={0.25}
+                  step={0.25}
+                  inputMode="decimal"
+                  className="h-10 rounded-full"
+                />
+              </div>
             </div>
 
             {foodSearchStatus === "loading" ? (
@@ -1307,7 +1320,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
               </p>
             ) : null}
 
-            <div className="mt-3 space-y-2">
+            <div className="mt-3 space-y-2 pb-2">
               {foodOptions.length === 0 && foodSearchStatus === "idle" ? (
                 <ListEmptyState
                   itemName="foods"
@@ -1327,7 +1340,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                         <img src={food.imageUrl} alt={food.name} className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-lg">
-                          {activeMealForFoodSheet?.emoji ?? "🍽️"}
+                          {activeMealForFoodSheet?.emoji ?? "Meal"}
                         </div>
                       )}
                     </div>
@@ -1339,16 +1352,27 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                         </span>
                       </div>
                       <p className="truncate text-xs text-muted-foreground">
-                        {food.brand ?? "Unbranded"} • {Math.round(food.kcal)} cal
+                        {food.brand ?? "Unbranded"} - {Math.round(food.kcal)} cal
                       </p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        P {Math.round(food.protein)}g • C {Math.round(food.carbs)}g • F {Math.round(food.fat)}g
+                        P {Math.round(food.protein)}g | C {Math.round(food.carbs)}g | F {Math.round(food.fat)}g
                       </p>
                     </div>
                   </div>
                 </button>
               ))}
             </div>
+
+            <DrawerStickyActions className="px-0">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full rounded-full"
+                onClick={() => setFoodSheetOpen(false)}
+              >
+                Close
+              </Button>
+            </DrawerStickyActions>
           </div>
         </DrawerContent>
       </Drawer>
@@ -1503,10 +1527,9 @@ const SortableMealItemRow = ({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center justify-between gap-2 rounded-[12px] bg-white/75 px-2 py-1.5"
+      className="flex items-center justify-between gap-2 rounded-[16px] border border-border/60 bg-card/80 px-2.5 py-2 shadow-[0_6px_14px_rgba(15,23,42,0.06)]"
     >
-      <div {...attributes} {...listeners} className="flex min-w-0 flex-1 items-center gap-1">
-        <GripVertical className="h-3.5 w-3.5 shrink-0 text-slate-500/70" />
+      <div {...attributes} {...listeners} className="flex min-w-0 flex-1 items-center">
         {children}
       </div>
       {rightContent}

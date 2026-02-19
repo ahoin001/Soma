@@ -52,6 +52,11 @@ function toMicroRecord(raw: Record<string, unknown> | null | undefined): Record<
   return Object.keys(out).length ? out : undefined;
 }
 
+/** Shared micronutrient normalizer for UI/API payloads (canonical keys + numeric coercion). */
+export const normalizeMicroRecord = (
+  raw: Record<string, unknown> | null | undefined,
+): Record<string, number> | undefined => toMicroRecord(raw);
+
 /**
  * Local date formatter for nutrition queries.
  */

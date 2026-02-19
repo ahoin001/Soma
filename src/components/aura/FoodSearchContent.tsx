@@ -188,60 +188,62 @@ export const FoodSearchContent = ({
         </Button>
       </div>
 
-      <div className="mt-4 flex rounded-full bg-card/80 p-1 shadow-[0_10px_24px_rgba(15,23,42,0.06)] backdrop-blur">
-        <button
-          type="button"
-          onClick={() => {
-            onTabChange("search");
-            inputRef?.current?.focus();
-          }}
-          className={cn(
-            "flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition",
-            mode === "search"
-              ? "bg-primary text-primary-foreground shadow-[0_10px_20px_rgba(15,23,42,0.35)]"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <Search className="h-3.5 w-3.5" />
-          Search
-        </button>
-        <button
-          type="button"
-          onClick={() => onTabChange(libraryTab)}
-          className={cn(
-            "flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition",
-            mode === "library"
-              ? "bg-primary text-primary-foreground shadow-[0_10px_20px_rgba(15,23,42,0.35)]"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <Heart className="h-3.5 w-3.5" />
-          Library
-        </button>
-      </div>
-
-      <div className="mt-4 flex items-center gap-2 rounded-full border border-border/70 bg-card px-4 py-2 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-        <Search className="h-4 w-4 text-primary" />
-        <Input
-          ref={inputRef}
-          value={searchQuery}
-          onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Food, meal, or brand"
-          className="h-7 border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
-        />
-        {hasQuery ? (
+      <div className="aura-sticky-search mt-4 space-y-3">
+        <div className="flex rounded-full bg-card/80 p-1 shadow-[0_10px_24px_rgba(15,23,42,0.06)] backdrop-blur">
           <button
             type="button"
-            className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-primary transition hover:bg-primary/15"
-            onClick={() => onSearchChange("")}
-            aria-label="Clear search"
+            onClick={() => {
+              onTabChange("search");
+              inputRef?.current?.focus();
+            }}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition",
+              mode === "search"
+                ? "bg-primary text-primary-foreground shadow-[0_10px_20px_rgba(15,23,42,0.35)]"
+                : "text-muted-foreground hover:text-foreground",
+            )}
           >
-            <X className="h-3.5 w-3.5" />
+            <Search className="h-3.5 w-3.5" />
+            Search
           </button>
-        ) : null}
+          <button
+            type="button"
+            onClick={() => onTabChange(libraryTab)}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition",
+              mode === "library"
+                ? "bg-primary text-primary-foreground shadow-[0_10px_20px_rgba(15,23,42,0.35)]"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Heart className="h-3.5 w-3.5" />
+            Library
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 rounded-full border border-border/70 bg-card px-4 py-2 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
+          <Search className="h-4 w-4 text-primary" />
+          <Input
+            ref={inputRef}
+            value={searchQuery}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Food, meal, or brand"
+            className="h-7 border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
+          />
+          {hasQuery ? (
+            <button
+              type="button"
+              className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-primary transition hover:bg-primary/15"
+              onClick={() => onSearchChange("")}
+              aria-label="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+        </div>
       </div>
       {isSearching ? (
-        <div className="mt-3 text-xs font-semibold text-primary">
+        <div className="mt-2 text-xs font-semibold text-primary">
           Searching foods...
         </div>
       ) : null}
