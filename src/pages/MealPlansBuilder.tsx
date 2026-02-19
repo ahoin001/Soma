@@ -33,6 +33,7 @@ import {
 import { Drawer, DrawerContent, DrawerStickyActions } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { ListEmptyState } from "@/components/ui/empty-state";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { fetchFoodHistory, searchFoods } from "@/lib/api";
 import { normalizeFoodImageUrl } from "@/lib/foodImageUrl";
 import { toLocalDate } from "@/lib/nutritionData";
@@ -1241,9 +1242,16 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                                   >
                                     <div className="min-w-0 flex-1">
                                       <div className="flex items-center justify-between gap-2">
-                                        <p className="truncate text-xs font-semibold text-slate-700">
-                                          {item.foodName}
-                                        </p>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <p className="truncate text-xs font-semibold text-slate-700" title={item.foodName}>
+                                              {item.foodName}
+                                            </p>
+                                          </TooltipTrigger>
+                                          <TooltipContent side="top" className="max-w-[min(20rem,85vw)]">
+                                            <p className="break-words text-sm">{item.foodName}</p>
+                                          </TooltipContent>
+                                        </Tooltip>
                                         <span className="shrink-0 text-[10px] font-semibold text-primary/90">
                                           {Math.round(item.kcal * qty)} cal
                                         </span>

@@ -24,7 +24,7 @@ import {
 } from "@/lib/foodClassification";
 import { addFoodQuerySchema, FOOD_SORTS } from "@/lib/routeSchemas";
 import { setQueryFromState } from "@/lib/routeQuery";
-import { useRouteQueryState } from "@/hooks/useRouteQueryState";
+import { useSheetRouteState } from "@/hooks/useSheetRouteState";
 
 type ActiveTab = "search" | "recent" | "liked" | "history";
 
@@ -37,8 +37,13 @@ const ALL_SORTS: FoodSortOption[] = [...FOOD_SORTS] as FoodSortOption[];
 const AddFood = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { query: queryState, searchParams, setSearchParams } =
-    useRouteQueryState(addFoodQuerySchema, {
+  const {
+    query: queryState,
+    searchParams,
+    setSearchParams,
+    openRouteSheet,
+    closeRouteSheet,
+  } = useSheetRouteState(addFoodQuerySchema, {
       defaults: {
         tab: "recent",
         sort: "relevance",
@@ -168,76 +173,19 @@ const AddFood = () => {
   }, [addedFoods, recentMealFoods]);
 
   const clearSheetParams = () => {
-    const next = setQueryFromState(
-      searchParams,
-      addFoodQuerySchema,
-      {
-        tab: activeTab,
-        query: searchQuery || undefined,
-        sort: sortBy === "relevance" ? undefined : sortBy,
-        tags: selectedTags.length ? selectedTags : undefined,
-        mealId: selectedMeal?.id,
-        returnTo: returnTo === "/nutrition" ? undefined : returnTo,
-        sheet: undefined,
-        foodId: undefined,
-        sheetItemId: undefined,
-      },
-      {
-        tab: "recent",
-        sort: "relevance",
-      },
-    );
-    setSearchParams(next, { replace: true });
+    closeRouteSheet(["foodId", "sheetItemId"]);
   };
 
   const openDetailSheet = (food: FoodItem) => {
     setSelectedFood(food);
     openSheet("detail");
-    const next = setQueryFromState(
-      searchParams,
-      addFoodQuerySchema,
-      {
-        tab: activeTab,
-        query: searchQuery || undefined,
-        sort: sortBy === "relevance" ? undefined : sortBy,
-        tags: selectedTags.length ? selectedTags : undefined,
-        mealId: selectedMeal?.id,
-        returnTo: returnTo === "/nutrition" ? undefined : returnTo,
-        sheet: "detail",
-        foodId: food.id,
-        sheetItemId: undefined,
-      },
-      {
-        tab: "recent",
-        sort: "relevance",
-      },
-    );
-    setSearchParams(next, { replace: true });
+    openRouteSheet("detail", { foodId: food.id }, ["sheetItemId"]);
   };
 
   const openEditSheet = (item: LogItem) => {
     setEditItem(item);
     openSheet("edit");
-    const next = setQueryFromState(
-      searchParams,
-      addFoodQuerySchema,
-      {
-        tab: activeTab,
-        query: searchQuery || undefined,
-        sort: sortBy === "relevance" ? undefined : sortBy,
-        tags: selectedTags.length ? selectedTags : undefined,
-        mealId: selectedMeal?.id,
-        returnTo: returnTo === "/nutrition" ? undefined : returnTo,
-        sheet: "edit",
-        foodId: undefined,
-        sheetItemId: item.id || undefined,
-      },
-      {
-        tab: "recent",
-        sort: "relevance",
-      },
-    );
-    setSearchParams(next, { replace: true });
+    openRouteSheet("edit", { sheetItemId: item.id || undefined }, ["foodId"]);
   };
 
   useEffect(() => {

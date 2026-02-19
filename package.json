@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "migrate": "node --env-file=.env.local scripts/migrate-legacy-csv.mjs",
     "migrate:legacy-csv": "node --env-file=.env.local scripts/migrate-legacy-csv.mjs",
+    "backfill:food-micros": "node --env-file=.env.local scripts/backfill-food-micro-columns.mjs",
     "lint:theme-colors": "node scripts/check-theme-colors.mjs",
     "lint:theme-colors:strict": "node scripts/check-theme-colors.mjs --strict",
     "preview": "vite preview"

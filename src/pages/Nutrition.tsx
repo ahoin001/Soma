@@ -59,7 +59,7 @@ import type { NutritionDraft } from "@/types/nutrition";
 import type { MealPlanItem, MealPlanMeal } from "@/hooks/useMealPlans";
 import { nutritionQuerySchema } from "@/lib/routeSchemas";
 import { setQueryFromState } from "@/lib/routeQuery";
-import { useRouteQueryState } from "@/hooks/useRouteQueryState";
+import { useSheetRouteState } from "@/hooks/useSheetRouteState";
 
 /** Build a FoodItem from a meal plan item so we can call logFood. */
 function planItemToFoodItem(item: MealPlanItem): FoodItem {
@@ -200,8 +200,13 @@ const Nutrition = () => {
   }, [activeSheet, adminQuery]);
 
   const location = useLocation();
-  const { query: queryState, searchParams, setSearchParams } =
-    useRouteQueryState(nutritionQuerySchema);
+  const {
+    query: queryState,
+    searchParams,
+    setSearchParams,
+    openRouteSheet,
+    closeRouteSheet,
+  } = useSheetRouteState(nutritionQuerySchema);
   const [showWelcome, setShowWelcome] = useState(false);
   const locationState = location.state as { justLoggedIn?: boolean; isNewUser?: boolean } | null;
   const locationStateSuggested = location.state as SuggestedPlanDayState | null;
@@ -292,13 +297,7 @@ const Nutrition = () => {
   const isDetailOpen = activeSheet === "detail" && Boolean(selectedFood);
 
   const clearSheetParams = () => {
-    const next = setQueryFromState(searchParams, nutritionQuerySchema, {
-      sheet: undefined,
-      foodId: undefined,
-      sheetItemId: undefined,
-      editItemId: undefined,
-    });
-    setSearchParams(next, { replace: true });
+    closeRouteSheet(["foodId", "sheetItemId", "editItemId"]);
   };
 
   const closeAllSheets = () => {
@@ -308,48 +307,44 @@ const Nutrition = () => {
 
   const openQuickSheet = () => {
     openSheet("quick");
-    const next = setQueryFromState(searchParams, nutritionQuerySchema, {
-      sheet: "quick",
-      foodId: undefined,
-      sheetItemId: undefined,
-      editItemId: queryState.editItemId,
-    });
-    setSearchParams(next, { replace: true });
+    openRouteSheet("quick", { editItemId: queryState.editItemId }, [
+      "foodId",
+      "sheetItemId",
+    ]);
   };
 
   const openAdminSheet = () => {
     openSheet("admin");
-    const next = setQueryFromState(searchParams, nutritionQuerySchema, {
-      sheet: "admin",
-      foodId: undefined,
-      sheetItemId: undefined,
-      editItemId: queryState.editItemId,
-    });
-    setSearchParams(next, { replace: true });
+    openRouteSheet("admin", { editItemId: queryState.editItemId }, [
+      "foodId",
+      "sheetItemId",
+    ]);
   };
 
   const openDetailSheet = (food: FoodItem) => {
     setSelectedFood(food);
     openSheet("detail");
-    const next = setQueryFromState(searchParams, nutritionQuerySchema, {
-      sheet: "detail",
-      foodId: food.id,
-      sheetItemId: undefined,
-      editItemId: queryState.editItemId,
-    });
-    setSearchParams(next, { replace: true });
+    openRouteSheet(
+      "detail",
+      {
+        foodId: food.id,
+        editItemId: queryState.editItemId,
+      },
+      ["sheetItemId"],
+    );
   };
 
   const openEditSheet = (item: LogItem) => {
     setEditItem(item);
     openSheet("edit");
-    const next = setQueryFromState(searchParams, nutritionQuerySchema, {
-      sheet: "edit",
-      foodId: undefined,
-      sheetItemId: item.id || undefined,
-      editItemId: queryState.editItemId,
-    });
-    setSearchParams(next, { replace: true });
+    openRouteSheet(
+      "edit",
+      {
+        sheetItemId: item.id || undefined,
+        editItemId: queryState.editItemId,
+      },
+      ["foodId"],
+    );
   };
 
   useEffect(() => {
