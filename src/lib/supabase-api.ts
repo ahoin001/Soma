@@ -115,13 +115,21 @@ export const fetchMealEntriesSupabase = async (localDate: string) => {
   }
   const { data: items, error: iErr } = await supabase
     .from("meal_entry_items")
-    .select("*")
+    .select("*, food:foods!meal_entry_items_food_id_fkey(image_url)")
     .in("meal_entry_id", ids)
     .order("sort_order", { ascending: true });
   if (iErr) throw new Error(iErr.message);
+  const enrichedItems = (items ?? []).map((item) => {
+    const foodImage =
+      (item as { food?: { image_url?: string | null } | null }).food?.image_url ?? null;
+    return {
+      ...item,
+      image_url: (item as { image_url?: string | null }).image_url ?? foodImage,
+    };
+  });
   return {
     entries: (entries ?? []) as MealEntryRecord[],
-    items: (items ?? []) as MealEntryItemRecord[],
+    items: enrichedItems as MealEntryItemRecord[],
   };
 };
 
