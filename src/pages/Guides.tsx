@@ -53,17 +53,26 @@ const Guides = () => {
 
   // URL -> state (supports deep links and POP navigation)
   useEffect(() => {
-    if (query.tab) setTab(query.tab);
-    setExpandedId(query.article ?? null);
-  }, [query.article, query.tab, setExpandedId, setTab]);
+    if (query.tab && query.tab !== tab) {
+      setTab(query.tab);
+    }
+    const nextExpanded = query.article ?? null;
+    if (nextExpanded !== expandedId) {
+      setExpandedId(nextExpanded);
+    }
+  }, [expandedId, query.article, query.tab, setExpandedId, setTab, tab]);
 
   // state -> URL (shareable/restorable page context)
   useEffect(() => {
+    const nextArticle = tab === "articles" ? expandedId ?? undefined : undefined;
+    const currentArticle = query.article ?? undefined;
+    if (query.tab === tab && currentArticle === nextArticle) return;
+
     mergeQueryState({
       tab,
-      article: tab === "articles" ? expandedId ?? undefined : undefined,
+      article: nextArticle,
     });
-  }, [expandedId, mergeQueryState, tab]);
+  }, [expandedId, mergeQueryState, query.article, query.tab, tab]);
 
   const categories = useMemo(() => {
     const unique = Array.from(

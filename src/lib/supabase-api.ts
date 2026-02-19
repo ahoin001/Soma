@@ -2226,10 +2226,28 @@ export const deleteProgressPhotoSupabase = async (id: string) => {
 // ─── edge functions ─────────────────────────────────────────────────────────
 
 const invokeEdge = async <T>(fnName: string, body: unknown): Promise<T> => {
-  const { data, error } = await supabase.functions.invoke(fnName, {
-    body: JSON.stringify(body),
-  });
-  if (error) throw new Error(error.message ?? `Edge function ${fnName} failed`);
+  const invokeOnce = async () =>
+    supabase.functions.invoke(fnName, {
+      body: JSON.stringify(body),
+    });
+
+  let { data, error } = await invokeOnce();
+
+  // Edge calls can fail with 401 if a cached tab is using an expired JWT.
+  // Attempt one silent refresh/retry before surfacing the error.
+  if (error && /401|unauthorized/i.test(error.message ?? "")) {
+    await supabase.auth.refreshSession();
+    const retry = await invokeOnce();
+    data = retry.data;
+    error = retry.error;
+  }
+
+  if (error) {
+    if (/401|unauthorized/i.test(error.message ?? "")) {
+      throw new Error("Session expired. Please sign in again and retry.");
+    }
+    throw new Error(error.message ?? `Edge function ${fnName} failed`);
+  }
   return data as T;
 };
 

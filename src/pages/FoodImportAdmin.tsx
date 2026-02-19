@@ -105,8 +105,16 @@ export default function FoodImportAdmin() {
       setForm(parsedToFormState(result));
       appToast.success("Parsed successfully. Review and edit below.");
     } catch (e) {
+      const message = e instanceof Error ? e.message : "Parse failed.";
+      if (/session expired|unauthorized|401/i.test(message)) {
+        appToast.error("Session expired", {
+          description: "Please sign in again, then retry parsing.",
+        });
+        navigate("/auth", { state: { from: "/nutrition/admin/import" } });
+        return;
+      }
       appToast.error(
-        e instanceof Error ? e.message : "Parse failed. For external labels, ensure the server is running.",
+        message || "Parse failed. For external labels, ensure the server is running.",
       );
     } finally {
       setParsing(false);
