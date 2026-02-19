@@ -1,14 +1,15 @@
 import { AppShell } from "@/components/aura";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Input } from "@/components/ui/input";
 import { GroceriesContent } from "./Groceries";
 import { MealPlansContent } from "./MealPlans";
 import { guideArticles } from "@/data/guideArticles";
 import { cn } from "@/lib/utils";
-import { BookOpen, CalendarDays, ChevronDown, ShoppingBag, X } from "lucide-react";
+import { BookOpen, CalendarDays, ChevronDown, Heart, Search, ShoppingBag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRememberedTab } from "@/hooks/useRememberedTab";
 import { useRememberedState } from "@/hooks/useRememberedState";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { guidesQueryDefaults, guidesQuerySchema } from "@/lib/routeSchemas";
 import { useRouteQueryState } from "@/hooks/useRouteQueryState";
 
@@ -28,6 +29,27 @@ const Guides = () => {
     defaultValue: null,
     parse: (raw) => (typeof raw === "string" ? raw : null),
   });
+  const [articleQuery, setArticleQuery] = useRememberedState<string>({
+    key: "query-article",
+    defaultValue: "",
+    parse: (raw) => (typeof raw === "string" ? raw : ""),
+  });
+  const [articleCategory, setArticleCategory] = useRememberedState<string>({
+    key: "category-article",
+    defaultValue: "All",
+    parse: (raw) => (typeof raw === "string" ? raw : "All"),
+  });
+  const [favoriteArticleIds, setFavoriteArticleIds] = useRememberedState<string[]>({
+    key: "favorite-articles",
+    defaultValue: [],
+    parse: (raw) =>
+      Array.isArray(raw) ? raw.filter((entry): entry is string => typeof entry === "string") : [],
+  });
+  const [favoritesOnly, setFavoritesOnly] = useRememberedState<boolean>({
+    key: "favorites-only-articles",
+    defaultValue: false,
+    parse: (raw) => raw === true,
+  });
 
   // URL -> state (supports deep links and POP navigation)
   useEffect(() => {
@@ -42,6 +64,45 @@ const Guides = () => {
       article: tab === "articles" ? expandedId ?? undefined : undefined,
     });
   }, [expandedId, mergeQueryState, tab]);
+
+  const categories = useMemo(() => {
+    const unique = Array.from(
+      new Set(guideArticles.map((article) => article.category).filter(Boolean) as string[]),
+    );
+    return ["All", ...unique];
+  }, []);
+
+  const favoriteSet = useMemo(() => new Set(favoriteArticleIds), [favoriteArticleIds]);
+
+  const filteredArticles = useMemo(() => {
+    const query = articleQuery.trim().toLowerCase();
+    const filtered = guideArticles.filter((article) => {
+      if (articleCategory !== "All" && article.category !== articleCategory) return false;
+      if (favoritesOnly && !favoriteSet.has(article.id)) return false;
+      if (!query) return true;
+      return (
+        article.title.toLowerCase().includes(query) ||
+        article.description.toLowerCase().includes(query) ||
+        (article.category ?? "").toLowerCase().includes(query)
+      );
+    });
+    return [...filtered].sort((a, b) => {
+      const favDiff = Number(favoriteSet.has(b.id)) - Number(favoriteSet.has(a.id));
+      if (favDiff !== 0) return favDiff;
+      return a.title.localeCompare(b.title);
+    });
+  }, [articleCategory, articleQuery, favoriteSet, favoritesOnly]);
+
+  const activeArticle = useMemo(
+    () => guideArticles.find((article) => article.id === expandedId) ?? null,
+    [expandedId],
+  );
+
+  const toggleFavorite = (articleId: string) => {
+    setFavoriteArticleIds((prev) =>
+      prev.includes(articleId) ? prev.filter((id) => id !== articleId) : [...prev, articleId],
+    );
+  };
 
   return (
     <AppShell experience="nutrition">
@@ -103,26 +164,64 @@ const Guides = () => {
         {tab === "groceries" && <GroceriesContent showHeader={false} />}
         {tab === "plans" && <MealPlansContent showHeader={false} />}
 
-        {tab === "articles" && expandedId && (
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            onClick={() => setExpandedId(null)}
-            className="fixed left-1/2 z-50 h-12 w-12 -translate-x-1/2 rounded-full shadow-lg"
-            style={{ bottom: "calc(5rem + var(--sab, env(safe-area-inset-bottom)))" }}
-            aria-label="Close article"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        )}
-
         {tab === "articles" && (
           <div className="mt-6 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Tap a card to expand and read the full article.
-            </p>
-            {guideArticles.map((article) => {
+            <div className="rounded-[22px] border border-border/60 bg-card/90 p-3 shadow-[0_12px_26px_rgba(15,23,42,0.08)]">
+              <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background px-3 py-2">
+                <Search className="h-4 w-4 text-primary" />
+                <Input
+                  value={articleQuery}
+                  onChange={(e) => setArticleQuery(e.target.value)}
+                  placeholder="Search articles..."
+                  className="h-6 border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
+                />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFavoritesOnly((v) => !v)}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold transition",
+                    favoritesOnly
+                      ? "bg-primary text-primary-foreground shadow-[0_8px_18px_rgba(15,23,42,0.22)]"
+                      : "bg-secondary text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Heart className={cn("h-3.5 w-3.5", favoritesOnly && "fill-current")} />
+                  Favorites
+                </button>
+                {categories.map((category) => {
+                  const active = articleCategory === category;
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => setArticleCategory(category)}
+                      className={cn(
+                        "rounded-full px-3 py-1.5 text-[11px] font-semibold transition",
+                        active
+                          ? "bg-primary text-primary-foreground shadow-[0_8px_18px_rgba(15,23,42,0.22)]"
+                          : "bg-secondary text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {category}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {filteredArticles.length} article{filteredArticles.length === 1 ? "" : "s"} found
+              </p>
+            </div>
+            {filteredArticles.length === 0 ? (
+              <div className="rounded-[20px] border border-dashed border-border/60 bg-card/70 px-4 py-8 text-center">
+                <p className="text-sm font-semibold text-foreground">No matching articles</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Try a different keyword or category.
+                </p>
+              </div>
+            ) : null}
+            {filteredArticles.map((article) => {
               const isExpanded = expandedId === article.id;
               return (
                 <div
@@ -132,9 +231,16 @@ const Guides = () => {
                     isExpanded && "ring-2 ring-primary/30",
                   )}
                 >
-                  <button
-                    type="button"
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setExpandedId(isExpanded ? null : article.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setExpandedId(isExpanded ? null : article.id);
+                      }
+                    }}
                     className="w-full px-5 py-4 text-left"
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -150,30 +256,116 @@ const Guides = () => {
                         <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
                           {article.description}
                         </p>
+                        <p className="mt-2 text-xs font-semibold text-primary/80">
+                          Tap to read
+                        </p>
                       </div>
-                      <span
-                        className={cn(
-                          "mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition",
-                          isExpanded && "rotate-180 bg-primary/20 text-primary",
-                        )}
-                      >
-                        <ChevronDown className="h-4 w-4" />
-                      </span>
-                    </div>
-                  </button>
-                  {isExpanded && (
-                    <div className="border-t border-border/60 px-5 py-4">
-                      <div className="text-foreground">
-                        {article.body}
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            toggleFavorite(article.id);
+                          }}
+                          className={cn(
+                            "flex h-8 w-8 items-center justify-center rounded-full bg-secondary transition",
+                            favoriteSet.has(article.id)
+                              ? "text-primary"
+                              : "text-secondary-foreground hover:text-foreground",
+                          )}
+                          aria-label={
+                            favoriteSet.has(article.id)
+                              ? "Remove from favorites"
+                              : "Add to favorites"
+                          }
+                        >
+                          <Heart
+                            className={cn("h-4 w-4", favoriteSet.has(article.id) && "fill-current")}
+                          />
+                        </button>
+                        <span
+                          className={cn(
+                            "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition",
+                            isExpanded && "rotate-180 bg-primary/20 text-primary",
+                          )}
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </span>
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
           </div>
         )}
       </div>
+      {tab === "articles" && activeArticle && (
+        <div className="fixed inset-0 z-[70]">
+          <button
+            type="button"
+            className="absolute inset-0 bg-background/75 backdrop-blur-sm"
+            aria-label="Close article reader"
+            onClick={() => setExpandedId(null)}
+          />
+          <div
+            className="absolute inset-x-0 bottom-0 top-[max(4rem,var(--sat,env(safe-area-inset-top)))] mx-auto w-full max-w-[420px] rounded-t-[28px] border border-border/60 bg-card shadow-[0_-14px_40px_rgba(15,23,42,0.2)]"
+            role="dialog"
+            aria-modal="true"
+            aria-label={activeArticle.title}
+          >
+            <div className="flex h-full flex-col overflow-hidden">
+              <div className="border-b border-border/60 px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    {activeArticle.category ? (
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary/80">
+                        {activeArticle.category}
+                      </p>
+                    ) : null}
+                    <h2 className="mt-1 text-base font-semibold text-foreground">
+                      {activeArticle.title}
+                    </h2>
+                  </div>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="h-9 w-9 shrink-0 rounded-full"
+                    onClick={() => toggleFavorite(activeArticle.id)}
+                    aria-label={
+                      favoriteSet.has(activeArticle.id)
+                        ? "Remove from favorites"
+                        : "Add to favorites"
+                    }
+                  >
+                    <Heart
+                      className={cn(
+                        "h-4 w-4",
+                        favoriteSet.has(activeArticle.id) ? "fill-current text-primary" : "",
+                      )}
+                    />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="h-9 w-9 shrink-0 rounded-full"
+                    onClick={() => setExpandedId(null)}
+                    aria-label="Close article"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="aura-sheet-scroll flex-1 overflow-y-auto px-4 py-4 pb-10">
+                <div className="text-foreground">{activeArticle.body}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 };
