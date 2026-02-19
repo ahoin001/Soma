@@ -17,7 +17,7 @@ import {
   getWorkoutPlansCache,
   setWorkoutPlansCache,
 } from "@/lib/fitnessCache";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 
@@ -167,7 +167,7 @@ export const useWorkoutPlans = () => {
       }
     } catch (error) {
       rollback(previousPlans, previousActive, previousLast);
-      toast("Unable to update plan", {
+      appToast.info("Unable to update plan", {
         action: {
           label: "Retry",
           onClick: () => void updateWorkoutPlan(planId, patch),
@@ -200,7 +200,7 @@ export const useWorkoutPlans = () => {
       await refreshWorkoutPlans();
     } catch (error) {
       rollback(previousPlans, previousActive, previousLast);
-      toast("Unable to delete plan", {
+      appToast.info("Unable to delete plan", {
         action: {
           label: "Retry",
           onClick: () => void deleteWorkoutPlan(planId),
@@ -234,7 +234,7 @@ export const useWorkoutPlans = () => {
     } catch (error) {
       setWorkoutPlans((prev) => prev.filter((plan) => plan.id !== optimisticId));
       setActivePlanId(previousActive ?? null);
-      toast("Unable to create plan", {
+      appToast.info("Unable to create plan", {
         action: {
           label: "Retry",
           onClick: () => void createWorkoutPlan(name),
@@ -293,7 +293,7 @@ export const useWorkoutPlans = () => {
             : plan,
         ),
       );
-      toast("Unable to create workout", {
+      appToast.info("Unable to create workout", {
         action: {
           label: "Retry",
           onClick: () => void createWorkoutTemplate(planId, name),
@@ -346,7 +346,7 @@ export const useWorkoutPlans = () => {
       await refreshWorkoutPlans();
     } catch (error) {
       rollback(previousPlans, previousActive, previousLast);
-      toast("Unable to update workout", {
+      appToast.info("Unable to update workout", {
         action: {
           label: "Retry",
           onClick: () => void updateWorkoutTemplate(planId, workoutId, patch),
@@ -375,7 +375,7 @@ export const useWorkoutPlans = () => {
       clearWorkoutPlansCache();
     } catch (error) {
       rollback(previousPlans, previousActive, previousLast);
-      toast("Unable to delete workout", {
+      appToast.info("Unable to delete workout", {
         action: {
           label: "Retry",
           onClick: () => void deleteWorkoutTemplate(planId, workoutId),
@@ -396,7 +396,7 @@ export const useWorkoutPlans = () => {
       clearWorkoutPlansCache();
     } catch (error) {
       setLastWorkoutByPlan(previousLast);
-      toast("Unable to complete workout", {
+      appToast.info("Unable to complete workout", {
         action: {
           label: "Retry",
           onClick: () => void recordWorkoutCompleted(planId, workoutId),

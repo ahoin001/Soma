@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useFoodCatalog } from "@/hooks/useFoodCatalog";
 import { useGroceryBag } from "@/hooks/useGroceryBag";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { Package, Search, ShoppingBag } from "lucide-react";
 import { ListEmptyState } from "@/components/ui/empty-state";
 import type { FoodItem } from "@/data/mock";
@@ -122,11 +122,11 @@ export const GroceriesContent = ({ showHeader = true }: GroceriesContentProps) =
   );
 
   useEffect(() => {
-    if (bagError) toast("Could not load groceries", { description: bagError });
+    if (bagError) appToast.info("Could not load groceries", { description: bagError });
   }, [bagError]);
 
   useEffect(() => {
-    if (searchError) toast("Search failed", { description: searchError });
+    if (searchError) appToast.info("Search failed", { description: searchError });
   }, [searchError]);
 
   useEffect(() => {

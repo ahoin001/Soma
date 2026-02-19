@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { buildDateRange } from "@/lib/progressChartUtils";
 import { useAppStore } from "@/state/AppStore";
 import { Scale } from "lucide-react";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import {
   useCaloriesByDate,
   useWeightGuidance,
@@ -107,7 +107,7 @@ const Progress = () => {
 
   const handleApplySuggestion = (nextGoal: number) => {
     nutrition.setGoal?.(nextGoal);
-    toast("Goal updated", {
+    appToast.info("Goal updated", {
       description: `Daily goal set to ${nextGoal} cal.`,
     });
   };

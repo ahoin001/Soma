@@ -18,7 +18,6 @@ import type { FoodItem, MacroTarget } from "@/data/mock";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Heart, PencilLine, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import { fetchFoodServings } from "@/lib/api";
 import {
   getServingOptions,

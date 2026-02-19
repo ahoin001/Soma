@@ -32,7 +32,7 @@ import {
 import { useAppStore } from "@/state/AppStore";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { ChevronLeft, Trash2 } from "lucide-react";
 import { calculateMacroPercent } from "@/data/foodApi";
 import {
@@ -603,7 +603,7 @@ const EditFood = () => {
                               setBrandCreateOpen(false);
                               setBrandName(response.brand.name);
                               setBrandWebsite(response.brand.website_url ?? "");
-                              toast.success("Brand created");
+                              appToast.success("Brand created");
                             } catch {
                               setBrandNotice("Unable to create brand. Check your connection and try again.");
                             }
@@ -637,14 +637,14 @@ const EditFood = () => {
                               );
                               setDraft((d) => ({ ...d, brand: updated.name }));
                               setOriginalBrandLogoUrl(updated.logo_url ?? null);
-                              toast.success("Brand updated");
+                              appToast.success("Brand updated");
                             }
                           } catch {
                             setCurrentFood(prevFood);
                             setBrandLogoUrl(prevLogo);
                             setOriginalBrandLogoUrl(prevOriginal);
                             setBrandNotice("Unable to update brand.");
-                            toast.error("Brand update failed. Please try again.");
+                            appToast.error("Brand update failed. Please try again.");
                           }
                         }}
                       >
@@ -1210,13 +1210,13 @@ const EditFood = () => {
                   });
                   if (updated) {
                     setCurrentFood(updated);
-                    toast.success("Food saved", {
+                    appToast.success("Food saved", {
                       description: "Details updated successfully.",
                     });
                   }
                 } catch {
                   setCurrentFood(previousFood);
-                  toast.error("Save failed. Check your connection and try again.");
+                  appToast.error("Save failed. Check your connection and try again.");
                 }
               } else {
                 const updated = upsertOverride(currentFood, {
@@ -1229,7 +1229,7 @@ const EditFood = () => {
                   },
                 });
                 setCurrentFood(updated);
-                toast("Nutrition updated");
+                appToast.info("Nutrition updated");
               }
             } finally {
               setSaving(false);
@@ -1270,10 +1270,10 @@ const EditFood = () => {
                     try {
                       await deleteFood(currentFood.id);
                       refreshLists();
-                      toast.success("Food deleted.");
+                      appToast.success("Food deleted.");
                       navigate(returnTo);
                     } catch {
-                      toast.error("Could not delete food.", { description: "Check your connection and try again." });
+                      appToast.error("Could not delete food.", { description: "Check your connection and try again." });
                     } finally {
                       setDeleting(false);
                     }

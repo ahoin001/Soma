@@ -31,7 +31,7 @@ import {
   fetchJournalMeasurements,
   createJournalMeasurement,
 } from "@/lib/api";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 
 const chartConfig = {
   value: { label: "Value", color: "hsl(160 84% 39%)" },
@@ -79,10 +79,10 @@ const FitnessJournalMeasurement = () => {
       setValueInput("");
       setNotesInput("");
       setDrawerOpen(false);
-      toast.success("Entry logged");
+      appToast.success("Entry logged");
     },
     onError: () => {
-      toast.error("Failed to log entry");
+      appToast.error("Failed to log entry");
     },
   });
 
@@ -107,7 +107,7 @@ const FitnessJournalMeasurement = () => {
   const handleSubmit = () => {
     const num = Number(valueInput?.replace(",", "."));
     if (!type || !Number.isFinite(num) || num <= 0) {
-      toast.error("Enter a valid value");
+      appToast.error("Enter a valid value");
       return;
     }
     createMutation.mutate({

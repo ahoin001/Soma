@@ -7,7 +7,7 @@ import type {
   SessionHistory,
   SessionSet,
 } from "@/types/fitness";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import {
   addFitnessRoutineExercise,
   createFitnessRoutine,
@@ -202,7 +202,7 @@ export const useFitnessPlanner = () => {
       } catch (error) {
         setRoutines((prev) => prev.filter((item) => item.id !== optimisticId));
         setActiveRoutineId(previousActive ?? null);
-        toast("Unable to create routine", {
+        appToast.info("Unable to create routine", {
           action: {
             label: "Retry",
             onClick: () => void createRoutine(name),
@@ -239,7 +239,7 @@ export const useFitnessPlanner = () => {
             ),
           );
         }
-        toast("Unable to rename routine", {
+        appToast.info("Unable to rename routine", {
           action: {
             label: "Retry",
             onClick: () => void renameRoutine(routineId, name),
@@ -270,7 +270,7 @@ export const useFitnessPlanner = () => {
           setRoutines((prev) => [removed, ...prev]);
           if (wasActive) setActiveRoutineId(removed.id);
         }
-        toast("Unable to delete routine", {
+        appToast.info("Unable to delete routine", {
           action: {
             label: "Retry",
             onClick: () => void removeRoutine(routineId),
@@ -322,7 +322,7 @@ export const useFitnessPlanner = () => {
               : routine,
           ),
         );
-        toast("Unable to add exercise", {
+        appToast.info("Unable to add exercise", {
           action: {
             label: "Retry",
             onClick: () => void addExerciseToRoutine(routineId, exercise),
@@ -372,7 +372,7 @@ export const useFitnessPlanner = () => {
             ),
           );
         }
-        toast("Unable to remove exercise", {
+        appToast.info("Unable to remove exercise", {
           action: {
             label: "Retry",
             onClick: () => void removeExerciseFromRoutine(routineId, routineExerciseId),
@@ -428,7 +428,7 @@ export const useFitnessPlanner = () => {
             ),
           );
         }
-        toast("Unable to update exercise", {
+        appToast.info("Unable to update exercise", {
           action: {
             label: "Retry",
             onClick: () => void updateRoutineExercise(routineId, routineExerciseId, patch),
@@ -471,7 +471,7 @@ export const useFitnessPlanner = () => {
       } catch (error) {
         setActiveSession(previousSession);
         setSessionExercises(previousExercises);
-        toast("Unable to start session", {
+        appToast.info("Unable to start session", {
           action: {
             label: "Retry",
             onClick: () => void startSession(routineId),
@@ -515,7 +515,7 @@ export const useFitnessPlanner = () => {
       } catch (error) {
         setActiveSession(previousSession);
         setSessionExercises(previousExercises);
-        toast("Unable to start session", {
+        appToast.info("Unable to start session", {
           action: {
             label: "Retry",
             onClick: () => void startSessionFromTemplate(name, exercises, templateId),
@@ -540,7 +540,7 @@ export const useFitnessPlanner = () => {
         await refresh(true);
         return result.lastPerformed ?? null;
       } catch {
-        toast.error("Could not swap exercise");
+        appToast.error("Could not swap exercise");
         return null;
       }
     },
@@ -591,7 +591,7 @@ export const useFitnessPlanner = () => {
             sets: prev.sets.filter((entry) => entry.id !== localId),
           };
         });
-        toast("Unable to log set", {
+        appToast.info("Unable to log set", {
           action: {
             label: "Retry",
             onClick: () => void logSet(exerciseId, weight, reps),
@@ -620,7 +620,7 @@ export const useFitnessPlanner = () => {
       void refresh(true);
     } catch (error) {
       setActiveSession(previousSession);
-      toast("Unable to finish session", {
+      appToast.info("Unable to finish session", {
         action: {
           label: "Retry",
           onClick: () => void finishSession(),

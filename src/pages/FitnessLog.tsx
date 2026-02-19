@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { AppShell, LiveSessionPanel } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/state/AppStore";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 
 const formatSessionDate = (ms: number) =>
   new Intl.DateTimeFormat("en-US", {
@@ -80,9 +80,9 @@ const FitnessLog = () => {
                     ].join("\n");
                     try {
                       await navigator.clipboard.writeText(summary);
-                      toast("Session summary copied");
+                      appToast.info("Session summary copied");
                     } catch {
-                      toast("Unable to copy summary");
+                      appToast.info("Unable to copy summary");
                     }
                   }}
                 >

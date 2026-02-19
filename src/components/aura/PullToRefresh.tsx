@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 // ─── Constants (best practice: named values, single source of truth) ───
@@ -108,7 +108,7 @@ export const PullToRefresh = ({
         try {
           await handleRefresh();
         } catch {
-          toast.error("Refresh failed", {
+          appToast.error("Refresh failed", {
             description: "Check your connection and try again.",
           });
         } finally {

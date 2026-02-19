@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { formatShortDate } from "@/lib/progressChartUtils";
 import type { WeightEntry } from "@/types/progress";
 import { ChevronDown } from "lucide-react";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 
 type WeightLogSectionProps = {
   weight: string;
@@ -140,11 +140,11 @@ export const WeightLogSection = ({
                         editWeights[entry.date] ?? entry.weight,
                       );
                       if (!Number.isFinite(nextValue) || nextValue <= 0) {
-                        toast("Enter a valid weight");
+                        appToast.error("Enter a valid weight");
                         return;
                       }
                       onSaveEdit(entry, nextValue);
-                      toast("Weight updated");
+                      appToast.success("Weight updated");
                     }}
                   >
                     Save
@@ -156,7 +156,7 @@ export const WeightLogSection = ({
                     className="h-9 w-9 shrink-0 rounded-full text-destructive hover:text-destructive/80"
                     onClick={() => {
                       onRemoveEntry(entry.date);
-                      toast("Weight removed");
+                      appToast.success("Weight removed");
                     }}
                     aria-label={`Remove entry for ${formatShortDate(entry.date)}`}
                   >

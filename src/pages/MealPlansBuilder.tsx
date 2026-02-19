@@ -53,7 +53,7 @@ import {
   ClipboardList,
   Check,
 } from "lucide-react";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 
 type WeekdayId = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
@@ -476,7 +476,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
     void createPreset({ name, targets: targetDraftRef.current }).then(() => {
       setSavePresetOpen(false);
       setPresetNameDraft("");
-      toast.success("Preset saved", { description: name });
+      appToast.success("Preset saved", { description: name });
     });
   };
 
@@ -1419,7 +1419,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                 className="rounded-full shadow-lg min-w-[200px]"
                 onClick={() => {
                   triggerLightFeedback();
-                  toast.success("Changes saved", { description: `${activeDay?.name ?? "Day"} is up to date.` });
+                  appToast.success("Changes saved", { description: `${activeDay?.name ?? "Day"} is up to date.` });
                 }}
               >
                 <Check className="mr-2 h-4 w-4" />

@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { useAppStore } from "@/state/AppStore";
 import { ChevronDown, ChevronLeft } from "lucide-react";
 import {
@@ -841,7 +841,7 @@ const Goals = () => {
           ? manualGoal
           : dynamicTargets?.calories;
     if (!goalNum) {
-      toast("Enter a calorie goal", {
+      appToast.info("Enter a calorie goal", {
         description: "Add a daily goal to save your targets.",
       });
       return;
@@ -902,7 +902,7 @@ const Goals = () => {
       }
     }
     saveMicroState({ slotKeys: microSlotKeys, goals: microGoals });
-    toast("Goals saved", {
+    appToast.info("Goals saved", {
       description: `Daily goal set to ${Math.round(goalNum)} cal.`,
     });
   };

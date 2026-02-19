@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   clearStoredUserId,
+  getStoredUserId,
   setUserId,
 } from "@/lib/api";
 import { setSessionExpiredCallback } from "@/lib/sessionExpired";
@@ -51,7 +52,7 @@ const hasPendingAuthRedirect = (): boolean => {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<AuthState>({
-    userId: null,
+    userId: getStoredUserId(),
     email: null,
     status: "loading",
   });
@@ -80,14 +81,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         error,
       } = result;
       if (error) {
-        clearStoredUserId();
-        setState({ userId: null, email: null, status: "ready" });
+        setState((prev) => ({ ...prev, status: "ready" }));
         return;
       }
       applySession(session);
     } catch {
-      clearStoredUserId();
-      setState({ userId: null, email: null, status: "ready" });
+      // Transient init/focus failures should not force logout.
+      setState((prev) => ({ ...prev, status: "ready" }));
     }
   }, [applySession]);
 

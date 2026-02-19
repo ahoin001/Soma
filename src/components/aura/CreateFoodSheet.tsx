@@ -21,7 +21,7 @@ import { Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import type { FoodItem } from "@/data/mock";
 import type { BrandRecord } from "@/types/api";
 import { createBrand, fetchBrands, fetchFoodImageSignature } from "@/lib/api";
@@ -250,7 +250,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
     const payload = transformFoodFormToPayload(values);
     try {
       const created = onCreate ? await onCreate(payload) : undefined;
-      toast("Custom food saved", {
+      appToast.success("Custom food saved", {
         description: `${payload.name} is ready to log.`,
       });
 
@@ -273,7 +273,7 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
 
       onComplete?.(created);
     } catch {
-      toast("Failed to save food", {
+      appToast.error("Failed to save food", {
         action: {
           label: "Retry",
           onClick: () => void handleSubmit(onSubmit)(),
@@ -286,9 +286,9 @@ export const CreateFoodForm = ({ onCreate, onComplete }: CreateFoodFormProps) =>
   const onError = () => {
     const firstError = Object.values(errors)[0];
     if (firstError?.message) {
-      toast(String(firstError.message));
+      appToast.error(String(firstError.message));
     } else {
-      toast("Enter calories, carbs, protein, and fat");
+      appToast.error("Enter calories, carbs, protein, and fat");
     }
   };
 

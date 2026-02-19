@@ -7,7 +7,7 @@ import {
   type SessionSummaryStats,
 } from "@/components/aura";
 import { useAppStore } from "@/state/AppStore";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { fetchExerciseByName } from "@/lib/api";
 
 const WorkoutDetails = () => {
@@ -120,7 +120,7 @@ const WorkoutDetails = () => {
               `${summaryStats.totalSets} sets · ${Math.round(summaryStats.totalVolume)} ${summaryStats.unitUsed} volume`,
               `Duration: ${Math.round(summaryStats.durationMs / 1000 / 60)}m`,
             ].join("\n");
-            navigator.clipboard?.writeText(text).then(() => toast("Summary copied"));
+            navigator.clipboard?.writeText(text).then(() => appToast.info("Summary copied"));
           }}
         />
       </AppShell>
@@ -149,14 +149,14 @@ const WorkoutDetails = () => {
             const record = response.exercise as { id?: number } | null;
             const id = record?.id ? Number(record.id) : null;
             if (!id) {
-              toast("Exercise not found", {
+              appToast.info("Exercise not found", {
                 description: "Create it first to edit the full details.",
               });
               return;
             }
             navigate(`/fitness/exercises/${id}/edit`);
           } catch {
-            toast("Unable to open editor", {
+            appToast.info("Unable to open editor", {
               description: "Please try again.",
             });
           }
@@ -175,14 +175,14 @@ const WorkoutDetails = () => {
             await updateWorkoutTemplate(activePlan.id, activeWorkout.id, {
               exercises: nextExercises,
             });
-            toast("Workout updated", {
+            appToast.info("Workout updated", {
               action: {
                 label: "Undo",
                 onClick: () =>
                   void updateWorkoutTemplate(activePlan.id, activeWorkout.id, {
                     exercises: previousExercises,
                   }).then(() => {
-                    toast("Changes reverted");
+                    appToast.info("Changes reverted");
                   }),
               },
             });
@@ -229,7 +229,7 @@ const WorkoutDetails = () => {
           try {
             await recordWorkoutCompleted(activePlan.id, activeWorkout.id);
             fitnessPlanner.finishSession();
-            toast("Workout complete");
+            appToast.info("Workout complete");
           } catch {
             // handled in hook
           }

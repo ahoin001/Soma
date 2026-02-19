@@ -8,9 +8,9 @@
  *
  * Uses React Query for caching, background refetch, and offline support.
  */
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import type { FoodItem, MacroTarget, Meal } from "@/data/mock";
 import type { MealEntryItemRecord, MealEntryRecord } from "@/types/api";
 import {
@@ -26,7 +26,7 @@ import {
 } from "@/lib/api";
 import type { LogItem, LogSection } from "@/types/log";
 import { queryKeys } from "@/lib/queryKeys";
-import { DEBUG_KEY } from "@/lib/storageKeys";
+import { DEBUG_KEY, LAST_NUTRITION_DATE_KEY } from "@/lib/storageKeys";
 import { queueMutation } from "@/lib/offlineQueue";
 import { computeLogSections, computeTotals, toLocalDate } from "@/lib/nutritionData";
 import { normalizeFoodImageUrl } from "@/lib/foodImageUrl";
@@ -62,12 +62,23 @@ export const useDailyIntakeQuery = (
   meals: Meal[]
 ) => {
   const queryClient = useQueryClient();
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    if (typeof window === "undefined") return new Date();
+    const saved = window.localStorage.getItem(LAST_NUTRITION_DATE_KEY);
+    if (!saved) return new Date();
+    const parsed = new Date(`${saved}T12:00:00`);
+    return Number.isFinite(parsed.getTime()) ? parsed : new Date();
+  });
   const [syncState, setSyncState] = useState<SyncState>("idle");
   const lastLogRef = useRef<LastLog | null>(null);
   const syncTimerRef = useRef<number | null>(null);
 
   const localDate = useMemo(() => toLocalDate(selectedDate), [selectedDate]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(LAST_NUTRITION_DATE_KEY, localDate);
+  }, [localDate]);
 
   // --- Query: Fetch nutrition data ---
   const nutritionQuery = useQuery({
@@ -327,7 +338,7 @@ export const useDailyIntakeQuery = (
       if (isNutritionDebug()) console.log("[logFood] onSuccess", { food: food.name, itemId: response.items[0]?.id });
       lastLogRef.current = { food, itemId: response.items[0]?.id };
       const meal = meals.find((m) => m.id === mealTypeId);
-      toast.success(meal ? `Added to ${meal.label}` : "Logged");
+      appToast.success(meal ? `Added to ${meal.label}` : "Logged");
 
       // Update optimistic item with real ID from server (no refetch needed)
       const realItem = response.items[0];
@@ -362,7 +373,7 @@ export const useDailyIntakeQuery = (
       // If offline, keep optimistic update and queue for later
       if (!navigator.onLine) {
         void queueMutation("nutrition.logFood", { food, mealTypeId, localDate });
-        toast("Saved offline • Will sync when connected");
+        appToast.info("Saved offline • Will sync when connected");
         return;
       }
 
@@ -371,7 +382,7 @@ export const useDailyIntakeQuery = (
         queryClient.setQueryData(queryKeys.nutrition(localDate), context.previous);
       }
 
-      toast.error("Unable to log food. Check your connection and try again.", {
+      appToast.error("Unable to log food. Check your connection and try again.", {
         action: {
           label: "Retry",
           onClick: () => logFoodMutation.mutate({ food, mealTypeId }),
@@ -449,7 +460,7 @@ export const useDailyIntakeQuery = (
       // If offline, keep optimistic update and queue for later
       if (!navigator.onLine) {
         void queueMutation("nutrition.removeLogItem", { itemId: item.id });
-        toast("Saved offline • Will sync when connected");
+        appToast.info("Saved offline • Will sync when connected");
         return;
       }
 
@@ -457,7 +468,7 @@ export const useDailyIntakeQuery = (
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.nutrition(localDate), context.previous);
       }
-      toast.error("Unable to remove item. Check your connection and try again.", {
+      appToast.error("Unable to remove item. Check your connection and try again.", {
         action: { label: "Retry", onClick: () => removeItemMutation.mutate(item) },
       });
     },
@@ -542,7 +553,7 @@ export const useDailyIntakeQuery = (
       // If offline, keep optimistic update and queue for later
       if (!navigator.onLine) {
         void queueMutation("nutrition.updateLogItem", { itemId: item.id, quantity: multiplier });
-        toast("Saved offline • Will sync when connected");
+        appToast.info("Saved offline • Will sync when connected");
         return;
       }
 
@@ -550,7 +561,7 @@ export const useDailyIntakeQuery = (
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.nutrition(localDate), context.previous);
       }
-      toast.error("Unable to update item. Check your connection and try again.", {
+      appToast.error("Unable to update item. Check your connection and try again.", {
         action: { label: "Retry", onClick: () => updateItemMutation.mutate({ item, multiplier }) },
       });
     },
@@ -603,7 +614,7 @@ export const useDailyIntakeQuery = (
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.nutrition(localDate), context.previous);
       }
-      toast("Unable to save calorie goal", {
+      appToast.info("Unable to save calorie goal", {
         action: {
           label: "Retry",
           onClick: () => setGoalMutation.mutate(goal),
@@ -668,7 +679,7 @@ export const useDailyIntakeQuery = (
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.nutrition(localDate), context.previous);
       }
-      toast("Unable to save macro targets", {
+      appToast.info("Unable to save macro targets", {
         action: {
           label: "Retry",
           onClick: () => setMacroTargetsMutation.mutate(next),
@@ -726,14 +737,14 @@ export const useDailyIntakeQuery = (
     },
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.nutrition(localDate) });
-      toast(
+      appToast.info(
         data.copiedItems > 0
           ? `Copied ${data.copiedItems} item${data.copiedItems === 1 ? "" : "s"} from yesterday`
           : "Nothing to copy — yesterday was empty",
       );
     },
     onError: () => {
-      toast("Could not copy yesterday's meals", { description: "Please try again." });
+      appToast.info("Could not copy yesterday's meals", { description: "Please try again." });
     },
   });
 
@@ -840,5 +851,7 @@ export const useDailyIntakeQuery = (
     // Additional query state for components that need it
     isLoading: nutritionQuery.isLoading,
     isRefetching: nutritionQuery.isRefetching,
+    isFetching: nutritionQuery.isFetching,
+    dataUpdatedAt: nutritionQuery.dataUpdatedAt,
   };
 };

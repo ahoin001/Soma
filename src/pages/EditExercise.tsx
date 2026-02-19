@@ -4,7 +4,7 @@ import { AppShell } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { CreateExerciseForm } from "@/components/aura/CreateExerciseSheet";
 import { fetchExerciseById, updateExerciseMaster } from "@/lib/api";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { createExerciseMedia } from "@/data/exerciseMediaApi";
 import { useAppStore } from "@/state/AppStore";
 
@@ -126,7 +126,7 @@ const EditExercise = () => {
                   isPrimary: true,
                 });
               }
-              toast("Exercise updated", {
+              appToast.success("Exercise updated", {
                 description: "Changes saved successfully.",
               });
               navigate(-1);

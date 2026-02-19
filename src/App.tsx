@@ -3,9 +3,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   QueryClient,
-  QueryClientProvider,
   useQueryClient,
 } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { Suspense, lazy, useEffect, useLayoutEffect, useRef } from "react";
 import { useTheme } from "next-themes";
 // framer-motion is used by PageTransition / ExperienceSwitch — not directly here
@@ -59,6 +59,12 @@ import { queryKeys } from "@/lib/queryKeys";
 import { defaultMacroTargets, defaultSummary } from "@/data/defaults";
 import type { FoodItem, Meal } from "@/data/mock";
 import { recordToFoodItem } from "@/lib/foodMapping";
+import {
+  QUERY_PERSIST_BUSTER,
+  QUERY_PERSIST_MAX_AGE_MS,
+  queryPersister,
+} from "@/lib/queryPersistence";
+import { LAST_SIGNED_IN_ROUTE_KEY } from "@/lib/storageKeys";
 import {
   setFitnessPlannerCache,
   setTrainingAnalyticsCache,
@@ -123,7 +129,8 @@ const queryClient = new QueryClient({
         return !isAuthError && failureCount < 3;
       },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      refetchOnWindowFocus: true,
+      refetchOnWindowFocus: (query) =>
+        Date.now() - query.state.dataUpdatedAt > 60 * 1000,
       refetchOnReconnect: true,
       networkMode: "offlineFirst", // Use cache when offline
     },
@@ -134,6 +141,18 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+const isPersistableSignedInRoute = (path: string) =>
+  path.startsWith("/nutrition") ||
+  path.startsWith("/fitness") ||
+  path.startsWith("/settings");
+
+const getStoredSignedInRoute = (): string | null => {
+  if (typeof window === "undefined") return null;
+  const route = window.localStorage.getItem(LAST_SIGNED_IN_ROUTE_KEY);
+  if (!route) return null;
+  return isPersistableSignedInRoute(route) ? route : null;
+};
 
 // ─── Suspense fallback for lazy secondary screens ───────────────────
 // Uses AuraAppShell so the dock stays visible while a lazy chunk loads.
@@ -204,6 +223,13 @@ const AppRoutes = () => {
   }, [location.pathname]);
 
   useEffect(() => {
+    const next = `${location.pathname}${location.search}${location.hash}`;
+    if (!isPersistableSignedInRoute(next)) return;
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(LAST_SIGNED_IN_ROUTE_KEY, next);
+  }, [location.pathname, location.search, location.hash]);
+
+  useEffect(() => {
     if (typeof document === "undefined") return;
     const root = document.documentElement;
     const isFitness = location.pathname.startsWith("/fitness");
@@ -255,15 +281,22 @@ const AppRoutes = () => {
     <>
       <ScrollRestoration />
       <Routes>
+        {(() => {
+          const defaultRoute = defaultHome === "fitness" ? "/fitness" : "/nutrition";
+          const restored = getStoredSignedInRoute();
+          const nextHome = restored ?? defaultRoute;
+          return (
         <Route
           path="/"
           element={
             <Navigate
-              to={defaultHome === "fitness" ? "/fitness" : "/nutrition"}
+              to={nextHome}
               replace
             />
           }
         />
+          );
+        })()}
 
         {/* ── Nutrition dock tabs (eager) ── */}
         <Route path="/nutrition" element={transition(<Nutrition />)} />
@@ -750,7 +783,7 @@ const AppShellRoot = () => {
   const auth = useAuth();
   const authReady = auth.status === "ready";
 
-  if (!authReady) {
+  if (!authReady && !auth.userId) {
     return <AuthLoading />;
   }
 
@@ -820,13 +853,20 @@ const App = () => {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: queryPersister,
+        buster: QUERY_PERSIST_BUSTER,
+        maxAge: QUERY_PERSIST_MAX_AGE_MS,
+      }}
+    >
       <TooltipProvider>
         <BrowserRouter>
           <AppWithErrorBoundary />
         </BrowserRouter>
       </TooltipProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 };
 

@@ -1,17 +1,17 @@
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 
 export const showSuccess = (message: string) => {
-  toast.success(message);
+  appToast.success(message);
 };
 
 export const showError = (message: string) => {
-  toast.error(message);
+  appToast.error(message);
 };
 
 export const showLoading = (message: string) => {
-  return toast.loading(message);
+  return appToast.loading(message);
 };
 
 export const dismissToast = (toastId: string) => {
-  toast.dismiss(toastId);
+  appToast.dismiss(toastId);
 };

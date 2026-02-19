@@ -46,7 +46,7 @@ import {
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { ADVANCED_LOGGING_KEY, workoutLastSetsKey } from "@/lib/storageKeys";
 import { playRestCompleteSound } from "@/lib/restCompleteSound";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -376,7 +376,7 @@ const ExerciseCard = memo(
                       <DropdownMenuItem
                         onSelect={() => {
                           if (!onEditExercise) {
-                            toast("Edit exercise unavailable");
+                            appToast.info("Edit exercise unavailable");
                             return;
                           }
                           onEditExercise({ id: exercise.id, name: exercise.name });
@@ -1483,7 +1483,7 @@ export const WorkoutSessionEditor = ({
           setIsPersisting(false);
           const message =
             err instanceof Error ? err.message : "Unable to save sets.";
-          toast("Sets could not be saved. Retry or finish anyway.", {
+          appToast.error("Sets could not be saved. Retry or finish anyway.", {
             description: message,
             action: {
               label: "Finish anyway",
@@ -1641,7 +1641,7 @@ export const WorkoutSessionEditor = ({
                       await ensureUser();
                       await upsertActivityGoals({ weightUnit: unit });
                     } catch {
-                      toast("Unable to save unit preference.");
+                      appToast.error("Unable to save unit preference.");
                     }
                   }}
                 >

@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { createExercise } from "@/lib/api";
 import { createExerciseMedia } from "@/data/exerciseMediaApi";
 import { useAppStore } from "@/state/AppStore";
@@ -189,11 +189,11 @@ export const CreateExerciseForm = ({
 
   const handleSave = async () => {
     if (!name.trim()) {
-      toast("Exercise name is required.");
+      appToast.error("Exercise name is required.");
       return;
     }
     if (!category) {
-      toast("Pick a category.");
+      appToast.error("Pick a category.");
       return;
     }
     try {
@@ -232,7 +232,7 @@ export const CreateExerciseForm = ({
             isPrimary: true,
           });
         }
-        toast("Exercise created", {
+        appToast.success("Exercise created", {
           description: "Added to your personal library.",
         });
       }
@@ -240,7 +240,7 @@ export const CreateExerciseForm = ({
       reset();
       onCancel?.();
     } catch {
-      toast("Exercise not saved", {
+      appToast.error("Exercise not saved", {
         description: "Check required fields and try again.",
       });
     } finally {

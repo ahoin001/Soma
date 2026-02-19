@@ -31,7 +31,7 @@ import {
   deleteProgressPhoto,
 } from "@/lib/api";
 import { uploadImageFile } from "@/lib/uploadImage";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import type { ProgressPhoto } from "@/types/journal";
 
 const FitnessJournalPhotos = () => {
@@ -54,11 +54,11 @@ const FitnessJournalPhotos = () => {
       queryClient.invalidateQueries({ queryKey: ["journal", "photos"] });
       setNoteInput("");
       setDrawerOpen(false);
-      toast.success("Photo added");
+      appToast.success("Photo added");
     },
     onError: () => {
       setUploading(false);
-      toast.error("Failed to add photo");
+      appToast.error("Failed to add photo");
     },
   });
 
@@ -67,10 +67,10 @@ const FitnessJournalPhotos = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["journal", "photos"] });
       setDeleteTarget(null);
-      toast.success("Photo removed");
+      appToast.success("Photo removed");
     },
     onError: () => {
-      toast.error("Failed to remove photo");
+      appToast.error("Failed to remove photo");
     },
   });
 
@@ -79,7 +79,7 @@ const FitnessJournalPhotos = () => {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) {
-      toast.error("Please choose an image file");
+      appToast.error("Please choose an image file");
       return;
     }
     setUploading(true);
@@ -91,7 +91,7 @@ const FitnessJournalPhotos = () => {
         note: noteInput.trim() || undefined,
       });
     } catch {
-      toast.error("Upload failed");
+      appToast.error("Upload failed");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";

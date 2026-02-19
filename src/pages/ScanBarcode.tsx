@@ -3,7 +3,7 @@ import { BarcodeScanSheet } from "@/components/aura/BarcodeScanSheet";
 import { AppShell } from "@/components/aura";
 import { CREATED_FOOD_KEY } from "@/lib/storageKeys";
 import { useAppStore } from "@/state/AppStore";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 
 const ScanBarcode = () => {
   const navigate = useNavigate();
@@ -23,7 +23,7 @@ const ScanBarcode = () => {
       navigate(`/nutrition/add-food?${searchParams.toString()}`);
       return;
     }
-    toast("No match found", {
+    appToast.info("No match found", {
       description: "Try searching manually or create a custom item.",
     });
   };

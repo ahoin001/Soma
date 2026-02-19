@@ -4,7 +4,7 @@ import { AppShell, VirtualizedExerciseList } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/state/AppStore";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { fetchExerciseByName, updateExerciseMaster } from "@/lib/api";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { uploadImageFile } from "@/lib/uploadImage";
@@ -159,7 +159,7 @@ const AddExerciseToWorkout = () => {
       if (navigator.vibrate) {
         navigator.vibrate(8);
       }
-      toast("Added to workout", {
+      appToast.info("Added to workout", {
         description: `${name} added to ${workout.name}.`,
       });
       if (draft?.exercises.length) {
@@ -305,7 +305,7 @@ const AddExerciseToWorkout = () => {
                 className="mt-3 w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={async () => {
                   if (!masterId) {
-                    toast("Master exercise not found");
+                    appToast.info("Master exercise not found");
                     return;
                   }
                   try {
@@ -315,9 +315,9 @@ const AddExerciseToWorkout = () => {
                     if (response.exercise) {
                       upsertExerciseRecord(response.exercise);
                     }
-                    toast("Thumbnail saved");
+                    appToast.info("Thumbnail saved");
                   } catch {
-                    toast("Unable to update thumbnail");
+                    appToast.info("Unable to update thumbnail");
                   }
                 }}
                 disabled={loadingMaster}

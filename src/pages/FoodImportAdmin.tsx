@@ -17,7 +17,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { createBrand, createFood, fetchExternalSvgUrl } from "@/lib/api";
 import { uploadImageFile } from "@/lib/uploadImage";
 import {
@@ -95,7 +95,7 @@ export default function FoodImportAdmin() {
 
   const handleParse = async () => {
     if (!htmlSnippet.trim()) {
-      toast.error("Paste an HTML snippet first");
+      appToast.error("Paste an HTML snippet first");
       return;
     }
     setParsing(true);
@@ -103,9 +103,9 @@ export default function FoodImportAdmin() {
       const result = await parseBjsFoodHtml(htmlSnippet, fetchExternalSvgUrl);
       setParsed(result);
       setForm(parsedToFormState(result));
-      toast.success("Parsed successfully. Review and edit below.");
+      appToast.success("Parsed successfully. Review and edit below.");
     } catch (e) {
-      toast.error(
+      appToast.error(
         e instanceof Error ? e.message : "Parse failed. For external labels, ensure the server is running.",
       );
     } finally {
@@ -124,9 +124,9 @@ export default function FoodImportAdmin() {
     try {
       const url = await uploadImageFile(file, (pct) => setImageUploadProgress(pct));
       updateForm({ imageUrl: url });
-      toast.success("Image uploaded. Using your URL.");
+      appToast.success("Image uploaded. Using your URL.");
     } catch {
-      toast.error("Image upload failed");
+      appToast.error("Image upload failed");
     } finally {
       setImageUploading(false);
       setImageUploadProgress(0);
@@ -137,7 +137,7 @@ export default function FoodImportAdmin() {
     if (!form) return;
     const name = form.productName.trim();
     if (!name) {
-      toast.error("Product name is required");
+      appToast.error("Product name is required");
       return;
     }
     const kcal = Number(form.calories);
@@ -145,11 +145,11 @@ export default function FoodImportAdmin() {
     const protein = Number(form.protein);
     const fat = Number(form.fat);
     if (!Number.isFinite(kcal) || kcal < 0) {
-      toast.error("Enter valid calories");
+      appToast.error("Enter valid calories");
       return;
     }
     if (!Number.isFinite(carbs) || !Number.isFinite(protein) || !Number.isFinite(fat)) {
-      toast.error("Enter valid macros (carbs, protein, fat)");
+      appToast.error("Enter valid macros (carbs, protein, fat)");
       return;
     }
 
@@ -198,12 +198,12 @@ export default function FoodImportAdmin() {
         queryClient.refetchQueries({ queryKey: ["foodSearch"] }),
         queryClient.refetchQueries({ queryKey: ["nutrition"] }),
       ]);
-      toast.success("Food saved to database.");
+      appToast.success("Food saved to database.");
       setForm(null);
       setParsed(null);
       setHtmlSnippet("");
     } catch {
-      toast.error("Failed to save food");
+      appToast.error("Failed to save food");
     } finally {
       setSaving(false);
     }

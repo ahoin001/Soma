@@ -30,7 +30,7 @@ import {
   useNavigationType,
   useSearchParams,
 } from "react-router-dom";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { deleteExercise } from "@/lib/api";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { motion } from "framer-motion";
@@ -330,13 +330,13 @@ const Fitness = () => {
       setExpandedPlans((prev) =>
         prev.includes(plan.id) ? prev : [...prev, plan.id],
       );
-      toast("Plan created", {
+      appToast.info("Plan created", {
         description: "Your new folder is ready.",
       });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to create plan";
-      toast("Plan not created", { description: message });
+      appToast.info("Plan not created", { description: message });
     } finally {
       setCreating(false);
     }
@@ -361,14 +361,14 @@ const Fitness = () => {
       setExpandedPlans((prev) =>
         prev.includes(targetPlanId) ? prev : [...prev, targetPlanId],
       );
-      toast("Workout created", {
+      appToast.info("Workout created", {
         description: "Add exercises to build it out.",
       });
       navigate(`/fitness/workouts/${targetPlanId}/${workout.id}`);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to create workout";
-      toast("Workout not created", { description: message });
+      appToast.info("Workout not created", { description: message });
     } finally {
       setCreating(false);
     }
@@ -598,7 +598,7 @@ const Fitness = () => {
                 try {
                   await deleteExercise(ex.id);
                   closeSheet();
-                  toast("Exercise deleted");
+                  appToast.info("Exercise deleted");
                   if (query.trim()) {
                     const ctrl = new AbortController();
                     searchExercises(query, ctrl.signal, "all");
@@ -606,7 +606,7 @@ const Fitness = () => {
                 } catch (err) {
                   const msg =
                     err instanceof Error ? err.message : "Delete failed.";
-                  toast("Could not delete exercise", { description: msg });
+                  appToast.info("Could not delete exercise", { description: msg });
                   throw err;
                 }
               }
@@ -626,7 +626,7 @@ const Fitness = () => {
           if (!selectedPlan) return;
           try {
             await updateWorkoutPlan(selectedPlan.id, { name });
-            toast("Plan updated");
+            appToast.info("Plan updated");
           } catch {
             // handled in hook
           }
@@ -636,14 +636,14 @@ const Fitness = () => {
           if (!selectedPlan) return;
           setActivePlanId(selectedPlan.id);
           closeSheet();
-          toast("Active plan set");
+          appToast.info("Active plan set");
         }}
         onDeletePlan={async () => {
           if (!selectedPlan) return;
           try {
             await deleteWorkoutPlan(selectedPlan.id);
             closeSheet();
-            toast("Plan deleted");
+            appToast.info("Plan deleted");
           } catch {
             // handled in hook
           }
@@ -668,7 +668,7 @@ const Fitness = () => {
           try {
             await updateWorkoutTemplate(selectedPlan.id, selectedWorkout.id, { name });
             closeSheet();
-            toast("Workout updated", {
+            appToast.info("Workout updated", {
               description: "Workout name saved.",
             });
           } catch {
@@ -690,14 +690,14 @@ const Fitness = () => {
                     prev.includes(selectedPlan.id) ? prev : [...prev, selectedPlan.id],
                   );
                   closeSheet();
-                  toast("Workout duplicated", {
+                  appToast.info("Workout duplicated", {
                     description: "Edit the copy to customize.",
                   });
                   navigate(
                     `/fitness/workouts/${selectedPlan.id}/${newWorkout.id}`,
                   );
                 } catch {
-                  toast("Could not duplicate workout", {
+                  appToast.info("Could not duplicate workout", {
                     description: "Please try again.",
                   });
                 }
@@ -709,7 +709,7 @@ const Fitness = () => {
           try {
             await deleteWorkoutTemplate(selectedPlan.id, selectedWorkout.id);
             closeSheet();
-            toast("Workout deleted", {
+            appToast.info("Workout deleted", {
               description: "Removed from your plan.",
             });
           } catch {

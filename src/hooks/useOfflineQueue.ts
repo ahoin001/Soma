@@ -7,7 +7,7 @@
  * - Manual trigger to process queue
  */
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { useOnlineStatus } from "./useOnlineStatus";
 import {
   getPendingMutationsCount,
@@ -72,13 +72,13 @@ export const useOfflineQueue = (
 
       // Show notification
       if (showNotifications && result.processed > 0) {
-        toast("Changes synced", {
+        appToast.info("Changes synced", {
           description: `${result.processed} update${result.processed !== 1 ? "s" : ""} saved.`,
         });
       }
 
       if (showNotifications && result.failed > 0) {
-        toast("Some changes failed to sync", {
+        appToast.info("Some changes failed to sync", {
           description: `${result.failed} update${result.failed !== 1 ? "s" : ""} will retry.`,
         });
       }

@@ -24,6 +24,8 @@ export const SHEET_FOOD_SEARCH_KEY = "aurafit-sheet:food-search";
 export const SHEET_CALENDAR_KEY = "aurafit-sheet:calendar";
 export const EXPERIENCE_TRANSITION_CONFIG_KEY =
   "aurafit-experience-transition-config-v1";
+export const LAST_SIGNED_IN_ROUTE_KEY = "aurafit-last-signed-in-route-v1";
+export const LAST_NUTRITION_DATE_KEY = "aurafit-last-nutrition-date-v1";
 
 // Food
 export const SERVING_CACHE_KEY = "aurafit-serving-cache-v1";

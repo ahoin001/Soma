@@ -4,7 +4,7 @@ import type { FoodItem, Meal } from "@/data/mock";
 import { AppShell, EditLogSheet, FoodDetailSheet, PageContainer } from "@/components/aura";
 import { FoodSearchContent } from "@/components/aura/FoodSearchContent";
 import { useAppStore } from "@/state/AppStore";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Copy } from "lucide-react";
 import { fuzzyFilter } from "@/lib/fuzzySearch";
@@ -540,12 +540,12 @@ const AddFood = () => {
   ) => {
     const mealId = resolveMealId();
     if (!mealId) {
-      toast("Select a meal first", { description: "Choose where to log this food." });
+      appToast.info("Select a meal first", { description: "Choose where to log this food." });
       return;
     }
     const existing = findExistingLogItem(food, mealId);
     if (existing) {
-      toast("Already logged for this meal", {
+      appToast.info("Already logged for this meal", {
         description: "Adjust servings instead of adding the same item twice.",
         action: {
           label: "Adjust servings",
@@ -560,7 +560,7 @@ const AddFood = () => {
     // Optimistic - fires immediately, errors handled by mutation's onError
     nutrition.logFood(food, mealId, options);
     setMealPulse(mealId);
-    toast("Logged to diary", { description: "Food added to your day." });
+    appToast.info("Logged to diary", { description: "Food added to your day." });
     closeSheets();
     navigate(returnTo, { replace: true });
   };
@@ -568,12 +568,12 @@ const AddFood = () => {
   const handleQuickAdd = (food: FoodItem) => {
     const mealId = resolveMealId();
     if (!mealId) {
-      toast("Select a meal first", { description: "Choose where to log this food." });
+      appToast.info("Select a meal first", { description: "Choose where to log this food." });
       return;
     }
     const existing = findExistingLogItem(food, mealId);
     if (existing) {
-      toast("Already logged for this meal", {
+      appToast.info("Already logged for this meal", {
         description: "Adjust servings instead of adding the same item twice.",
         action: {
           label: "Adjust servings",
@@ -588,17 +588,17 @@ const AddFood = () => {
     // Optimistic - fires immediately, errors handled by mutation's onError
     nutrition.logFood(food, mealId);
     setMealPulse(mealId);
-    toast("Logged to diary", { description: "Food added to your day." });
+    appToast.info("Logged to diary", { description: "Food added to your day." });
   };
 
   const handleSameAsYesterday = () => {
     const mealId = resolveMealId();
     if (!mealId) {
-      toast("Select a meal first", { description: "Choose where to log foods." });
+      appToast.info("Select a meal first", { description: "Choose where to log foods." });
       return;
     }
     if (yesterdayMealItems.length === 0) {
-      toast("Nothing from yesterday", {
+      appToast.info("Nothing from yesterday", {
         description: `You didn't log anything for ${selectedMeal?.label ?? "this meal"} yesterday.`,
       });
       return;
@@ -618,12 +618,12 @@ const AddFood = () => {
     setIsAddingSameAsYesterday(false);
     setMealPulse(mealId);
     if (added > 0) {
-      toast(`Added ${added} item${added === 1 ? "" : "s"} from yesterday`, {
+      appToast.info(`Added ${added} item${added === 1 ? "" : "s"} from yesterday`, {
         description: `Logged to ${selectedMeal?.label ?? "meal"}.`,
       });
       navigate(returnTo, { replace: true });
     } else {
-      toast("Already logged", {
+      appToast.info("Already logged", {
         description: `All of yesterday's ${selectedMeal?.label ?? "meal"} items are already in today.`,
       });
     }
@@ -636,7 +636,7 @@ const AddFood = () => {
     if (!existing) return;
     // Optimistic - fires immediately, errors handled by mutation's onError
     removeLogItem(existing);
-    toast(`${food.name} removed`);
+    appToast.info(`${food.name} removed`);
   };
 
   const handleUpdateFood = (food: FoodItem, next: NutritionDraft) => {
@@ -650,7 +650,7 @@ const AddFood = () => {
       },
     });
     setSelectedFood(updated);
-    toast("Nutrition updated");
+    appToast.info("Nutrition updated");
   };
 
   const handleUpdateMaster = async (
@@ -674,7 +674,7 @@ const AddFood = () => {
     });
     if (updated) {
       setSelectedFood(updated);
-      toast("Master nutrition updated");
+      appToast.info("Master nutrition updated");
     }
   };
 
@@ -855,12 +855,12 @@ const AddFood = () => {
         onSave={(item, multiplier) => {
           // Optimistic - fires immediately, errors handled by mutation's onError
           updateLogItem(item, multiplier);
-          toast(`Updated ${item.name} to ${Number(multiplier).toFixed(1)}x`);
+          appToast.info(`Updated ${item.name} to ${Number(multiplier).toFixed(1)}x`);
         }}
         onDelete={(item) => {
           // Optimistic - fires immediately, errors handled by mutation's onError
           removeLogItem(item);
-          toast(`${item.name} removed`);
+          appToast.info(`${item.name} removed`);
           closeSheets();
         }}
       />

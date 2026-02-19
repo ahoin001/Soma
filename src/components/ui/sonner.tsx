@@ -11,6 +11,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       position="top-center"
       richColors
+      closeButton
+      visibleToasts={4}
+      duration={3000}
       offset={{ top: "0.75rem" }}
       toastOptions={{
         classNames: {

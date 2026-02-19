@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { type FoodItem, type Meal } from "@/data/mock";
 import {
@@ -16,7 +16,7 @@ import {
   StreakCard,
   WaterCard,
 } from "@/components/aura";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import type { LogItem } from "@/types/log";
 import { useAppStore } from "@/state/AppStore";
 import { useUserSettings, useMealPulse } from "@/state";
@@ -49,6 +49,7 @@ import { Loader2, Sparkles } from "lucide-react";
 import { LoadingState } from "@/components/ui/loading-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SHEET_NUTRITION_KEY } from "@/lib/storageKeys";
+import { appToast } from "@/lib/toast";
 import {
   getTopSourcesForMacro,
   getTopSourcesForMicro,
@@ -207,6 +208,8 @@ const Nutrition = () => {
   const [addingToMealLabel, setAddingToMealLabel] = useState<string | null>(null);
   const [logFullDayConflictOpen, setLogFullDayConflictOpen] = useState(false);
   const [isLoggingFullDay, setIsLoggingFullDay] = useState(false);
+  const [showCacheRestoreHint, setShowCacheRestoreHint] = useState(false);
+  const cacheHintShownRef = useRef(false);
   const {
     nutrition,
     foodCatalog,
@@ -240,6 +243,8 @@ const Nutrition = () => {
     removeLogItem,
     updateLogItem,
     isLoading: nutritionLoading,
+    isFetching: nutritionFetching,
+    dataUpdatedAt: nutritionDataUpdatedAt,
     setGoal,
     setMacroTargets,
   } = nutrition;
@@ -288,6 +293,23 @@ const Nutrition = () => {
     void refreshLists();
   }, [refreshLists]);
 
+  useEffect(() => {
+    if (cacheHintShownRef.current) return;
+    const hasCachedData =
+      nutritionDataUpdatedAt > 0 &&
+      Date.now() - nutritionDataUpdatedAt > 15 * 1000 &&
+      !nutritionLoading;
+    if (!hasCachedData || !nutritionFetching) return;
+    cacheHintShownRef.current = true;
+    setShowCacheRestoreHint(true);
+    appToast.info("Restored from cache", {
+      description: "Syncing latest nutrition data in the background.",
+      duration: 2200,
+    });
+    const timer = window.setTimeout(() => setShowCacheRestoreHint(false), 2400);
+    return () => window.clearTimeout(timer);
+  }, [nutritionDataUpdatedAt, nutritionFetching, nutritionLoading]);
+
   // When arriving with a suggested plan day + targetDate, switch view to that date
   useEffect(() => {
     if (suggestedPlanDay && targetDateFromState) {
@@ -307,7 +329,7 @@ const Nutrition = () => {
       logFood(planItemToFoodItem(item), mealTypeId, { quantity: item.quantity });
     }
     setMealPulse(mealTypeId);
-    toast(`Added ${planItems.length} item(s) to ${planMeal.label}`, {
+    appToast.info(`Added ${planItems.length} item(s) to ${planMeal.label}`, {
       description: "Use Undo on the next toast if needed.",
     });
     setAddingToMealLabel(null);
@@ -332,7 +354,7 @@ const Nutrition = () => {
       }
     }
     setMealPulse(meals[0]?.id ?? null);
-    toast(`Logged full day: ${totalAdded} item(s) from ${suggestedPlanDay.name}`, {
+    appToast.info(`Logged full day: ${totalAdded} item(s) from ${suggestedPlanDay.name}`, {
       description: "Use Undo on the diary to remove items if needed.",
     });
     setIsLoggingFullDay(false);
@@ -444,7 +466,7 @@ const Nutrition = () => {
       setEditItem(match);
       setActiveSheet("edit");
     } else {
-      toast("Could not find that item", {
+      appToast.info("Could not find that item", {
         description: "Try selecting it directly from the meal list.",
       });
     }
@@ -492,18 +514,18 @@ const Nutrition = () => {
     try {
       await logFood(food, selectedMeal?.id, options);
       setMealPulse(selectedMeal?.id);
-      toast("Logged to diary", {
+      appToast.info("Logged to diary", {
         description: "Food added to your day.",
         action: {
           label: "Undo",
           onClick: () => {
             undoLastLog();
-            toast("Entry removed");
+            appToast.info("Entry removed");
           },
         },
       });
     } catch {
-      toast("Couldn't log food", { description: "Please try again." });
+      appToast.info("Couldn't log food", { description: "Please try again." });
       throw new Error("Failed to log food.");
     }
   };
@@ -519,7 +541,7 @@ const Nutrition = () => {
       },
     });
     setSelectedFood(updated);
-    toast("Nutrition updated");
+    appToast.info("Nutrition updated");
   };
 
   const handleUpdateMaster = async (
@@ -543,7 +565,7 @@ const Nutrition = () => {
     });
     if (updated) {
       setSelectedFood(updated);
-      toast("Master nutrition updated");
+      appToast.info("Master nutrition updated");
     }
   };
 
@@ -555,7 +577,7 @@ const Nutrition = () => {
   const handleRemoveItem = (item: LogItem) => {
     // Optimistic - fires immediately, errors handled by mutation's onError
     removeLogItem(item);
-    toast(`${item.name} removed`);
+    appToast.info(`${item.name} removed`);
   };
 
   return (
@@ -690,6 +712,20 @@ const Nutrition = () => {
           />
         </div>
 
+        <AnimatePresence>
+          {showCacheRestoreHint ? (
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4, scale: 0.99 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="mt-3 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-center text-[11px] font-medium text-primary"
+            >
+              Restored from cache • Syncing latest entries…
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
         <DateSwitcher value={selectedDate} onChange={setSelectedDate} />
 
         {suggestedPlanDay && dismissedPlanDayId !== suggestedPlanDay.id && (
@@ -812,7 +848,7 @@ const Nutrition = () => {
           goal={stepsSummary.goal}
           connected={stepsSummary.connected}
           onConnect={() =>
-            toast("Apple Watch sync coming soon", {
+            appToast.info("Apple Watch sync coming soon", {
               description: "Health data will be available when native sync is enabled.",
             })
           }
@@ -1075,7 +1111,7 @@ const Nutrition = () => {
         onSave={(item, multiplier) => {
           // Optimistic - fires immediately, errors handled by mutation's onError
           updateLogItem(item, multiplier);
-          toast(`Updated ${item.name} to ${Number(multiplier).toFixed(1)}x`);
+          appToast.info(`Updated ${item.name} to ${Number(multiplier).toFixed(1)}x`);
         }}
         onDelete={(item) => {
           handleRemoveItem(item);

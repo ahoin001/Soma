@@ -6,7 +6,7 @@
  */
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import type { FoodItem, MacroKey } from "@/data/mock";
 import { calculateMacroPercent } from "@/data/foodApi";
 import { recordToFoodItem } from "@/lib/foodMapping";
@@ -239,11 +239,11 @@ export const useFoodCatalogQuery = () => {
 
       if (!navigator.onLine) {
         void queueMutation("food.toggleFavorite", { foodId, favorite });
-        toast("Saved offline • Will sync when connected");
+        appToast.info("Saved offline • Will sync when connected");
         return;
       }
 
-      toast(favorite ? "Unable to add favorite" : "Unable to remove favorite", {
+      appToast.info(favorite ? "Unable to add favorite" : "Unable to remove favorite", {
         action: {
           label: "Retry",
           onClick: () => favoriteMutation.mutate({ foodId, favorite }),
@@ -294,11 +294,11 @@ export const useFoodCatalogQuery = () => {
     onError: (_err, payload) => {
       if (!navigator.onLine) {
         void queueMutation("food.create", payload);
-        toast("Saved offline • Will sync when connected");
+        appToast.info("Saved offline • Will sync when connected");
         return;
       }
 
-      toast("Unable to create food", {
+      appToast.info("Unable to create food", {
         action: {
           label: "Retry",
           onClick: () => createFoodMutation.mutate(payload),

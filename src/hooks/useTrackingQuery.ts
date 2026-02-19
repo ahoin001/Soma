@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import {
   ensureUser,
   fetchActivityGoals,
@@ -95,7 +95,7 @@ export const useWeightLogsQuery = () => {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.trackingWeight, context.previous);
       }
-      toast("Unable to save weight", {
+      appToast.info("Unable to save weight", {
         action: {
           label: "Retry",
           onClick: () => mutation.mutate(entry),
@@ -126,7 +126,7 @@ export const useWeightLogsQuery = () => {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.trackingWeight, context.previous);
       }
-      toast("Unable to delete weight", {
+      appToast.info("Unable to delete weight", {
         action: {
           label: "Retry",
           onClick: () => deleteMutation.mutate(localDate),
@@ -202,7 +202,7 @@ export const useStepsSummaryQuery = (date: Date) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.trackingSteps(localDate), context.previous);
       }
-      toast("Unable to update steps", {
+      appToast.info("Unable to update steps", {
         action: {
           label: "Retry",
           onClick: () => stepsMutation.mutate(value),
@@ -239,7 +239,7 @@ export const useStepsSummaryQuery = (date: Date) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.trackingSteps(localDate), context.previous);
       }
-      toast("Unable to update steps goal", {
+      appToast.info("Unable to update steps goal", {
         action: {
           label: "Retry",
           onClick: () => goalMutation.mutate(nextGoal),
@@ -317,7 +317,7 @@ export const useWaterSummaryQuery = (date: Date) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.trackingWater(localDate), context.previous);
       }
-      toast("Unable to add water", {
+      appToast.info("Unable to add water", {
         action: {
           label: "Retry",
           onClick: () => addWaterMutation.mutate(amountMl),
@@ -356,7 +356,7 @@ export const useWaterSummaryQuery = (date: Date) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.trackingWater(localDate), context.previous);
       }
-      toast("Unable to update water", {
+      appToast.info("Unable to update water", {
         action: {
           label: "Retry",
           onClick: () => setTotalMutation.mutate(nextTotal),
@@ -400,7 +400,7 @@ export const useWaterSummaryQuery = (date: Date) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.trackingWater(localDate), context.previous);
       }
-      toast("Unable to update water goal", {
+      appToast.info("Unable to update water goal", {
         action: {
           label: "Retry",
           onClick: () => goalMutation.mutate(nextGoal),

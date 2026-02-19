@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { ExerciseImage } from "@/components/aura/ExerciseImage";
 import { fetchAdminExercises, updateExerciseMaster } from "@/lib/api";
 import { uploadImageFile } from "@/lib/uploadImage";
@@ -44,7 +44,7 @@ const AdminExerciseThumbnails = () => {
         setItems(next.filter((item) => item.id && item.name));
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unable to load exercises.";
-        toast(message);
+        appToast.error(message);
       } finally {
         if (!cancelled) setStatus("idle");
       }
@@ -85,10 +85,10 @@ const AdminExerciseThumbnails = () => {
         delete next[exerciseId];
         return next;
       });
-      toast("Thumbnail saved");
+      appToast.success("Thumbnail saved");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to save thumbnail.";
-      toast(message);
+      appToast.error(message);
     } finally {
       setStatus("idle");
     }

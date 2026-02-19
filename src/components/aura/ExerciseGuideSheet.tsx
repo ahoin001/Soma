@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { WorkoutExerciseEntry } from "@/types/fitness";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -592,13 +592,13 @@ export const ExerciseGuideSheet = ({
                           ? "YouTube"
                           : "Your media",
                       );
-                      toast("Primary updated");
+                      appToast.info("Primary updated");
                     } catch (err) {
                       setMediaItems(prevItems);
                       setMediaUrl(prevUrl);
                       setMediaKind(prevKind);
                       setMediaLabel(prevLabel ?? "Media preview");
-                      toast("Unable to update primary", {
+                      appToast.info("Unable to update primary", {
                         description: err instanceof Error ? err.message : undefined,
                       });
                     } finally {
@@ -647,14 +647,14 @@ export const ExerciseGuideSheet = ({
                         setMediaKind(null);
                         setMediaLabel("Media preview");
                       }
-                      toast("Media removed");
+                      appToast.info("Media removed");
                     } catch (err) {
                       setMediaItems(prevItems);
                       setSelectedMediaId(prevSelected);
                       setMediaUrl(prevUrl);
                       setMediaKind(prevKind);
                       setMediaLabel(prevLabel ?? "Media preview");
-                      toast("Unable to delete media", {
+                      appToast.info("Unable to delete media", {
                         description: err instanceof Error ? err.message : undefined,
                       });
                     } finally {
@@ -678,9 +678,9 @@ export const ExerciseGuideSheet = ({
                         mediaUrl: selectedItem.media_url,
                         isPrimary: true,
                       });
-                      toast("Global media set");
+                      appToast.info("Global media set");
                     } catch (err) {
-                      toast("Unable to set global media", {
+                      appToast.info("Unable to set global media", {
                         description: err instanceof Error ? err.message : undefined,
                       });
                     } finally {
@@ -805,10 +805,10 @@ export const ExerciseGuideSheet = ({
                         notes: personalNotesValue.trim() || null,
                       });
                       setOverrideSavedAt(response.override.updated_at);
-                      toast("Saved your cues & notes");
+                      appToast.info("Saved your cues & notes");
                     } catch (err) {
                       setOverrideSavedAt(prevSavedAt);
-                      toast("Unable to save", {
+                      appToast.info("Unable to save", {
                         description: err instanceof Error ? err.message : undefined,
                       });
                     } finally {
@@ -924,7 +924,7 @@ export const ExerciseGuideSheet = ({
                     className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                     onClick={async () => {
                       if (!masterId) {
-                        toast("Unable to find master exercise");
+                        appToast.info("Unable to find master exercise");
                         return;
                       }
                       const prevName = masterName;
@@ -983,7 +983,7 @@ export const ExerciseGuideSheet = ({
                         if (masterName.trim() && masterName.trim() !== exercise.name) {
                           onUpdate({ name: masterName.trim() });
                         }
-                        toast("Master exercise updated");
+                        appToast.info("Master exercise updated");
                       } catch (err) {
                         setMasterName(prevName);
                         setMasterDescription(prevDesc);
@@ -996,7 +996,7 @@ export const ExerciseGuideSheet = ({
                         setMediaUrl(prevMediaUrl);
                         setMediaKind(prevMediaKind);
                         setMediaLabel(prevMediaLabel);
-                        toast("Unable to update master exercise", {
+                        appToast.info("Unable to update master exercise", {
                           description: err instanceof Error ? err.message : undefined,
                         });
                       } finally {
@@ -1067,7 +1067,7 @@ export const ExerciseGuideSheet = ({
                             response.media,
                             ...prev.filter((item) => item.id !== response.media.id),
                           ]);
-                          toast("Guide link saved", {
+                          appToast.info("Guide link saved", {
                             description: "Set as your primary reference.",
                           });
                         } catch (err) {
@@ -1076,7 +1076,7 @@ export const ExerciseGuideSheet = ({
                           setMediaKind(prevKind);
                           setSelectedMediaId(prevId);
                           setMediaItems(prevItems);
-                          toast("Unable to save guide link", {
+                          appToast.info("Unable to save guide link", {
                             description: err instanceof Error ? err.message : undefined,
                           });
                         } finally {
@@ -1170,7 +1170,7 @@ export const ExerciseGuideSheet = ({
                             saved.media,
                             ...prev.filter((item) => item.id !== saved.media.id),
                           ]);
-                          toast("Upload saved", {
+                          appToast.info("Upload saved", {
                             description: "Set as your primary reference.",
                           });
                         })
@@ -1181,7 +1181,7 @@ export const ExerciseGuideSheet = ({
                           setSelectedMediaId(prevId);
                           setMediaItems(prevItems);
                           if (prevVideoName) onUpdate({ customVideoName: prevVideoName });
-                          toast("Upload failed", {
+                          appToast.info("Upload failed", {
                             description: err instanceof Error ? err.message : undefined,
                           });
                         })

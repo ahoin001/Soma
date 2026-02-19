@@ -4,7 +4,7 @@ import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { AnimatePresence, motion } from "framer-motion";
 import { Camera, ScanLine } from "lucide-react";
 import { useEffect } from "react";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 
 type BarcodeScanSheetProps = {
   open: boolean;
@@ -23,14 +23,14 @@ export const BarcodeScanSheet = ({
         if (onDetected) {
           onDetected(result.rawValue);
         } else {
-          toast("Barcode detected", {
+          appToast.info("Barcode detected", {
             description: result.rawValue,
           });
         }
         onOpenChange(false);
       },
       onError: (detail) => {
-        toast("Scan unavailable", { description: detail });
+        appToast.info("Scan unavailable", { description: detail });
       },
     });
 
