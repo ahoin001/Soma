@@ -15,11 +15,8 @@ import { CREATED_FOOD_KEY, SHEET_ADD_FOOD_KEY } from "@/lib/storageKeys";
 import type { NutritionDraft } from "@/types/nutrition";
 import { ensureUser, fetchMealEntries } from "@/lib/api";
 import {
-  FOOD_GOAL_PRESETS,
-  getGoalPresetForSelection,
   matchesAllFoodTags,
   sortFoods,
-  type FoodGoalPresetId,
   type FoodSortOption,
   type FoodTagId,
 } from "@/lib/foodClassification";
@@ -512,23 +509,6 @@ const AddFood = () => {
     sortBy,
   ]);
 
-  const goalPreset = useMemo(
-    () => getGoalPresetForSelection(selectedTags, sortBy),
-    [selectedTags, sortBy],
-  );
-
-  const handleGoalPresetChange = (presetId: FoodGoalPresetId | null) => {
-    if (!presetId) {
-      setSelectedTags([]);
-      setSortBy("relevance");
-      return;
-    }
-    const preset = FOOD_GOAL_PRESETS.find((entry) => entry.id === presetId);
-    if (!preset) return;
-    setSelectedTags(preset.tags);
-    setSortBy(preset.sortBy);
-  };
-
   const handleClearFilters = () => {
     setSelectedTags([]);
     setSortBy("relevance");
@@ -769,8 +749,6 @@ const AddFood = () => {
               )
             }
             onClearFilters={handleClearFilters}
-            goalPreset={goalPreset}
-            onGoalPresetChange={handleGoalPresetChange}
             sortBy={sortBy}
             onSortByChange={setSortBy}
             onCycleSort={handleCycleSort}

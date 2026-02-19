@@ -6,7 +6,7 @@ import { CreateFoodSheet } from "./CreateFoodSheet";
 import { FoodSearchContent } from "./FoodSearchContent";
 import { SHEET_FOOD_SEARCH_KEY } from "@/lib/storageKeys";
 import { useSheetManager } from "@/hooks/useSheetManager";
-import type { FoodGoalPresetId, FoodSortOption, FoodTagId } from "@/lib/foodClassification";
+import type { FoodSortOption, FoodTagId } from "@/lib/foodClassification";
 
 type FoodSearchSheetProps = {
   open: boolean;
@@ -21,8 +21,6 @@ type FoodSearchSheetProps = {
   selectedTags: FoodTagId[];
   onToggleTag: (tag: FoodTagId) => void;
   onClearFilters: () => void;
-  goalPreset: FoodGoalPresetId | null;
-  onGoalPresetChange: (preset: FoodGoalPresetId | null) => void;
   sortBy: FoodSortOption;
   onSortByChange: (sortBy: FoodSortOption) => void;
   onCycleSort: () => void;
@@ -57,8 +55,6 @@ export const FoodSearchSheet = ({
   selectedTags,
   onToggleTag,
   onClearFilters,
-  goalPreset,
-  onGoalPresetChange,
   sortBy,
   onSortByChange,
   onCycleSort,
@@ -85,8 +81,6 @@ export const FoodSearchSheet = ({
     selectedTags={selectedTags}
     onToggleTag={onToggleTag}
     onClearFilters={onClearFilters}
-    goalPreset={goalPreset}
-    onGoalPresetChange={onGoalPresetChange}
     sortBy={sortBy}
     onSortByChange={onSortByChange}
     onCycleSort={onCycleSort}
@@ -114,8 +108,6 @@ const FoodSearchSheetContent = ({
   selectedTags,
   onToggleTag,
   onClearFilters,
-  goalPreset,
-  onGoalPresetChange,
   sortBy,
   onSortByChange,
   onCycleSort,
@@ -160,8 +152,6 @@ const FoodSearchSheetContent = ({
               selectedTags={selectedTags}
               onToggleTag={onToggleTag}
               onClearFilters={onClearFilters}
-              goalPreset={goalPreset}
-              onGoalPresetChange={onGoalPresetChange}
               sortBy={sortBy}
               onSortByChange={onSortByChange}
               onCycleSort={onCycleSort}

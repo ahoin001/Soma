@@ -6,8 +6,8 @@
  * Patterns:
  * - supabase.from() for direct CRUD
  * - supabase.rpc() for computed server-side queries (analytics)
- * - throwIfNoUser() gates every mutating operation
- * - getUserId() for read-only helpers that may run before auth is ready
+ * - throwIfNoUser() gates operations that require auth.uid() under RLS
+ * - getUserId() is only for optional client-side filtering paths
  */
 import type {
   BrandRecord,
@@ -37,7 +37,7 @@ const getUserId = (): string | null => {
 
 const throwIfNoUser = async (): Promise<string> => {
   const { data: { session } } = await supabase.auth.getSession();
-  const uid = session?.user?.id ?? getUserId();
+  const uid = session?.user?.id ?? null;
   if (!uid) throw new Error("Unauthorized");
   return uid;
 };
@@ -57,7 +57,8 @@ let ensureUserCache: {
 } | null = null;
 
 export const ensureUserSupabase = async (displayName = "You") => {
-  const userId = getUserId();
+  const { data: { session } } = await supabase.auth.getSession();
+  const userId = session?.user?.id ?? null;
   if (!userId) return null;
   if (ensureUserCache?.userId === userId) return ensureUserCache.promise;
   const promise = (async () => {
@@ -609,12 +610,12 @@ export const fetchNutritionSummarySupabase = async (localDate: string) => {
       .select("kcal_goal, carbs_g, protein_g, fat_g")
       .eq("user_id", userId)
       .eq("local_date", localDate)
-      .single();
+      .maybeSingle();
     const { data: settings } = await supabase
       .from("user_nutrition_settings")
       .select("kcal_goal, carbs_g, protein_g, fat_g")
       .eq("user_id", userId)
-      .single();
+      .maybeSingle();
     return {
       localDate,
       totals: { kcal: 0, carbs_g: 0, protein_g: 0, fat_g: 0 },
@@ -642,12 +643,12 @@ export const fetchNutritionSummarySupabase = async (localDate: string) => {
     .select("kcal_goal, carbs_g, protein_g, fat_g")
     .eq("user_id", userId)
     .eq("local_date", localDate)
-    .single();
+    .maybeSingle();
   const { data: settings } = await supabase
     .from("user_nutrition_settings")
     .select("kcal_goal, carbs_g, protein_g, fat_g")
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
   return {
     localDate,
     totals,

@@ -19,10 +19,8 @@ import type { RefObject } from "react";
 import { cn } from "@/lib/utils";
 import { triggerActionHaptic, triggerToggleHaptic } from "@/lib/haptics";
 import {
-  FOOD_GOAL_PRESETS,
   FOOD_TAG_DEFINITIONS,
   getFoodTagLabel,
-  type FoodGoalPresetId,
   type FoodSortOption,
   type FoodTagId,
 } from "@/lib/foodClassification";
@@ -39,8 +37,6 @@ type FoodSearchContentProps = {
   selectedTags: FoodTagId[];
   onToggleTag: (tag: FoodTagId) => void;
   onClearFilters: () => void;
-  goalPreset: FoodGoalPresetId | null;
-  onGoalPresetChange: (preset: FoodGoalPresetId | null) => void;
   sortBy: FoodSortOption;
   onSortByChange: (sortBy: FoodSortOption) => void;
   onCycleSort: () => void;
@@ -73,8 +69,6 @@ export const FoodSearchContent = ({
   selectedTags,
   onToggleTag,
   onClearFilters,
-  goalPreset,
-  onGoalPresetChange,
   sortBy,
   onSortByChange,
   onCycleSort,
@@ -117,9 +111,6 @@ export const FoodSearchContent = ({
       : sortBy === "carbs_asc"
       ? "Carbs low->high"
       : "Carbs high->low";
-  const activePresetLabel = goalPreset
-    ? FOOD_GOAL_PRESETS.find((preset) => preset.id === goalPreset)?.label ?? null
-    : null;
 
   return (
     <div>
@@ -269,16 +260,6 @@ export const FoodSearchContent = ({
                 <button
                   type="button"
                   onClick={() => {
-                    triggerToggleHaptic();
-                    onGoalPresetChange(null);
-                  }}
-                  className="rounded-full bg-primary/15 px-2.5 py-1 font-semibold transition duration-150 hover:bg-primary/20 active:scale-95 motion-reduce:transform-none"
-                >
-                  {activePresetLabel ? `${activePresetLabel} mode` : "Custom filters"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
                     triggerActionHaptic();
                     onClearFilters();
                   }}
@@ -301,7 +282,7 @@ export const FoodSearchContent = ({
           ) : null}
           <div className="flex items-center justify-between">
             <Label className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-              Goal mode
+              Filters
             </Label>
             {hasActiveFilters ? (
               <Button
@@ -317,30 +298,6 @@ export const FoodSearchContent = ({
                 Clear filters
               </Button>
             ) : null}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {FOOD_GOAL_PRESETS.map((preset) => {
-              const isActive = goalPreset === preset.id;
-              return (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => {
-                    triggerToggleHaptic();
-                    onGoalPresetChange(isActive ? null : preset.id);
-                  }}
-                  aria-pressed={isActive}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-xs font-semibold transition duration-150 active:scale-95 motion-reduce:transform-none",
-                    isActive
-                      ? "border-primary/30 bg-primary/15 text-primary"
-                      : "border-border bg-background text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {preset.label}
-                </button>
-              );
-            })}
           </div>
           <div className="grid grid-cols-[auto_1fr] items-center gap-2">
             <Label className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
