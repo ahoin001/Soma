@@ -34,7 +34,7 @@ import { Drawer, DrawerContent, DrawerStickyActions } from "@/components/ui/draw
 import { Input } from "@/components/ui/input";
 import { ListEmptyState } from "@/components/ui/empty-state";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { fetchFoodHistory, searchFoods } from "@/lib/api";
+import { fetchFoodById, fetchFoodHistory, searchFoods } from "@/lib/api";
 import { normalizeFoodImageUrl } from "@/lib/foodImageUrl";
 import { toLocalDate } from "@/lib/nutritionData";
 import { cn } from "@/lib/utils";
@@ -42,9 +42,10 @@ import { useMealPlans } from "@/hooks/useMealPlans";
 import type { FoodRecord } from "@/types/api";
 import {
   ArrowLeft,
-  CalendarDays,
+  ChevronDown,
   ChevronRight,
   Copy,
+  Minus,
   Pencil,
   Plus,
   Search,
@@ -113,7 +114,7 @@ const DEFAULT_TARGETS = {
   fatMax: undefined as number | null | undefined,
 };
 
-type ViewStep = "days" | "targets" | "meals";
+type ViewStep = "days" | "planner";
 
 const PANEL_TRANSITION = {
   initial: { opacity: 0, x: 24 },
@@ -143,6 +144,45 @@ const RANGE_KEYS = [
 const toNum = (value: unknown, fallback = 0) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+type CoreMicroKey = "fiber_g" | "sodium_mg" | "potassium_mg";
+
+type CoreMicroSnapshot = Record<CoreMicroKey, number>;
+
+const CORE_MICRO_GUIDE: Record<CoreMicroKey, { label: string; unit: string; target: number; mode: "goal" | "limit" }> = {
+  fiber_g: { label: "Fiber", unit: "g", target: 30, mode: "goal" },
+  sodium_mg: { label: "Sodium", unit: "mg", target: 2300, mode: "limit" },
+  potassium_mg: { label: "Potassium", unit: "mg", target: 3500, mode: "goal" },
+};
+
+const CORE_MICRO_ALIAS_KEYS: Record<CoreMicroKey, string[]> = {
+  fiber_g: ["fiber_g", "fiber", "fiberG", "dietary_fiber", "dietaryFiber"],
+  sodium_mg: ["sodium_mg", "sodium", "sodiumMg"],
+  potassium_mg: ["potassium_mg", "potassium", "potassiumMg"],
+};
+
+const EMPTY_CORE_MICROS: CoreMicroSnapshot = {
+  fiber_g: 0,
+  sodium_mg: 0,
+  potassium_mg: 0,
+};
+
+const readCoreMicros = (food: FoodRecord): CoreMicroSnapshot => {
+  const micros = ((food.micronutrients as Record<string, unknown> | null) ?? {}) as Record<string, unknown>;
+  const out: CoreMicroSnapshot = { ...EMPTY_CORE_MICROS };
+  (Object.keys(CORE_MICRO_ALIAS_KEYS) as CoreMicroKey[]).forEach((key) => {
+    const typedVal = toNum((food as Record<string, unknown>)[key], NaN);
+    if (Number.isFinite(typedVal)) {
+      out[key] = typedVal;
+      return;
+    }
+    const match = CORE_MICRO_ALIAS_KEYS[key]
+      .map((alias) => toNum(micros[alias], NaN))
+      .find((n) => Number.isFinite(n));
+    out[key] = Number.isFinite(match as number) ? (match as number) : 0;
+  });
+  return out;
 };
 
 const mapFoodRecord = (row: FoodRecord): DbFoodOption => ({
@@ -252,6 +292,11 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
 
   const [activeDayId, setActiveDayId] = useState<string | null>(null);
   const [viewStep, setViewStep] = useState<ViewStep>("days");
+  const [showAdvancedTargets, setShowAdvancedTargets] = useState(false);
+  const [showCoreMicros, setShowCoreMicros] = useState(false);
+  const [coreMicrosLoading, setCoreMicrosLoading] = useState(false);
+  const [coreMicrosByFoodId, setCoreMicrosByFoodId] = useState<Record<string, CoreMicroSnapshot>>({});
+  const [plannerSection, setPlannerSection] = useState<"targets" | "progress" | "meals">("targets");
   const [newDayName, setNewDayName] = useState("");
   const [targetDraft, setTargetDraft] = useState(DEFAULT_TARGETS);
   const [pulseMealId, setPulseMealId] = useState<string | null>(null);
@@ -273,6 +318,9 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
   const [logPlanCustomDate, setLogPlanCustomDate] = useState("");
   const [savePresetOpen, setSavePresetOpen] = useState(false);
   const [presetNameDraft, setPresetNameDraft] = useState("");
+  const targetsSectionRef = useRef<HTMLDivElement | null>(null);
+  const progressSectionRef = useRef<HTMLDivElement | null>(null);
+  const mealsSectionRef = useRef<HTMLDivElement | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -354,6 +402,139 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
     const dayMealIds = new Set(dayMeals.map((meal) => meal.id));
     return getTotals(items.filter((item) => dayMealIds.has(item.mealId)));
   }, [activeDay, dayMeals, items, getTotals]);
+
+  const dayItems = useMemo(() => {
+    if (!activeDay) return [];
+    const dayMealIds = new Set(dayMeals.map((meal) => meal.id));
+    return items.filter((item) => dayMealIds.has(item.mealId));
+  }, [activeDay, dayMeals, items]);
+
+  const dayFoodIds = useMemo(
+    () => Array.from(new Set(dayItems.map((item) => item.foodId).filter((id): id is string => Boolean(id)))),
+    [dayItems],
+  );
+
+  const hasUnsavedTargets = useMemo(() => {
+    if (!activeDay) return false;
+    const keys: Array<keyof typeof DEFAULT_TARGETS> = [
+      "kcal",
+      "protein",
+      "carbs",
+      "fat",
+      "kcalMin",
+      "kcalMax",
+      "proteinMin",
+      "proteinMax",
+      "carbsMin",
+      "carbsMax",
+      "fatMin",
+      "fatMax",
+    ];
+    return keys.some((key) => (targetDraft[key] ?? null) !== (activeDay.targets[key] ?? null));
+  }, [activeDay, targetDraft]);
+
+  useEffect(() => {
+    const missingFoodIds = dayFoodIds.filter((foodId) => !coreMicrosByFoodId[foodId]);
+    if (!missingFoodIds.length) return;
+    let cancelled = false;
+    setCoreMicrosLoading(true);
+    void Promise.allSettled(
+      missingFoodIds.map(async (foodId) => {
+        const response = await fetchFoodById(foodId);
+        return { foodId, snapshot: response.item ? readCoreMicros(response.item) : EMPTY_CORE_MICROS };
+      }),
+    )
+      .then((results) => {
+        if (cancelled) return;
+        const next: Record<string, CoreMicroSnapshot> = {};
+        results.forEach((result, idx) => {
+          const fallbackId = missingFoodIds[idx];
+          if (result.status === "fulfilled") {
+            next[result.value.foodId] = result.value.snapshot;
+          } else if (fallbackId) {
+            next[fallbackId] = EMPTY_CORE_MICROS;
+          }
+        });
+        if (Object.keys(next).length) {
+          setCoreMicrosByFoodId((prev) => ({ ...prev, ...next }));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setCoreMicrosLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dayFoodIds, coreMicrosByFoodId]);
+
+  const coreMicroTotals = useMemo(() => {
+    const totals: CoreMicroSnapshot = { ...EMPTY_CORE_MICROS };
+    dayItems.forEach((item) => {
+      if (!item.foodId) return;
+      const micros = coreMicrosByFoodId[item.foodId];
+      if (!micros) return;
+      const qty = item.quantity || 1;
+      totals.fiber_g += micros.fiber_g * qty;
+      totals.sodium_mg += micros.sodium_mg * qty;
+      totals.potassium_mg += micros.potassium_mg * qty;
+    });
+    return totals;
+  }, [dayItems, coreMicrosByFoodId]);
+
+  const coreMicrosCoverage = useMemo(() => {
+    const withLinkedFood = dayItems.filter((item) => Boolean(item.foodId)).length;
+    const withMicrosLoaded = dayItems.filter(
+      (item) => item.foodId && coreMicrosByFoodId[item.foodId] != null,
+    ).length;
+    return { withLinkedFood, withMicrosLoaded, totalItems: dayItems.length };
+  }, [dayItems, coreMicrosByFoodId]);
+
+  const scrollToPlannerSection = useCallback((section: "targets" | "progress" | "meals") => {
+    setPlannerSection(section);
+    const ref =
+      section === "targets" ? targetsSectionRef : section === "progress" ? progressSectionRef : mealsSectionRef;
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  useEffect(() => {
+    if (viewStep !== "planner" || !activeDay) return;
+
+    let ticking = false;
+    const pickActiveSection = () => {
+      const markerY = 132;
+      const sections: Array<{ key: "targets" | "progress" | "meals"; top: number }> = [
+        { key: "targets", top: targetsSectionRef.current?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY },
+        { key: "progress", top: progressSectionRef.current?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY },
+        { key: "meals", top: mealsSectionRef.current?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY },
+      ];
+
+      const valid = sections.filter((section) => Number.isFinite(section.top));
+      if (!valid.length) return;
+
+      const passed = valid.filter((section) => section.top <= markerY);
+      const next = passed.length
+        ? passed[passed.length - 1].key
+        : valid.slice().sort((a, b) => a.top - b.top)[0].key;
+      setPlannerSection((prev) => (prev === next ? prev : next));
+    };
+
+    const onScrollOrResize = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(() => {
+        ticking = false;
+        pickActiveSection();
+      });
+    };
+
+    pickActiveSection();
+    window.addEventListener("scroll", onScrollOrResize, { passive: true });
+    window.addEventListener("resize", onScrollOrResize, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScrollOrResize);
+      window.removeEventListener("resize", onScrollOrResize);
+    };
+  }, [viewStep, activeDay]);
 
   useEffect(() => {
     if (!foodSheetOpen) return;
@@ -639,24 +820,24 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
   const kcalOver = activeDay ? dayTotals.kcal > activeDay.targets.kcal : false;
   const proteinHit = activeDay ? dayTotals.protein >= activeDay.targets.protein : false;
 
-  const goToTargets = (dayId: string) => {
+  const openPlannerForDay = (dayId: string) => {
     setActiveDayId(dayId);
-    setViewStep("meals");
-    triggerLightFeedback();
-  };
-
-  const goToMeals = () => {
-    setViewStep("meals");
+    setShowAdvancedTargets(false);
+    setShowCoreMicros(false);
+    setPlannerSection("targets");
+    setViewStep("planner");
     triggerLightFeedback();
   };
 
   const goBackToDays = () => {
+    if (hasUnsavedTargets) {
+      const shouldLeave = window.confirm(
+        "You have unsaved target edits. Leave planner and discard them?",
+      );
+      if (!shouldLeave) return;
+      if (activeDay) setTargetDraft(activeDay.targets);
+    }
     setViewStep("days");
-    triggerLightFeedback();
-  };
-
-  const goBackToTargets = () => {
-    setViewStep("targets");
     triggerLightFeedback();
   };
 
@@ -716,7 +897,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
 
             <Card className="rounded-[28px] border border-border/40 bg-card/95 px-5 py-5 shadow-sm">
               <p className="text-sm font-medium text-foreground">Days manager</p>
-              <p className="mt-1 text-xs text-muted-foreground">Select a day to set targets and build meals.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Select a day to manage targets and meals in one planner.</p>
               <div className="mt-4 space-y-2">
                 {filteredDays.map((day) => (
                   <div
@@ -730,7 +911,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                   >
                     <button
                       type="button"
-                      onClick={() => goToTargets(day.id)}
+                      onClick={() => openPlannerForDay(day.id)}
                       className={cn(
                         "flex min-w-0 flex-1 items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-medium transition",
                         day.id === activeDayId
@@ -825,11 +1006,11 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
           </motion.div>
         )}
 
-        {/* Step 2: Targets (when a day is selected) */}
-        {viewStep === "targets" && activeDay && (
+        {/* Unified day planner */}
+        {viewStep === "planner" && activeDay && (
           <motion.div
-            key="targets"
-            className={cn(showHeader ? "mt-6" : "mt-4", "space-y-6")}
+            key="meals"
+            className={cn(showHeader ? "mt-6" : "mt-4", "pb-24")}
             {...PANEL_TRANSITION}
           >
             <div className="flex items-center gap-3">
@@ -837,7 +1018,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium uppercase tracking-widest text-primary/90">Targets</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-primary/90">Day planner</p>
                 <h2 className="text-lg font-display font-semibold text-foreground truncate">{activeDay.name}</h2>
               </div>
               <Button type="button" variant="ghost" size="icon" className="rounded-full shrink-0" onClick={duplicateActiveDay} aria-label="Duplicate day">
@@ -848,80 +1029,79 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
               </Button>
             </div>
 
-            <Card className="rounded-[28px] border border-border/40 bg-card/95 px-5 py-5 shadow-sm">
-              <div className="flex items-center justify-between gap-2">
-                <select
-                  value={activeDay.groupId ?? ""}
-                  onChange={(e) => assignDayToGroup(e.target.value || null)}
-                  className="h-9 rounded-full border border-border/50 bg-background px-3 text-sm"
-                >
-                  <option value="">No group</option>
-                  {groups.map((g) => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
-                <CalendarDays className="h-5 w-5 shrink-0 text-primary/70" />
+            <div className="mt-3 overflow-x-auto pb-1">
+              <div className="flex min-w-0 gap-2">
+                {filteredDays.map((day) => (
+                  <button
+                    key={day.id}
+                    type="button"
+                    onClick={() => openPlannerForDay(day.id)}
+                    className={cn(
+                      "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                      day.id === activeDay.id
+                        ? "border-primary/50 bg-primary/15 text-primary"
+                        : "border-border/50 bg-muted/35 text-muted-foreground hover:bg-muted/60",
+                    )}
+                  >
+                    {day.name}
+                  </button>
+                ))}
               </div>
-                    <div className="mt-4 flex flex-wrap items-center gap-6">
+            </div>
+
+            <p className="mt-3 text-sm text-muted-foreground">
+              Set targets and meals on one canvas. Updates are autosaved with live progress feedback.
+            </p>
+
+            <div className="sticky top-2 z-20 mt-3">
+              <div className="inline-flex rounded-full border border-border/50 bg-background/90 p-1 shadow-sm backdrop-blur">
+                {([
+                  { key: "targets", label: "Targets" },
+                  { key: "progress", label: "Progress" },
+                  { key: "meals", label: "Meals" },
+                ] as const).map((section) => (
+                  <button
+                    key={section.key}
+                    type="button"
+                    onClick={() => scrollToPlannerSection(section.key)}
+                    className={cn(
+                      "rounded-full px-3 py-1.5 text-[11px] font-semibold transition",
+                      plannerSection === section.key
+                        ? "bg-primary/15 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.2)]"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {section.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div ref={targetsSectionRef}>
+            <Card className="mt-4 rounded-[22px] border border-border/50 bg-card/95 px-4 py-4 shadow-sm">
+              <div ref={progressSectionRef} className="mb-3 flex flex-wrap items-center gap-5">
                 <div className="flex items-center gap-2">
                   <ProgressRing
                     value={Math.min(dayTotals.kcal / (activeDay.targets.kcal || 1), 1.5)}
                     maxDisplay={1}
                     strokeClassName={kcalOver ? "stroke-rose-500" : "stroke-primary"}
-                    size={44}
+                    size={42}
                     strokeWidth={4}
                   />
-                  <span className="text-xs font-medium text-muted-foreground">kcal</span>
+                  <span className="text-xs font-medium text-muted-foreground">kcal pace</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <ProgressRing
                     value={Math.min(dayTotals.protein / (activeDay.targets.protein || 1), 1.5)}
                     maxDisplay={1}
                     strokeClassName={proteinHit ? "stroke-emerald-500" : "stroke-amber-500"}
-                    size={44}
+                    size={42}
                     strokeWidth={4}
                   />
-                  <span className="text-xs font-medium text-muted-foreground">protein</span>
+                  <span className="text-xs font-medium text-muted-foreground">protein pace</span>
                 </div>
               </div>
-              {/* Apply preset */}
-              {presets.length > 0 && (
-                <div className="mt-4">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1.5">Apply preset</p>
-                  <select
-                    className="h-9 w-full rounded-full border border-border/50 bg-background px-3 text-sm"
-                    value=""
-                    onChange={(e) => {
-                      const id = e.target.value;
-                      if (!id) return;
-                      const p = presets.find((x) => x.id === id);
-                      if (p) applyPreset(p);
-                      e.target.value = "";
-                    }}
-                  >
-                    <option value="">Choose a preset</option>
-                    {presets.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <TargetField label="Calories" suffix="kcal" value={String(targetDraft.kcal)} onChange={(v) => updateTargetsDraft("kcal", v)} onBlur={commitAllTargets} placeholder="2200" />
-                <TargetFieldWithRange label="Calories range" suffix="kcal" minValue={targetDraft.kcalMin} maxValue={targetDraft.kcalMax} onMinChange={(v) => updateTargetsDraft("kcalMin", v)} onMaxChange={(v) => updateTargetsDraft("kcalMax", v)} onBlur={commitAllTargets} />
-                <TargetField label="Protein" suffix="g" value={String(targetDraft.protein)} onChange={(v) => updateTargetsDraft("protein", v)} onBlur={commitAllTargets} placeholder="180" />
-                <TargetFieldWithRange label="Protein range" suffix="g" minValue={targetDraft.proteinMin} maxValue={targetDraft.proteinMax} onMinChange={(v) => updateTargetsDraft("proteinMin", v)} onMaxChange={(v) => updateTargetsDraft("proteinMax", v)} onBlur={commitAllTargets} />
-                <TargetField label="Carbs" suffix="g" value={String(targetDraft.carbs)} onChange={(v) => updateTargetsDraft("carbs", v)} onBlur={commitAllTargets} placeholder="220" />
-                <TargetFieldWithRange label="Carbs range" suffix="g" minValue={targetDraft.carbsMin} maxValue={targetDraft.carbsMax} onMinChange={(v) => updateTargetsDraft("carbsMin", v)} onMaxChange={(v) => updateTargetsDraft("carbsMax", v)} onBlur={commitAllTargets} />
-                <TargetField label="Fat" suffix="g" value={String(targetDraft.fat)} onChange={(v) => updateTargetsDraft("fat", v)} onBlur={commitAllTargets} placeholder="70" />
-                <TargetFieldWithRange label="Fat range" suffix="g" minValue={targetDraft.fatMin} maxValue={targetDraft.fatMax} onMinChange={(v) => updateTargetsDraft("fatMin", v)} onMaxChange={(v) => updateTargetsDraft("fatMax", v)} onBlur={commitAllTargets} />
-              </div>
-
-              <Button type="button" variant="outline" className="mt-4 w-full rounded-full" onClick={() => setSavePresetOpen(true)}>
-                Save current targets as preset
-              </Button>
-              <div className="mt-5 grid grid-cols-2 gap-2.5 text-xs">
+              <div className="mb-3 grid grid-cols-2 gap-2.5 text-xs">
                 <Badge variant="secondary" className={cn("justify-between rounded-full px-3 py-1.5", kcalOver ? "border border-rose-200 bg-rose-100 text-rose-700" : "bg-secondary text-secondary-foreground")}>
                   kcal <span>{Math.round(dayTotals.kcal)} / {activeDay.targets.kcal}</span>
                 </Badge>
@@ -931,43 +1111,77 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                 <Badge variant="secondary" className="justify-between rounded-full px-3 py-1.5">carbs <span>{Math.round(dayTotals.carbs)}g / {activeDay.targets.carbs}g</span></Badge>
                 <Badge variant="secondary" className="justify-between rounded-full px-3 py-1.5">fat <span>{Math.round(dayTotals.fat)}g / {activeDay.targets.fat}g</span></Badge>
               </div>
-              {proteinHit && !kcalOver && (
-                <p className="mt-3 text-xs font-medium text-emerald-600">This day looks on target - use it as your reference when eating.</p>
-              )}
-              <Button type="button" className="mt-6 w-full rounded-full" onClick={goToMeals}>
-                Next: Set up meals
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
-              <Button type="button" variant="outline" className="mt-3 w-full rounded-full border-primary/40" onClick={() => setLogPlanSheetOpen(true)}>
-                <ClipboardList className="mr-2 h-4 w-4" />
-                Log this plan to a date
-              </Button>
-            </Card>
-          </motion.div>
-        )}
-
-        {/* Step 3: Day of eating (meals) */}
-        {viewStep === "meals" && activeDay && (
-          <motion.div
-            key="meals"
-            className={cn(showHeader ? "mt-6" : "mt-4", "pb-24")}
-            {...PANEL_TRANSITION}
-          >
-            <div className="flex items-center gap-3">
-              <Button type="button" variant="ghost" size="icon" className="rounded-full shrink-0" onClick={goBackToTargets} aria-label="Back to targets">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium uppercase tracking-widest text-primary/90">Day of eating</p>
-                <h2 className="text-lg font-display font-semibold text-foreground truncate">{activeDay.name}</h2>
+              <div className="mb-3 rounded-2xl border border-border/50 bg-background/45 px-3 py-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowCoreMicros((prev) => !prev)}
+                  className="flex w-full items-center justify-between gap-2 text-left"
+                >
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/80">
+                      Core micros
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      Fiber, sodium, potassium impact (from linked foods).
+                    </p>
+                  </div>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                      showCoreMicros && "rotate-180",
+                    )}
+                  />
+                </button>
+                {showCoreMicros && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-3 space-y-2.5"
+                  >
+                    {(Object.keys(CORE_MICRO_GUIDE) as CoreMicroKey[]).map((key) => {
+                      const guide = CORE_MICRO_GUIDE[key];
+                      const current = coreMicroTotals[key];
+                      const ratio = guide.target > 0 ? current / guide.target : 0;
+                      const fillPct = Math.max(0, Math.min(ratio, 1.35)) * 100;
+                      const hit = guide.mode === "goal" ? current >= guide.target : current <= guide.target;
+                      return (
+                        <div key={key} className="rounded-xl border border-border/50 bg-card/80 px-2.5 py-2">
+                          <div className="flex items-center justify-between gap-2 text-[11px]">
+                            <span className="font-semibold text-foreground">{guide.label}</span>
+                            <span className={cn("font-medium", hit ? "text-emerald-600" : guide.mode === "limit" ? "text-rose-600" : "text-amber-600")}>
+                              {Math.round(current).toLocaleString()} / {guide.target.toLocaleString()} {guide.unit}
+                            </span>
+                          </div>
+                          <div className="mt-1.5 h-1.5 rounded-full bg-muted/60">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all",
+                                hit ? "bg-emerald-500" : guide.mode === "limit" ? "bg-rose-500" : "bg-amber-500",
+                              )}
+                              style={{ width: `${Math.min(fillPct, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div className="flex items-center justify-between rounded-xl border border-border/50 bg-card/70 px-2.5 py-2 text-[11px]">
+                      <span className="text-muted-foreground">K:Na ratio</span>
+                      <span className="font-semibold text-foreground">
+                        {(coreMicroTotals.sodium_mg > 0
+                          ? coreMicroTotals.potassium_mg / coreMicroTotals.sodium_mg
+                          : 0
+                        ).toFixed(2)}
+                        :1
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {coreMicrosLoading
+                        ? "Refreshing core micros..."
+                        : `Coverage: ${coreMicrosCoverage.withMicrosLoaded}/${coreMicrosCoverage.totalItems} items with known micros.`}
+                    </p>
+                  </motion.div>
+                )}
               </div>
-            </div>
-
-            <p className="mt-3 text-sm text-muted-foreground">
-              Add foods to each meal. Use the quantity input for precise servings.
-            </p>
-
-            <Card className="mt-4 rounded-[22px] border border-border/50 bg-card/95 px-4 py-4 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/80">
                   Day targets
@@ -977,10 +1191,27 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                   size="sm"
                   variant="outline"
                   className="h-8 rounded-full px-3 text-[11px]"
-                  onClick={() => setViewStep("targets")}
+                  onClick={() => setShowAdvancedTargets((prev) => !prev)}
                 >
-                  Full target editor
+                  {showAdvancedTargets ? "Hide advanced" : "Show advanced"}
                 </Button>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <select
+                  value={activeDay.groupId ?? ""}
+                  onChange={(e) => assignDayToGroup(e.target.value || null)}
+                  className="h-8 min-w-[128px] rounded-full border border-border/50 bg-background px-3 text-xs"
+                >
+                  <option value="">No group</option>
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+                {proteinHit && !kcalOver ? (
+                  <span className="text-[11px] font-medium text-emerald-600">On target</span>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground">Keep adjusting meals to match targets</span>
+                )}
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <TargetField label="Calories" suffix="kcal" value={String(targetDraft.kcal)} onChange={(v) => updateTargetsDraft("kcal", v)} onBlur={commitAllTargets} placeholder="2200" />
@@ -988,7 +1219,46 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                 <TargetField label="Carbs" suffix="g" value={String(targetDraft.carbs)} onChange={(v) => updateTargetsDraft("carbs", v)} onBlur={commitAllTargets} placeholder="220" />
                 <TargetField label="Fat" suffix="g" value={String(targetDraft.fat)} onChange={(v) => updateTargetsDraft("fat", v)} onBlur={commitAllTargets} placeholder="70" />
               </div>
+              {showAdvancedTargets && (
+                <>
+                  {presets.length > 0 && (
+                    <div className="mt-4">
+                      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Apply preset</p>
+                      <select
+                        className="h-9 w-full rounded-full border border-border/50 bg-background px-3 text-sm"
+                        value=""
+                        onChange={(e) => {
+                          const id = e.target.value;
+                          if (!id) return;
+                          const p = presets.find((x) => x.id === id);
+                          if (p) applyPreset(p);
+                          e.target.value = "";
+                        }}
+                      >
+                        <option value="">Choose a preset</option>
+                        {presets.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div className="mt-4 grid grid-cols-1 gap-3">
+                    <TargetFieldWithRange label="Calories range" suffix="kcal" minValue={targetDraft.kcalMin} maxValue={targetDraft.kcalMax} onMinChange={(v) => updateTargetsDraft("kcalMin", v)} onMaxChange={(v) => updateTargetsDraft("kcalMax", v)} onBlur={commitAllTargets} />
+                    <TargetFieldWithRange label="Protein range" suffix="g" minValue={targetDraft.proteinMin} maxValue={targetDraft.proteinMax} onMinChange={(v) => updateTargetsDraft("proteinMin", v)} onMaxChange={(v) => updateTargetsDraft("proteinMax", v)} onBlur={commitAllTargets} />
+                    <TargetFieldWithRange label="Carbs range" suffix="g" minValue={targetDraft.carbsMin} maxValue={targetDraft.carbsMax} onMinChange={(v) => updateTargetsDraft("carbsMin", v)} onMaxChange={(v) => updateTargetsDraft("carbsMax", v)} onBlur={commitAllTargets} />
+                    <TargetFieldWithRange label="Fat range" suffix="g" minValue={targetDraft.fatMin} maxValue={targetDraft.fatMax} onMinChange={(v) => updateTargetsDraft("fatMin", v)} onMaxChange={(v) => updateTargetsDraft("fatMax", v)} onBlur={commitAllTargets} />
+                  </div>
+                  <Button type="button" variant="outline" className="mt-4 w-full rounded-full" onClick={() => setSavePresetOpen(true)}>
+                    Save current targets as preset
+                  </Button>
+                </>
+              )}
+              <Button type="button" variant="outline" className="mt-4 w-full rounded-full border-primary/40" onClick={() => setLogPlanSheetOpen(true)}>
+                <ClipboardList className="mr-2 h-4 w-4" />
+                Log this plan to a date
+              </Button>
             </Card>
+            </div>
 
       <Drawer open={logPlanSheetOpen} onOpenChange={setLogPlanSheetOpen}>
         <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6 overflow-hidden">
@@ -1094,6 +1364,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
       </Drawer>
 
             <motion.div
+              ref={mealsSectionRef}
               className="mt-6"
               initial="hidden"
               animate="show"
@@ -1203,27 +1474,39 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                                     key={item.id}
                                     id={`item:${item.id}`}
                                     rightContent={
-                                      <div className="flex shrink-0 items-center gap-1.5">
-                                        <Input
-                                          type="number"
-                                          min={0.25}
-                                          max={20}
-                                          step={0.25}
-                                          defaultValue={String(qty)}
-                                          inputMode="decimal"
-                                          className="h-[22px] w-[50px] rounded-full border-border/60 bg-background px-1 text-center text-[10px] tabular-nums"
-                                          onClick={(e) => e.stopPropagation()}
-                                          onBlur={(e) => {
+                                      <div className="flex shrink-0 items-center gap-1">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 shrink-0 rounded-full"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
                                             triggerLightFeedback();
-                                            setQuantity(Number(e.target.value));
+                                            setQuantity(qty - step);
                                           }}
-                                          onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                              (e.currentTarget as HTMLInputElement).blur();
-                                            }
+                                          aria-label="Decrease quantity"
+                                          disabled={qty <= 0.25}
+                                        >
+                                          <Minus className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <span className="min-w-[36px] text-center text-[10px] font-semibold tabular-nums text-foreground/80">
+                                          {Number.isInteger(qty) ? qty : qty.toFixed(2)}x
+                                        </span>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 shrink-0 rounded-full"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            triggerLightFeedback();
+                                            setQuantity(qty + step);
                                           }}
-                                          aria-label="Quantity"
-                                        />
+                                          aria-label="Increase quantity"
+                                        >
+                                          <Plus className="h-3.5 w-3.5" />
+                                        </Button>
                                         <Button
                                           type="button"
                                           variant="ghost"
