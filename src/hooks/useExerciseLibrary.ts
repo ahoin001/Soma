@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import type { Exercise, ExerciseSearchStatus } from "@/types/fitness";
+import { normalizeExerciseImageUrl } from "@/lib/exerciseImageUrl";
 import { EXERCISE_CACHE_KEY } from "@/lib/storageKeys";
 import { ensureUser, searchExercises } from "@/lib/api";
 import type { CacheEntry } from "@/types/cache";
@@ -72,11 +73,9 @@ const mapExercise = (item: Record<string, unknown>) => {
     equipment: equipment.filter(Boolean),
     muscles: muscles.filter(Boolean),
     imageUrl:
-      typeof item.image_url === "string"
-        ? item.image_url
-        : typeof item.imageUrl === "string"
-          ? item.imageUrl
-          : undefined,
+      normalizeExerciseImageUrl(item.image_url) ??
+      normalizeExerciseImageUrl(item.imageUrl) ??
+      undefined,
   };
 };
 

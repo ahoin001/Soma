@@ -4,6 +4,7 @@ import { AppShell } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { ExerciseImage } from "@/components/aura/ExerciseImage";
 import { fetchAdminExercises, updateExerciseMaster } from "@/lib/api";
 import { uploadImageFile } from "@/lib/uploadImage";
 import { useAppStore } from "@/state/AppStore";
@@ -162,17 +163,17 @@ const AdminExerciseThumbnails = () => {
                     </p>
                     <p className="text-xs text-muted-foreground">{item.category ?? "General"}</p>
                   </div>
-                  {item.image_url ? (
-                    <img
-                      src={item.image_url}
-                      alt={`${item.name} thumbnail`}
-                      className="h-10 w-10 rounded-2xl border border-border/70 object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-card/70 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                      None
-                    </div>
-                  )}
+                  <ExerciseImage
+                    src={item.image_url}
+                    alt={`${item.name} thumbnail`}
+                    className="h-10 w-10 rounded-2xl border border-border/70 object-cover"
+                    containerClassName="h-10 w-10 rounded-2xl shrink-0"
+                    fallback={
+                      <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                        None
+                      </span>
+                    }
+                  />
                 </div>
                 <Input
                   value={draft}

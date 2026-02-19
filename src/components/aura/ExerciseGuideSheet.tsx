@@ -35,6 +35,7 @@ import {
 } from "@/lib/api";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { getUserId } from "@/lib/api";
+import { normalizeExerciseImageUrl } from "@/lib/exerciseImageUrl";
 import { uploadImageFile } from "@/lib/uploadImage";
 import { ChevronLeft } from "lucide-react";
 import { motion } from "framer-motion";
@@ -62,6 +63,7 @@ type MediaCacheEntry = {
 type OverrideCacheEntry = {
   steps?: string[];
   guideUrl?: string | null;
+  notes?: string | null;
   savedAt?: string | null;
 };
 
@@ -99,12 +101,12 @@ export const preloadExerciseGuide = async (exerciseName: string, userId?: string
     try {
       const [saved, override, masterResult] = await Promise.all([
         fetchExerciseMedia(exerciseName, userId),
-        fetchExerciseOverride(exerciseName, userId),
+        fetchExerciseOverride(exerciseName),
         fetchExerciseByName(exerciseName),
       ]);
       const thumbnailUrl =
-        masterResult.exercise && typeof (masterResult.exercise as { image_url?: unknown }).image_url === "string"
-          ? String((masterResult.exercise as { image_url?: unknown }).image_url)
+        masterResult.exercise && (masterResult.exercise as { image_url?: unknown }).image_url != null
+          ? normalizeExerciseImageUrl((masterResult.exercise as { image_url?: unknown }).image_url)
           : null;
       const thumbnailItem = thumbnailUrl
         ? {
@@ -142,6 +144,7 @@ export const preloadExerciseGuide = async (exerciseName: string, userId?: string
         overrideCache.set(exerciseName, {
           steps: override.steps ?? undefined,
           guideUrl: override.guide_url ?? null,
+          notes: override.notes ?? null,
           savedAt: override.updated_at ?? null,
         });
         trimCache(overrideCache);
@@ -163,7 +166,7 @@ export const preloadExerciseGuide = async (exerciseName: string, userId?: string
           category: String(record.category ?? ""),
           equipment: record.equipment ?? [],
           muscles: record.muscles ?? [],
-          imageUrl: record.image_url ?? undefined,
+          imageUrl: normalizeExerciseImageUrl(record.image_url) ?? undefined,
         });
         trimCache(masterCache);
       }
@@ -205,6 +208,7 @@ export const ExerciseGuideSheet = ({
   const [saving, setSaving] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [overrideSavedAt, setOverrideSavedAt] = useState<string | null>(null);
+  const [personalNotesValue, setPersonalNotesValue] = useState("");
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [loadingOverride, setLoadingOverride] = useState(false);
   const [loadingMaster, setLoadingMaster] = useState(false);
@@ -356,13 +360,13 @@ export const ExerciseGuideSheet = ({
           if (!exercise.guideUrl && cached.guideUrl) {
             onUpdate({ guideUrl: cached.guideUrl });
           }
-          if (cached.savedAt) {
-            setOverrideSavedAt(cached.savedAt);
-          }
+          if (cached.notes != null) setPersonalNotesValue(cached.notes ?? "");
+          if (cached.savedAt) setOverrideSavedAt(cached.savedAt);
         }
-        const override = await fetchExerciseOverride(exercise.name, userId);
+        const override = await fetchExerciseOverride(exercise.name);
         if (!override || cancelled) return;
         setOverrideSavedAt(override.updated_at);
+        setPersonalNotesValue(override.notes ?? "");
         if (!exercise.steps?.length && override.steps?.length) {
           onUpdate({ steps: override.steps });
         }
@@ -372,6 +376,7 @@ export const ExerciseGuideSheet = ({
         overrideCache.set(exercise.name, {
           steps: override.steps ?? undefined,
           guideUrl: override.guide_url ?? null,
+          notes: override.notes ?? null,
           savedAt: override.updated_at ?? null,
         });
         trimCache(overrideCache);
@@ -749,6 +754,22 @@ export const ExerciseGuideSheet = ({
 
           <motion.div variants={sectionVariants} className="mt-5 space-y-3">
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              Your notes
+            </p>
+            {isContentLoading ? (
+              <Skeleton className="h-20 w-full rounded-2xl" />
+            ) : (
+              <Textarea
+                value={personalNotesValue}
+                onChange={(event) => setPersonalNotesValue(event.target.value)}
+                placeholder="Personal notes for this exercise (e.g. form cues, reminders). Shown whenever you use this exercise."
+                className="min-h-[80px] border-border/70 bg-card/55 text-foreground placeholder:text-muted-foreground"
+              />
+            )}
+          </motion.div>
+
+          <motion.div variants={sectionVariants} className="mt-5 space-y-3">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Steps & cues
             </p>
             {isContentLoading ? (
@@ -779,15 +800,15 @@ export const ExerciseGuideSheet = ({
                       setSaving(true);
                       const response = await saveExerciseOverride({
                         exerciseName: exercise.name,
-                        userId,
                         steps: exercise.steps ?? [],
                         guideUrl: exercise.guideUrl ?? null,
+                        notes: personalNotesValue.trim() || null,
                       });
                       setOverrideSavedAt(response.override.updated_at);
-                      toast("Saved your default cues");
+                      toast("Saved your cues & notes");
                     } catch (err) {
                       setOverrideSavedAt(prevSavedAt);
-                      toast("Unable to save cues", {
+                      toast("Unable to save", {
                         description: err instanceof Error ? err.message : undefined,
                       });
                     } finally {
@@ -795,7 +816,7 @@ export const ExerciseGuideSheet = ({
                     }
                   }}
                 >
-                  Save my default cues
+                  Save my default cues & notes
                 </Button>
                 {overrideSavedAt ? (
                   <p className="text-xs text-muted-foreground">Saved for your account.</p>

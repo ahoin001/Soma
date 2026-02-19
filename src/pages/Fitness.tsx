@@ -117,7 +117,7 @@ const Fitness = () => {
     abortRef.current?.abort();
     abortRef.current = controller;
     const timer = window.setTimeout(() => {
-      searchExercises(query, controller.signal, "mine");
+      searchExercises(query, controller.signal, "all");
     }, 350);
     return () => {
       window.clearTimeout(timer);
@@ -601,7 +601,7 @@ const Fitness = () => {
                   toast("Exercise deleted");
                   if (query.trim()) {
                     const ctrl = new AbortController();
-                    searchExercises(query, ctrl.signal, "mine");
+                    searchExercises(query, ctrl.signal, "all");
                   }
                 } catch (err) {
                   const msg =

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { AppShell, PageContainer } from "@/components/aura";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -79,6 +79,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const cmToImperial = (cm: number) => {
   const totalInches = cm / 2.54;
@@ -364,6 +365,7 @@ const MacroTargetsSection = ({
 
 const Goals = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [goalType, setGoalType] = useState<GoalType>("balance");
   const [sex, setSex] = useState<Sex>("female");
   const [age, setAge] = useState("");
@@ -407,9 +409,22 @@ const Goals = () => {
     return out;
   });
   const [microSectionOpen, setMicroSectionOpen] = useState(false);
+  const [sectionTab, setSectionTab] = useState<"energy" | "micros">("energy");
   const [hydrated, setHydrated] = useState(false);
   const draftTimerRef = useRef<number | null>(null);
+  const energySectionRef = useRef<HTMLDivElement | null>(null);
+  const microsSectionRef = useRef<HTMLDivElement | null>(null);
   const { nutrition, userProfile, setUserProfile } = useAppStore();
+
+  useEffect(() => {
+    if (location.hash === "#micros") {
+      setSectionTab("micros");
+      setMicroSectionOpen(true);
+      requestAnimationFrame(() => {
+        microsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [location.hash]);
 
   useEffect(() => {
     if (hydrated) return;
@@ -954,6 +969,52 @@ const Goals = () => {
           </div>
         </Card>
 
+        <Card className="mt-4 rounded-[22px] border border-primary/20 bg-gradient-to-br from-background via-card to-secondary/55 px-3 py-3 shadow-[0_12px_30px_rgba(14,165,233,0.12)]">
+          <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary/80">
+            Quick sections
+          </p>
+          <Tabs
+            value={sectionTab}
+            onValueChange={(value) => {
+              const next = value as "energy" | "micros";
+              setSectionTab(next);
+              if (next === "micros") {
+                setMicroSectionOpen(true);
+                requestAnimationFrame(() => {
+                  microsSectionRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                });
+              } else {
+                requestAnimationFrame(() => {
+                  energySectionRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                });
+              }
+            }}
+            className="mt-2"
+          >
+            <TabsList className="grid h-10 w-full grid-cols-2 rounded-full bg-secondary/70 p-1">
+              <TabsTrigger
+                value="energy"
+                className="rounded-full text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground"
+              >
+                Energy & Macros
+              </TabsTrigger>
+              <TabsTrigger
+                value="micros"
+                className="rounded-full text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground"
+              >
+                Micronutrients
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </Card>
+
+        <div ref={energySectionRef} />
         <div className="mt-6 rounded-[28px] bg-gradient-to-br from-background via-card to-secondary/60 px-5 py-6 shadow-[0_18px_40px_rgba(15,23,42,0.2)]">
           <p className="text-xs uppercase tracking-[0.2em] text-primary/80">
             Your path
@@ -1305,7 +1366,8 @@ const Goals = () => {
         </Card>
 
         {/* Micronutrients: separate section so main flow stays calories + macros; micros are an advanced touch */}
-        <Card className="mt-8 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+        <div ref={microsSectionRef}>
+          <Card className="mt-8 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
           <Collapsible open={microSectionOpen} onOpenChange={setMicroSectionOpen}>
             <CollapsibleTrigger asChild>
               <Button
@@ -1415,7 +1477,8 @@ const Goals = () => {
               })}
             </CollapsibleContent>
           </Collapsible>
-        </Card>
+          </Card>
+        </div>
       </PageContainer>
     </AppShell>
   );

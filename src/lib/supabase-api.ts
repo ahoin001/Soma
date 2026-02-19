@@ -1077,8 +1077,17 @@ export const searchExercisesSupabase = async (
   if (scope === "mine" && userId) {
     q = q.eq("created_by_user_id", userId);
   }
-  if (query.trim()) {
-    q = q.textSearch("name", query.trim(), { type: "websearch", config: "simple" });
+  const term = query.trim();
+  if (term) {
+    // Escape ilike wildcards so user input is literal; then use % for prefix/suffix match.
+    // Replace comma so .or() filter is not split on it.
+    const escaped = term
+      .replace(/\\/g, "\\\\")
+      .replace(/%/g, "\\%")
+      .replace(/_/g, "\\_")
+      .replace(/,/g, " ");
+    const pattern = `%${escaped}%`;
+    q = q.or(`name.ilike.${pattern},category.ilike.${pattern}`);
   }
   const data = throwOnError(await q.order("name", { ascending: true }));
   return { items: (data ?? []) as Record<string, unknown>[] };
@@ -1183,6 +1192,7 @@ export const saveExerciseOverrideSupabase = async (payload: {
   exerciseName: string;
   steps?: string[] | null;
   guideUrl?: string | null;
+  notes?: string | null;
 }) => {
   const userId = await throwIfNoUser();
   const data = throwOnError(
@@ -1194,6 +1204,7 @@ export const saveExerciseOverrideSupabase = async (payload: {
           exercise_name: payload.exerciseName,
           steps: payload.steps ?? null,
           guide_url: payload.guideUrl ?? null,
+          notes: payload.notes ?? null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id,exercise_name" },

@@ -78,7 +78,7 @@ const FitnessProgress = () => {
     if (!liftQuery.trim()) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      exerciseLibrary.searchExercises(liftQuery, controller.signal, "mine");
+      exerciseLibrary.searchExercises(liftQuery, controller.signal, "all");
     }, 250);
     return () => {
       window.clearTimeout(timer);

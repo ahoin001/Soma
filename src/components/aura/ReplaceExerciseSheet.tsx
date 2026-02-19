@@ -28,7 +28,7 @@ export const ReplaceExerciseSheet = ({
     abortRef.current?.abort();
     abortRef.current = controller;
     const timer = window.setTimeout(() => {
-      searchExercises(query, controller.signal, "mine");
+      searchExercises(query, controller.signal, "all");
     }, 300);
     return () => {
       window.clearTimeout(timer);

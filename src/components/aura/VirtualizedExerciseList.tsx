@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { Exercise } from "@/types/fitness";
+import { ExerciseImage } from "@/components/aura/ExerciseImage";
 
 type VirtualizedExerciseListProps = {
   items: Exercise[];
@@ -63,19 +64,13 @@ export const VirtualizedExerciseList = ({
                     : "border-border/70 bg-card/55",
                 )}
               >
-                {item.imageUrl ? (
-                  <img
-                    src={item.imageUrl}
-                    alt={`${item.name} preview`}
-                    className="h-12 w-12 rounded-2xl border border-border/70 object-cover object-center"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                ) : (
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/70 bg-gradient-to-br from-primary/20 via-card to-background text-xs font-semibold uppercase tracking-[0.2em] text-foreground/80">
-                    {primaryMuscle.slice(0, 3)}
-                  </div>
-                )}
+                <ExerciseImage
+                  src={item.imageUrl}
+                  alt={`${item.name} preview`}
+                  className="h-12 w-12 rounded-2xl border border-border/70 object-cover object-center"
+                  containerClassName="h-12 w-12 rounded-2xl"
+                  fallback={<span>{primaryMuscle.slice(0, 3)}</span>}
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{item.name}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">

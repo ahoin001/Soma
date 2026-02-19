@@ -15,8 +15,10 @@ import type {
 import { GripVertical, MoreHorizontal, PencilLine, Plus, Trash2 } from "lucide-react";
 import { ReplaceExerciseSheet } from "./ReplaceExerciseSheet";
 import { ExerciseSwapModal } from "./ExerciseSwapModal";
+import { ExerciseImage } from "./ExerciseImage";
 import { preloadExerciseGuide } from "./ExerciseGuideSheet";
 import { cn } from "@/lib/utils";
+import { normalizeExerciseImageUrl } from "@/lib/exerciseImageUrl";
 import { motion } from "framer-motion";
 import { useNavigationType } from "react-router-dom";
 import { useAppStore } from "@/state/AppStore";
@@ -249,15 +251,13 @@ const ExerciseCard = memo(
         aria-label="Exercise thumbnail"
         data-swipe-ignore
       >
-        {thumb ? (
-          <img
-            src={thumb}
-            alt={`${exercise.name} thumbnail`}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <span>{getInitials(exercise.name || "Move")}</span>
-        )}
+        <ExerciseImage
+          src={thumb}
+          alt={`${exercise.name} thumbnail`}
+          className="h-full w-full object-cover"
+          containerClassName="h-12 w-12 rounded-2xl"
+          fallback={<span>{getInitials(exercise.name || "Move")}</span>}
+        />
       </button>
       <div className="flex items-start gap-3 pl-16">
         <div className="min-w-0 flex-1">
@@ -1106,7 +1106,7 @@ export const WorkoutSessionEditor = ({
           try {
             const response = await fetchExerciseByName(name);
             const record = response.exercise as { image_url?: string | null } | null;
-            const url = record?.image_url ?? null;
+            const url = normalizeExerciseImageUrl(record?.image_url ?? null);
             thumbnailCache.set(name, url);
             if (!cancelled) {
               setThumbnailMap((prev) => ({ ...prev, [name]: url }));

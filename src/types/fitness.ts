@@ -32,6 +32,8 @@ export type EditableSet = {
   previous: string;
   rpe?: string;
   restSeconds?: string;
+  /** For timed sets (e.g. planks). Duration in seconds. */
+  durationSeconds?: string;
   /** Session mode: user marked this set done; triggers rest and counts toward completion. */
   completed?: boolean;
 };
