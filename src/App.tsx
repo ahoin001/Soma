@@ -724,11 +724,11 @@ const ScrollRestoration = () => {
     if (typeof window === "undefined") return;
     const saved = window.sessionStorage.getItem(`scroll:${key}`);
     if (navigationType === "POP" && saved) {
-      window.scrollTo({ top: Number(saved), left: 0, behavior: "instant" });
+      window.scrollTo({ top: Number(saved), left: 0, behavior: "auto" });
       return;
     }
     if (navigationType !== "POP") {
-      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     }
   }, [key, navigationType]);
 

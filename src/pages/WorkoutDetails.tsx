@@ -76,7 +76,7 @@ const WorkoutDetails = () => {
 
   useEffect(() => {
     if (navigationType === "POP") return;
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [workoutId, mode, navigationType]);
 
   // Warn when closing tab/window during an active session (session persists on server; refetch on return).

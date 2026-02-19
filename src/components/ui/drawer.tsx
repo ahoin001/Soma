@@ -44,7 +44,7 @@ const Drawer = ({
     if (nextOpen && typeof window !== "undefined") {
       window.requestAnimationFrame(() => {
         if (Math.abs(window.scrollY - scrollY) > 2) {
-          window.scrollTo({ top: scrollY, left: 0, behavior: "instant" });
+          window.scrollTo({ top: scrollY, left: 0, behavior: "auto" });
         }
       });
     }
