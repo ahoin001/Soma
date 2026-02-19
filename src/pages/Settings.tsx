@@ -44,6 +44,8 @@ export default function Settings() {
     setShowFoodImages,
     hapticsEnabled,
     setHapticsEnabled,
+    pullToRefreshEnabled,
+    setPullToRefreshEnabled,
     foodImageBackground,
     setFoodImageBackground,
     headerStyle,
@@ -102,6 +104,20 @@ export default function Settings() {
             <Switch
               checked={hapticsEnabled}
               onCheckedChange={setHapticsEnabled}
+            />
+          </div>
+          <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-4">
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Pull to refresh
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Drag down to manually sync lists on supported pages.
+              </p>
+            </div>
+            <Switch
+              checked={pullToRefreshEnabled}
+              onCheckedChange={setPullToRefreshEnabled}
             />
           </div>
           {showFoodImages && (

@@ -24,6 +24,7 @@ import { MealIcon } from "@/components/aura/MealIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -44,18 +45,15 @@ import {
   ChevronRight,
   Copy,
   GripVertical,
-  Minus,
   Pencil,
   Plus,
   Search,
   Trash2,
-  WandSparkles,
   ClipboardList,
   Check,
+  ChevronsUpDown,
 } from "lucide-react";
 import { appToast } from "@/lib/toast";
-
-type WeekdayId = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
 type MealPlanSlot = "protein" | "carbs" | "balance";
 
@@ -124,15 +122,6 @@ const PANEL_TRANSITION = {
   transition: { duration: 0.25, ease: "easeOut" },
 };
 
-const WEEKDAYS: Array<{ id: WeekdayId; label: string; value: number }> = [
-  { id: "sun", label: "Su", value: 0 },
-  { id: "mon", label: "M", value: 1 },
-  { id: "tue", label: "T", value: 2 },
-  { id: "wed", label: "W", value: 3 },
-  { id: "thu", label: "Th", value: 4 },
-  { id: "fri", label: "F", value: 5 },
-  { id: "sat", label: "Sa", value: 6 },
-];
 
 const coerceNumber = (value: string, fallback: number) => {
   const parsed = Number(value);
@@ -254,10 +243,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
     addItem,
     patchItem,
     removeItem,
-    reorderMeals,
     reorderItems,
-    applyToWeekdays,
-    clearWeekday,
     presets,
     createPreset,
     deletePreset,
@@ -267,15 +253,6 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
   const [viewStep, setViewStep] = useState<ViewStep>("days");
   const [newDayName, setNewDayName] = useState("");
   const [targetDraft, setTargetDraft] = useState(DEFAULT_TARGETS);
-  const [selectedWeekdays, setSelectedWeekdays] = useState<Record<WeekdayId, boolean>>({
-    mon: false,
-    tue: false,
-    wed: false,
-    thu: false,
-    fri: false,
-    sat: false,
-    sun: false,
-  });
   const [pulseMealId, setPulseMealId] = useState<string | null>(null);
   const [foodSheetOpen, setFoodSheetOpen] = useState(false);
   const [foodSheetMealId, setFoodSheetMealId] = useState<string | null>(null);
@@ -288,12 +265,14 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
   const [dayNameDraft, setDayNameDraft] = useState("");
   const [newGroupName, setNewGroupName] = useState("");
   const searchRequestRef = useRef(0);
+  const foodSearchCacheRef = useRef<Map<string, DbFoodOption[]>>(new Map());
   const navigate = useNavigate();
   const [selectedGroupFilterId, setSelectedGroupFilterId] = useState<string | null>(null);
   const [logPlanSheetOpen, setLogPlanSheetOpen] = useState(false);
   const [logPlanCustomDate, setLogPlanCustomDate] = useState("");
   const [savePresetOpen, setSavePresetOpen] = useState(false);
   const [presetNameDraft, setPresetNameDraft] = useState("");
+  const [mealOpenState, setMealOpenState] = useState<Record<string, boolean>>({});
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -343,6 +322,17 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
     [meals, activeDay],
   );
 
+  useEffect(() => {
+    if (!dayMeals.length) return;
+    setMealOpenState((prev) => {
+      const next = { ...prev };
+      for (const meal of dayMeals) {
+        if (next[meal.id] === undefined) next[meal.id] = true;
+      }
+      return next;
+    });
+  }, [dayMeals]);
+
   const mealItemsMap = useMemo(() => {
     const map = new Map<string, typeof items>();
     for (const meal of dayMeals) {
@@ -379,6 +369,14 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
   useEffect(() => {
     if (!foodSheetOpen) return;
     const requestId = ++searchRequestRef.current;
+    const queryKey = foodQuery.trim().toLowerCase() || "__recent__";
+    const cached = foodSearchCacheRef.current.get(queryKey);
+    if (cached) {
+      setFoodOptions(cached);
+      setFoodSearchStatus("idle");
+      setFoodSearchError(null);
+      return;
+    }
     setFoodSearchStatus("loading");
     setFoodSearchError(null);
 
@@ -389,7 +387,9 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
           ? await searchFoods(trimmed, 40, false)
           : await fetchFoodHistory(40);
         if (requestId !== searchRequestRef.current) return;
-        setFoodOptions((response.items ?? []).map(mapFoodRecord));
+        const mapped = (response.items ?? []).map(mapFoodRecord);
+        foodSearchCacheRef.current.set(queryKey, mapped);
+        setFoodOptions(mapped);
         setFoodSearchStatus("idle");
       } catch (searchError) {
         if (requestId !== searchRequestRef.current) return;
@@ -398,7 +398,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
           searchError instanceof Error ? searchError.message : "Unable to load foods.",
         );
       }
-    }, 220);
+    }, 160);
 
     return () => {
       window.clearTimeout(timer);
@@ -511,24 +511,6 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
     triggerLightFeedback();
   };
 
-  const toggleWeekday = (weekday: WeekdayId) => {
-    setSelectedWeekdays((prev) => ({ ...prev, [weekday]: !prev[weekday] }));
-  };
-
-  const applyActiveDayToWeekSelection = () => {
-    if (!activeDay) return;
-    const weekdays = WEEKDAYS.filter(({ id }) => selectedWeekdays[id]).map(({ value }) => value);
-    if (!weekdays.length) return;
-    void applyToWeekdays(activeDay.id, weekdays);
-    triggerLightFeedback();
-  };
-
-  const clearMappedWeekday = (weekday: WeekdayId) => {
-    const value = WEEKDAYS.find((day) => day.id === weekday)?.value;
-    if (value === undefined) return;
-    void clearWeekday(value);
-  };
-
   const startRenameDay = () => {
     if (!activeDay) return;
     setEditingDayName(activeDay.id);
@@ -563,18 +545,6 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
 
     const activeMeta = parseDndId(String(active.id));
     const overMeta = parseDndId(String(over.id));
-
-    if (activeMeta.kind === "meal" && overMeta.kind === "meal") {
-      const sourceId = activeMeta.value;
-      const targetId = overMeta.value;
-      const sourceIndex = dayMeals.findIndex((meal) => meal.id === sourceId);
-      const targetIndex = dayMeals.findIndex((meal) => meal.id === targetId);
-      if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return;
-      const reordered = arrayMove(dayMeals, sourceIndex, targetIndex);
-      void reorderMeals(activeDay.id, reordered.map((meal) => meal.id));
-      triggerLightFeedback();
-      return;
-    }
 
     if (activeMeta.kind === "item" && overMeta.kind === "item") {
       const activeItemId = activeMeta.value;
@@ -647,7 +617,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
               Build day templates
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Day templates to hit your targets—use as a reference when planning what to eat.
+              Day templates to hit your targets???use as a reference when planning what to eat.
             </p>
           </div>
         )}
@@ -682,7 +652,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
 
   const goToTargets = (dayId: string) => {
     setActiveDayId(dayId);
-    setViewStep("targets");
+    setViewStep("meals");
     triggerLightFeedback();
   };
 
@@ -710,13 +680,13 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
             Build day templates
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Day templates to hit your targets—use as a reference when planning what to eat.
+            Day templates to hit your targets???use as a reference when planning what to eat.
           </p>
         </div>
       )}
 
       <AnimatePresence mode="wait">
-        {/* ─── Step 1: Day manager ───────────────────────────────────────── */}
+        {/* ????????? Step 1: Day manager ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????? */}
         {viewStep === "days" && (
           <motion.div
             key="days"
@@ -861,47 +831,10 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
               )}
             </Card>
 
-            {/* Week reference — subsection of day manager */}
-            <Card className="rounded-[28px] border border-border/40 bg-card/95 px-5 py-5 shadow-sm">
-              <div className="flex items-center gap-2">
-                <WandSparkles className="h-5 w-5 shrink-0 text-primary/70" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">Reference for the week</p>
-                  <p className="text-xs text-muted-foreground">Which template to use on which day (doesn’t log food).</p>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {WEEKDAYS.map(({ id, label }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => toggleWeekday(id)}
-                    className={cn(
-                      "rounded-full border px-4 py-2 text-xs font-medium transition",
-                      selectedWeekdays[id]
-                        ? "border-primary/50 bg-primary/15 text-primary"
-                        : "border-border/50 bg-muted/40 text-muted-foreground hover:bg-muted/60",
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-3 flex items-center gap-2">
-                <Button type="button" size="sm" className="rounded-full" onClick={applyActiveDayToWeekSelection} disabled={!activeDayId}>
-                  Set as reference
-                </Button>
-                {WEEKDAYS.map(({ id, label }) => (
-                  <Button key={`clear-${id}`} type="button" variant="ghost" size="sm" className="h-7 rounded-full px-3 text-[11px]" onClick={() => clearMappedWeekday(id)}>
-                    Clear {label}
-                  </Button>
-                ))}
-              </div>
-            </Card>
           </motion.div>
         )}
 
-        {/* ─── Step 2: Targets (when a day is selected) ───────────────────── */}
+        {/* ????????? Step 2: Targets (when a day is selected) ??????????????????????????????????????????????????????????????? */}
         {viewStep === "targets" && activeDay && (
           <motion.div
             key="targets"
@@ -975,7 +908,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                       e.target.value = "";
                     }}
                   >
-                    <option value="">Choose a preset…</option>
+                    <option value="">Choose a preset??</option>
                     {presets.map((p) => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
@@ -1008,7 +941,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                 <Badge variant="secondary" className="justify-between rounded-full px-3 py-1.5">fat <span>{Math.round(dayTotals.fat)}g / {activeDay.targets.fat}g</span></Badge>
               </div>
               {proteinHit && !kcalOver && (
-                <p className="mt-3 text-xs font-medium text-emerald-600">This day looks on target—use it as your reference when eating.</p>
+                <p className="mt-3 text-xs font-medium text-emerald-600">This day looks on target???use it as your reference when eating.</p>
               )}
               <Button type="button" className="mt-6 w-full rounded-full" onClick={goToMeals}>
                 Next: Set up meals
@@ -1016,13 +949,13 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
               </Button>
               <Button type="button" variant="outline" className="mt-3 w-full rounded-full border-primary/40" onClick={() => setLogPlanSheetOpen(true)}>
                 <ClipboardList className="mr-2 h-4 w-4" />
-                Log this plan to a date…
+                Log this plan to a date??
               </Button>
             </Card>
           </motion.div>
         )}
 
-        {/* ─── Step 3: Day of eating (meals) ────────────────────────────── */}
+        {/* ????????? Step 3: Day of eating (meals) ?????????????????????????????????????????????????????????????????????????????????????????? */}
         {viewStep === "meals" && activeDay && (
           <motion.div
             key="meals"
@@ -1040,8 +973,31 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
             </div>
 
             <p className="mt-3 text-sm text-muted-foreground">
-              Add foods to each meal. Tap ± to change servings; drag to reorder.
+              Add foods to each meal. Use the quantity input for precise servings.
             </p>
+
+            <Card className="mt-4 rounded-[22px] border border-border/50 bg-card/95 px-4 py-4 shadow-sm">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/80">
+                  Day targets
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 rounded-full px-3 text-[11px]"
+                  onClick={() => setViewStep("targets")}
+                >
+                  Full target editor
+                </Button>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <TargetField label="Calories" suffix="kcal" value={String(targetDraft.kcal)} onChange={(v) => updateTargetsDraft("kcal", v)} onBlur={commitAllTargets} placeholder="2200" />
+                <TargetField label="Protein" suffix="g" value={String(targetDraft.protein)} onChange={(v) => updateTargetsDraft("protein", v)} onBlur={commitAllTargets} placeholder="180" />
+                <TargetField label="Carbs" suffix="g" value={String(targetDraft.carbs)} onChange={(v) => updateTargetsDraft("carbs", v)} onBlur={commitAllTargets} placeholder="220" />
+                <TargetField label="Fat" suffix="g" value={String(targetDraft.fat)} onChange={(v) => updateTargetsDraft("fat", v)} onBlur={commitAllTargets} placeholder="70" />
+              </div>
+            </Card>
 
       <Drawer open={logPlanSheetOpen} onOpenChange={setLogPlanSheetOpen}>
         <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6 overflow-hidden">
@@ -1153,10 +1109,6 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
               variants={{ show: { transition: { staggerChildren: 0.04 } } }}
             >
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext
-          items={dayMeals.map((meal) => `meal:${meal.id}`)}
-          strategy={verticalListSortingStrategy}
-        >
           <div className="space-y-4">
             {dayMeals.map((meal) => {
               const mealItems = mealItemsMap.get(meal.id) ?? [];
@@ -1168,20 +1120,28 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
 
               return (
                 <motion.div key={meal.id} variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-                <SortableMealCard
-                  id={`meal:${meal.id}`}
+                <Card
                   className={cn(
-                    "rounded-[24px] border border-border/40 bg-card/95 px-4 py-4 shadow-sm transition-shadow",
+                    "overflow-hidden rounded-[24px] border border-border/60 bg-card/85 shadow-[0_10px_24px_rgba(15,23,42,0.1)] transition-shadow",
                     pulseMealId === meal.id && "ring-2 ring-primary/30 shadow-md",
                   )}
                 >
+                  <Collapsible
+                    open={mealOpenState[meal.id] ?? true}
+                    onOpenChange={(nextOpen) =>
+                      setMealOpenState((prev) => ({ ...prev, [meal.id]: nextOpen }))
+                    }
+                  >
+                  <div className="bg-secondary/45 px-3 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-2">
-                      <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground/60" />
                       <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <MealIcon mealId={meal.id} size={18} className="shrink-0 text-primary" />
                         {meal.label}
                       </p>
+                      <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">
+                        Planner
+                      </span>
                     </div>
                     <Button
                       type="button"
@@ -1193,11 +1153,17 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                       <Search className="mr-1.5 h-3.5 w-3.5" />
                       Add food
                     </Button>
+                    <CollapsibleTrigger asChild>
+                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+                        <ChevronsUpDown className="h-4 w-4" />
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
                   </div>
 
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5 px-3">
                     <span className="rounded-full border border-border/50 bg-muted/50 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                      {mealItems.length} items · {Math.round(mealTotals.kcal)} cal
+                      {mealItems.length} items - {Math.round(mealTotals.kcal)} cal
                     </span>
                     <span
                       className={cn(
@@ -1225,9 +1191,9 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                     </span>
                   </div>
 
-                  <div className="mt-3 space-y-2">
+                  <CollapsibleContent className="mt-3 space-y-2 px-3 pb-3">
                     {grouped.map((slot) => (
-                      <div key={slot.id} className={cn("rounded-2xl border px-3 py-2.5", slot.tone)}>
+                      <div key={slot.id} className={cn("rounded-2xl border bg-background/55 px-3 py-2.5", slot.tone)}>
                         <p className="text-[11px] font-semibold uppercase tracking-[0.2em]">{slot.label}</p>
                         <div className="mt-2 space-y-1.5">
                           {slot.items.length === 0 ? (
@@ -1251,40 +1217,27 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                                     key={item.id}
                                     id={`item:${item.id}`}
                                     rightContent={
-                                      <div className="flex shrink-0 items-center gap-0.5">
-                                        <div className="flex items-center rounded-full border border-border/60 bg-muted/40">
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-7 w-7 rounded-l-full"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              triggerLightFeedback();
-                                              setQuantity(qty - step);
-                                            }}
-                                            aria-label="Decrease quantity"
-                                          >
-                                            <Minus className="h-3 w-3" />
-                                          </Button>
-                                          <span className="min-w-[2.25rem] py-0.5 text-center text-xs tabular-nums text-foreground">
-                                            {qty % 1 === 0 ? qty : qty.toFixed(2)}
-                                          </span>
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-7 w-7 rounded-r-full"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              triggerLightFeedback();
-                                              setQuantity(qty + step);
-                                            }}
-                                            aria-label="Increase quantity"
-                                          >
-                                            <Plus className="h-3 w-3" />
-                                          </Button>
-                                        </div>
+                                      <div className="flex shrink-0 items-center gap-1.5">
+                                        <Input
+                                          type="number"
+                                          min={0.25}
+                                          max={20}
+                                          step={0.25}
+                                          defaultValue={String(qty)}
+                                          inputMode="decimal"
+                                          className="h-8 w-[74px] rounded-full border-border/60 bg-background text-center text-xs tabular-nums"
+                                          onClick={(e) => e.stopPropagation()}
+                                          onBlur={(e) => {
+                                            triggerLightFeedback();
+                                            setQuantity(Number(e.target.value));
+                                          }}
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                              (e.currentTarget as HTMLInputElement).blur();
+                                            }
+                                          }}
+                                          aria-label="Quantity"
+                                        />
                                         <Button
                                           type="button"
                                           variant="ghost"
@@ -1316,9 +1269,8 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                                         </span>
                                       </div>
                                       <p className="mt-0.5 text-[10px] text-slate-500">
-                                        {Math.round(item.kcal * qty)} cal · P{" "}
-                                        {Math.round(item.protein * qty)} · C{" "}
-                                        {Math.round(item.carbs * qty)} · F{" "}
+                                        Qty {qty % 1 === 0 ? qty : qty.toFixed(2)} - {Math.round(item.kcal * qty)} cal - P{" "}
+                                        {Math.round(item.protein * qty)} - C {Math.round(item.carbs * qty)} - F{" "}
                                         {Math.round(item.fat * qty)}
                                       </p>
                                     </div>
@@ -1330,13 +1282,13 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                         </div>
                       </div>
                     ))}
-                  </div>
-                </SortableMealCard>
+                  </CollapsibleContent>
+                  </Collapsible>
+                </Card>
                 </motion.div>
               );
             })}
           </div>
-        </SortableContext>
       </DndContext>
             </motion.div>
 
@@ -1346,7 +1298,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
             <div className="pt-1">
               <p className="text-xs uppercase tracking-[0.2em] text-primary">Meal food search</p>
               <h3 className="text-lg font-display font-semibold text-foreground">
-                {activeMealForFoodSheet?.emoji ?? "🍽️"} {activeMealForFoodSheet?.label ?? "Select meal"}
+                {activeMealForFoodSheet?.emoji ?? "???????"} {activeMealForFoodSheet?.label ?? "Select meal"}
               </h3>
               <p className="mt-1 text-xs text-muted-foreground">
                 Search foods in your database and add to this meal.
@@ -1364,6 +1316,9 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                 value={foodQuantityDraft}
                 onChange={(event) => setFoodQuantityDraft(event.target.value)}
                 placeholder="Qty"
+                type="number"
+                min={0.25}
+                step={0.25}
                 inputMode="decimal"
                 className="h-10 rounded-full"
               />
@@ -1396,8 +1351,8 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">{food.name}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {food.brand ?? "Unbranded"} • {Math.round(food.kcal)} cal • P{" "}
-                        {Math.round(food.protein)} • C {Math.round(food.carbs)} • F{" "}
+                        {food.brand ?? "Unbranded"} ??? {Math.round(food.kcal)} cal ??? P{" "}
+                        {Math.round(food.protein)} - C {Math.round(food.carbs)} - F{" "}
                         {Math.round(food.fat)}
                       </p>
                     </div>
@@ -1412,7 +1367,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
         </DrawerContent>
       </Drawer>
 
-            {/* Sticky Save — finalize day */}
+            {/* Sticky Save ??? finalize day */}
             <div className="sticky bottom-0 left-0 right-0 z-10 mt-6 flex justify-center pt-4 pb-6 bg-gradient-to-t from-background via-background/98 to-transparent">
               <Button
                 type="button"
@@ -1485,6 +1440,9 @@ const TargetField = ({
         onChange={(event) => onChange(event.target.value)}
         onBlur={onBlur}
         placeholder={placeholder}
+        type="number"
+        min={0}
+        step={1}
         inputMode="decimal"
         className="h-8 rounded-full border-border/60 bg-card/85"
       />
@@ -1520,15 +1478,21 @@ const TargetFieldWithRange = ({
         onChange={(e) => onMinChange(e.target.value)}
         onBlur={onBlur}
         placeholder="Min"
+        type="number"
+        min={0}
+        step={1}
         inputMode="decimal"
         className="h-8 flex-1 rounded-full border-border/60 bg-card/85"
       />
-      <span className="text-muted-foreground/70">–</span>
+      <span className="text-muted-foreground/70">???</span>
       <Input
         value={maxValue != null && maxValue !== 0 ? String(maxValue) : ""}
         onChange={(e) => onMaxChange(e.target.value)}
         onBlur={onBlur}
         placeholder="Max"
+        type="number"
+        min={0}
+        step={1}
         inputMode="decimal"
         className="h-8 flex-1 rounded-full border-border/60 bg-card/85"
       />
@@ -1536,34 +1500,6 @@ const TargetFieldWithRange = ({
     </div>
   </div>
 );
-
-const SortableMealCard = ({
-  id,
-  className,
-  children,
-}: {
-  id: string;
-  className?: string;
-  children: ReactNode;
-}) => {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
-  const style = { transform: CSS.Transform.toString(transform), transition };
-
-  return (
-    <Card
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={cn(
-        "rounded-[22px] border border-border/60 bg-card px-4 py-4 shadow-[0_12px_24px_rgba(15,23,42,0.05)] transition-all duration-300",
-        className,
-      )}
-    >
-      {children}
-    </Card>
-  );
-};
 
 const SortableMealItemRow = ({
   id,

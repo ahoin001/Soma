@@ -116,6 +116,28 @@ export const computeLogSections = (
 };
 
 /**
+ * Compute micronutrient totals from log sections (per-serving × quantity).
+ * Single source of truth with the diary; keys match NutritionSummaryMicros (e.g. sodium_mg, fiber_g).
+ */
+export const computeMicroTotals = (
+  sections: LogSection[]
+): Record<string, number> => {
+  const out: Record<string, number> = {};
+  for (const section of sections) {
+    for (const item of section.items) {
+      const qty = Number(item.quantity ?? 1) || 1;
+      const micro = item.micronutrients;
+      if (!micro || typeof micro !== "object") continue;
+      for (const [key, val] of Object.entries(micro)) {
+        const n = typeof val === "number" && Number.isFinite(val) ? val : Number(val);
+        if (Number.isFinite(n)) out[key] = (out[key] ?? 0) + n * qty;
+      }
+    }
+  }
+  return out;
+};
+
+/**
  * Compute totals from log sections.
  */
 export const computeTotals = (sections: LogSection[]) =>

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useUserSettings } from "@/state";
 import { BottomNav } from "./BottomNav";
 import { OfflineBanner } from "./OfflineBanner";
 import { PullToRefresh } from "./PullToRefresh";
@@ -13,6 +14,7 @@ type AppShellProps = {
   onAddAction?: () => void;
   contentClassName?: string;
   safeAreaTop?: "none" | "default" | "extra";
+  enablePullToRefresh?: boolean;
 };
 
 /**
@@ -33,7 +35,9 @@ export const AppShell = ({
   onAddAction,
   contentClassName,
   safeAreaTop = "none",
+  enablePullToRefresh,
 }: AppShellProps) => {
+  const { pullToRefreshEnabled } = useUserSettings();
   const [scrollProgress, setScrollProgress] = useState(0);
   const rafRef = useRef<number | null>(null);
   const lastValue = useRef(0);
@@ -60,6 +64,8 @@ export const AppShell = ({
   }, []);
 
   const solidOpacity = scrollProgress;
+  const showPullToRefresh =
+    enablePullToRefresh ?? (experience === "nutrition" && pullToRefreshEnabled);
 
   return (
     <div
@@ -110,7 +116,7 @@ export const AppShell = ({
         />
       </div>
 
-      <PullToRefresh experience={experience} />
+      {showPullToRefresh ? <PullToRefresh experience={experience} /> : null}
 
       <OfflineBanner />
 

@@ -315,7 +315,7 @@ export const MacroMicroGoalSheet = ({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="flex max-h-[100svh] flex-col rounded-t-[28px] border-t border-border/60 bg-card">
+      <DrawerContent className="flex max-h-[70svh] flex-col rounded-t-[28px] border-t border-border/60 bg-card">
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
           <div className="mx-auto w-full max-w-[420px] shrink-0 px-5 pb-8 pt-2">
             <div className="mx-auto h-1 w-12 rounded-full bg-muted" />

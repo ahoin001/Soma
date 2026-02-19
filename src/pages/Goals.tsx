@@ -79,7 +79,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const cmToImperial = (cm: number) => {
   const totalInches = cm / 2.54;
@@ -412,7 +412,6 @@ const Goals = () => {
   const [sectionTab, setSectionTab] = useState<"energy" | "micros">("energy");
   const [hydrated, setHydrated] = useState(false);
   const draftTimerRef = useRef<number | null>(null);
-  const energySectionRef = useRef<HTMLDivElement | null>(null);
   const microsSectionRef = useRef<HTMLDivElement | null>(null);
   const { nutrition, userProfile, setUserProfile } = useAppStore();
 
@@ -978,22 +977,7 @@ const Goals = () => {
             onValueChange={(value) => {
               const next = value as "energy" | "micros";
               setSectionTab(next);
-              if (next === "micros") {
-                setMicroSectionOpen(true);
-                requestAnimationFrame(() => {
-                  microsSectionRef.current?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start",
-                  });
-                });
-              } else {
-                requestAnimationFrame(() => {
-                  energySectionRef.current?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start",
-                  });
-                });
-              }
+              if (next === "micros") setMicroSectionOpen(true);
             }}
             className="mt-2"
           >
@@ -1011,10 +995,7 @@ const Goals = () => {
                 Micronutrients
               </TabsTrigger>
             </TabsList>
-          </Tabs>
-        </Card>
-
-        <div ref={energySectionRef} />
+            <TabsContent value="energy" className="mt-0">
         <div className="mt-6 rounded-[28px] bg-gradient-to-br from-background via-card to-secondary/60 px-5 py-6 shadow-[0_18px_40px_rgba(15,23,42,0.2)]">
           <p className="text-xs uppercase tracking-[0.2em] text-primary/80">
             Your path
@@ -1364,22 +1345,21 @@ const Goals = () => {
             />
           </div>
         </Card>
-
-        {/* Micronutrients: separate section so main flow stays calories + macros; micros are an advanced touch */}
-        <div ref={microsSectionRef}>
-          <Card className="mt-8 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+            </TabsContent>
+            <TabsContent value="micros" className="mt-0">
+          <Card ref={microsSectionRef} className="mt-6 rounded-[28px] border border-border/60 bg-card px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
           <Collapsible open={microSectionOpen} onOpenChange={setMicroSectionOpen}>
             <CollapsibleTrigger asChild>
               <Button
                 type="button"
                 variant="ghost"
-                className="w-full justify-between rounded-full py-2 text-left"
+                className="w-full justify-between gap-3 rounded-full py-2 text-left"
               >
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/75">
                     Micronutrients
                   </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
+                  <p className="mt-0.5 break-words text-xs text-muted-foreground">
                     Choose which 3 to show on your dashboard. Goal = meet or exceed; Limit = stay under.
                   </p>
                 </div>
@@ -1478,7 +1458,9 @@ const Goals = () => {
             </CollapsibleContent>
           </Collapsible>
           </Card>
-        </div>
+            </TabsContent>
+          </Tabs>
+        </Card>
       </PageContainer>
     </AppShell>
   );

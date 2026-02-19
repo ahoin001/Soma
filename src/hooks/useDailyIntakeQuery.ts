@@ -28,7 +28,7 @@ import type { LogItem, LogSection } from "@/types/log";
 import { queryKeys } from "@/lib/queryKeys";
 import { DEBUG_KEY, LAST_NUTRITION_DATE_KEY } from "@/lib/storageKeys";
 import { queueMutation } from "@/lib/offlineQueue";
-import { computeLogSections, computeTotals, toLocalDate } from "@/lib/nutritionData";
+import { computeLogSections, computeMicroTotals, computeTotals, toLocalDate } from "@/lib/nutritionData";
 import { normalizeFoodImageUrl } from "@/lib/foodImageUrl";
 import type { LastLog, Summary, SyncState } from "@/types/nutrition";
 import type { NutritionSummaryMicros } from "@/lib/api";
@@ -149,7 +149,8 @@ export const useDailyIntakeQuery = (
                 ),
       }));
 
-      const micros = summaryRes.micros ?? null;
+      // Single source of truth: derive micros from same logSections as diary (API returns null)
+      const micros = computeMicroTotals(logSections) as NutritionSummaryMicros;
 
       if (signal?.aborted) throw new Error("Query was cancelled");
       if (isNutritionDebug())
@@ -309,18 +310,22 @@ export const useDailyIntakeQuery = (
             });
           }
 
+          const totals = computeTotals(newSections);
+          const micros = computeMicroTotals(newSections) as NutritionSummaryMicros;
+
           const updated = {
             ...old,
             logSections: newSections,
             summary: {
               ...old.summary,
-              eaten: old.summary.eaten + food.kcal * safeQuantity,
-              kcalLeft: Math.max(old.summary.kcalLeft - food.kcal * safeQuantity, 0),
+              eaten: totals.kcal,
+              kcalLeft: Math.max(old.summary.goal - totals.kcal, 0),
             },
             macros: old.macros.map((macro) => ({
               ...macro,
-              current: macro.current + (food.macros[macro.key] ?? 0) * safeQuantity,
+              current: totals[macro.key],
             })),
+            micros,
           };
           if (isNutritionDebug()) console.log("[logFood] onMutate: optimistic update applied", {
             sectionsCount: updated.logSections.length,
@@ -430,6 +435,7 @@ export const useDailyIntakeQuery = (
             .filter((section) => section.items.length > 0);
 
           const totals = computeTotals(newSections);
+          const micros = computeMicroTotals(newSections) as NutritionSummaryMicros;
           const updated = {
             ...old,
             logSections: newSections,
@@ -442,6 +448,7 @@ export const useDailyIntakeQuery = (
               ...macro,
               current: totals[macro.key],
             })),
+            micros,
           };
           if (isNutritionDebug()) console.log("[removeItem] onMutate: optimistic update applied", {
             sectionsCount: updated.logSections.length,
@@ -510,31 +517,32 @@ export const useDailyIntakeQuery = (
         queryKeys.nutrition(localDate)
       );
 
-      const previousQuantity = item.quantity ?? 1;
-      const delta = multiplier - previousQuantity;
-
       // Optimistic update
       queryClient.setQueryData<NutritionData>(
         queryKeys.nutrition(localDate),
         (old) => {
           if (!old) return old;
+          const newSections = old.logSections.map((section) => ({
+            ...section,
+            items: section.items.map((entry) =>
+              entry.id === item.id ? { ...entry, quantity: multiplier } : entry
+            ),
+          }));
+          const totals = computeTotals(newSections);
+          const micros = computeMicroTotals(newSections) as NutritionSummaryMicros;
           const updated = {
             ...old,
-            logSections: old.logSections.map((section) => ({
-              ...section,
-              items: section.items.map((entry) =>
-                entry.id === item.id ? { ...entry, quantity: multiplier } : entry
-              ),
-            })),
+            logSections: newSections,
             summary: {
               ...old.summary,
-              eaten: old.summary.eaten + item.kcal * delta,
-              kcalLeft: Math.max(old.summary.kcalLeft - item.kcal * delta, 0),
+              eaten: totals.kcal,
+              kcalLeft: Math.max(old.summary.goal - totals.kcal, 0),
             },
             macros: old.macros.map((macro) => ({
               ...macro,
-              current: macro.current + (item.macros[macro.key] ?? 0) * delta,
+              current: totals[macro.key],
             })),
+            micros,
           };
           if (isNutritionDebug()) console.log("[updateItem] onMutate: optimistic update applied");
           return updated;
@@ -761,12 +769,12 @@ export const useDailyIntakeQuery = (
       queryClient.setQueryData<NutritionData>(
         queryKeys.nutrition(localDate),
         (old) => ({
+          micros: computeMicroTotals(logSections) as NutritionSummaryMicros,
           summary: old?.summary ?? initialSummary,
           macros: (old?.macros ?? initialMacros).map((macro) => ({
             ...macro,
             current: totals[macro.key],
           })),
-          micros: old?.micros ?? null,
           logSections,
         })
       );

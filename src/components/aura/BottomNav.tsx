@@ -26,15 +26,15 @@ const NavButton = ({
 }) => (
   <NavLink
     to={to}
-    className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-1 rounded-2xl px-2 text-xs font-medium transition-colors ${
+    className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-1 rounded-xl px-3 py-2 text-xs font-medium transition-all ${
       active
         ? tone === "dark"
-          ? "bg-primary/15 text-foreground"
-          : "bg-primary/10 text-foreground"
+          ? "text-primary shadow-[0_0_14px_hsl(var(--primary)/0.2)]"
+          : "text-primary shadow-[0_0_14px_hsl(var(--primary)/0.18)]"
         : tone === "dark"
           ? "text-foreground/65"
           : "text-muted-foreground"
-    }`}
+    } ${active && tone === "light" ? "bg-primary/5" : ""} ${active && tone === "dark" ? "bg-primary/10" : ""}`}
   >
     <Icon className="h-5 w-5 shrink-0" />
     <span className="leading-tight">{label}</span>

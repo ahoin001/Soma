@@ -29,6 +29,7 @@ import {
   FOOD_IMAGE_BACKGROUND_KEY,
   HAPTICS_ENABLED_KEY,
   HEADER_STYLE_KEY,
+  PULL_TO_REFRESH_ENABLED_KEY,
   THEME_PALETTE_KEY,
   USER_PROFILE_KEY,
 } from "@/lib/storageKeys";
@@ -52,6 +53,7 @@ export type FoodImageBackground = "white" | "transparent";
 export type UserSettings = {
   showFoodImages: boolean;
   hapticsEnabled: boolean;
+  pullToRefreshEnabled: boolean;
   foodImageBackground: FoodImageBackground;
   headerStyle: "immersive" | "card" | "media";
   defaultHome: "nutrition" | "fitness";
@@ -69,6 +71,8 @@ type UserContextValue = {
   setShowFoodImages: (next: boolean) => void;
   hapticsEnabled: boolean;
   setHapticsEnabled: (next: boolean) => void;
+  pullToRefreshEnabled: boolean;
+  setPullToRefreshEnabled: (next: boolean) => void;
   foodImageBackground: FoodImageBackground;
   setFoodImageBackground: (next: FoodImageBackground) => void;
   headerStyle: "immersive" | "card" | "media";
@@ -140,6 +144,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     return stored ? stored === "true" : true;
   });
 
+  const [pullToRefreshEnabled, setPullToRefreshEnabled] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const stored = window.localStorage.getItem(PULL_TO_REFRESH_ENABLED_KEY);
+    return stored ? stored === "true" : true;
+  });
+
   const [foodImageBackground, setFoodImageBackground] = useState<FoodImageBackground>(() => {
     if (typeof window === "undefined") return "white";
     const stored = window.localStorage.getItem(FOOD_IMAGE_BACKGROUND_KEY);
@@ -185,6 +195,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(HAPTICS_ENABLED_KEY, String(hapticsEnabled));
   }, [hapticsEnabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(PULL_TO_REFRESH_ENABLED_KEY, String(pullToRefreshEnabled));
+  }, [pullToRefreshEnabled]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -294,6 +309,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setShowFoodImages,
       hapticsEnabled,
       setHapticsEnabled,
+      pullToRefreshEnabled,
+      setPullToRefreshEnabled,
       foodImageBackground,
       setFoodImageBackground,
       headerStyle,
@@ -309,6 +326,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       updateUserProfile,
       showFoodImages,
       hapticsEnabled,
+      pullToRefreshEnabled,
       foodImageBackground,
       headerStyle,
       defaultHome,
@@ -349,6 +367,8 @@ export const useUserSettings = () => {
     setShowFoodImages,
     hapticsEnabled,
     setHapticsEnabled,
+    pullToRefreshEnabled,
+    setPullToRefreshEnabled,
     foodImageBackground,
     setFoodImageBackground,
     headerStyle,
@@ -363,6 +383,8 @@ export const useUserSettings = () => {
     setShowFoodImages,
     hapticsEnabled,
     setHapticsEnabled,
+    pullToRefreshEnabled,
+    setPullToRefreshEnabled,
     foodImageBackground,
     setFoodImageBackground,
     headerStyle,

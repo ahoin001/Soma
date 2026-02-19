@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const AT_TOP_THRESHOLD_PX = 10;
 const PULL_PREVENT_SCROLL_THRESHOLD_PX = 4;
 const INDICATOR_OFFSET_PX = 56;
+const MIN_DRAG_START_PX = 6;
 
 type PullToRefreshProps = {
   experience: "nutrition" | "fitness";
@@ -16,6 +17,24 @@ type PullToRefreshProps = {
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
+
+const isInteractiveElement = (target: EventTarget | null): boolean => {
+  if (!(target instanceof Element)) return false;
+  return Boolean(
+    target.closest(
+      "input, textarea, select, button, a, [role='button'], [contenteditable='true'], [data-no-pull-refresh='true']",
+    ),
+  );
+};
+
+const shouldAllowPull = (): boolean => {
+  if (typeof window === "undefined" || typeof document === "undefined") return false;
+  if (window.scrollY > 0) return false;
+  // Avoid conflicts with open drawers/dialogs and explicit scroll locks.
+  if (document.documentElement.classList.contains("scroll-locked")) return false;
+  if (document.body?.dataset?.sheetOpen === "true") return false;
+  return true;
+};
 
 export const PullToRefresh = ({
   experience,
@@ -33,7 +52,10 @@ export const PullToRefresh = ({
 
   // Refetch active queries instead of full reload (preserves state, faster, smoother UX).
   const handleRefresh = useCallback(async () => {
-    await queryClient.refetchQueries({ type: "active" });
+    await queryClient.refetchQueries(
+      { type: "active" },
+      { throwOnError: true, cancelRefetch: false },
+    );
   }, [queryClient]);
 
   const tone = useMemo(
@@ -67,7 +89,9 @@ export const PullToRefresh = ({
     if (prefersReducedMotion) return;
 
     const onTouchStart = (event: TouchEvent) => {
-      if (window.scrollY > 0 || refreshing) return;
+      if (refreshing || !shouldAllowPull()) return;
+      if (isInteractiveElement(event.target)) return;
+      if (event.touches.length !== 1) return;
       startYRef.current = event.touches[0]?.clientY ?? null;
       pullingRef.current = false;
       pullDistanceRef.current = 0;
@@ -77,12 +101,13 @@ export const PullToRefresh = ({
       if (startYRef.current === null || refreshing) return;
       const currentY = event.touches[0]?.clientY ?? startYRef.current;
       const delta = currentY - startYRef.current;
-      if (delta <= 0) {
+      if (delta <= 0 || !shouldAllowPull()) {
         setPullDistance(0);
         pullDistanceRef.current = 0;
         pullingRef.current = false;
         return;
       }
+      if (delta < MIN_DRAG_START_PX && !pullingRef.current) return;
       pullingRef.current = true;
       const distance = clamp(delta, 0, maxPull);
       pullDistanceRef.current = distance;

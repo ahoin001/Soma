@@ -49,7 +49,6 @@ import { Loader2, Sparkles } from "lucide-react";
 import { LoadingState } from "@/components/ui/loading-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SHEET_NUTRITION_KEY } from "@/lib/storageKeys";
-import { appToast } from "@/lib/toast";
 import {
   getTopSourcesForMacro,
   getTopSourcesForMicro,
@@ -208,7 +207,6 @@ const Nutrition = () => {
   const [addingToMealLabel, setAddingToMealLabel] = useState<string | null>(null);
   const [logFullDayConflictOpen, setLogFullDayConflictOpen] = useState(false);
   const [isLoggingFullDay, setIsLoggingFullDay] = useState(false);
-  const [showCacheRestoreHint, setShowCacheRestoreHint] = useState(false);
   const cacheHintShownRef = useRef(false);
   const {
     nutrition,
@@ -301,13 +299,10 @@ const Nutrition = () => {
       !nutritionLoading;
     if (!hasCachedData || !nutritionFetching) return;
     cacheHintShownRef.current = true;
-    setShowCacheRestoreHint(true);
     appToast.info("Restored from cache", {
-      description: "Syncing latest nutrition data in the background.",
-      duration: 2200,
+      description: "Syncing latest entries…",
+      duration: 2000,
     });
-    const timer = window.setTimeout(() => setShowCacheRestoreHint(false), 2400);
-    return () => window.clearTimeout(timer);
   }, [nutritionDataUpdatedAt, nutritionFetching, nutritionLoading]);
 
   // When arriving with a suggested plan day + targetDate, switch view to that date
@@ -692,7 +687,10 @@ const Nutrition = () => {
             variant={headerStyle}
             topSourcesMacro={topSourcesMacro}
             topSourcesMicro={topSourcesMicro}
-            onLongPressMacros={() => setGoalSheetOpen(true)}
+            onLongPressMacros={() => {
+              closeSheets();
+              navigate("/nutrition/goals");
+            }}
             onGoalsClick={() => {
               closeSheets();
               navigate("/nutrition/goals");
@@ -711,20 +709,6 @@ const Nutrition = () => {
             }
           />
         </div>
-
-        <AnimatePresence>
-          {showCacheRestoreHint ? (
-            <motion.div
-              initial={{ opacity: 0, y: -6, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -4, scale: 0.99 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="mt-3 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-center text-[11px] font-medium text-primary"
-            >
-              Restored from cache • Syncing latest entries…
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
 
         <DateSwitcher value={selectedDate} onChange={setSelectedDate} />
 

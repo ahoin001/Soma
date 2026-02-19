@@ -11,6 +11,7 @@ export const SESSION_TOKEN_KEY = "aurafit-session-token";
 export const USER_PROFILE_KEY = "aurafit-user-profile-v1";
 export const FOOD_IMAGES_KEY = "aurafit-show-food-images";
 export const HAPTICS_ENABLED_KEY = "aurafit-haptics-enabled";
+export const PULL_TO_REFRESH_ENABLED_KEY = "aurafit-pull-to-refresh-enabled";
 export const FOOD_IMAGE_BACKGROUND_KEY = "aurafit-food-image-background";
 export const DEFAULT_HOME_KEY = "aurafit-default-home";
 export const THEME_PALETTE_KEY = "aurafit-theme-palette";
