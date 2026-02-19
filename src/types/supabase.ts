@@ -435,73 +435,130 @@ export type Database = {
       }
       foods: {
         Row: {
+          added_sugar_g: number | null
           barcode: string | null
           brand: string | null
           brand_id: string | null
+          calcium_mg: number | null
           carbs_g: number
+          cholesterol_mg: number | null
           created_at: string
           created_by_user_id: string | null
           fat_g: number
+          fiber_g: number | null
+          folate_mcg: number | null
           id: string
           image_url: string | null
+          iron_mg: number | null
           is_global: boolean
           kcal: number
+          magnesium_mg: number | null
           micronutrients: Json
           name: string
           normalized_name: string | null
+          omega3_g: number | null
+          omega6_g: number | null
           parent_food_id: string | null
+          potassium_mg: number | null
           portion_grams: number | null
           portion_label: string | null
           protein_g: number
+          saturated_fat_g: number | null
           search_vector: unknown
+          sodium_mg: number | null
           source: string | null
+          sugar_g: number | null
+          trans_fat_g: number | null
           updated_at: string
+          vitamin_a_mcg: number | null
+          vitamin_b12_mcg: number | null
+          vitamin_c_mg: number | null
+          vitamin_d_mcg: number | null
+          zinc_mg: number | null
         }
         Insert: {
+          added_sugar_g?: number | null
           barcode?: string | null
           brand?: string | null
           brand_id?: string | null
+          calcium_mg?: number | null
           carbs_g?: number
+          cholesterol_mg?: number | null
           created_at?: string
           created_by_user_id?: string | null
           fat_g?: number
+          fiber_g?: number | null
+          folate_mcg?: number | null
           id?: string
           image_url?: string | null
+          iron_mg?: number | null
           is_global?: boolean
           kcal?: number
+          magnesium_mg?: number | null
           micronutrients?: Json
           name: string
           normalized_name?: string | null
+          omega3_g?: number | null
+          omega6_g?: number | null
           parent_food_id?: string | null
+          potassium_mg?: number | null
           portion_grams?: number | null
           portion_label?: string | null
           protein_g?: number
+          saturated_fat_g?: number | null
           search_vector?: unknown
+          sodium_mg?: number | null
           source?: string | null
+          sugar_g?: number | null
+          trans_fat_g?: number | null
           updated_at?: string
+          vitamin_a_mcg?: number | null
+          vitamin_b12_mcg?: number | null
+          vitamin_c_mg?: number | null
+          vitamin_d_mcg?: number | null
+          zinc_mg?: number | null
         }
         Update: {
+          added_sugar_g?: number | null
           barcode?: string | null
           brand?: string | null
           brand_id?: string | null
+          calcium_mg?: number | null
           carbs_g?: number
+          cholesterol_mg?: number | null
           created_at?: string
           created_by_user_id?: string | null
           fat_g?: number
+          fiber_g?: number | null
+          folate_mcg?: number | null
           id?: string
           image_url?: string | null
+          iron_mg?: number | null
           is_global?: boolean
           kcal?: number
+          magnesium_mg?: number | null
           micronutrients?: Json
           name?: string
           normalized_name?: string | null
+          omega3_g?: number | null
+          omega6_g?: number | null
           parent_food_id?: string | null
+          potassium_mg?: number | null
           portion_grams?: number | null
           portion_label?: string | null
           protein_g?: number
+          saturated_fat_g?: number | null
           search_vector?: unknown
+          sodium_mg?: number | null
           source?: string | null
+          sugar_g?: number | null
+          trans_fat_g?: number | null
           updated_at?: string
+          vitamin_a_mcg?: number | null
+          vitamin_b12_mcg?: number | null
+          vitamin_c_mg?: number | null
+          vitamin_d_mcg?: number | null
+          zinc_mg?: number | null
         }
         Relationships: [
           {
@@ -612,52 +669,109 @@ export type Database = {
       }
       meal_entry_items: {
         Row: {
+          added_sugar_g: number | null
+          calcium_mg: number | null
           carbs_g: number
+          cholesterol_mg: number | null
           created_at: string
           fat_g: number
+          fiber_g: number | null
           food_id: string | null
           food_name: string
+          folate_mcg: number | null
           id: string
+          iron_mg: number | null
           kcal: number
+          magnesium_mg: number | null
           meal_entry_id: string
           micronutrients: Json
+          omega3_g: number | null
+          omega6_g: number | null
+          potassium_mg: number | null
           portion_grams: number | null
           portion_label: string | null
           protein_g: number
+          saturated_fat_g: number | null
+          sodium_mg: number | null
+          sugar_g: number | null
           quantity: number
           sort_order: number
+          trans_fat_g: number | null
+          vitamin_a_mcg: number | null
+          vitamin_b12_mcg: number | null
+          vitamin_c_mg: number | null
+          vitamin_d_mcg: number | null
+          zinc_mg: number | null
         }
         Insert: {
+          added_sugar_g?: number | null
+          calcium_mg?: number | null
           carbs_g?: number
+          cholesterol_mg?: number | null
           created_at?: string
           fat_g?: number
+          fiber_g?: number | null
           food_id?: string | null
           food_name: string
+          folate_mcg?: number | null
           id?: string
+          iron_mg?: number | null
           kcal?: number
+          magnesium_mg?: number | null
           meal_entry_id: string
           micronutrients?: Json
+          omega3_g?: number | null
+          omega6_g?: number | null
+          potassium_mg?: number | null
           portion_grams?: number | null
           portion_label?: string | null
           protein_g?: number
+          saturated_fat_g?: number | null
+          sodium_mg?: number | null
+          sugar_g?: number | null
           quantity?: number
           sort_order?: number
+          trans_fat_g?: number | null
+          vitamin_a_mcg?: number | null
+          vitamin_b12_mcg?: number | null
+          vitamin_c_mg?: number | null
+          vitamin_d_mcg?: number | null
+          zinc_mg?: number | null
         }
         Update: {
+          added_sugar_g?: number | null
+          calcium_mg?: number | null
           carbs_g?: number
+          cholesterol_mg?: number | null
           created_at?: string
           fat_g?: number
+          fiber_g?: number | null
           food_id?: string | null
           food_name?: string
+          folate_mcg?: number | null
           id?: string
+          iron_mg?: number | null
           kcal?: number
+          magnesium_mg?: number | null
           meal_entry_id?: string
           micronutrients?: Json
+          omega3_g?: number | null
+          omega6_g?: number | null
+          potassium_mg?: number | null
           portion_grams?: number | null
           portion_label?: string | null
           protein_g?: number
+          saturated_fat_g?: number | null
+          sodium_mg?: number | null
+          sugar_g?: number | null
           quantity?: number
           sort_order?: number
+          trans_fat_g?: number | null
+          vitamin_a_mcg?: number | null
+          vitamin_b12_mcg?: number | null
+          vitamin_c_mg?: number | null
+          vitamin_d_mcg?: number | null
+          zinc_mg?: number | null
         }
         Relationships: [
           {

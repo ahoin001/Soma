@@ -323,7 +323,7 @@
     padding-left: 1.25rem;
     padding-right: 1.25rem;
     padding-top: 0.5rem;
-    padding-bottom: 1.5rem;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 
   .aura-sheet-scroll {
@@ -332,14 +332,14 @@
     padding-left: 1.25rem;
     padding-right: 1.25rem;
     padding-top: 0.5rem;
-    padding-bottom: 1.5rem;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 
   .aura-sheet-body-fit {
     padding-left: 1.25rem;
     padding-right: 1.25rem;
     padding-top: 0.5rem;
-    padding-bottom: 1.5rem;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 
   .aura-sheet-scroll-fit {
@@ -348,7 +348,7 @@
     padding-left: 1.25rem;
     padding-right: 1.25rem;
     padding-top: 0.5rem;
-    padding-bottom: 1.5rem;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 
 

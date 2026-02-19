@@ -80,6 +80,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useRememberedTab } from "@/hooks/useRememberedTab";
 
 const cmToImperial = (cm: number) => {
   const totalInches = cm / 2.54;
@@ -409,7 +410,11 @@ const Goals = () => {
     return out;
   });
   const [microSectionOpen, setMicroSectionOpen] = useState(false);
-  const [sectionTab, setSectionTab] = useState<"energy" | "micros">("energy");
+  const [sectionTab, setSectionTab] = useRememberedTab<"energy" | "micros">({
+    key: "section",
+    values: ["energy", "micros"] as const,
+    defaultValue: "energy",
+  });
   const [hydrated, setHydrated] = useState(false);
   const draftTimerRef = useRef<number | null>(null);
   const microsSectionRef = useRef<HTMLDivElement | null>(null);

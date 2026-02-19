@@ -3,13 +3,51 @@ import type { MealEntryItemRecord, MealEntryRecord } from "@/types/api";
 import type { LogItem, LogSection } from "@/types/log";
 import { normalizeFoodImageUrl } from "@/lib/foodImageUrl";
 
+const MICRO_KEY_ALIASES: Record<string, string> = {
+  fiber: "fiber_g",
+  fiber_g: "fiber_g",
+  fiberG: "fiber_g",
+  dietary_fiber: "fiber_g",
+  dietary_fiber_g: "fiber_g",
+  dietaryFiber: "fiber_g",
+  dietaryFiberG: "fiber_g",
+  sodium: "sodium_mg",
+  sodium_mg: "sodium_mg",
+  sodiumMg: "sodium_mg",
+  potassium: "potassium_mg",
+  potassium_mg: "potassium_mg",
+  potassiumMg: "potassium_mg",
+  cholesterol: "cholesterol_mg",
+  cholesterol_mg: "cholesterol_mg",
+  cholesterolMg: "cholesterol_mg",
+  saturated_fat: "saturated_fat_g",
+  saturated_fat_g: "saturated_fat_g",
+  saturatedFat: "saturated_fat_g",
+  saturatedFatG: "saturated_fat_g",
+  sugar: "sugar_g",
+  sugar_g: "sugar_g",
+  sugarG: "sugar_g",
+  total_sugar: "sugar_g",
+  total_sugar_g: "sugar_g",
+  added_sugar: "added_sugar_g",
+  added_sugar_g: "added_sugar_g",
+  addedSugar: "added_sugar_g",
+  addedSugarG: "added_sugar_g",
+};
+
 /** Coerce micronutrients from API (unknown) to Record<string, number> for per-serving values. */
 function toMicroRecord(raw: Record<string, unknown> | null | undefined): Record<string, number> | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const out: Record<string, number> = {};
   for (const [key, val] of Object.entries(raw)) {
     const n = typeof val === "number" && Number.isFinite(val) ? val : Number(val);
-    if (Number.isFinite(n)) out[key] = n;
+    if (!Number.isFinite(n)) continue;
+    const mappedKey = MICRO_KEY_ALIASES[key] ?? key;
+    out[mappedKey] = (out[mappedKey] ?? 0) + n;
+  }
+  // Backward-compat for existing UI slot key ("sugar_g") when foods only provide added sugar.
+  if (out.sugar_g == null && out.added_sugar_g != null) {
+    out.sugar_g = out.added_sugar_g;
   }
   return Object.keys(out).length ? out : undefined;
 }
@@ -72,9 +110,31 @@ export const computeLogSections = (
         const carbs = Number(item.carbs_g ?? 0) || 0;
         const protein = Number(item.protein_g ?? 0) || 0;
         const fat = Number(item.fat_g ?? 0) || 0;
-        const micronutrients = toMicroRecord(
-          item.micronutrients as Record<string, unknown> | null | undefined
-        );
+        const columnMicros = {
+          fiber_g: item.fiber_g,
+          sugar_g: item.sugar_g,
+          added_sugar_g: item.added_sugar_g,
+          sodium_mg: item.sodium_mg,
+          potassium_mg: item.potassium_mg,
+          cholesterol_mg: item.cholesterol_mg,
+          saturated_fat_g: item.saturated_fat_g,
+          trans_fat_g: item.trans_fat_g,
+          calcium_mg: item.calcium_mg,
+          iron_mg: item.iron_mg,
+          magnesium_mg: item.magnesium_mg,
+          zinc_mg: item.zinc_mg,
+          vitamin_d_mcg: item.vitamin_d_mcg,
+          vitamin_c_mg: item.vitamin_c_mg,
+          vitamin_a_mcg: item.vitamin_a_mcg,
+          vitamin_b12_mcg: item.vitamin_b12_mcg,
+          folate_mcg: item.folate_mcg,
+          omega3_g: item.omega3_g,
+          omega6_g: item.omega6_g,
+        } as Record<string, unknown>;
+        const micronutrients = toMicroRecord({
+          ...(item.micronutrients as Record<string, unknown> | null | undefined),
+          ...columnMicros,
+        });
         return {
           id: item.id,
           foodId: item.food_id ?? null,

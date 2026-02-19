@@ -24,7 +24,6 @@ import { MealIcon } from "@/components/aura/MealIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +34,7 @@ import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { ListEmptyState } from "@/components/ui/empty-state";
 import { fetchFoodHistory, searchFoods } from "@/lib/api";
+import { normalizeFoodImageUrl } from "@/lib/foodImageUrl";
 import { toLocalDate } from "@/lib/nutritionData";
 import { cn } from "@/lib/utils";
 import { useMealPlans } from "@/hooks/useMealPlans";
@@ -51,7 +51,6 @@ import {
   Trash2,
   ClipboardList,
   Check,
-  ChevronsUpDown,
 } from "lucide-react";
 import { appToast } from "@/lib/toast";
 
@@ -67,6 +66,7 @@ type DbFoodOption = {
   id: string;
   name: string;
   brand: string | null;
+  imageUrl: string | null;
   kcal: number;
   protein: number;
   carbs: number;
@@ -149,6 +149,7 @@ const mapFoodRecord = (row: FoodRecord): DbFoodOption => ({
   id: row.id,
   name: row.name,
   brand: row.brand_name ?? row.brand ?? null,
+  imageUrl: normalizeFoodImageUrl(row.image_url),
   kcal: toNum(row.kcal),
   protein: toNum(row.protein_g),
   carbs: toNum(row.carbs_g),
@@ -272,7 +273,6 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
   const [logPlanCustomDate, setLogPlanCustomDate] = useState("");
   const [savePresetOpen, setSavePresetOpen] = useState(false);
   const [presetNameDraft, setPresetNameDraft] = useState("");
-  const [mealOpenState, setMealOpenState] = useState<Record<string, boolean>>({});
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -321,17 +321,6 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
         : [],
     [meals, activeDay],
   );
-
-  useEffect(() => {
-    if (!dayMeals.length) return;
-    setMealOpenState((prev) => {
-      const next = { ...prev };
-      for (const meal of dayMeals) {
-        if (next[meal.id] === undefined) next[meal.id] = true;
-      }
-      return next;
-    });
-  }, [dayMeals]);
 
   const mealItemsMap = useMemo(() => {
     const map = new Map<string, typeof items>();
@@ -617,7 +606,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
               Build day templates
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Day templates to hit your targets???use as a reference when planning what to eat.
+              Day templates to hit your targets - use as a reference when planning what to eat.
             </p>
           </div>
         )}
@@ -680,13 +669,13 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
             Build day templates
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Day templates to hit your targets???use as a reference when planning what to eat.
+            Day templates to hit your targets - use as a reference when planning what to eat.
           </p>
         </div>
       )}
 
       <AnimatePresence mode="wait">
-        {/* ????????? Step 1: Day manager ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????? */}
+        {/* Step 1: Day manager */}
         {viewStep === "days" && (
           <motion.div
             key="days"
@@ -726,35 +715,37 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
             </div>
 
             <Card className="rounded-[28px] border border-border/40 bg-card/95 px-5 py-5 shadow-sm">
-              <p className="text-sm font-medium text-foreground">Plan days</p>
-              <p className="mt-1 text-xs text-muted-foreground">Select a day to set targets and meals.</p>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <p className="text-sm font-medium text-foreground">Days manager</p>
+              <p className="mt-1 text-xs text-muted-foreground">Select a day to set targets and build meals.</p>
+              <div className="mt-4 space-y-2">
                 {filteredDays.map((day) => (
                   <div
                     key={day.id}
                     className={cn(
-                      "flex items-center gap-1 rounded-full border pr-1 transition",
+                      "flex items-center gap-2 rounded-2xl border px-2 py-2 transition",
                       day.id === activeDayId
-                        ? "border-primary/50 bg-primary/15"
-                        : "border-border/50 bg-muted/40",
+                        ? "border-primary/40 bg-primary/10"
+                        : "border-border/50 bg-card",
                     )}
                   >
                     <button
                       type="button"
                       onClick={() => goToTargets(day.id)}
                       className={cn(
-                        "rounded-full px-4 py-2 text-left text-xs font-medium transition flex items-center gap-1.5",
-                        day.id === activeDayId ? "text-primary" : "text-muted-foreground hover:bg-muted/60",
+                        "flex min-w-0 flex-1 items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-medium transition",
+                        day.id === activeDayId
+                          ? "text-primary"
+                          : "text-muted-foreground hover:bg-muted/60",
                       )}
                     >
-                      {day.name}
-                      <ChevronRight className="h-3.5 w-3.5 opacity-70" />
+                      <span className="truncate">{day.name}</span>
+                      <ChevronRight className="h-4 w-4 opacity-70" />
                     </button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                      className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
                       onClick={(e) => {
                         e.stopPropagation();
                         setEditingDayName(day.id);
@@ -834,7 +825,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
           </motion.div>
         )}
 
-        {/* ????????? Step 2: Targets (when a day is selected) ??????????????????????????????????????????????????????????????? */}
+        {/* Step 2: Targets (when a day is selected) */}
         {viewStep === "targets" && activeDay && (
           <motion.div
             key="targets"
@@ -908,7 +899,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                       e.target.value = "";
                     }}
                   >
-                    <option value="">Choose a preset??</option>
+                    <option value="">Choose a preset</option>
                     {presets.map((p) => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
@@ -941,7 +932,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                 <Badge variant="secondary" className="justify-between rounded-full px-3 py-1.5">fat <span>{Math.round(dayTotals.fat)}g / {activeDay.targets.fat}g</span></Badge>
               </div>
               {proteinHit && !kcalOver && (
-                <p className="mt-3 text-xs font-medium text-emerald-600">This day looks on target???use it as your reference when eating.</p>
+                <p className="mt-3 text-xs font-medium text-emerald-600">This day looks on target - use it as your reference when eating.</p>
               )}
               <Button type="button" className="mt-6 w-full rounded-full" onClick={goToMeals}>
                 Next: Set up meals
@@ -949,13 +940,13 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
               </Button>
               <Button type="button" variant="outline" className="mt-3 w-full rounded-full border-primary/40" onClick={() => setLogPlanSheetOpen(true)}>
                 <ClipboardList className="mr-2 h-4 w-4" />
-                Log this plan to a date??
+                Log this plan to a date
               </Button>
             </Card>
           </motion.div>
         )}
 
-        {/* ????????? Step 3: Day of eating (meals) ?????????????????????????????????????????????????????????????????????????????????????????? */}
+        {/* Step 3: Day of eating (meals) */}
         {viewStep === "meals" && activeDay && (
           <motion.div
             key="meals"
@@ -1126,39 +1117,23 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                     pulseMealId === meal.id && "ring-2 ring-primary/30 shadow-md",
                   )}
                 >
-                  <Collapsible
-                    open={mealOpenState[meal.id] ?? true}
-                    onOpenChange={(nextOpen) =>
-                      setMealOpenState((prev) => ({ ...prev, [meal.id]: nextOpen }))
-                    }
-                  >
                   <div className="bg-secondary/45 px-3 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
                         <MealIcon mealId={meal.id} size={18} className="shrink-0 text-primary" />
-                        {meal.label}
+                        <span className="truncate">{meal.label}</span>
                       </p>
-                      <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">
-                        Planner
-                      </span>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-9 shrink-0 rounded-full px-3"
-                      onClick={() => openFoodPicker(meal.id)}
-                    >
-                      <Search className="mr-1.5 h-3.5 w-3.5" />
-                      Add food
-                    </Button>
-                    <CollapsibleTrigger asChild>
-                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full">
-                        <ChevronsUpDown className="h-4 w-4" />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-9 shrink-0 rounded-full px-3"
+                        onClick={() => openFoodPicker(meal.id)}
+                      >
+                        <Search className="mr-1.5 h-3.5 w-3.5" />
+                        Add food
                       </Button>
-                    </CollapsibleTrigger>
-                  </div>
+                    </div>
                   </div>
 
                   <div className="mt-3 flex flex-wrap items-center gap-1.5 px-3">
@@ -1191,7 +1166,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                     </span>
                   </div>
 
-                  <CollapsibleContent className="mt-3 space-y-2 px-3 pb-3">
+                  <div className="mt-3 space-y-2 px-3 pb-3">
                     {grouped.map((slot) => (
                       <div key={slot.id} className={cn("rounded-2xl border bg-background/55 px-3 py-2.5", slot.tone)}>
                         <p className="text-[11px] font-semibold uppercase tracking-[0.2em]">{slot.label}</p>
@@ -1282,8 +1257,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                         </div>
                       </div>
                     ))}
-                  </CollapsibleContent>
-                  </Collapsible>
+                  </div>
                 </Card>
                 </motion.div>
               );
@@ -1293,12 +1267,12 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
             </motion.div>
 
       <Drawer open={foodSheetOpen} onOpenChange={setFoodSheetOpen}>
-        <DrawerContent className="rounded-t-[36px] border-none bg-aura-surface pb-6 overflow-hidden">
-          <div className="aura-sheet-scroll px-4 pb-4">
+        <DrawerContent className="max-h-[86svh] rounded-t-[36px] border-none bg-background pb-0 overflow-hidden">
+          <div className="aura-sheet-scroll max-h-[calc(86svh-56px)] px-4 pb-3">
             <div className="pt-1">
               <p className="text-xs uppercase tracking-[0.2em] text-primary">Meal food search</p>
               <h3 className="text-lg font-display font-semibold text-foreground">
-                {activeMealForFoodSheet?.emoji ?? "???????"} {activeMealForFoodSheet?.label ?? "Select meal"}
+                {activeMealForFoodSheet?.emoji ?? "🍽️"} {activeMealForFoodSheet?.label ?? "Select meal"}
               </h3>
               <p className="mt-1 text-xs text-muted-foreground">
                 Search foods in your database and add to this meal.
@@ -1347,18 +1321,30 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                   onClick={() => addFoodFromDb(food)}
                   className="w-full rounded-[16px] border border-border/60 bg-card px-3 py-3 text-left shadow-[0_8px_20px_rgba(15,23,42,0.05)] transition hover:border-primary/30 hover:bg-card/80"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-foreground">{food.name}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-secondary/40">
+                      {food.imageUrl ? (
+                        <img src={food.imageUrl} alt={food.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-lg">
+                          {activeMealForFoodSheet?.emoji ?? "🍽️"}
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-sm font-semibold text-foreground">{food.name}</p>
+                        <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">
+                          {SLOT_CONFIG.find((slot) => slot.id === inferSlot(food))?.label ?? "Balance"}
+                        </span>
+                      </div>
                       <p className="truncate text-xs text-muted-foreground">
-                        {food.brand ?? "Unbranded"} ??? {Math.round(food.kcal)} cal ??? P{" "}
-                        {Math.round(food.protein)} - C {Math.round(food.carbs)} - F{" "}
-                        {Math.round(food.fat)}
+                        {food.brand ?? "Unbranded"} • {Math.round(food.kcal)} cal
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        P {Math.round(food.protein)}g • C {Math.round(food.carbs)}g • F {Math.round(food.fat)}g
                       </p>
                     </div>
-                    <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">
-                      {SLOT_CONFIG.find((slot) => slot.id === inferSlot(food))?.label ?? "Balance"}
-                    </span>
                   </div>
                 </button>
               ))}
@@ -1367,18 +1353,18 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
         </DrawerContent>
       </Drawer>
 
-            {/* Sticky Save ??? finalize day */}
-            <div className="sticky bottom-0 left-0 right-0 z-10 mt-6 flex justify-center pt-4 pb-6 bg-gradient-to-t from-background via-background/98 to-transparent">
+            {/* Sticky save area */}
+            <div className="pointer-events-none sticky bottom-0 left-0 right-0 z-10 mt-4 flex justify-end pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
               <Button
                 type="button"
-                className="rounded-full shadow-lg min-w-[200px]"
+                className="pointer-events-auto rounded-full shadow-lg"
                 onClick={() => {
                   triggerLightFeedback();
                   appToast.success("Changes saved", { description: `${activeDay?.name ?? "Day"} is up to date.` });
                 }}
               >
                 <Check className="mr-2 h-4 w-4" />
-                Save changes
+                Save
               </Button>
             </div>
           </motion.div>
@@ -1484,7 +1470,7 @@ const TargetFieldWithRange = ({
         inputMode="decimal"
         className="h-8 flex-1 rounded-full border-border/60 bg-card/85"
       />
-      <span className="text-muted-foreground/70">???</span>
+      <span className="text-muted-foreground/70">to</span>
       <Input
         value={maxValue != null && maxValue !== 0 ? String(maxValue) : ""}
         onChange={(e) => onMaxChange(e.target.value)}

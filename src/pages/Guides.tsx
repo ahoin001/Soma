@@ -7,11 +7,16 @@ import { guideArticles } from "@/data/guideArticles";
 import { cn } from "@/lib/utils";
 import { BookOpen, CalendarDays, ChevronDown, ShoppingBag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useRememberedTab } from "@/hooks/useRememberedTab";
 
 type TabId = "groceries" | "plans" | "articles";
 
 const Guides = () => {
-  const [tab, setTab] = useState<TabId>("groceries");
+  const [tab, setTab] = useRememberedTab<TabId>({
+    key: "primary",
+    values: ["groceries", "plans", "articles"] as const,
+    defaultValue: "groceries",
+  });
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (

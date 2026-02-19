@@ -149,8 +149,8 @@ export const useDailyIntakeQuery = (
                 ),
       }));
 
-      // Single source of truth: derive micros from same logSections as diary (API returns null)
-      const micros = computeMicroTotals(logSections) as NutritionSummaryMicros;
+      // Prefer DB-aggregated typed micros when available; fallback to local derived totals.
+      const micros = (summaryRes.micros ?? computeMicroTotals(logSections)) as NutritionSummaryMicros;
 
       if (signal?.aborted) throw new Error("Query was cancelled");
       if (isNutritionDebug())

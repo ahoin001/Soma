@@ -183,6 +183,9 @@ export const updateMealEntryItem = (itemId: string, p: Parameters<typeof sb.upda
 export type NutritionSummaryMicros = {
   sodium_mg?: number; fiber_g?: number; sugar_g?: number; added_sugar_g?: number;
   potassium_mg?: number; cholesterol_mg?: number; saturated_fat_g?: number;
+  trans_fat_g?: number; calcium_mg?: number; iron_mg?: number; magnesium_mg?: number;
+  zinc_mg?: number; vitamin_d_mcg?: number; vitamin_c_mg?: number; vitamin_a_mcg?: number;
+  vitamin_b12_mcg?: number; folate_mcg?: number; omega3_g?: number; omega6_g?: number;
 };
 
 export const fetchNutritionSummary = (localDate: string) => sb.fetchNutritionSummarySupabase(localDate);

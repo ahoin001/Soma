@@ -630,17 +630,54 @@ export const fetchNutritionSummarySupabase = async (localDate: string) => {
     return {
       localDate,
       totals: { kcal: 0, carbs_g: 0, protein_g: 0, fat_g: 0 },
-      micros: null,
+      micros: {
+        fiber_g: 0,
+        sugar_g: 0,
+        added_sugar_g: 0,
+        sodium_mg: 0,
+        potassium_mg: 0,
+        cholesterol_mg: 0,
+        saturated_fat_g: 0,
+        trans_fat_g: 0,
+        calcium_mg: 0,
+        iron_mg: 0,
+        magnesium_mg: 0,
+        zinc_mg: 0,
+        vitamin_d_mcg: 0,
+        vitamin_c_mg: 0,
+        vitamin_a_mcg: 0,
+        vitamin_b12_mcg: 0,
+        folate_mcg: 0,
+        omega3_g: 0,
+        omega6_g: 0,
+      },
       targets: targets ?? null,
       settings: settings ?? null,
     };
   }
+  const typedSelect =
+    "kcal, carbs_g, protein_g, fat_g, fiber_g, sugar_g, added_sugar_g, sodium_mg, potassium_mg, cholesterol_mg, saturated_fat_g, trans_fat_g, calcium_mg, iron_mg, magnesium_mg, zinc_mg, vitamin_d_mcg, vitamin_c_mg, vitamin_a_mcg, vitamin_b12_mcg, folate_mcg, omega3_g, omega6_g";
   const { data: items, error: iErr } = await supabase
     .from("meal_entry_items")
-    .select("kcal, carbs_g, protein_g, fat_g")
+    .select(typedSelect)
     .in("meal_entry_id", ids);
-  if (iErr) throw new Error(iErr.message);
-  const totals = (items ?? []).reduce(
+  const typedColumnMissing =
+    !!iErr &&
+    (iErr.code === "42703" || /column .* does not exist/i.test(iErr.message ?? ""));
+  if (iErr && !typedColumnMissing) throw new Error(iErr.message);
+
+  let baseItems = items;
+  if (typedColumnMissing) {
+    const { data: fallbackItems, error: fallbackErr } = await supabase
+      .from("meal_entry_items")
+      .select("kcal, carbs_g, protein_g, fat_g")
+      .in("meal_entry_id", ids);
+    if (fallbackErr) throw new Error(fallbackErr.message);
+    baseItems = fallbackItems;
+  }
+  if (!baseItems) throw new Error(iErr?.message ?? "Unable to load nutrition summary.");
+
+  const totals = (baseItems ?? []).reduce(
     (acc, i) => ({
       kcal: acc.kcal + Number(i.kcal ?? 0),
       carbs_g: acc.carbs_g + Number(i.carbs_g ?? 0),
@@ -648,6 +685,52 @@ export const fetchNutritionSummarySupabase = async (localDate: string) => {
       fat_g: acc.fat_g + Number(i.fat_g ?? 0),
     }),
     { kcal: 0, carbs_g: 0, protein_g: 0, fat_g: 0 },
+  );
+  const micros = typedColumnMissing
+    ? null
+    : (items ?? []).reduce(
+    (acc, i) => ({
+      fiber_g: acc.fiber_g + Number(i.fiber_g ?? 0),
+      sugar_g: acc.sugar_g + Number(i.sugar_g ?? 0),
+      added_sugar_g: acc.added_sugar_g + Number(i.added_sugar_g ?? 0),
+      sodium_mg: acc.sodium_mg + Number(i.sodium_mg ?? 0),
+      potassium_mg: acc.potassium_mg + Number(i.potassium_mg ?? 0),
+      cholesterol_mg: acc.cholesterol_mg + Number(i.cholesterol_mg ?? 0),
+      saturated_fat_g: acc.saturated_fat_g + Number(i.saturated_fat_g ?? 0),
+      trans_fat_g: acc.trans_fat_g + Number(i.trans_fat_g ?? 0),
+      calcium_mg: acc.calcium_mg + Number(i.calcium_mg ?? 0),
+      iron_mg: acc.iron_mg + Number(i.iron_mg ?? 0),
+      magnesium_mg: acc.magnesium_mg + Number(i.magnesium_mg ?? 0),
+      zinc_mg: acc.zinc_mg + Number(i.zinc_mg ?? 0),
+      vitamin_d_mcg: acc.vitamin_d_mcg + Number(i.vitamin_d_mcg ?? 0),
+      vitamin_c_mg: acc.vitamin_c_mg + Number(i.vitamin_c_mg ?? 0),
+      vitamin_a_mcg: acc.vitamin_a_mcg + Number(i.vitamin_a_mcg ?? 0),
+      vitamin_b12_mcg: acc.vitamin_b12_mcg + Number(i.vitamin_b12_mcg ?? 0),
+      folate_mcg: acc.folate_mcg + Number(i.folate_mcg ?? 0),
+      omega3_g: acc.omega3_g + Number(i.omega3_g ?? 0),
+      omega6_g: acc.omega6_g + Number(i.omega6_g ?? 0),
+    }),
+    {
+      fiber_g: 0,
+      sugar_g: 0,
+      added_sugar_g: 0,
+      sodium_mg: 0,
+      potassium_mg: 0,
+      cholesterol_mg: 0,
+      saturated_fat_g: 0,
+      trans_fat_g: 0,
+      calcium_mg: 0,
+      iron_mg: 0,
+      magnesium_mg: 0,
+      zinc_mg: 0,
+      vitamin_d_mcg: 0,
+      vitamin_c_mg: 0,
+      vitamin_a_mcg: 0,
+      vitamin_b12_mcg: 0,
+      folate_mcg: 0,
+      omega3_g: 0,
+      omega6_g: 0,
+    },
   );
   const { data: targets } = await supabase
     .from("daily_nutrition_targets")
@@ -663,7 +746,7 @@ export const fetchNutritionSummarySupabase = async (localDate: string) => {
   return {
     localDate,
     totals,
-    micros: null,
+    micros,
     targets: targets ?? null,
     settings: settings ?? null,
   };
