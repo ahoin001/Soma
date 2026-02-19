@@ -1017,6 +1017,11 @@ const Nutrition = () => {
                             src={food.imageUrl}
                             alt={food.name}
                             className="h-full w-full object-contain"
+                            fallback={
+                              <div className="flex h-full w-full items-center justify-center text-xl">
+                                {food.emoji ?? "🍽️"}
+                              </div>
+                            }
                           />
                         ) : (
                           food.emoji

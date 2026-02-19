@@ -29,6 +29,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { DEBUG_KEY } from "@/lib/storageKeys";
 import { queueMutation } from "@/lib/offlineQueue";
 import { computeLogSections, computeTotals, toLocalDate } from "@/lib/nutritionData";
+import { normalizeFoodImageUrl } from "@/lib/foodImageUrl";
 import type { LastLog, Summary, SyncState } from "@/types/nutrition";
 import type { NutritionSummaryMicros } from "@/lib/api";
 
@@ -263,7 +264,7 @@ export const useDailyIntakeQuery = (
           fat: food.macros.fat,
         },
         emoji: mealEmoji,
-        imageUrl: food.imageUrl ?? null,
+        imageUrl: normalizeFoodImageUrl(food.imageUrl) ?? null,
       };
 
       // Optimistic update

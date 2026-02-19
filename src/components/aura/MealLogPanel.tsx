@@ -371,6 +371,11 @@ const LogRow = forwardRef<
                 className="h-full w-full object-contain object-center"
                 loading="lazy"
                 decoding="async"
+                fallback={
+                  <div className="flex h-full w-full items-center justify-center text-base">
+                    {item.emoji ?? "🍽️"}
+                  </div>
+                }
               />
             </div>
           ) : null}

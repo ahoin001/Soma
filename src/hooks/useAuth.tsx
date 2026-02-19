@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
+import type { Session } from "@supabase/supabase-js";
 import {
   clearStoredUserId,
   setUserId,
@@ -32,6 +33,21 @@ type AuthContextValue = AuthState & {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const SESSION_REFRESH_TIMEOUT_MS = 2500;
+
+const hasPendingAuthRedirect = (): boolean => {
+  if (typeof window === "undefined") return false;
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("code")) return true;
+    const hash = url.hash.startsWith("#") ? url.hash.slice(1) : url.hash;
+    if (!hash) return false;
+    const hashParams = new URLSearchParams(hash);
+    return hashParams.has("access_token") || hashParams.has("refresh_token");
+  } catch {
+    return false;
+  }
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<AuthState>({
@@ -40,53 +56,92 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     status: "loading",
   });
 
-  const refresh = useCallback(async () => {
-    const {
-      data: { session },
-      error,
-    } = await supabase.auth.getSession();
-    if (error) {
-      setState({ userId: null, email: null, status: "ready" });
-      return;
-    }
+  const applySession = useCallback((session: Session | null) => {
     const user = session?.user;
     const userId = user?.id ?? null;
     const email = user?.email ?? null;
     if (userId) setUserId(userId);
+    else clearStoredUserId();
     setState({ userId, email, status: "ready" });
   }, []);
 
+  const refresh = useCallback(async () => {
+    try {
+      const result = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<never>((_, reject) => {
+          window.setTimeout(() => {
+            reject(new Error("Supabase session check timed out"));
+          }, SESSION_REFRESH_TIMEOUT_MS);
+        }),
+      ]);
+      const {
+        data: { session },
+        error,
+      } = result;
+      if (error) {
+        clearStoredUserId();
+        setState({ userId: null, email: null, status: "ready" });
+        return;
+      }
+      applySession(session);
+    } catch {
+      clearStoredUserId();
+      setState({ userId: null, email: null, status: "ready" });
+    }
+  }, [applySession]);
+
   useEffect(() => {
     setSessionExpiredCallback(() => {
+      clearStoredUserId();
       setState({ userId: null, email: null, status: "ready" });
     });
     return () => setSessionExpiredCallback(null);
   }, []);
 
   useEffect(() => {
-    void finalizeSupabaseAuthRedirect();
+    let mounted = true;
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      const user = session?.user;
-      const userId = user?.id ?? null;
-      const email = user?.email ?? null;
-      if (userId) setUserId(userId);
-      else clearStoredUserId();
-      setState({ userId, email, status: "ready" });
+      if (!mounted) return;
+      applySession(session);
     });
-    void refresh();
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
+    const bootstrap = async () => {
+      // Fast path: read cached session first to avoid startup delays.
+      await refresh();
+      if (!mounted) return;
+      // Redirect finalization only blocks boot when auth params are present.
+      if (hasPendingAuthRedirect()) {
+        await finalizeSupabaseAuthRedirect();
+        if (!mounted) return;
+        await refresh();
+      } else {
         void finalizeSupabaseAuthRedirect();
       }
     };
-    document.addEventListener("visibilitychange", onVisibilityChange);
+    void bootstrap();
+    const onVisibilityChange = async () => {
+      if (document.visibilityState === "visible") {
+        if (hasPendingAuthRedirect()) {
+          await finalizeSupabaseAuthRedirect();
+          if (!mounted) return;
+        } else {
+          void finalizeSupabaseAuthRedirect();
+        }
+        await refresh();
+      }
+    };
+    const visibilityHandler = () => {
+      void onVisibilityChange();
+    };
+    document.addEventListener("visibilitychange", visibilityHandler);
     return () => {
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+      mounted = false;
+      document.removeEventListener("visibilitychange", visibilityHandler);
       subscription.unsubscribe();
     };
-  }, [refresh]);
+  }, [applySession, refresh]);
 
   const register = useCallback(
     async (payload: {

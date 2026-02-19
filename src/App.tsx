@@ -36,7 +36,6 @@ import { useRealtimeInvalidation } from "@/hooks/useRealtimeInvalidation";
 import { PageErrorBoundary } from "@/components/ErrorBoundary";
 import NotFound from "./pages/NotFound";
 import {
-  ensureUser,
   ensureMealTypes,
   fetchActivityGoals,
   fetchActiveFitnessSession,
@@ -116,8 +115,13 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 30 * 1000, // 30 seconds - data is fresh
       gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache
-      retry: (failureCount, error) =>
-        !(error instanceof SessionExpiredError) && failureCount < 3,
+      retry: (failureCount, error) => {
+        const isAuthError =
+          error instanceof SessionExpiredError ||
+          (error instanceof Error &&
+            /(unauthorized|jwt|auth|session expired)/i.test(error.message));
+        return !isAuthError && failureCount < 3;
+      },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
@@ -463,10 +467,7 @@ const AppPrefetch = () => {
     // Critical path: data needed for login → home (Nutrition diary + summary). Run immediately.
     const runCriticalPrefetch = async () => {
       try {
-        const [, mealTypes] = await Promise.all([
-          ensureUser(),
-          ensureMealTypes(),
-        ]);
+        const mealTypes = await ensureMealTypes();
         if (cancelled) return;
         queryClient.setQueryData(queryKeys.mealTypes, mealTypes);
         const meals: Meal[] = mealTypes.items.map((item) => ({
@@ -714,19 +715,31 @@ const AuthLoading = () => (
               </div>
 );
 
+const RedirectToAuth = () => {
+  const location = useLocation();
+  const from = `${location.pathname}${location.search}${location.hash}`;
+  return <Navigate to="/auth" replace state={{ from }} />;
+};
+
 const AuthRoute = () => {
   const auth = useAuth();
   const { defaultHome } = useUserSettings();
+  const location = useLocation();
 
   if (auth.status !== "ready") {
     return <AuthLoading />;
   }
 
+  const from = (location.state as { from?: string } | undefined)?.from;
+  const destination =
+    from && from !== "/auth"
+      ? from
+      : defaultHome === "fitness"
+        ? "/fitness"
+        : "/nutrition";
+
   return auth.userId ? (
-    <Navigate
-      to={defaultHome === "fitness" ? "/fitness" : "/nutrition"}
-      replace
-    />
+    <Navigate to={destination} replace />
   ) : (
     <Auth />
   );
@@ -754,7 +767,7 @@ const AppShellRoot = () => {
     <Suspense fallback={<AuthLoading />}>
       <Routes>
         <Route path="/auth" element={<Auth />} />
-        <Route path="*" element={<Navigate to="/auth" replace />} />
+        <Route path="*" element={<RedirectToAuth />} />
       </Routes>
     </Suspense>
   );

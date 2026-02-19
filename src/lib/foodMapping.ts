@@ -5,6 +5,7 @@
 import type { FoodRecord } from "@/types/api";
 import type { FoodItem } from "@/types/food";
 import { calculateMacroPercent } from "@/data/foodApi";
+import { normalizeFoodImageUrl } from "@/lib/foodImageUrl";
 
 export function recordToFoodItem(record: FoodRecord): FoodItem {
   const macros = {
@@ -27,7 +28,7 @@ export function recordToFoodItem(record: FoodRecord): FoodItem {
     emoji: "🍽️",
     barcode: record.barcode ?? undefined,
     source: record.is_global ? "api" : "local",
-    imageUrl: record.image_url ?? undefined,
+    imageUrl: normalizeFoodImageUrl(record.image_url) ?? undefined,
     micronutrients: record.micronutrients as Record<string, number | string> | undefined,
     macros,
     macroPercent: calculateMacroPercent(macros),

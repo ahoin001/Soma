@@ -12,8 +12,9 @@ import { useSheetManager } from "@/hooks/useSheetManager";
 import { calculateMacroPercent } from "@/data/foodApi";
 import type { LogItem } from "@/types/log";
 import { CREATED_FOOD_KEY, SHEET_ADD_FOOD_KEY } from "@/lib/storageKeys";
+import { normalizeFoodImageUrl } from "@/lib/foodImageUrl";
 import type { NutritionDraft } from "@/types/nutrition";
-import { ensureUser, fetchMealEntries } from "@/lib/api";
+import { fetchMealEntries } from "@/lib/api";
 import {
   matchesAllFoodTags,
   sortFoods,
@@ -302,7 +303,6 @@ const AddFood = () => {
 
     const loadRecent = async () => {
       try {
-        await ensureUser();
         const responses = await Promise.all(
           dates.map((date) => fetchMealEntries(date)),
         );
@@ -334,7 +334,7 @@ const AddFood = () => {
               portionGrams: item.portion_grams ?? undefined,
               kcal: Number(item.kcal ?? 0),
               emoji: selectedMeal?.emoji ?? "🍽️",
-              imageUrl: item.image_url ?? undefined,
+              imageUrl: normalizeFoodImageUrl(item.image_url) ?? undefined,
               source: "local",
               macros,
               macroPercent: calculateMacroPercent(macros),
@@ -379,7 +379,6 @@ const AddFood = () => {
     const loadYesterday = async () => {
       setIsLoadingYesterday(true);
       try {
-        await ensureUser();
         const { entries, items } = await fetchMealEntries(yesterdayLocal);
         const entryIds = new Set(
           entries
@@ -424,7 +423,7 @@ const AddFood = () => {
             portionGrams: item.portion_grams ?? undefined,
             kcal: Number(item.kcal ?? 0),
             emoji: selectedMeal?.emoji ?? "🍽️",
-            imageUrl: item.image_url ?? undefined,
+            imageUrl: normalizeFoodImageUrl(item.image_url) ?? undefined,
             source: "local",
             macros,
             macroPercent: calculateMacroPercent(macros),

@@ -360,6 +360,11 @@ const EditFood = () => {
                       src={currentFood.imageUrl}
                       alt={currentFood.name}
                       className="h-full w-full object-contain"
+                      fallback={
+                        <div className="flex h-full w-full items-center justify-center text-xl">
+                          {currentFood.emoji ?? "🍽️"}
+                        </div>
+                      }
                     />
                   </div>
                 </div>

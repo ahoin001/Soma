@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useUserSettings } from "@/state";
 
 /** Threshold for "near white" pixels to make transparent (0–255). */
@@ -68,6 +69,7 @@ type FoodImageProps = {
   containerClassName?: string;
   loading?: "lazy" | "eager";
   decoding?: "async" | "sync" | "auto";
+  fallback?: ReactNode;
 };
 
 /**
@@ -83,12 +85,14 @@ export function FoodImage({
   containerClassName,
   loading = "lazy",
   decoding = "async",
+  fallback,
 }: FoodImageProps) {
   const { foodImageBackground } = useUserSettings();
   const [processedSrc, setProcessedSrc] = useState<string | null>(() =>
     foodImageBackground === "transparent" ? processedUrlCache.get(src) ?? null : null,
   );
   const [useFallback, setUseFallback] = useState(false);
+  const [hasLoadError, setHasLoadError] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const isWhiteMode = foodImageBackground === "white";
@@ -97,11 +101,13 @@ export function FoodImage({
     if (isWhiteMode) {
       setProcessedSrc(null);
       setUseFallback(false);
+      setHasLoadError(false);
       return;
     }
 
     let cancelled = false;
     setUseFallback(false);
+    setHasLoadError(false);
     const cached = processedUrlCache.get(src);
     if (cached) {
       setProcessedSrc(cached);
@@ -127,6 +133,19 @@ export function FoodImage({
     ? `${baseSize} bg-white ${containerClassName ?? ""}`.trim()
     : `${baseSize} ${containerClassName ?? ""}`.trim();
 
+  if (hasLoadError) {
+    return (
+      <div ref={containerRef} className={wrapperClass || undefined}>
+        {fallback ?? (
+          <div className="flex h-full w-full items-center justify-center rounded-md bg-muted text-xl">
+            <span aria-hidden>🍽️</span>
+            <span className="sr-only">{alt}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div ref={containerRef} className={wrapperClass || undefined}>
       <img
@@ -135,6 +154,7 @@ export function FoodImage({
         className={className}
         loading={loading}
         decoding={decoding}
+        onError={() => setHasLoadError(true)}
       />
     </div>
   );

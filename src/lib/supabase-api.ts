@@ -26,6 +26,7 @@ import type {
 import type { ExerciseOverride } from "@/data/exerciseOverridesApi";
 import type { ExerciseMedia } from "@/data/exerciseMediaApi";
 import { USER_ID_KEY } from "@/lib/storageKeys";
+import { normalizeFoodImageUrl } from "@/lib/foodImageUrl";
 import { supabase } from "./supabase";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -124,7 +125,9 @@ export const fetchMealEntriesSupabase = async (localDate: string) => {
       (item as { food?: { image_url?: string | null } | null }).food?.image_url ?? null;
     return {
       ...item,
-      image_url: (item as { image_url?: string | null }).image_url ?? foodImage,
+      image_url: normalizeFoodImageUrl(
+        (item as { image_url?: string | null }).image_url ?? foodImage,
+      ),
     };
   });
   return {

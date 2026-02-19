@@ -1,6 +1,7 @@
 import type { Meal } from "@/data/mock";
 import type { MealEntryItemRecord, MealEntryRecord } from "@/types/api";
 import type { LogItem, LogSection } from "@/types/log";
+import { normalizeFoodImageUrl } from "@/lib/foodImageUrl";
 
 /** Coerce micronutrients from API (unknown) to Record<string, number> for per-serving values. */
 function toMicroRecord(raw: Record<string, unknown> | null | undefined): Record<string, number> | undefined {
@@ -88,7 +89,7 @@ export const computeLogSections = (
           macros: { carbs, protein, fat },
           micronutrients,
           emoji: mealEmoji,
-          imageUrl: item.image_url ?? null,
+          imageUrl: normalizeFoodImageUrl(item.image_url),
         };
       })
     );

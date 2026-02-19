@@ -33,14 +33,7 @@ export const getStoredUserId = (): string | null => {
 
 export const getUserId = () => {
   if (typeof window === "undefined") return null;
-  const existing = getStoredUserId();
-  if (existing) return existing;
-  const next =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `user_${Math.random().toString(36).slice(2, 10)}${Date.now()}`;
-  window.localStorage.setItem(USER_ID_KEY, next);
-  return next;
+  return getStoredUserId();
 };
 
 export const setUserId = (userId: string) => {
