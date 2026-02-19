@@ -13,6 +13,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { forwardRef, useMemo, useState } from "react";
 import { ListEmptyState } from "@/components/ui/empty-state";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { FoodImage } from "./FoodImage";
 import { MealIcon } from "./MealIcon";
 import { triggerActionHaptic, triggerToggleHaptic } from "@/lib/haptics";
@@ -361,10 +366,10 @@ const LogRow = forwardRef<
         animate={{ opacity: [0.2, 0.5, 0.2], scale: [1, 1.2, 1] }}
         transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
       />
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           {showFoodImages && item.imageUrl ? (
-            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-secondary">
+            <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-secondary">
               <FoodImage
                 src={item.imageUrl}
                 alt={item.name}
@@ -379,16 +384,23 @@ const LogRow = forwardRef<
               />
             </div>
           ) : null}
-          <span className="font-medium">{item.name}</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="min-w-0 truncate font-medium" title={item.name}>
+                {item.name}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[min(20rem,85vw)]">
+              <p className="break-words text-sm">{item.name}</p>
+            </TooltipContent>
+          </Tooltip>
           {showQuantity && (
-            <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-secondary-foreground">
+            <span className="shrink-0 rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-secondary-foreground">
               {quantityLabel}x
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-primary/90">{totalKcal} cal</span>
-        </div>
+        <span className="shrink-0 text-xs text-primary/90">{totalKcal} cal</span>
       </div>
     </motion.button>
   );

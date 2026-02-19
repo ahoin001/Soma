@@ -47,6 +47,9 @@ const ALL_TAGS: FoodTagId[] = [
   "high_fiber",
   "calorie_dense",
   "low_calorie",
+  "high_potassium",
+  "high_sodium",
+  "low_sodium",
 ];
 
 const parseSort = (value: string | null): FoodSortOption => {

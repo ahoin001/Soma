@@ -44,7 +44,7 @@ export const FoodList: FC<FoodListProps> = ({
             (food.id && loggedFoodIds?.has(food.id)) ||
             loggedFoodNames?.has(food.name.trim().toLowerCase());
           const canQuickRemove = isLogged && Boolean(onQuickRemove);
-          const tags = deriveFoodTags(food).slice(0, 3);
+          const tags = deriveFoodTags(food).slice(0, 6);
           return (
           <motion.div
             key={food.id}
@@ -83,7 +83,7 @@ export const FoodList: FC<FoodListProps> = ({
                     food.emoji
                   )}
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground">{food.name}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
@@ -105,15 +105,19 @@ export const FoodList: FC<FoodListProps> = ({
                         In {mealLabel}
                       </span>
                     ) : null}
-                    {tags.map((tag) => (
-                      <span
-                        key={`${food.id}:${tag}`}
-                        className="inline-flex items-center rounded-full border border-border/70 bg-secondary/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground"
-                      >
-                        {getFoodTagLabel(tag)}
-                      </span>
-                    ))}
                   </div>
+                  {tags.length > 0 ? (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      {tags.map((tag) => (
+                        <span
+                          key={`${food.id}:${tag}`}
+                          className="inline-flex items-center rounded-full border border-border/60 bg-secondary/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"
+                        >
+                          {getFoodTagLabel(tag)}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </button>
             </Pressable>

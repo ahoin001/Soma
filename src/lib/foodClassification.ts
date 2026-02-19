@@ -8,7 +8,10 @@ export type FoodTagId =
   | "low_fat"
   | "high_fiber"
   | "calorie_dense"
-  | "low_calorie";
+  | "low_calorie"
+  | "high_potassium"
+  | "high_sodium"
+  | "low_sodium";
 
 export type FoodSortOption =
   | "relevance"
@@ -42,6 +45,9 @@ const LOW_FAT_G = 3;
 const HIGH_FIBER_G = 5;
 const CALORIE_DENSE_KCAL = 400;
 const LOW_CALORIE_KCAL = 150;
+const HIGH_POTASSIUM_MG = 350;
+const HIGH_SODIUM_MG = 400;
+const LOW_SODIUM_MG = 140;
 
 const readFiber = (food: FoodItem): number | null => {
   const micros = food.micronutrients;
@@ -58,6 +64,32 @@ const readFiber = (food: FoodItem): number | null => {
     if (Number.isFinite(value) && value >= 0) {
       return value;
     }
+  }
+  return null;
+};
+
+const readPotassium = (food: FoodItem): number | null => {
+  const micros = food.micronutrients;
+  if (!micros) return null;
+  const candidates = [
+    micros.potassium_mg,
+    micros.potassium,
+    micros.potassiumMg,
+  ];
+  for (const raw of candidates) {
+    const value = Number(raw);
+    if (Number.isFinite(value) && value >= 0) return value;
+  }
+  return null;
+};
+
+const readSodium = (food: FoodItem): number | null => {
+  const micros = food.micronutrients;
+  if (!micros) return null;
+  const candidates = [micros.sodium_mg, micros.sodium, micros.sodiumMg];
+  for (const raw of candidates) {
+    const value = Number(raw);
+    if (Number.isFinite(value) && value >= 0) return value;
   }
   return null;
 };
@@ -116,6 +148,30 @@ export const FOOD_TAG_DEFINITIONS: FoodTagDefinition[] = [
     id: "low_calorie",
     label: "Low Calorie",
     matches: (food) => Number(food.kcal ?? 0) <= LOW_CALORIE_KCAL,
+  },
+  {
+    id: "high_potassium",
+    label: "High Potassium",
+    matches: (food) => {
+      const k = readPotassium(food);
+      return k !== null && k >= HIGH_POTASSIUM_MG;
+    },
+  },
+  {
+    id: "high_sodium",
+    label: "High Sodium",
+    matches: (food) => {
+      const na = readSodium(food);
+      return na !== null && na >= HIGH_SODIUM_MG;
+    },
+  },
+  {
+    id: "low_sodium",
+    label: "Low Sodium",
+    matches: (food) => {
+      const na = readSodium(food);
+      return na !== null && na <= LOW_SODIUM_MG;
+    },
   },
 ];
 
