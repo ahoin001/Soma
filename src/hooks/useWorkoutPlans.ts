@@ -18,6 +18,8 @@ import {
   setWorkoutPlansCache,
 } from "@/lib/fitnessCache";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 
 const createTempId = (prefix: string) => {
   if (typeof globalThis.crypto !== "undefined" && "randomUUID" in globalThis.crypto) {
@@ -27,6 +29,7 @@ const createTempId = (prefix: string) => {
 };
 
 export const useWorkoutPlans = () => {
+  const { userId } = useAuth();
   const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
   const [lastWorkoutByPlan, setLastWorkoutByPlan] = useState<
@@ -112,6 +115,21 @@ export const useWorkoutPlans = () => {
       void load();
     }
   }, [load, loaded]);
+
+  useRealtimeRefresh({
+    userId,
+    channelKey: "workout-plans",
+    subscriptions: [
+      { table: "workout_plans" },
+      { table: "workout_templates" },
+      { table: "workout_template_exercises" },
+      { table: "workout_sessions" },
+    ],
+    onRefresh: () => {
+      void refreshWorkoutPlans();
+    },
+    debounceMs: 220,
+  });
 
   useEffect(() => {
     plansRef.current = workoutPlans;

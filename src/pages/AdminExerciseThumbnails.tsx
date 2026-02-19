@@ -100,6 +100,7 @@ const AdminExerciseThumbnails = () => {
     try {
       const url = await uploadImageFile(file, (pct) =>
         setProgressById((prev) => ({ ...prev, [exerciseId]: pct })),
+        "exercises",
       );
       setDirty((prev) => ({ ...prev, [exerciseId]: url }));
       setNoticeById((prev) => ({ ...prev, [exerciseId]: "Thumbnail uploaded." }));

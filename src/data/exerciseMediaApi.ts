@@ -1,4 +1,9 @@
-import { buildApiUrl, ensureUser, getUserId } from "@/lib/api";
+import {
+  fetchExerciseMediaSupabase,
+  createExerciseMediaSupabase,
+  setExerciseMediaPrimarySupabase,
+  deleteExerciseMediaSupabase,
+} from "@/lib/supabase-api";
 
 export type ExerciseMedia = {
   id: string;
@@ -13,83 +18,30 @@ export type ExerciseMedia = {
 
 export const fetchExerciseMedia = async (
   exerciseName: string,
-  userId?: string,
-): Promise<ExerciseMedia[]> => {
-  const resolvedUserId = userId ?? getUserId() ?? undefined;
-  const params = new URLSearchParams({ exerciseName });
-  if (resolvedUserId) params.set("userId", resolvedUserId);
-  const response = await fetch(buildApiUrl(`/api/workouts/exercise-media?${params.toString()}`));
-  if (!response.ok) {
-    throw new Error("Failed to load exercise media.");
-  }
-  const data = (await response.json()) as { media: ExerciseMedia[] };
-  return data.media ?? [];
-};
+): Promise<ExerciseMedia[]> =>
+  fetchExerciseMediaSupabase(exerciseName);
 
 export const createExerciseMedia = async (payload: {
   exerciseName: string;
-  userId?: string;
   sourceType: "cloudinary" | "youtube" | "external";
   mediaUrl: string;
   thumbUrl?: string | null;
   isPrimary?: boolean;
-}) => {
-  await ensureUser();
-  const resolvedUserId = payload.userId ?? getUserId() ?? undefined;
-  const response = await fetch(buildApiUrl("/api/workouts/exercise-media"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(resolvedUserId ? { "x-user-id": resolvedUserId } : {}),
-    },
-    body: JSON.stringify({
-      ...payload,
-      userId: resolvedUserId,
-    }),
+}) =>
+  createExerciseMediaSupabase({
+    exerciseName: payload.exerciseName,
+    sourceType: payload.sourceType,
+    mediaUrl: payload.mediaUrl,
+    thumbUrl: payload.thumbUrl,
+    isPrimary: payload.isPrimary,
   });
-  if (!response.ok) {
-    throw new Error("Failed to save exercise media.");
-  }
-  return response.json() as Promise<{ media: ExerciseMedia }>;
-};
 
 export const setExerciseMediaPrimary = async (payload: {
   mediaId: string;
-  userId: string;
-}) => {
-  const resolvedUserId = payload.userId ?? getUserId() ?? "";
-  const response = await fetch(
-    buildApiUrl(`/api/workouts/exercise-media/${payload.mediaId}/primary`),
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        ...(resolvedUserId ? { "x-user-id": resolvedUserId } : {}),
-      },
-      body: JSON.stringify({ userId: resolvedUserId }),
-    },
-  );
-  if (!response.ok) {
-    throw new Error("Failed to update primary media.");
-  }
-  return response.json() as Promise<{ media: ExerciseMedia }>;
-};
+}) =>
+  setExerciseMediaPrimarySupabase(payload.mediaId);
 
 export const deleteExerciseMedia = async (payload: {
   mediaId: string;
-  userId: string;
-}) => {
-  const resolvedUserId = payload.userId ?? getUserId() ?? "";
-  const response = await fetch(buildApiUrl(`/api/workouts/exercise-media/${payload.mediaId}`), {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      ...(resolvedUserId ? { "x-user-id": resolvedUserId } : {}),
-    },
-    body: JSON.stringify({ userId: resolvedUserId }),
-  });
-  if (!response.ok) {
-    throw new Error("Failed to delete media.");
-  }
-  return response.json() as Promise<{ ok: boolean }>;
-};
+}) =>
+  deleteExerciseMediaSupabase(payload.mediaId);

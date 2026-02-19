@@ -27,6 +27,8 @@ import type {
   MealPlanTargetPresetRecord,
   MealPlanWeekAssignmentRecord,
 } from "@/types/api";
+import { useAuth } from "@/hooks/useAuth";
+import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 
 export type MealPlanSlot = "protein" | "carbs" | "balance";
 
@@ -176,6 +178,7 @@ const mapWeek = (row: MealPlanWeekAssignmentRecord): MealPlanWeekAssignment => (
 });
 
 export const useMealPlans = () => {
+  const { userId } = useAuth();
   const [groups, setGroups] = useState<MealPlanGroup[]>([]);
   const [days, setDays] = useState<MealPlanDay[]>([]);
   const [meals, setMeals] = useState<MealPlanMeal[]>([]);
@@ -211,6 +214,23 @@ export const useMealPlans = () => {
   useEffect(() => {
     reload();
   }, [reload]);
+
+  useRealtimeRefresh({
+    userId,
+    channelKey: "meal-plans",
+    subscriptions: [
+      { table: "meal_plan_groups" },
+      { table: "meal_plan_days" },
+      { table: "meal_plan_meals" },
+      { table: "meal_plan_items" },
+      { table: "meal_plan_week_assignments" },
+      { table: "meal_plan_target_presets" },
+    ],
+    onRefresh: () => {
+      void reload();
+    },
+    debounceMs: 250,
+  });
 
   const addDay = useCallback(
     async (payload: {

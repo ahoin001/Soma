@@ -6,7 +6,11 @@
  *
  * Import this file early in app initialization to register all handlers.
  */
-import { registerMutationHandler, type MutationType } from "./offlineQueue";
+import {
+  registerMutationDedupe,
+  registerMutationHandler,
+  type MutationType,
+} from "./offlineQueue";
 import {
   createFood,
   createMealEntry,
@@ -191,6 +195,41 @@ registerMutationHandler("food.toggleFavorite", async (payload) => {
   const { foodId, favorite } = payload as { foodId: string; favorite: boolean };
   await ensureUser();
   await toggleFoodFavorite(foodId, favorite);
+});
+
+// ============================================================================
+// Dedupe Strategies (latest-write-wins for idempotent updates)
+// ============================================================================
+
+registerMutationDedupe("nutrition.setGoal", (payload) => {
+  const p = payload as { localDate?: string };
+  return p.localDate ? `nutrition.setGoal:${p.localDate}` : "nutrition.setGoal";
+});
+
+registerMutationDedupe("nutrition.setMacroTargets", (payload) => {
+  const p = payload as { localDate?: string };
+  return p.localDate
+    ? `nutrition.setMacroTargets:${p.localDate}`
+    : "nutrition.setMacroTargets";
+});
+
+registerMutationDedupe("tracking.setSteps", (payload) => {
+  const p = payload as { localDate?: string };
+  return p.localDate ? `tracking.setSteps:${p.localDate}` : "tracking.setSteps";
+});
+
+registerMutationDedupe("tracking.setWaterTotal", (payload) => {
+  const p = payload as { localDate?: string };
+  return p.localDate
+    ? `tracking.setWaterTotal:${p.localDate}`
+    : "tracking.setWaterTotal";
+});
+
+registerMutationDedupe("tracking.updateStepsGoal", () => "tracking.updateStepsGoal");
+registerMutationDedupe("tracking.updateWaterGoal", () => "tracking.updateWaterGoal");
+registerMutationDedupe("food.toggleFavorite", (payload) => {
+  const p = payload as { foodId?: string };
+  return p.foodId ? `food.toggleFavorite:${p.foodId}` : null;
 });
 
 // ============================================================================

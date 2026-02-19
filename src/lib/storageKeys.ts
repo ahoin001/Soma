@@ -7,9 +7,6 @@
 export const USER_ID_KEY = "aurafit-user-id";
 export const SESSION_TOKEN_KEY = "aurafit-session-token";
 
-// Legacy apiClient (if still used)
-export const USER_KEY_LEGACY = "aura-user-id";
-
 // User & profile
 export const USER_PROFILE_KEY = "aurafit-user-profile-v1";
 export const FOOD_IMAGES_KEY = "aurafit-show-food-images";

@@ -40,6 +40,8 @@ export type PendingMutation = {
 
 type MutationHandler = (payload: unknown) => Promise<void>;
 
+type MutationDedupeKeyBuilder = (payload: unknown) => string | null;
+
 // ============================================================================
 // IndexedDB Setup
 // ============================================================================
@@ -227,6 +229,7 @@ export const clearAllMutations = async (): Promise<void> => {
 // ============================================================================
 
 const handlers = new Map<MutationType, MutationHandler>();
+const dedupeKeyBuilders = new Map<MutationType, MutationDedupeKeyBuilder>();
 
 /**
  * Register a handler for a mutation type
@@ -236,6 +239,42 @@ export const registerMutationHandler = (
   handler: MutationHandler
 ): void => {
   handlers.set(type, handler);
+};
+
+/**
+ * Optional: register a dedupe strategy for mutation types where latest state wins.
+ * Example: goal/steps updates can safely collapse older queued writes.
+ */
+export const registerMutationDedupe = (
+  type: MutationType,
+  getKey: MutationDedupeKeyBuilder,
+): void => {
+  dedupeKeyBuilders.set(type, getKey);
+};
+
+const compactMutations = (mutations: PendingMutation[]): PendingMutation[] => {
+  const latestByKey = new Map<string, PendingMutation>();
+
+  for (const mutation of mutations) {
+    const keyBuilder = dedupeKeyBuilders.get(mutation.type);
+    if (!keyBuilder) continue;
+    const key = keyBuilder(mutation.payload);
+    if (!key) continue;
+    const previous = latestByKey.get(key);
+    if (!previous || previous.createdAt <= mutation.createdAt) {
+      latestByKey.set(key, mutation);
+    }
+  }
+
+  const compacted = mutations.filter((mutation) => {
+    const keyBuilder = dedupeKeyBuilders.get(mutation.type);
+    if (!keyBuilder) return true;
+    const key = keyBuilder(mutation.payload);
+    if (!key) return true;
+    return latestByKey.get(key)?.id === mutation.id;
+  });
+
+  return compacted.sort((a, b) => a.createdAt - b.createdAt);
 };
 
 /**
@@ -260,7 +299,7 @@ export const processPendingMutations = async (options?: {
 }> => {
   const { onProgress, maxRetries = 3 } = options ?? {};
 
-  const mutations = await getPendingMutations();
+  const mutations = compactMutations(await getPendingMutations());
   let processed = 0;
   let failed = 0;
   let skipped = 0;

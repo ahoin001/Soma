@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { addGroceryBagItem, fetchGroceryBag, removeGroceryBagItem } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
+import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 
 export type GroceryBagItem = {
   id: string;
@@ -20,6 +22,7 @@ type GroceryBagPayload = {
 };
 
 export const useGroceryBag = () => {
+  const { userId } = useAuth();
   const [items, setItems] = useState<GroceryBagItem[]>([]);
   const [status, setStatus] = useState<GroceryBagState>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +45,16 @@ export const useGroceryBag = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  useRealtimeRefresh({
+    userId,
+    channelKey: "grocery-bag",
+    subscriptions: [{ table: "grocery_bag_items" }],
+    onRefresh: () => {
+      void load();
+    },
+    debounceMs: 180,
+  });
 
   const addItem = useCallback(async (payload: GroceryBagPayload) => {
     const data = await addGroceryBagItem(payload);

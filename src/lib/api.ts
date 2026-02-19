@@ -1,21 +1,22 @@
+/**
+ * Supabase API layer — thin re-export over supabase-api.ts.
+ * All consumers import from this file for a stable public interface.
+ */
+import * as sb from "@/lib/supabase-api";
+import { USER_ID_KEY } from "@/lib/storageKeys";
+import { supabase } from "@/lib/supabase";
+
 import type {
-  BrandRecord,
-  FoodRecord,
-  FoodServingRecord,
-  MealEntryItemRecord,
-  MealEntryRecord,
   MealPlanDayRecord,
   MealPlanGroupRecord,
   MealPlanItemRecord,
   MealPlanMealRecord,
   MealPlanTargetPresetRecord,
   MealPlanWeekAssignmentRecord,
-  MealTypeRecord,
 } from "@/types/api";
-import { notifySessionExpired } from "@/lib/sessionExpired";
-import { SESSION_TOKEN_KEY, USER_ID_KEY } from "@/lib/storageKeys";
 
-/** Thrown when the server returns 401. Auth layer clears session and shows sign-in. */
+// ─── errors ─────────────────────────────────────────────────────────────────
+
 export class SessionExpiredError extends Error {
   constructor() {
     super("Session expired");
@@ -23,79 +24,11 @@ export class SessionExpiredError extends Error {
   }
 }
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+// ─── session / user identity ────────────────────────────────────────────────
 
-/** Cookie backup so PWA / production survives app close and localStorage eviction. */
-const SESSION_COOKIE_NAME = "aurafit-session";
-const USER_ID_COOKIE_NAME = "aurafit-uid";
-const AUTH_COOKIE_MAX_AGE_DAYS = 90;
-
-const getCookie = (name: string): string | null => {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(
-    new RegExp("(?:^|;\\s*)" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "=([^;]*)")
-  );
-  const value = match ? decodeURIComponent(match[1]) : null;
-  return value || null;
-};
-
-const setCookie = (name: string, value: string | null) => {
-  if (typeof document === "undefined") return;
-  const secure = typeof location !== "undefined" && location.protocol === "https:";
-  const maxAge = value ? AUTH_COOKIE_MAX_AGE_DAYS * 24 * 60 * 60 : 0;
-  const parts = [
-    `${name}=${value ? encodeURIComponent(value) : ""}`,
-    "path=/",
-    "SameSite=Lax",
-    maxAge ? `max-age=${maxAge}` : "max-age=0",
-  ];
-  if (secure) parts.push("Secure");
-  document.cookie = parts.join("; ");
-};
-
-export const getSessionToken = (): string | null => {
-  if (typeof window === "undefined") return null;
-  const fromStorage = window.localStorage.getItem(SESSION_TOKEN_KEY);
-  if (fromStorage) return fromStorage;
-  const fromCookie = getCookie(SESSION_COOKIE_NAME);
-  if (fromCookie) {
-    window.localStorage.setItem(SESSION_TOKEN_KEY, fromCookie);
-    setCookie(SESSION_COOKIE_NAME, fromCookie);
-    return fromCookie;
-  }
-  return null;
-};
-
-export const setSessionToken = (token: string | null) => {
-  if (typeof window === "undefined") return;
-  if (token) {
-    window.localStorage.setItem(SESSION_TOKEN_KEY, token);
-    setCookie(SESSION_COOKIE_NAME, token);
-  } else {
-    window.localStorage.removeItem(SESSION_TOKEN_KEY);
-    setCookie(SESSION_COOKIE_NAME, null);
-  }
-};
-
-/** Use for any API path so VITE_API_BASE_URL (e.g. Render) is applied. */
-export const buildApiUrl = (path: string) => {
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  if (!API_BASE) return path;
-  return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
-};
-
-/** Read stored user id only; does not create one. For auth restore. Restores from cookie if localStorage was cleared. */
 export const getStoredUserId = (): string | null => {
   if (typeof window === "undefined") return null;
-  const fromStorage = window.localStorage.getItem(USER_ID_KEY);
-  if (fromStorage) return fromStorage;
-  const fromCookie = getCookie(USER_ID_COOKIE_NAME);
-  if (fromCookie) {
-    window.localStorage.setItem(USER_ID_KEY, fromCookie);
-    setCookie(USER_ID_COOKIE_NAME, fromCookie);
-    return fromCookie;
-  }
-  return null;
+  return window.localStorage.getItem(USER_ID_KEY);
 };
 
 export const getUserId = () => {
@@ -113,1110 +46,217 @@ export const getUserId = () => {
 export const setUserId = (userId: string) => {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(USER_ID_KEY, userId);
-  setCookie(USER_ID_COOKIE_NAME, userId);
 };
 
-/** Clear stored user id (e.g. on logout). Keeps PWA from showing stale "logged in" state. */
 export const clearStoredUserId = () => {
   if (typeof window === "undefined") return;
-  ensureUserCache = null;
   window.localStorage.removeItem(USER_ID_KEY);
-  setCookie(USER_ID_COOKIE_NAME, null);
 };
 
-const apiFetch = async <T>(path: string, options?: RequestInit) => {
-  const userId = getUserId();
-  const sessionToken = getSessionToken();
-  const headers = new Headers(options?.headers);
-  if (userId) {
-    headers.set("x-user-id", userId);
-  }
-  if (sessionToken) {
-    headers.set("Authorization", `Bearer ${sessionToken}`);
-  }
-  if (!headers.has("Content-Type") && options?.body) {
-    headers.set("Content-Type", "application/json");
-  }
+export const getSessionToken = (): string | null => null;
+export const setSessionToken = (_token: string | null) => {};
+export const buildApiUrl = (path: string) => path;
 
-  const response = await fetch(buildApiUrl(path), {
-    ...options,
-    credentials: "include",
-    headers,
-  });
+// ─── ensureUser ─────────────────────────────────────────────────────────────
 
-  if (response.status === 401) {
-    setSessionToken(null);
-    clearStoredUserId();
-    notifySessionExpired();
-    throw new SessionExpiredError();
-  }
+export const ensureUser = (displayName = "You") => sb.ensureUserSupabase(displayName);
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `Request failed: ${response.status}`);
-  }
+// ─── auth (Supabase Auth) ───────────────────────────────────────────────────
 
-  if (response.status === 204) {
-    return {} as T;
-  }
-
-  return (await response.json()) as T;
+export const fetchCurrentUser = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return { user: null };
+  return { user: { id: session.user.id, email: session.user.email ?? null, emailVerified: !!session.user.email_confirmed_at } };
 };
 
-/** In-memory cache so concurrent/serial ensureUser() calls in the same session share one request. */
-let ensureUserCache: {
-  userId: string;
-  promise: Promise<{ user: { id: string } } | null>;
-} | null = null;
-
-export const ensureUser = async (displayName = "You") => {
-  const userId = getStoredUserId();
-  if (!userId) return null;
-  if (ensureUserCache?.userId === userId) {
-    return ensureUserCache.promise;
-  }
-  const promise = apiFetch<{ user: { id: string } }>("/api/users/ensure", {
-    method: "POST",
-    body: JSON.stringify({ userId, displayName }),
-  });
-  ensureUserCache = { userId, promise };
-  return promise;
+export const registerUser = async (p: { email: string; password: string; displayName?: string }) => {
+  const { data, error } = await supabase.auth.signUp({ email: p.email, password: p.password, options: { data: { display_name: p.displayName } } });
+  if (error) throw new Error(error.message);
+  return { user: { id: data.user?.id ?? "" }, sessionToken: data.session?.access_token };
 };
 
-/**
- * Timeout for auth check so the app doesn't hang on slow/cold API.
- * PWA/Capacitor: keep low so we show auth quickly when server is unreachable.
- */
-const AUTH_ME_TIMEOUT_MS = 2500;
-
-export const fetchCurrentUser = async (): Promise<{
-  user: { id: string; email: string | null; emailVerified?: boolean } | null;
-}> => {
-  const userId = getUserId();
-  const sessionToken = getSessionToken();
-  const headers = new Headers();
-  if (userId) {
-    headers.set("x-user-id", userId);
-  }
-  if (sessionToken) {
-    headers.set("Authorization", `Bearer ${sessionToken}`);
-  }
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(
-    () => controller.abort(),
-    AUTH_ME_TIMEOUT_MS,
-  );
-  try {
-    const response = await fetch(buildApiUrl("/api/auth/me"), {
-      credentials: "include",
-      headers,
-      signal: controller.signal,
-    });
-    if (response.status === 401) {
-      setSessionToken(null);
-      clearStoredUserId();
-      return { user: null };
-    }
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || `Request failed: ${response.status}`);
-    }
-    return (await response.json()) as {
-      user: { id: string; email: string | null; emailVerified?: boolean } | null;
-    };
-  } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") {
-      setSessionToken(null);
-      clearStoredUserId();
-      return { user: null };
-    }
-    throw err;
-  } finally {
-    window.clearTimeout(timeoutId);
-  }
+export const loginUser = async (p: { email: string; password: string }) => {
+  const { data, error } = await supabase.auth.signInWithPassword({ email: p.email, password: p.password });
+  if (error) throw new Error(error.message);
+  return { user: { id: data.user.id, emailVerified: !!data.user.email_confirmed_at }, sessionToken: data.session.access_token };
 };
 
-export const fetchUserProfile = async () =>
-  apiFetch<{
-    profile: {
-      display_name: string;
-      sex: string | null;
-      dob: string | null;
-      height_cm: number | null;
-      units: string | null;
-      timezone: string | null;
-    } | null;
-  }>("/api/users/profile");
+export const logoutUser = async () => {
+  await supabase.auth.signOut();
+  return { ok: true };
+};
 
-export const registerUser = async (payload: {
-  email: string;
-  password: string;
-  displayName?: string;
-}) =>
-  apiFetch<{ user: { id: string }; sessionToken?: string; verificationToken?: string }>(
-    "/api/auth/register",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
+export const requestPasswordReset = async (p: { email: string }) => {
+  const { error } = await supabase.auth.resetPasswordForEmail(p.email);
+  if (error) throw new Error(error.message);
+  return { ok: true };
+};
 
-export const loginUser = async (payload: { email: string; password: string }) =>
-  apiFetch<{ user: { id: string; emailVerified?: boolean }; sessionToken?: string }>(
-    "/api/auth/login",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
+export const resetPassword = async (p: { token: string; newPassword: string }) => {
+  const { error } = await supabase.auth.updateUser({ password: p.newPassword });
+  if (error) throw new Error(error.message);
+  return { ok: true };
+};
 
-export const logoutUser = async () =>
-  apiFetch<{ ok: boolean }>("/api/auth/logout", {
-    method: "POST",
-  });
+export const requestEmailVerification = async (_p?: { email: string }) => ({ ok: true });
+export const verifyEmail = async (_p: { token: string }) => ({ ok: true });
 
-export const requestPasswordReset = async (payload: { email: string }) =>
-  apiFetch<{ ok: boolean; resetToken?: string }>("/api/auth/request-password-reset", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+// ─── user profile ───────────────────────────────────────────────────────────
 
-export const resetPassword = async (payload: { token: string; newPassword: string }) =>
-  apiFetch<{ ok: boolean }>("/api/auth/reset-password", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+export const fetchUserProfile = () => sb.fetchUserProfileSupabase();
+export const upsertUserProfile = (p: Parameters<typeof sb.upsertUserProfileSupabase>[0]) => sb.upsertUserProfileSupabase(p);
 
-export const requestEmailVerification = async (payload?: { email: string }) =>
-  apiFetch<{ ok: boolean; verificationToken?: string }>("/api/auth/request-email-verification", {
-    method: "POST",
-    body: JSON.stringify(payload ?? {}),
-  });
+// ─── exercises ──────────────────────────────────────────────────────────────
 
-export const verifyEmail = async (payload: { token: string }) =>
-  apiFetch<{ ok: boolean }>("/api/auth/verify-email", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+export const searchExercises = (query: string, _seed = false, scope: "all" | "mine" = "all") => sb.searchExercisesSupabase(query, _seed, scope);
+export const fetchExerciseByName = (name: string) => sb.fetchExerciseByNameSupabase(name);
+export const fetchExerciseById = (exerciseId: number) => sb.fetchExerciseByIdSupabase(exerciseId);
+export const fetchAdminExercises = (query = "", limit = 120) => sb.fetchAdminExercisesSupabase(query, limit);
+export const createExercise = (p: Parameters<typeof sb.createExerciseSupabase>[0]) => sb.createExerciseSupabase(p);
+export const updateExerciseMaster = (id: number, p: Parameters<typeof sb.updateExerciseMasterSupabase>[1]) => sb.updateExerciseMasterSupabase(id, p);
+export const deleteExercise = (exerciseId: number) => sb.deleteExerciseSupabase(exerciseId);
 
-export const searchExercises = async (
-  query: string,
-  _seed = false,
-  scope: "all" | "mine" = "all",
-) =>
-  apiFetch<{ items: Record<string, unknown>[] }>(
-    `/api/exercises/search?query=${encodeURIComponent(query)}&seed=false&scope=${scope}`,
-  );
+// ─── groceries ──────────────────────────────────────────────────────────────
 
-export const fetchExerciseByName = async (name: string) =>
-  apiFetch<{ exercise: Record<string, unknown> | null }>(
-    `/api/exercises/by-name?name=${encodeURIComponent(name)}`,
-  );
+export const fetchGroceryBag = () => sb.fetchGroceryBagSupabase();
+export const addGroceryBagItem = (p: Parameters<typeof sb.addGroceryBagItemSupabase>[0]) => sb.addGroceryBagItemSupabase(p);
+export const removeGroceryBagItem = (itemId: string) => sb.removeGroceryBagItemSupabase(itemId);
 
-export const fetchExerciseById = async (exerciseId: number) =>
-  apiFetch<{ exercise: Record<string, unknown> | null }>(
-    `/api/exercises/${exerciseId}`,
-  );
-
-export const fetchAdminExercises = async (query = "", limit = 120) =>
-  apiFetch<{ items: Record<string, unknown>[] }>(
-    `/api/exercises/admin?query=${encodeURIComponent(query)}&limit=${limit}`,
-  );
-
-export const createExercise = async (payload: {
-  name: string;
-  description?: string | null;
-  category?: string | null;
-  equipment?: string[] | null;
-  muscles?: string[] | null;
-  imageUrl?: string | null;
-}) =>
-  apiFetch<{ exercise: Record<string, unknown> }>("/api/exercises", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-export const updateExerciseMaster = async (
-  id: number,
-  payload: {
-    name?: string;
-    description?: string | null;
-    category?: string | null;
-    equipment?: string[] | null;
-    muscles?: string[] | null;
-    imageUrl?: string | null;
-  },
-) =>
-  apiFetch<{ exercise: Record<string, unknown> }>(`/api/exercises/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-
-export const deleteExercise = async (exerciseId: number) =>
-  apiFetch<{ ok: boolean }>(`/api/exercises/${exerciseId}`, {
-    method: "DELETE",
-  });
-
-export const fetchGroceryBag = async () =>
-  apiFetch<{ items: Array<{ id: string; name: string; bucket: string; macroGroup?: string | null; category?: string | null }> }>(
-    "/api/groceries",
-  );
-
-export const addGroceryBagItem = async (payload: {
-  name: string;
-  bucket: "staples" | "rotation" | "special";
-  macroGroup?: string | null;
-  category?: string | null;
-}) =>
-  apiFetch<{ item: { id: string } }>("/api/groceries", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-export const removeGroceryBagItem = async (itemId: string) =>
-  apiFetch<{ ok: boolean }>(`/api/groceries/${itemId}`, { method: "DELETE" });
-
-export const fetchMealPlans = async () =>
-  apiFetch<{
-    groups: MealPlanGroupRecord[];
-    days: MealPlanDayRecord[];
-    meals: MealPlanMealRecord[];
-    items: MealPlanItemRecord[];
-    weekAssignments: MealPlanWeekAssignmentRecord[];
-  }>("/api/meal-plans");
+// ─── meal plans ─────────────────────────────────────────────────────────────
 
 export type MealPlanTargetsInput = {
-  kcal?: number;
-  protein?: number;
-  carbs?: number;
-  fat?: number;
-  kcalMin?: number | null;
-  kcalMax?: number | null;
-  proteinMin?: number | null;
-  proteinMax?: number | null;
-  carbsMin?: number | null;
-  carbsMax?: number | null;
-  fatMin?: number | null;
-  fatMax?: number | null;
+  kcal?: number; protein?: number; carbs?: number; fat?: number;
+  kcalMin?: number | null; kcalMax?: number | null;
+  proteinMin?: number | null; proteinMax?: number | null;
+  carbsMin?: number | null; carbsMax?: number | null;
+  fatMin?: number | null; fatMax?: number | null;
 };
 
-export const createMealPlanDay = async (payload: {
-  name: string;
-  groupId?: string | null;
-  targets?: MealPlanTargetsInput;
-}) =>
-  apiFetch<{ day: MealPlanDayRecord; meals: MealPlanMealRecord[] }>("/api/meal-plans/days", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+export const fetchMealPlans = () => sb.fetchMealPlansSupabase() as Promise<{ groups: MealPlanGroupRecord[]; days: MealPlanDayRecord[]; meals: MealPlanMealRecord[]; items: MealPlanItemRecord[]; weekAssignments: MealPlanWeekAssignmentRecord[] }>;
+export const createMealPlanDay = (p: Parameters<typeof sb.createMealPlanDaySupabase>[0]) => sb.createMealPlanDaySupabase(p);
+export const updateMealPlanDay = (dayId: string, p: Parameters<typeof sb.updateMealPlanDaySupabase>[1]) => sb.updateMealPlanDaySupabase(dayId, p);
+export const fetchMealPlanPresets = () => sb.fetchMealPlanPresetsSupabase() as Promise<{ presets: MealPlanTargetPresetRecord[] }>;
+export const createMealPlanPreset = (p: Parameters<typeof sb.createMealPlanPresetSupabase>[0]) => sb.createMealPlanPresetSupabase(p);
+export const deleteMealPlanPreset = (presetId: string) => sb.deleteMealPlanPresetSupabase(presetId);
+export const createMealPlanGroup = (p: Parameters<typeof sb.createMealPlanGroupSupabase>[0]) => sb.createMealPlanGroupSupabase(p);
+export const updateMealPlanGroup = (groupId: string, p: Parameters<typeof sb.updateMealPlanGroupSupabase>[1]) => sb.updateMealPlanGroupSupabase(groupId, p);
+export const deleteMealPlanGroup = (groupId: string) => sb.deleteMealPlanGroupSupabase(groupId);
+export const duplicateMealPlanDay = (dayId: string, name?: string) => sb.duplicateMealPlanDaySupabase(dayId, name);
+export const deleteMealPlanDay = (dayId: string) => sb.deleteMealPlanDaySupabase(dayId);
+export const addMealPlanItem = (mealId: string, p: Parameters<typeof sb.addMealPlanItemSupabase>[1]) => sb.addMealPlanItemSupabase(mealId, p);
+export const updateMealPlanItem = (itemId: string, p: Parameters<typeof sb.updateMealPlanItemSupabase>[1]) => sb.updateMealPlanItemSupabase(itemId, p);
+export const deleteMealPlanItem = (itemId: string) => sb.deleteMealPlanItemSupabase(itemId);
+export const reorderMealPlanMeals = (dayId: string, mealIds: string[]) => sb.reorderMealPlanMealsSupabase(dayId, mealIds);
+export const reorderMealPlanItems = (mealId: string, itemIds: string[]) => sb.reorderMealPlanItemsSupabase(mealId, itemIds);
+export const applyMealPlanToWeekdays = (dayId: string | null, weekdays: number[]) => sb.applyMealPlanToWeekdaysSupabase(dayId, weekdays);
+export const clearMealPlanWeekday = (weekday: number) => sb.clearMealPlanWeekdaySupabase(weekday);
 
-export const updateMealPlanDay = async (
-  dayId: string,
-  payload: {
-    name?: string;
-    groupId?: string | null;
-    targets?: MealPlanTargetsInput;
-  },
-) =>
-  apiFetch<{ day: MealPlanDayRecord }>(`/api/meal-plans/days/${dayId}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
+// ─── meal types ─────────────────────────────────────────────────────────────
 
-export const fetchMealPlanPresets = async () =>
-  apiFetch<{ presets: MealPlanTargetPresetRecord[] }>("/api/meal-plans/presets");
+export const ensureMealTypes = () => sb.ensureMealTypesSupabase();
 
-export const createMealPlanPreset = async (payload: {
-  name: string;
-  targets: {
-    kcal: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    kcalMin?: number | null;
-    kcalMax?: number | null;
-    proteinMin?: number | null;
-    proteinMax?: number | null;
-    carbsMin?: number | null;
-    carbsMax?: number | null;
-    fatMin?: number | null;
-    fatMax?: number | null;
-  };
-}) =>
-  apiFetch<{ preset: MealPlanTargetPresetRecord }>("/api/meal-plans/presets", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+// ─── foods ──────────────────────────────────────────────────────────────────
 
-export const deleteMealPlanPreset = async (presetId: string) =>
-  apiFetch<{ ok: boolean }>(`/api/meal-plans/presets/${presetId}`, { method: "DELETE" });
+export const searchFoods = (query: string, limit = 20, external = true) => sb.searchFoodsSupabase(query, limit, external);
+export const fetchFoodByBarcode = (barcode: string) => sb.fetchFoodByBarcodeSupabase(barcode);
+export const fetchFoodServings = (foodId: string) => sb.fetchFoodServingsSupabase(foodId);
+export const createFoodServing = (foodId: string, p: Parameters<typeof sb.createFoodServingSupabase>[1]) => sb.createFoodServingSupabase(foodId, p);
+export const fetchFoodFavorites = () => sb.fetchFoodFavoritesSupabase();
+export const toggleFoodFavorite = (foodId: string, favorite: boolean) => sb.toggleFoodFavoriteSupabase(foodId, favorite);
+export const fetchFoodHistory = (limit = 20) => sb.fetchFoodHistorySupabase(limit);
+export const createFood = (p: Parameters<typeof sb.createFoodSupabase>[0]) => sb.createFoodSupabase(p);
+export const fetchFoodImageSignature = () => sb.fetchCloudinarySignatureSupabase();
+export const fetchFoodById = (foodId: string) => sb.fetchFoodByIdSupabase(foodId);
+export const updateFoodImage = (foodId: string, imageUrl: string) => sb.updateFoodImageSupabase(foodId, imageUrl);
+export const deleteFood = (foodId: string) => sb.deleteFoodSupabase(foodId);
+export const updateFoodMaster = (foodId: string, p: Parameters<typeof sb.updateFoodMasterSupabase>[1]) => sb.updateFoodMasterSupabase(foodId, p);
 
-export const createMealPlanGroup = async (payload: { name: string }) =>
-  apiFetch<{ group: MealPlanGroupRecord }>("/api/meal-plans/groups", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+// ─── brands ─────────────────────────────────────────────────────────────────
 
-export const updateMealPlanGroup = async (
-  groupId: string,
-  payload: { name?: string; sortOrder?: number },
-) =>
-  apiFetch<{ group: MealPlanGroupRecord | null }>(`/api/meal-plans/groups/${groupId}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
+export const fetchBrands = (query = "", verified = true, limit = 50) => sb.fetchBrandsSupabase(query, verified, limit);
+export const createBrand = (p: Parameters<typeof sb.createBrandSupabase>[0]) => sb.createBrandSupabase(p);
+export const updateBrand = (brandId: string, p: Parameters<typeof sb.updateBrandSupabase>[1]) => sb.updateBrandSupabase(brandId, p);
+export const fetchBrandLogoSignature = () => sb.fetchCloudinarySignatureSupabase();
 
-export const deleteMealPlanGroup = async (groupId: string) =>
-  apiFetch<{ ok: boolean }>(`/api/meal-plans/groups/${groupId}`, { method: "DELETE" });
+// ─── meal entries ───────────────────────────────────────────────────────────
 
-export const duplicateMealPlanDay = async (dayId: string, name?: string) =>
-  apiFetch<{
-    day: MealPlanDayRecord;
-    meals: MealPlanMealRecord[];
-    items: MealPlanItemRecord[];
-  }>(`/api/meal-plans/days/${dayId}/duplicate`, {
-    method: "POST",
-    body: JSON.stringify({ name }),
-  });
+export const createMealEntry = (p: Parameters<typeof sb.createMealEntrySupabase>[0]) => sb.createMealEntrySupabase(p);
+export const fetchMealEntries = (localDate: string) => sb.fetchMealEntriesSupabase(localDate);
+export const deleteMealEntryItem = (itemId: string) => sb.deleteMealEntryItemSupabase(itemId);
+export const updateMealEntryItem = (itemId: string, p: Parameters<typeof sb.updateMealEntryItemSupabase>[1]) => sb.updateMealEntryItemSupabase(itemId, p);
 
-export const deleteMealPlanDay = async (dayId: string) =>
-  apiFetch<{ ok: boolean }>(`/api/meal-plans/days/${dayId}`, { method: "DELETE" });
-
-export const addMealPlanItem = async (
-  mealId: string,
-  payload: {
-    foodId?: string | null;
-    foodName: string;
-    quantity?: number;
-    slot: "protein" | "carbs" | "balance";
-    kcal: number;
-    proteinG: number;
-    carbsG: number;
-    fatG: number;
-  },
-) =>
-  apiFetch<{ item: MealPlanItemRecord }>(`/api/meal-plans/meals/${mealId}/items`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-export const updateMealPlanItem = async (
-  itemId: string,
-  payload: {
-    quantity?: number;
-    slot?: "protein" | "carbs" | "balance";
-  },
-) =>
-  apiFetch<{ item: MealPlanItemRecord | null }>(`/api/meal-plans/items/${itemId}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-
-export const deleteMealPlanItem = async (itemId: string) =>
-  apiFetch<{ ok: boolean }>(`/api/meal-plans/items/${itemId}`, { method: "DELETE" });
-
-export const reorderMealPlanMeals = async (dayId: string, mealIds: string[]) =>
-  apiFetch<{ meals: MealPlanMealRecord[] }>(`/api/meal-plans/days/${dayId}/meals/reorder`, {
-    method: "PATCH",
-    body: JSON.stringify({ mealIds }),
-  });
-
-export const reorderMealPlanItems = async (mealId: string, itemIds: string[]) =>
-  apiFetch<{ items: MealPlanItemRecord[] }>(`/api/meal-plans/meals/${mealId}/items/reorder`, {
-    method: "PATCH",
-    body: JSON.stringify({ itemIds }),
-  });
-
-export const applyMealPlanToWeekdays = async (
-  dayId: string | null,
-  weekdays: number[],
-) =>
-  apiFetch<{ assignments: MealPlanWeekAssignmentRecord[] }>("/api/meal-plans/week-assignments", {
-    method: "POST",
-    body: JSON.stringify({ dayId, weekdays }),
-  });
-
-export const clearMealPlanWeekday = async (weekday: number) =>
-  apiFetch<{ ok: boolean }>(`/api/meal-plans/week-assignments/${weekday}`, {
-    method: "DELETE",
-  });
-
-export const upsertUserProfile = async (payload: {
-  displayName: string;
-  sex?: string | null;
-  dob?: string | null;
-  heightCm?: number | null;
-  units?: string | null;
-  timezone?: string | null;
-}) =>
-  apiFetch<{ profile: { user_id: string } }>("/api/users/profile", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-export const ensureMealTypes = async () => {
-  await apiFetch<{ ok: boolean }>("/api/meal-types/ensure", { method: "POST" });
-  return apiFetch<{ items: MealTypeRecord[] }>("/api/meal-types");
-};
-
-export const searchFoods = async (
-  query: string,
-  limit = 20,
-  external = true,
-) =>
-  apiFetch<{ items: FoodRecord[] }>(
-    `/api/foods/search?q=${encodeURIComponent(query)}&limit=${limit}&external=${external ? "true" : "false"}`,
-  );
-
-export const fetchFoodByBarcode = async (barcode: string) =>
-  apiFetch<{ item: FoodRecord | null }>(
-    `/api/foods/barcode/${encodeURIComponent(barcode)}`,
-  );
-
-export const fetchFoodServings = async (foodId: string) =>
-  apiFetch<{ servings: FoodServingRecord[] }>(
-    `/api/foods/${foodId}/servings`,
-  );
-
-export const createFoodServing = async (foodId: string, payload: { label: string; grams: number }) =>
-  apiFetch<{ serving: FoodServingRecord }>(`/api/foods/${foodId}/servings`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-export const fetchFoodFavorites = async () =>
-  apiFetch<{ items: FoodRecord[] }>("/api/foods/favorites");
-
-export const toggleFoodFavorite = async (foodId: string, favorite: boolean) =>
-  apiFetch<{ ok: boolean }>("/api/foods/favorites", {
-    method: "POST",
-    body: JSON.stringify({ foodId, favorite }),
-  });
-
-export const fetchFoodHistory = async (limit = 20) =>
-  apiFetch<{ items: FoodRecord[] }>(
-    `/api/foods/history?limit=${encodeURIComponent(String(limit))}`,
-  );
-
-export const createFood = async (payload: {
-  name: string;
-  brand?: string;
-  brandId?: string;
-  barcode?: string;
-  source?: string;
-  portionLabel?: string;
-  portionGrams?: number;
-  kcal: number;
-  carbsG: number;
-  proteinG: number;
-  fatG: number;
-  micronutrients?: Record<string, unknown>;
-  imageUrl?: string;
-}) =>
-  apiFetch<{ item: FoodRecord }>("/api/foods", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-export const fetchFoodImageSignature = async () =>
-  apiFetch<{
-    timestamp: number;
-    signature: string;
-    apiKey: string;
-    cloudName: string;
-    uploadPreset: string | null;
-  }>("/api/foods/image/signature");
-
-export const fetchFoodById = async (foodId: string) =>
-  apiFetch<{ item: FoodRecord | null }>(`/api/foods/${foodId}`);
-
-export const updateFoodImage = async (foodId: string, imageUrl: string) =>
-  apiFetch<{ item: FoodRecord | null }>(`/api/foods/${foodId}/image`, {
-    method: "PATCH",
-    body: JSON.stringify({ imageUrl }),
-  });
-
-export const deleteFood = async (foodId: string) =>
-  apiFetch<{ ok: boolean }>(`/api/foods/${foodId}`, { method: "DELETE" });
-
-export const updateFoodMaster = async (
-  foodId: string,
-  payload: {
-    name?: string;
-    brand?: string | null;
-    brandId?: string | null;
-    portionLabel?: string | null;
-    portionGrams?: number | null;
-    kcal?: number;
-    carbsG?: number;
-    proteinG?: number;
-    fatG?: number;
-    micronutrients?: Record<string, number | string>;
-  },
-) =>
-  apiFetch<{ item: FoodRecord | null }>(`/api/foods/${foodId}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-
-export const fetchBrands = async (query = "", verified = true, limit = 50) =>
-  apiFetch<{ items: BrandRecord[] }>(
-    `/api/brands?q=${encodeURIComponent(query)}&verified=${verified ? "true" : "false"}&limit=${limit}`,
-  );
-
-export const createBrand = async (payload: {
-  name: string;
-  websiteUrl?: string;
-  logoUrl?: string;
-}) =>
-  apiFetch<{ brand: BrandRecord }>("/api/brands", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-export const updateBrand = async (
-  brandId: string,
-  payload: {
-    name?: string;
-    websiteUrl?: string | null;
-    logoUrl?: string | null;
-    isVerified?: boolean;
-  },
-) =>
-  apiFetch<{ brand: BrandRecord | null }>(`/api/brands/${brandId}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-
-export const fetchBrandLogoSignature = async () =>
-  apiFetch<{
-    timestamp: number;
-    signature: string;
-    apiKey: string;
-    cloudName: string;
-    uploadPreset: string | null;
-  }>("/api/brands/logo/signature");
-
-export const createMealEntry = async (payload: {
-  localDate: string;
-  mealTypeId?: string;
-  notes?: string;
-  items: Array<{
-    foodId?: string;
-    foodName: string;
-    portionLabel?: string;
-    portionGrams?: number;
-    quantity?: number;
-    kcal?: number;
-    carbsG?: number;
-    proteinG?: number;
-    fatG?: number;
-    micronutrients?: Record<string, unknown>;
-    sortOrder?: number;
-  }>;
-}) =>
-  apiFetch<{ entry: MealEntryRecord; items: MealEntryItemRecord[] }>("/api/meal-entries", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-export const fetchMealEntries = async (localDate: string) =>
-  apiFetch<{ entries: MealEntryRecord[]; items: MealEntryItemRecord[] }>(
-    `/api/meal-entries?localDate=${encodeURIComponent(localDate)}`,
-  );
-
-export const deleteMealEntryItem = async (itemId: string) =>
-  apiFetch<{ deleted: string | null }>(`/api/meal-entries/items/${itemId}`, {
-    method: "DELETE",
-  });
-
-export const updateMealEntryItem = async (
-  itemId: string,
-  payload: {
-    quantity?: number;
-    kcal?: number;
-    carbsG?: number;
-    proteinG?: number;
-    fatG?: number;
-  },
-) =>
-  apiFetch<{ item: MealEntryItemRecord | null }>(`/api/meal-entries/items/${itemId}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
+// ─── nutrition ──────────────────────────────────────────────────────────────
 
 export type NutritionSummaryMicros = {
-  sodium_mg?: number;
-  fiber_g?: number;
-  sugar_g?: number;
-  added_sugar_g?: number;
-  potassium_mg?: number;
-  cholesterol_mg?: number;
-  saturated_fat_g?: number;
+  sodium_mg?: number; fiber_g?: number; sugar_g?: number; added_sugar_g?: number;
+  potassium_mg?: number; cholesterol_mg?: number; saturated_fat_g?: number;
 };
 
-export const fetchNutritionSummary = async (localDate: string) =>
-  apiFetch<{
-    localDate: string;
-    totals: { kcal: number; carbs_g: number; protein_g: number; fat_g: number };
-    micros?: NutritionSummaryMicros | null;
-    targets: {
-      kcal_goal: number | null;
-      carbs_g: number | null;
-      protein_g: number | null;
-      fat_g: number | null;
-    } | null;
-    settings: {
-      kcal_goal: number | null;
-      carbs_g: number | null;
-      protein_g: number | null;
-      fat_g: number | null;
-    } | null;
-  }>(`/api/nutrition/summary?localDate=${encodeURIComponent(localDate)}`);
+export const fetchNutritionSummary = (localDate: string) => sb.fetchNutritionSummarySupabase(localDate);
+export const fetchNutritionWeekly = (start: string) => sb.fetchNutritionWeeklySupabase(start);
+export const fetchNutritionStreak = () => sb.fetchNutritionStreakSupabase();
+export const fetchExternalSvgUrl = (url: string) => sb.fetchExternalSvgSupabase(url);
+export const upsertNutritionTargets = (p: Parameters<typeof sb.upsertNutritionTargetsSupabase>[0]) => sb.upsertNutritionTargetsSupabase(p);
+export const fetchNutritionSettings = () => sb.fetchNutritionSettingsSupabase();
+export const upsertNutritionSettings = (p: Parameters<typeof sb.upsertNutritionSettingsSupabase>[0]) => sb.upsertNutritionSettingsSupabase(p);
 
-export const fetchNutritionWeekly = async (start: string) =>
-  apiFetch<{ items: Array<{ day: string; kcal: number }> }>(
-    `/api/nutrition/weekly?start=${encodeURIComponent(start)}`,
-  );
+// ─── analytics ──────────────────────────────────────────────────────────────
 
-export const fetchNutritionStreak = async () =>
-  apiFetch<{ current: number; best: number }>("/api/nutrition/streak");
+export const fetchNutritionAnalytics = (days = 28) => sb.fetchNutritionAnalyticsSupabase(days);
+export const fetchTrainingAnalytics = (weeks = 8) => sb.fetchTrainingAnalyticsSupabase(weeks);
+export const fetchExerciseAnalytics = (exerciseId: number, days = 84) => sb.fetchExerciseAnalyticsSupabase(exerciseId, days);
+export const fetchMuscleAnalytics = (days = 84) => sb.fetchMuscleAnalyticsSupabase(days);
 
-/** Fetch external Label Insight SVG server-side (avoids CORS). Returns raw SVG string. */
-export const fetchExternalSvgUrl = async (url: string) => {
-  const { svg } = await apiFetch<{ svg: string }>("/api/nutrition/fetch-external-svg", {
-    method: "POST",
-    body: JSON.stringify({ url }),
-  });
-  return svg;
-};
+// ─── tracking (weight, steps, water) ────────────────────────────────────────
 
-export const upsertNutritionTargets = async (payload: {
-  localDate: string;
-  kcalGoal?: number;
-  carbsG?: number;
-  proteinG?: number;
-  fatG?: number;
-}) =>
-  apiFetch<{ target: { local_date: string } }>("/api/nutrition/targets", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+export const fetchWeightLogs = (options?: Parameters<typeof sb.fetchWeightLogsSupabase>[0]) => sb.fetchWeightLogsSupabase(options);
+export const fetchLatestWeightLog = () => sb.fetchLatestWeightLogSupabase();
+export const upsertWeightLog = (p: Parameters<typeof sb.upsertWeightLogSupabase>[0]) => sb.upsertWeightLogSupabase(p);
+export const deleteWeightLog = (localDate: string) => sb.deleteWeightLogSupabase(localDate);
+export const fetchStepsLogs = (localDate?: string) => sb.fetchStepsLogsSupabase(localDate);
+export const upsertStepsLog = (p: Parameters<typeof sb.upsertStepsLogSupabase>[0]) => sb.upsertStepsLogSupabase(p);
+export const fetchWaterLogs = (localDate?: string) => sb.fetchWaterLogsSupabase(localDate);
+export const upsertWaterLog = (p: Parameters<typeof sb.upsertWaterLogSupabase>[0]) => sb.upsertWaterLogSupabase(p);
+export const setWaterLogTotal = (p: Parameters<typeof sb.setWaterLogTotalSupabase>[0]) => sb.setWaterLogTotalSupabase(p);
+export const fetchActivityGoals = () => sb.fetchActivityGoalsSupabase();
+export const upsertActivityGoals = (p: Parameters<typeof sb.upsertActivityGoalsSupabase>[0]) => sb.upsertActivityGoalsSupabase(p);
 
-export const fetchNutritionSettings = async () =>
-  apiFetch<{
-    settings: {
-      kcal_goal: number | null;
-      carbs_g: number | null;
-      protein_g: number | null;
-      fat_g: number | null;
-    } | null;
-  }>("/api/nutrition/settings");
+// ─── workout plans ──────────────────────────────────────────────────────────
 
-export const upsertNutritionSettings = async (payload: {
-  kcalGoal?: number;
-  carbsG?: number;
-  proteinG?: number;
-  fatG?: number;
-}) =>
-  apiFetch<{ settings: { kcal_goal: number | null } }>("/api/nutrition/settings", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+export const fetchWorkoutPlans = () => sb.fetchWorkoutPlansSupabase();
+export const createWorkoutPlan = (p: Parameters<typeof sb.createWorkoutPlanSupabase>[0]) => sb.createWorkoutPlanSupabase(p);
+export const updateWorkoutPlan = (planId: string, p: Parameters<typeof sb.updateWorkoutPlanSupabase>[1]) => sb.updateWorkoutPlanSupabase(planId, p);
+export const deleteWorkoutPlan = (planId: string) => sb.deleteWorkoutPlanSupabase(planId);
+export const updateWorkoutTemplate = (templateId: string, p: Parameters<typeof sb.updateWorkoutTemplateSupabase>[1]) => sb.updateWorkoutTemplateSupabase(templateId, p);
+export const deleteWorkoutTemplate = (templateId: string) => sb.deleteWorkoutTemplateSupabase(templateId);
+export const createWorkoutTemplate = (p: Parameters<typeof sb.createWorkoutTemplateSupabase>[0]) => sb.createWorkoutTemplateSupabase(p);
+export const completeWorkoutTemplate = (templateId: string) => sb.completeWorkoutTemplateSupabase(templateId);
+export const updateWorkoutTemplateExercises = (templateId: string, exercises: Array<{ name: string; itemOrder: number }>) => sb.updateWorkoutTemplateExercisesSupabase(templateId, exercises);
 
-export const fetchNutritionAnalytics = async (days = 28) =>
-  apiFetch<{ days: number; average: number; items: Array<{ day: string; kcal: number }> }>(
-    `/api/analytics/nutrition?days=${encodeURIComponent(String(days))}`,
-  );
+// ─── fitness routines ───────────────────────────────────────────────────────
 
-export const fetchTrainingAnalytics = async (weeks = 8) =>
-  apiFetch<{
-    weeks: number;
-    items: Array<{ week_start: string; volume: number; total_sets: number }>;
-  }>(`/api/analytics/training?weeks=${encodeURIComponent(String(weeks))}`);
+export const fetchFitnessRoutines = () => sb.fetchFitnessRoutinesSupabase();
+export const createFitnessRoutine = (name: string) => sb.createFitnessRoutineSupabase(name);
+export const renameFitnessRoutine = (routineId: string, name: string) => sb.renameFitnessRoutineSupabase(routineId, name);
+export const deleteFitnessRoutine = (routineId: string) => sb.deleteFitnessRoutineSupabase(routineId);
+export const addFitnessRoutineExercise = (routineId: string, p: Parameters<typeof sb.addFitnessRoutineExerciseSupabase>[1]) => sb.addFitnessRoutineExerciseSupabase(routineId, p);
+export const updateFitnessRoutineExercise = (routineId: string, routineExerciseId: string, p: Parameters<typeof sb.updateFitnessRoutineExerciseSupabase>[2]) => sb.updateFitnessRoutineExerciseSupabase(routineId, routineExerciseId, p);
+export const removeFitnessRoutineExercise = (routineId: string, routineExerciseId: string) => sb.removeFitnessRoutineExerciseSupabase(routineId, routineExerciseId);
 
-export const fetchExerciseAnalytics = async (exerciseId: number, days = 84) =>
-  apiFetch<{
-    days: number;
-    items: Array<{
-      day: string;
-      total_sets: number;
-      total_volume_kg: number;
-      max_weight_kg: number;
-      est_one_rm_kg: number;
-    }>;
-  }>(
-    `/api/analytics/exercise?exerciseId=${encodeURIComponent(
-      String(exerciseId),
-    )}&days=${encodeURIComponent(String(days))}`,
-  );
+// ─── fitness sessions ───────────────────────────────────────────────────────
 
-export const fetchMuscleAnalytics = async (days = 84) =>
-  apiFetch<{
-    days: number;
-    items: Array<{
-      day: string;
-      muscle: string;
-      total_sets: number;
-      total_volume_kg: number;
-    }>;
-  }>(`/api/analytics/muscles?days=${encodeURIComponent(String(days))}`);
+export const fetchActiveFitnessSession = () => sb.fetchActiveFitnessSessionSupabase();
+export const fetchFitnessSessionHistory = () => sb.fetchFitnessSessionHistorySupabase();
+export const startFitnessSession = (p: Parameters<typeof sb.startFitnessSessionSupabase>[0]) => sb.startFitnessSessionSupabase(p);
+export const swapSessionExercise = (sessionId: string, sessionExerciseId: string, newExerciseId: number) => sb.swapSessionExerciseSupabase(sessionId, sessionExerciseId, newExerciseId);
+export const logFitnessSet = (p: Parameters<typeof sb.logFitnessSetSupabase>[0]) => sb.logFitnessSetSupabase(p);
+export const finishFitnessSession = (sessionId: string) => sb.finishFitnessSessionSupabase(sessionId);
 
-export const fetchWeightLogs = async (options?: {
-  start?: string;
-  end?: string;
-  limit?: number;
-}) => {
-  const params = new URLSearchParams();
-  if (options?.start) params.set("start", options.start);
-  if (options?.end) params.set("end", options.end);
-  if (options?.limit) params.set("limit", String(options.limit));
-  const query = params.toString();
-  return apiFetch<{ items: Array<{ local_date: string; weight: number; unit: string }> }>(
-    `/api/tracking/weight${query ? `?${query}` : ""}`,
-  );
-};
+// ─── journal (body measurements + progress photos) ──────────────────────────
 
-export const fetchLatestWeightLog = async () =>
-  apiFetch<{
-    entry: { local_date: string; weight: number; unit: string; logged_at: string } | null;
-  }>("/api/tracking/weight/latest");
-
-export const upsertWeightLog = async (payload: {
-  localDate: string;
-  weight: number;
-  unit: string;
-  notes?: string;
-}) =>
-  apiFetch<{ entry: { local_date: string; weight: number; unit: string } }>(
-    "/api/tracking/weight",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
-
-export const deleteWeightLog = async (localDate: string) =>
-  apiFetch<{ ok: boolean }>("/api/tracking/weight?localDate=" + encodeURIComponent(localDate), {
-    method: "DELETE",
-  });
-
-export const fetchStepsLogs = async (localDate?: string) => {
-  const query = localDate ? `?localDate=${encodeURIComponent(localDate)}` : "";
-  return apiFetch<{ items: Array<{ local_date: string; steps: number; source: string | null }> }>(
-    `/api/tracking/steps${query}`,
-  );
-};
-
-export const upsertStepsLog = async (payload: {
-  localDate: string;
-  steps: number;
-  source?: string;
-}) =>
-  apiFetch<{ entry: { local_date: string; steps: number } }>("/api/tracking/steps", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-export const fetchWaterLogs = async (localDate?: string) => {
-  const query = localDate ? `?localDate=${encodeURIComponent(localDate)}` : "";
-  return apiFetch<{ items: Array<{ local_date: string; amount_ml: number; source: string | null }> }>(
-    `/api/tracking/water${query}`,
-  );
-};
-
-export const upsertWaterLog = async (payload: {
-  localDate: string;
-  amountMl: number;
-  source?: string;
-}) =>
-  apiFetch<{ entry: { local_date: string; amount_ml: number } }>("/api/tracking/water", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-/** Replace all water entries for a day with a single absolute total. */
-export const setWaterLogTotal = async (payload: {
-  localDate: string;
-  totalMl: number;
-  source?: string;
-}) =>
-  apiFetch<{ entry: { local_date: string; amount_ml: number } | null; totalMl: number }>(
-    "/api/tracking/water/total",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
-
-export const fetchActivityGoals = async () =>
-  apiFetch<{ goals: { steps_goal: number | null; water_goal_ml: number | null; weight_unit: string | null } | null }>(
-    "/api/tracking/goals",
-  );
-
-export const upsertActivityGoals = async (payload: {
-  stepsGoal?: number;
-  waterGoalMl?: number;
-  weightUnit?: string;
-}) =>
-  apiFetch<{ goals: { steps_goal: number | null; water_goal_ml: number | null; weight_unit: string | null } }>(
-    "/api/tracking/goals",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
-
-export const fetchWorkoutPlans = async () =>
-  apiFetch<{
-    plans: Array<{ id: string; name: string; sort_order: number }>;
-    templates: Array<{
-      id: string;
-      plan_id: string;
-      name: string;
-      last_performed_at: string | null;
-      sort_order: number;
-    }>;
-    exercises: Array<{
-      id: string;
-      template_id: string;
-      exercise_id?: number | null;
-      exercise_name: string;
-      item_order: number;
-      alternates?: Array<{ id: number; name: string }>;
-    }>;
-  }>("/api/workouts/plans");
-
-export const createWorkoutPlan = async (payload: {
-  name: string;
-  sortOrder?: number;
-}) =>
-  apiFetch<{ plan: { id: string; name: string; sort_order: number } }>(
-    "/api/workouts/plans",
-    { method: "POST", body: JSON.stringify(payload) },
-  );
-
-export const updateWorkoutPlan = async (planId: string, payload: { name?: string; sortOrder?: number }) =>
-  apiFetch<{ plan: { id: string; name: string; sort_order: number } }>(
-    `/api/workouts/plans/${planId}`,
-    { method: "PATCH", body: JSON.stringify(payload) },
-  );
-
-export const deleteWorkoutPlan = async (planId: string) =>
-  apiFetch<{ ok: boolean }>(`/api/workouts/plans/${planId}`, { method: "DELETE" });
-
-export const updateWorkoutTemplate = async (
-  templateId: string,
-  payload: { name?: string; sortOrder?: number },
-) =>
-  apiFetch<{ template: { id: string; name: string } }>(
-    `/api/workouts/templates/${templateId}`,
-    { method: "PATCH", body: JSON.stringify(payload) },
-  );
-
-export const deleteWorkoutTemplate = async (templateId: string) =>
-  apiFetch<{ ok: boolean }>(`/api/workouts/templates/${templateId}`, {
-    method: "DELETE",
-  });
-
-export const createWorkoutTemplate = async (payload: {
-  planId: string;
-  name: string;
-  sortOrder?: number;
-}) =>
-  apiFetch<{ template: { id: string; plan_id: string; name: string } }>(
-    "/api/workouts/templates",
-    { method: "POST", body: JSON.stringify(payload) },
-  );
-
-export const completeWorkoutTemplate = async (templateId: string) =>
-  apiFetch<{ template: { id: string; last_performed_at: string | null } }>(
-    `/api/workouts/templates/${templateId}/complete`,
-    { method: "POST" },
-  );
-
-export const updateWorkoutTemplateExercises = async (
-  templateId: string,
-  exercises: Array<{ name: string; itemOrder: number }>,
-) =>
-  apiFetch<{ ok: boolean }>(`/api/workouts/templates/${templateId}/exercises`, {
-    method: "PUT",
-    body: JSON.stringify({
-      exercises: exercises.map((exercise) => ({
-        exerciseName: exercise.name,
-        itemOrder: exercise.itemOrder,
-      })),
-    }),
-  });
-
-export const fetchFitnessRoutines = async () =>
-  apiFetch<{
-    routines: Array<{ id: string; name: string; updated_at: string }>;
-    exercises: Array<{
-      id: string;
-      routine_id: string;
-      exercise_id: number | null;
-      exercise_name: string;
-      target_sets: number;
-      notes: string | null;
-    }>;
-  }>("/api/fitness/routines");
-
-export const createFitnessRoutine = async (name: string) =>
-  apiFetch<{ routine: { id: string; name: string } }>("/api/fitness/routines", {
-    method: "POST",
-    body: JSON.stringify({ name }),
-  });
-
-export const renameFitnessRoutine = async (routineId: string, name: string) =>
-  apiFetch<{ routine: { id: string; name: string } }>(
-    `/api/fitness/routines/${routineId}`,
-    { method: "PATCH", body: JSON.stringify({ name }) },
-  );
-
-export const deleteFitnessRoutine = async (routineId: string) =>
-  apiFetch<{ ok: boolean }>(`/api/fitness/routines/${routineId}`, { method: "DELETE" });
-
-export const addFitnessRoutineExercise = async (
-  routineId: string,
-  payload: { exerciseId?: number; name: string },
-) =>
-  apiFetch<{ exercise: { id: string } }>(`/api/fitness/routines/${routineId}/exercises`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-export const updateFitnessRoutineExercise = async (
-  routineId: string,
-  routineExerciseId: string,
-  payload: { targetSets?: number; notes?: string },
-) =>
-  apiFetch<{ exercise: { id: string } }>(
-    `/api/fitness/routines/${routineId}/exercises/${routineExerciseId}`,
-    { method: "PATCH", body: JSON.stringify(payload) },
-  );
-
-export const removeFitnessRoutineExercise = async (
-  routineId: string,
-  routineExerciseId: string,
-) =>
-  apiFetch<{ ok: boolean }>(
-    `/api/fitness/routines/${routineId}/exercises/${routineExerciseId}`,
-    { method: "DELETE" },
-  );
-
-export const fetchActiveFitnessSession = async () =>
-  apiFetch<{
-    session: { id: string; routine_id: string | null; started_at: string } | null;
-    exercises: Array<{
-      id: string;
-      exercise_id: number | null;
-      exercise_name: string;
-      item_order: number;
-      source_template_exercise_id?: string | null;
-    }>;
-    sets: Array<{ id: string; session_exercise_id: string; weight: number; reps: number }>;
-  }>("/api/fitness/sessions/active");
-
-export const fetchFitnessSessionHistory = async () =>
-  apiFetch<{
-    items: Array<{
-      id: string;
-      routine_id: string | null;
-      started_at: string;
-      ended_at: string;
-      total_sets: number;
-      total_volume: number;
-    }>;
-  }>("/api/fitness/sessions/history");
-
-export const startFitnessSession = async (payload: {
-  routineId?: string;
-  templateId?: string;
-  exercises?: string[];
-}) =>
-  apiFetch<{ session: { id: string } }>("/api/fitness/sessions", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-export const swapSessionExercise = async (
-  sessionId: string,
-  sessionExerciseId: string,
-  newExerciseId: number,
-) =>
-  apiFetch<{
-    exercise: { id: string; exercise_id: number | null; exercise_name: string; item_order: number; source_template_exercise_id?: string | null; substituted_from_template_exercise_id?: string | null };
-    lastPerformed: { weightDisplay: number | null; unitUsed: string; reps: number | null } | null;
-  }>(`/api/fitness/sessions/${sessionId}/exercises/${sessionExerciseId}/swap`, {
-    method: "POST",
-    body: JSON.stringify({ newExerciseId }),
-  });
-
-export const logFitnessSet = async (payload: {
-  sessionId: string;
-  sessionExerciseId: string;
-  weightDisplay?: number;
-  unitUsed?: "lb" | "kg";
-  reps?: number;
-  rpe?: number;
-  restSeconds?: number;
-}) =>
-  apiFetch<{ set: { id: string } }>(`/api/fitness/sessions/${payload.sessionId}/sets`, {
-    method: "POST",
-    body: JSON.stringify({
-      sessionExerciseId: payload.sessionExerciseId,
-      weightDisplay: payload.weightDisplay,
-      unitUsed: payload.unitUsed,
-      reps: payload.reps,
-      rpe: payload.rpe,
-      restSeconds: payload.restSeconds,
-    }),
-  });
-
-export const finishFitnessSession = async (sessionId: string) =>
-  apiFetch<{ session: { id: string } }>(`/api/fitness/sessions/${sessionId}/finish`, {
-    method: "POST",
-  });
-
-// ─── Journal (body measurements + progress photos) ────────────────────────
-export const fetchJournalMeasurements = async (params?: { type?: string; limit?: number }) => {
-  const search = new URLSearchParams();
-  if (params?.type) search.set("type", params.type);
-  if (params?.limit != null) search.set("limit", String(params.limit));
-  const q = search.toString();
-  return apiFetch<{ items: Array<{ id: string; measurement_type: string; value: number; unit: string; logged_at: string; notes?: string; created_at: string }> }>(
-    `/api/journal/measurements${q ? `?${q}` : ""}`,
-  );
-};
-
-export const fetchJournalMeasurementsLatest = async () =>
-  apiFetch<{ items: Array<{ id: string; measurement_type: string; value: number; unit: string; logged_at: string }> }>(
-    "/api/journal/measurements/latest",
-  );
-
-export const createJournalMeasurement = async (payload: {
-  measurement_type: string;
-  value: number;
-  unit?: string;
-  logged_at?: string;
-  notes?: string;
-}) =>
-  apiFetch<{ entry: { id: string; measurement_type: string; value: number; unit: string; logged_at: string; notes?: string; created_at: string } }>(
-    "/api/journal/measurements",
-    { method: "POST", body: JSON.stringify(payload) },
-  );
-
-export const fetchProgressPhotos = async (limit?: number) =>
-  apiFetch<{ items: Array<{ id: string; image_url: string; taken_at: string; note?: string; created_at: string }> }>(
-    `/api/journal/photos${limit != null ? `?limit=${limit}` : ""}`,
-  );
-
-export const createProgressPhoto = async (payload: { image_url: string; taken_at?: string; note?: string }) =>
-  apiFetch<{ photo: { id: string; image_url: string; taken_at: string; note?: string; created_at: string } }>(
-    "/api/journal/photos",
-    { method: "POST", body: JSON.stringify(payload) },
-  );
-
-export const deleteProgressPhoto = async (id: string) =>
-  apiFetch(`/api/journal/photos/${id}`, { method: "DELETE" });
+export const fetchJournalMeasurements = (params?: Parameters<typeof sb.fetchJournalMeasurementsSupabase>[0]) => sb.fetchJournalMeasurementsSupabase(params);
+export const fetchJournalMeasurementsLatest = () => sb.fetchJournalMeasurementsLatestSupabase();
+export const createJournalMeasurement = (p: Parameters<typeof sb.createJournalMeasurementSupabase>[0]) => sb.createJournalMeasurementSupabase(p);
+export const fetchProgressPhotos = (limit?: number) => sb.fetchProgressPhotosSupabase(limit);
+export const createProgressPhoto = (p: Parameters<typeof sb.createProgressPhotoSupabase>[0]) => sb.createProgressPhotoSupabase(p);
+export const deleteProgressPhoto = (id: string) => sb.deleteProgressPhotoSupabase(id);

@@ -572,7 +572,6 @@ export const ExerciseGuideSheet = ({
                       setSaving(true);
                       const response = await setExerciseMediaPrimary({
                         mediaId: selectedItem.id,
-                        userId,
                       });
                       setMediaItems((prev) =>
                         prev.map((item) =>
@@ -620,7 +619,6 @@ export const ExerciseGuideSheet = ({
                       setSaving(true);
                       await deleteExerciseMedia({
                         mediaId: selectedItem.id,
-                        userId,
                       });
                       const nextItems = mediaItems.filter(
                         (item) => item.id !== selectedItem.id,
@@ -866,7 +864,7 @@ export const ExerciseGuideSheet = ({
                         setThumbnailUploading(true);
                         setThumbnailProgress(0);
                         setThumbnailNotice(null);
-                        uploadImageFile(file, setThumbnailProgress)
+                        uploadImageFile(file, setThumbnailProgress, "exercises")
                           .then((url) => {
                             setMasterImageUrl(url);
                             setThumbnailNotice("Thumbnail uploaded.");
@@ -1036,7 +1034,6 @@ export const ExerciseGuideSheet = ({
                             exercise.guideUrl.includes("youtu.be");
                           const response = await createExerciseMedia({
                             exerciseName: exercise.name,
-                            userId,
                             sourceType: isYouTube ? "youtube" : "external",
                             mediaUrl: exercise.guideUrl,
                             isPrimary: true,
@@ -1139,7 +1136,6 @@ export const ExerciseGuideSheet = ({
                           onUpdate({ customVideoName: file.name });
                           const saved = await createExerciseMedia({
                             exerciseName: exercise.name,
-                            userId,
                             sourceType: "cloudinary",
                             mediaUrl: data.secure_url,
                             thumbUrl: data.secure_url,

@@ -1,4 +1,7 @@
-import { buildApiUrl, getUserId } from "@/lib/api";
+import {
+  fetchExerciseOverrideSupabase,
+  saveExerciseOverrideSupabase,
+} from "@/lib/supabase-api";
 
 export type ExerciseOverride = {
   id: string;
@@ -11,41 +14,16 @@ export type ExerciseOverride = {
 
 export const fetchExerciseOverride = async (
   exerciseName: string,
-  userId?: string,
-): Promise<ExerciseOverride | null> => {
-  const resolvedUserId = userId ?? getUserId();
-  if (!resolvedUserId) return null;
-  const params = new URLSearchParams({ exerciseName, userId: resolvedUserId });
-  const response = await fetch(
-    buildApiUrl(`/api/workouts/exercise-overrides?${params.toString()}`),
-  );
-  if (!response.ok) {
-    throw new Error("Failed to load exercise overrides.");
-  }
-  const data = (await response.json()) as { override: ExerciseOverride | null };
-  return data.override ?? null;
-};
+): Promise<ExerciseOverride | null> =>
+  fetchExerciseOverrideSupabase(exerciseName);
 
 export const saveExerciseOverride = async (payload: {
   exerciseName: string;
-  userId?: string;
   steps?: string[] | null;
   guideUrl?: string | null;
-}) => {
-  const resolvedUserId = payload.userId ?? getUserId();
-  if (!resolvedUserId) {
-    throw new Error("User ID is required to save overrides.");
-  }
-  const response = await fetch(buildApiUrl("/api/workouts/exercise-overrides"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ...payload,
-      userId: resolvedUserId,
-    }),
+}) =>
+  saveExerciseOverrideSupabase({
+    exerciseName: payload.exerciseName,
+    steps: payload.steps,
+    guideUrl: payload.guideUrl,
   });
-  if (!response.ok) {
-    throw new Error("Failed to save exercise override.");
-  }
-  return response.json() as Promise<{ override: ExerciseOverride }>;
-};

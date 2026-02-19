@@ -32,6 +32,7 @@ import {
   PageTransition,
 } from "@/components/aura";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { useRealtimeInvalidation } from "@/hooks/useRealtimeInvalidation";
 import { PageErrorBoundary } from "@/components/ErrorBoundary";
 import NotFound from "./pages/NotFound";
 import {
@@ -409,6 +410,50 @@ const AppPrefetch = () => {
   const auth = useAuth();
   const { defaultHome } = useUserSettings();
   const queryClient = useQueryClient();
+
+  useRealtimeInvalidation(auth.userId, [
+    {
+      table: "meal_entry_items",
+      queryTargets: [
+        { queryKey: ["nutrition"], exact: false },
+        { queryKey: queryKeys.foodHistory },
+      ],
+    },
+    {
+      table: "meal_entries",
+      queryTargets: [{ queryKey: ["nutrition"], exact: false }],
+    },
+    {
+      table: "user_food_favorites",
+      queryTargets: [{ queryKey: queryKeys.foodFavorites }],
+    },
+    {
+      table: "weight_logs",
+      queryTargets: [{ queryKey: queryKeys.trackingWeight }],
+    },
+    {
+      table: "steps_logs",
+      queryTargets: [{ queryKey: ["trackingSteps"], exact: false }],
+    },
+    {
+      table: "water_logs",
+      queryTargets: [{ queryKey: ["trackingWater"], exact: false }],
+    },
+    {
+      table: "user_activity_goals",
+      queryTargets: [
+        { queryKey: ["trackingSteps"], exact: false },
+        { queryKey: ["trackingWater"], exact: false },
+      ],
+    },
+    {
+      table: "workout_sessions",
+      queryTargets: [
+        { queryKey: queryKeys.fitnessSession },
+        { queryKey: queryKeys.fitnessHistory },
+      ],
+    },
+  ]);
 
   useEffect(() => {
     if (auth.status !== "ready" || !auth.userId) return;

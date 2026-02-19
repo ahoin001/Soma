@@ -84,7 +84,7 @@ const FitnessJournalPhotos = () => {
     }
     setUploading(true);
     try {
-      const url = await uploadImageFile(file);
+      const url = await uploadImageFile(file, undefined, "progress");
       createMutation.mutate({
         image_url: url,
         taken_at: new Date().toISOString(),

@@ -278,7 +278,7 @@ const AddExerciseToWorkout = () => {
                     setThumbnailUploading(true);
                     setThumbnailProgress(0);
                     setThumbnailNotice(null);
-                    uploadImageFile(file, setThumbnailProgress)
+                    uploadImageFile(file, setThumbnailProgress, "exercises")
                       .then((url) => {
                         setThumbnailUrl(url);
                         setThumbnailNotice("Thumbnail uploaded.");
