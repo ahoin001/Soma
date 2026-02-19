@@ -19,16 +19,12 @@ import {
 import { useNutritionTrend } from "@/hooks/useNutritionTrend";
 import { useWeightLogs } from "@/hooks/useTracking";
 import { useRememberedTab } from "@/hooks/useRememberedTab";
-import { progressQuerySchema } from "@/lib/routeSchemas";
+import { progressQueryDefaults, progressQuerySchema } from "@/lib/routeSchemas";
 import { useRouteQueryState } from "@/hooks/useRouteQueryState";
 
 const Progress = () => {
   const { query, mergeQueryState } = useRouteQueryState(progressQuerySchema, {
-    defaults: {
-      chart: "weight",
-      range: "14",
-      micro: "sodium_mg",
-    },
+    defaults: progressQueryDefaults,
   });
   const { entries, addEntry, removeEntry } = useWeightLogs();
   const [weight, setWeight] = useState("");

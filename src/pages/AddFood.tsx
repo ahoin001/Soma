@@ -13,6 +13,7 @@ import { calculateMacroPercent } from "@/data/foodApi";
 import type { LogItem } from "@/types/log";
 import { CREATED_FOOD_KEY, SHEET_ADD_FOOD_KEY } from "@/lib/storageKeys";
 import { normalizeFoodImageUrl } from "@/lib/foodImageUrl";
+import { normalizeMicroRecord } from "@/lib/nutritionData";
 import type { NutritionDraft } from "@/types/nutrition";
 import { fetchMealEntries } from "@/lib/api";
 import { useRememberedTab } from "@/hooks/useRememberedTab";
@@ -22,7 +23,11 @@ import {
   type FoodSortOption,
   type FoodTagId,
 } from "@/lib/foodClassification";
-import { addFoodQuerySchema, FOOD_SORTS } from "@/lib/routeSchemas";
+import {
+  addFoodQueryDefaults,
+  addFoodQuerySchema,
+  FOOD_SORTS,
+} from "@/lib/routeSchemas";
 import { setQueryFromState } from "@/lib/routeQuery";
 import { useSheetRouteState } from "@/hooks/useSheetRouteState";
 
@@ -34,6 +39,30 @@ type LocationState = {
 
 const ALL_SORTS: FoodSortOption[] = [...FOOD_SORTS] as FoodSortOption[];
 
+const extractEntryMicronutrients = (item: Record<string, unknown>) =>
+  normalizeMicroRecord({
+    ...((item.micronutrients as Record<string, unknown> | null | undefined) ?? {}),
+    fiber_g: item.fiber_g,
+    sugar_g: item.sugar_g,
+    added_sugar_g: item.added_sugar_g,
+    sodium_mg: item.sodium_mg,
+    potassium_mg: item.potassium_mg,
+    cholesterol_mg: item.cholesterol_mg,
+    saturated_fat_g: item.saturated_fat_g,
+    trans_fat_g: item.trans_fat_g,
+    calcium_mg: item.calcium_mg,
+    iron_mg: item.iron_mg,
+    magnesium_mg: item.magnesium_mg,
+    zinc_mg: item.zinc_mg,
+    vitamin_d_mcg: item.vitamin_d_mcg,
+    vitamin_c_mg: item.vitamin_c_mg,
+    vitamin_a_mcg: item.vitamin_a_mcg,
+    vitamin_b12_mcg: item.vitamin_b12_mcg,
+    folate_mcg: item.folate_mcg,
+    omega3_g: item.omega3_g,
+    omega6_g: item.omega6_g,
+  });
+
 const AddFood = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,10 +73,7 @@ const AddFood = () => {
     openRouteSheet,
     closeRouteSheet,
   } = useSheetRouteState(addFoodQuerySchema, {
-      defaults: {
-        tab: "recent",
-        sort: "relevance",
-      },
+      defaults: addFoodQueryDefaults,
     });
   const state = (location.state ?? {}) as LocationState;
   const returnTo = queryState.returnTo ?? "/nutrition";
@@ -153,6 +179,7 @@ const AddFood = () => {
           emoji: item.emoji ?? "🍽️",
           imageUrl: item.imageUrl ?? undefined,
           source: "local",
+          micronutrients: item.micronutrients ?? undefined,
           macros,
           macroPercent: calculateMacroPercent(macros),
         });
@@ -405,6 +432,7 @@ const AddFood = () => {
               emoji: selectedMeal?.emoji ?? "🍽️",
               imageUrl: normalizeFoodImageUrl(item.image_url) ?? undefined,
               source: "local",
+              micronutrients: extractEntryMicronutrients(item as unknown as Record<string, unknown>),
               macros,
               macroPercent: calculateMacroPercent(macros),
             };
@@ -494,6 +522,7 @@ const AddFood = () => {
             emoji: selectedMeal?.emoji ?? "🍽️",
             imageUrl: normalizeFoodImageUrl(item.image_url) ?? undefined,
             source: "local",
+            micronutrients: extractEntryMicronutrients(item as unknown as Record<string, unknown>),
             macros,
             macroPercent: calculateMacroPercent(macros),
           };

@@ -8,6 +8,7 @@ import { RecompArticleBody } from "@/components/aura/articles/RecompArticleBody"
 import { SkinnyFatToLeanArticleBody } from "@/components/aura/articles/SkinnyFatToLeanArticleBody";
 import { SodiumSharpFaceArticleBody } from "@/components/aura/articles/SodiumSharpFaceArticleBody";
 import { SugarSharpFaceArticleBody } from "@/components/aura/articles/SugarSharpFaceArticleBody";
+import { VisceralFatDebloatGroceriesArticleBody } from "@/components/aura/articles/VisceralFatDebloatGroceriesArticleBody";
 
 export type GuideArticle = {
   id: string;
@@ -65,5 +66,13 @@ export const guideArticles: GuideArticle[] = [
       "AHA-backed added-sugar limits, why 25g helps recomp, insulin and glycogen water retention, and traps like protein bars and sauces.",
     category: "Nutrition",
     body: <SugarSharpFaceArticleBody />,
+  },
+  {
+    id: "visceral-fat-debloat-groceries",
+    title: "Visceral Fat + De-Bloat Grocery Strategy",
+    description:
+      "How to structure berries, fiber, potassium-rich carbs, and gut-friendly foods for a high-protein cut without overcomplicating your plan.",
+    category: "Nutrition",
+    body: <VisceralFatDebloatGroceriesArticleBody />,
   },
 ];

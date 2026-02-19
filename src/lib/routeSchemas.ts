@@ -42,15 +42,26 @@ export const guidesQuerySchema = {
   tab: enumParam(GUIDE_TABS),
   article: stringParam(),
 };
+export const guidesQueryDefaults = {
+  tab: "groceries" as const,
+};
 
 export const goalsQuerySchema = {
   section: enumParam(GOALS_SECTIONS),
+};
+export const goalsQueryDefaults = {
+  section: "energy" as const,
 };
 
 export const progressQuerySchema = {
   chart: enumParam(PROGRESS_CHARTS),
   range: enumParam(PROGRESS_RANGES),
   micro: enumParam(PROGRESS_MICROS),
+};
+export const progressQueryDefaults = {
+  chart: "weight" as const,
+  range: "14" as const,
+  micro: "sodium_mg" as const,
 };
 
 export const addFoodQuerySchema = {
@@ -63,6 +74,10 @@ export const addFoodQuerySchema = {
   sheet: enumParam(ADD_FOOD_SHEETS),
   foodId: stringParam(),
   sheetItemId: stringParam(),
+};
+export const addFoodQueryDefaults = {
+  tab: "recent" as const,
+  sort: "relevance" as const,
 };
 
 export const nutritionQuerySchema = {

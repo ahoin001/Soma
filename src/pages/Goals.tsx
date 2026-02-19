@@ -81,7 +81,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRememberedTab } from "@/hooks/useRememberedTab";
-import { goalsQuerySchema } from "@/lib/routeSchemas";
+import { goalsQueryDefaults, goalsQuerySchema } from "@/lib/routeSchemas";
 import { useRouteQueryState } from "@/hooks/useRouteQueryState";
 
 const cmToImperial = (cm: number) => {
@@ -370,7 +370,7 @@ const Goals = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { query, mergeQueryState } = useRouteQueryState(goalsQuerySchema, {
-    defaults: { section: "energy" },
+    defaults: goalsQueryDefaults,
   });
   const [goalType, setGoalType] = useState<GoalType>("balance");
   const [sex, setSex] = useState<Sex>("female");

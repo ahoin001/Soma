@@ -9,14 +9,14 @@ import { Button } from "@/components/ui/button";
 import { useRememberedTab } from "@/hooks/useRememberedTab";
 import { useRememberedState } from "@/hooks/useRememberedState";
 import { useEffect } from "react";
-import { guidesQuerySchema } from "@/lib/routeSchemas";
+import { guidesQueryDefaults, guidesQuerySchema } from "@/lib/routeSchemas";
 import { useRouteQueryState } from "@/hooks/useRouteQueryState";
 
 type TabId = "groceries" | "plans" | "articles";
 
 const Guides = () => {
   const { query, mergeQueryState } = useRouteQueryState(guidesQuerySchema, {
-    defaults: { tab: "groceries" },
+    defaults: guidesQueryDefaults,
   });
   const [tab, setTab] = useRememberedTab<TabId>({
     key: "primary",

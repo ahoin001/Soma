@@ -751,6 +751,7 @@ export const useDailyIntakeQuery = (
             carbsG: item.macros.carbs,
             proteinG: item.macros.protein,
             fatG: item.macros.fat,
+            micronutrients: item.micronutrients ?? undefined,
           })),
         });
         created += section.items.length;
