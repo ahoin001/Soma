@@ -1625,11 +1625,24 @@ export const addMealPlanItemSupabase = async (
 
 export const updateMealPlanItemSupabase = async (
   itemId: string,
-  payload: { quantity?: number; slot?: "protein" | "carbs" | "balance" },
+  payload: {
+    quantity?: number;
+    slot?: "protein" | "carbs" | "balance";
+    foodName?: string;
+    kcal?: number;
+    proteinG?: number;
+    carbsG?: number;
+    fatG?: number;
+  },
 ) => {
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (payload.quantity !== undefined) updates.quantity = payload.quantity;
   if (payload.slot !== undefined) updates.slot = payload.slot;
+  if (payload.foodName !== undefined) updates.food_name = payload.foodName;
+  if (payload.kcal !== undefined) updates.kcal = payload.kcal;
+  if (payload.proteinG !== undefined) updates.protein_g = payload.proteinG;
+  if (payload.carbsG !== undefined) updates.carbs_g = payload.carbsG;
+  if (payload.fatG !== undefined) updates.fat_g = payload.fatG;
   const data = throwOnError(
     await supabase.from("meal_plan_items").update(updates).eq("id", itemId).select().single(),
   );
@@ -1854,12 +1867,31 @@ export const updateWorkoutTemplateExercisesSupabase = async (
   templateId: string,
   exercises: Array<{ name: string; itemOrder: number }>,
 ) => {
+  const payload = exercises.map((exercise) => ({
+    name: exercise.name,
+    itemOrder: exercise.itemOrder,
+  }));
+  // Preferred: atomic server-side function to avoid partial update windows.
+  const rpcResult = await (supabase as unknown as {
+    rpc: (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ error: { message: string } | null }>;
+  }).rpc("update_workout_template_exercises_atomic", {
+    p_template_id: templateId,
+    p_exercises: payload,
+  });
+  if (!rpcResult.error) {
+    return { ok: true };
+  }
+
+  // Fallback for environments where migration 027 hasn't been applied yet.
   await supabase.from("workout_template_exercises").delete().eq("template_id", templateId);
-  if (exercises.length) {
-    const rows = exercises.map((e) => ({
+  if (payload.length) {
+    const rows = payload.map((exercise) => ({
       template_id: templateId,
-      exercise_name: e.name,
-      item_order: e.itemOrder,
+      exercise_name: exercise.name,
+      item_order: exercise.itemOrder,
     }));
     throwOnError(await supabase.from("workout_template_exercises").insert(rows));
   }

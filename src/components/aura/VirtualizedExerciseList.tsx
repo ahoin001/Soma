@@ -9,6 +9,8 @@ type VirtualizedExerciseListProps = {
   height?: number;
   itemHeight?: number;
   selectedId?: number | null;
+  selectedIds?: number[];
+  selectedOrderById?: Record<number, number>;
   onSelect?: (exercise: Exercise) => void;
 };
 
@@ -18,6 +20,8 @@ export const VirtualizedExerciseList = ({
   height = 320,
   itemHeight = 84,
   selectedId,
+  selectedIds,
+  selectedOrderById,
   onSelect,
 }: VirtualizedExerciseListProps) => {
   const [scrollTop, setScrollTop] = useState(0);
@@ -42,10 +46,12 @@ export const VirtualizedExerciseList = ({
       <div className="relative" style={{ height: totalHeight }}>
         {visibleItems.map((item, index) => {
           const offsetIndex = startIndex + index;
-          const isSelected = selectedId === item.id;
+          const isSelected =
+            selectedId === item.id || Boolean(selectedIds?.includes(item.id));
           const primaryMuscle = item.muscles[0] ?? item.category;
           const secondaryMuscle = item.muscles[1] ?? null;
           const equipment = item.equipment[0] ?? "Bodyweight";
+          const selectedOrder = selectedOrderById?.[item.id];
           return (
             <div
               key={item.id}
@@ -87,6 +93,11 @@ export const VirtualizedExerciseList = ({
                     </span>
                   </div>
                 </div>
+                {selectedOrder ? (
+                  <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                    {selectedOrder}
+                  </span>
+                ) : null}
               </button>
             </div>
           );

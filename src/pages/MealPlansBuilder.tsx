@@ -1,24 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  TouchSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { AppShell } from "@/components/aura";
 import { MealIcon } from "@/components/aura/MealIcon";
 import { Badge } from "@/components/ui/badge";
@@ -37,21 +19,26 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { fetchFoodById, fetchFoodHistory, searchFoods } from "@/lib/api";
 import { normalizeFoodImageUrl } from "@/lib/foodImageUrl";
 import { toLocalDate } from "@/lib/nutritionData";
+import { MEAL_PLAN_TEMPLATES_KEY } from "@/lib/storageKeys";
 import { cn } from "@/lib/utils";
 import { useMealPlans } from "@/hooks/useMealPlans";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { usePendingMutationsCount } from "@/hooks/useOfflineQueue";
 import type { FoodRecord } from "@/types/api";
 import {
+  AlertCircle,
   ArrowLeft,
   ChevronDown,
-  ChevronRight,
   Copy,
-  Minus,
+  History,
   Pencil,
   Plus,
   Search,
+  Sparkles,
   Trash2,
   ClipboardList,
   Check,
+  X,
 } from "lucide-react";
 import { appToast } from "@/lib/toast";
 
@@ -73,6 +60,31 @@ type DbFoodOption = {
   carbs: number;
   fat: number;
   micronutrients: Record<string, unknown>;
+};
+
+type MealTemplateItem = {
+  foodId: string | null;
+  foodName: string;
+  quantity: number;
+  slot: MealPlanSlot;
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+};
+
+type MealPlanTemplate = {
+  id: string;
+  name: string;
+  items: MealTemplateItem[];
+  createdAt: number;
+};
+
+type UndoAction = {
+  id: string;
+  label: string;
+  createdAt: number;
+  undo: () => void | Promise<void>;
 };
 
 const SLOT_CONFIG: SlotConfig[] = [
@@ -120,14 +132,38 @@ const PANEL_TRANSITION = {
   initial: { opacity: 0, x: 24 },
   animate: { opacity: 1, x: 0 },
   exit: { opacity: 0, x: -16 },
-  transition: { duration: 0.25, ease: "easeOut" },
+  transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
 };
+const EASE_CALM: [number, number, number, number] = [0.22, 1, 0.36, 1];
+const TRANSITION_FAST = { duration: 0.22, ease: EASE_CALM };
+const TRANSITION_MEDIUM = { duration: 0.3, ease: EASE_CALM };
+const STAGGER_CALM = 0.055;
 
 
 const coerceNumber = (value: string, fallback: number) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) return fallback;
   return parsed;
+};
+
+const macroDiffers = (a: number, b: number, epsilon = 0.5) => Math.abs(a - b) > epsilon;
+
+const readMealPlanTemplates = (): MealPlanTemplate[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(MEAL_PLAN_TEMPLATES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as MealPlanTemplate[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((entry) => entry?.id && entry?.name && Array.isArray(entry?.items));
+  } catch {
+    return [];
+  }
+};
+
+const writeMealPlanTemplates = (templates: MealPlanTemplate[]) => {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(MEAL_PLAN_TEMPLATES_KEY, JSON.stringify(templates));
 };
 
 const RANGE_KEYS = [
@@ -258,11 +294,6 @@ const triggerLightFeedback = () => {
   }
 };
 
-const parseDndId = (id: string) => {
-  const [kind, value] = id.split(":");
-  return { kind, value };
-};
-
 type MealPlansContentProps = { showHeader?: boolean };
 
 export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) => {
@@ -271,7 +302,6 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
     days,
     meals,
     items,
-    weekAssignments,
     status,
     error,
     addDay,
@@ -284,7 +314,6 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
     addItem,
     patchItem,
     removeItem,
-    reorderItems,
     presets,
     createPreset,
     deletePreset,
@@ -296,6 +325,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
   const [showCoreMicros, setShowCoreMicros] = useState(false);
   const [coreMicrosLoading, setCoreMicrosLoading] = useState(false);
   const [coreMicrosByFoodId, setCoreMicrosByFoodId] = useState<Record<string, CoreMicroSnapshot>>({});
+  const [focusedMealId, setFocusedMealId] = useState<string | null>(null);
   const [plannerSection, setPlannerSection] = useState<"targets" | "progress" | "meals">("targets");
   const [newDayName, setNewDayName] = useState("");
   const [targetDraft, setTargetDraft] = useState(DEFAULT_TARGETS);
@@ -304,9 +334,26 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
   const [foodSheetMealId, setFoodSheetMealId] = useState<string | null>(null);
   const [foodQuery, setFoodQuery] = useState("");
   const [foodQuantityDraft, setFoodQuantityDraft] = useState("1");
+  const [selectedFoodOrder, setSelectedFoodOrder] = useState<string[]>([]);
+  const [selectedFoodsById, setSelectedFoodsById] = useState<Record<string, DbFoodOption>>({});
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const [foodSearchStatus, setFoodSearchStatus] = useState<"idle" | "loading" | "error">("idle");
   const [foodSearchError, setFoodSearchError] = useState<string | null>(null);
   const [foodOptions, setFoodOptions] = useState<DbFoodOption[]>([]);
+  const [duplicateMealSheetOpen, setDuplicateMealSheetOpen] = useState(false);
+  const [duplicateSourceMealId, setDuplicateSourceMealId] = useState<string | null>(null);
+  const [duplicateTargetDayId, setDuplicateTargetDayId] = useState<string | null>(null);
+  const [duplicateTargetMealId, setDuplicateTargetMealId] = useState<string | null>(null);
+  const [copyDaySheetOpen, setCopyDaySheetOpen] = useState(false);
+  const [copyTargetDayId, setCopyTargetDayId] = useState<string | null>(null);
+  const [mealTemplates, setMealTemplates] = useState<MealPlanTemplate[]>([]);
+  const [mealTemplateNameDraft, setMealTemplateNameDraft] = useState("");
+  const [templatePickerMealId, setTemplatePickerMealId] = useState<string | null>(null);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [undoHistoryOpen, setUndoHistoryOpen] = useState(false);
+  const [undoHistory, setUndoHistory] = useState<UndoAction[]>([]);
+  const [foodSyncById, setFoodSyncById] = useState<Record<string, DbFoodOption>>({});
+  const [foodSyncLoading, setFoodSyncLoading] = useState(false);
   const [editingDayName, setEditingDayName] = useState<string | null>(null);
   const [dayNameDraft, setDayNameDraft] = useState("");
   const [newGroupName, setNewGroupName] = useState("");
@@ -318,15 +365,11 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
   const [logPlanCustomDate, setLogPlanCustomDate] = useState("");
   const [savePresetOpen, setSavePresetOpen] = useState(false);
   const [presetNameDraft, setPresetNameDraft] = useState("");
+  const isOnline = useOnlineStatus();
+  const pendingMutations = usePendingMutationsCount();
   const targetsSectionRef = useRef<HTMLDivElement | null>(null);
   const progressSectionRef = useRef<HTMLDivElement | null>(null);
   const mealsSectionRef = useRef<HTMLDivElement | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
 
   useEffect(() => {
     if (!days.length) return;
@@ -356,6 +399,14 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
     () => meals.find((meal) => meal.id === foodSheetMealId) ?? null,
     [meals, foodSheetMealId],
   );
+  const duplicateSourceMeal = useMemo(
+    () => meals.find((meal) => meal.id === duplicateSourceMealId) ?? null,
+    [meals, duplicateSourceMealId],
+  );
+  const templatePickerMeal = useMemo(
+    () => meals.find((meal) => meal.id === templatePickerMealId) ?? null,
+    [meals, templatePickerMealId],
+  );
 
   useEffect(() => {
     if (!activeDay) return;
@@ -380,6 +431,71 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
     }
     return map;
   }, [dayMeals, items]);
+  const mealsByDayId = useMemo(() => {
+    const grouped = new Map<string, typeof meals>();
+    days.forEach((day) => {
+      grouped.set(
+        day.id,
+        meals.filter((meal) => meal.dayId === day.id).sort((a, b) => a.sortOrder - b.sortOrder),
+      );
+    });
+    return grouped;
+  }, [days, meals]);
+  const duplicateTargetDayMeals = useMemo(
+    () => (duplicateTargetDayId ? mealsByDayId.get(duplicateTargetDayId) ?? [] : []),
+    [duplicateTargetDayId, mealsByDayId],
+  );
+  const selectedFoods = useMemo(
+    () => selectedFoodOrder.map((id) => selectedFoodsById[id]).filter(Boolean),
+    [selectedFoodOrder, selectedFoodsById],
+  );
+  const visibleFoodOptions = useMemo(() => {
+    if (!showSelectedOnly) return foodOptions;
+    const selectedIdSet = new Set(selectedFoodOrder);
+    return foodOptions.filter((food) => selectedIdSet.has(food.id));
+  }, [showSelectedOnly, foodOptions, selectedFoodOrder]);
+  const selectedOnlyHiddenCount = Math.max(0, foodOptions.length - visibleFoodOptions.length);
+
+  useEffect(() => {
+    setMealTemplates(readMealPlanTemplates());
+  }, []);
+
+  useEffect(() => {
+    if (!dayMeals.length) {
+      setFocusedMealId(null);
+      return;
+    }
+    if (!focusedMealId || !dayMeals.some((meal) => meal.id === focusedMealId)) {
+      setFocusedMealId(dayMeals[0].id);
+    }
+  }, [dayMeals, focusedMealId]);
+
+  useEffect(() => {
+    if (!duplicateMealSheetOpen) return;
+    if (!duplicateSourceMeal) {
+      setDuplicateTargetDayId(null);
+      setDuplicateTargetMealId(null);
+      return;
+    }
+    setDuplicateTargetDayId((prev) => prev ?? duplicateSourceMeal.dayId);
+  }, [duplicateMealSheetOpen, duplicateSourceMeal]);
+
+  useEffect(() => {
+    if (!duplicateMealSheetOpen) return;
+    if (!duplicateTargetDayId) {
+      setDuplicateTargetMealId(null);
+      return;
+    }
+    const dayMealsForTarget = mealsByDayId.get(duplicateTargetDayId) ?? [];
+    if (!dayMealsForTarget.length) {
+      setDuplicateTargetMealId(null);
+      return;
+    }
+    setDuplicateTargetMealId((prev) => {
+      if (prev && dayMealsForTarget.some((meal) => meal.id === prev)) return prev;
+      return dayMealsForTarget[0].id;
+    });
+  }, [duplicateMealSheetOpen, duplicateTargetDayId, mealsByDayId]);
 
   const getTotals = useCallback(
     (source: Array<{ quantity: number; kcal: number; protein: number; carbs: number; fat: number }>) =>
@@ -412,6 +528,22 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
   const dayFoodIds = useMemo(
     () => Array.from(new Set(dayItems.map((item) => item.foodId).filter((id): id is string => Boolean(id)))),
     [dayItems],
+  );
+  const stalePlanItems = useMemo(
+    () =>
+      dayItems.filter((item) => {
+        if (!item.foodId) return false;
+        const sourceFood = foodSyncById[item.foodId];
+        if (!sourceFood) return false;
+        return (
+          item.foodName !== sourceFood.name
+          || macroDiffers(item.kcal, sourceFood.kcal)
+          || macroDiffers(item.protein, sourceFood.protein)
+          || macroDiffers(item.carbs, sourceFood.carbs)
+          || macroDiffers(item.fat, sourceFood.fat)
+        );
+      }),
+    [dayItems, foodSyncById],
   );
 
   const hasUnsavedTargets = useMemo(() => {
@@ -466,6 +598,37 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
       cancelled = true;
     };
   }, [dayFoodIds, coreMicrosByFoodId]);
+
+  useEffect(() => {
+    const missingFoodIds = dayFoodIds.filter((foodId) => !foodSyncById[foodId]);
+    if (!missingFoodIds.length) return;
+    let cancelled = false;
+    setFoodSyncLoading(true);
+    void Promise.allSettled(
+      missingFoodIds.map(async (foodId) => {
+        const response = await fetchFoodById(foodId);
+        return { foodId, item: response.item ? mapFoodRecord(response.item) : null };
+      }),
+    )
+      .then((results) => {
+        if (cancelled) return;
+        const next: Record<string, DbFoodOption> = {};
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.item) {
+            next[result.value.foodId] = result.value.item;
+          }
+        });
+        if (Object.keys(next).length) {
+          setFoodSyncById((prev) => ({ ...prev, ...next }));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setFoodSyncLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dayFoodIds, foodSyncById]);
 
   const coreMicroTotals = useMemo(() => {
     const totals: CoreMicroSnapshot = { ...EMPTY_CORE_MICROS };
@@ -655,12 +818,50 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
     setFoodSheetOpen(true);
     setFoodQuery("");
     setFoodQuantityDraft("1");
+    setShowSelectedOnly(false);
+    setSelectedFoodOrder([]);
+    setSelectedFoodsById({});
   };
 
-  const addFoodFromDb = (food: DbFoodOption) => {
-    if (!foodSheetMealId) return;
+  const toggleFoodSelection = (food: DbFoodOption) => {
+    const isSelected = selectedFoodOrder.includes(food.id);
+    if (isSelected) {
+      setSelectedFoodOrder((prev) => prev.filter((id) => id !== food.id));
+      setSelectedFoodsById((prev) => {
+        const next = { ...prev };
+        delete next[food.id];
+        return next;
+      });
+      triggerLightFeedback();
+      return;
+    }
+    setSelectedFoodOrder((prev) => [...prev, food.id]);
+    setSelectedFoodsById((prev) => ({ ...prev, [food.id]: food }));
+    triggerLightFeedback();
+  };
+
+  const removeSelectedFood = (foodId: string) => {
+    triggerLightFeedback();
+    setSelectedFoodOrder((prev) => prev.filter((id) => id !== foodId));
+    setSelectedFoodsById((prev) => {
+      const next = { ...prev };
+      delete next[foodId];
+      return next;
+    });
+  };
+
+  const clearSelectedFoods = () => {
+    triggerLightFeedback();
+    setSelectedFoodOrder([]);
+    setSelectedFoodsById({});
+    setShowSelectedOnly(false);
+  };
+
+  const addSelectedFoodsToMeal = () => {
+    if (!foodSheetMealId || selectedFoods.length === 0) return;
+    const mealId = foodSheetMealId;
     const quantity = Math.max(0.25, coerceNumber(foodQuantityDraft, 1));
-    void addItem(foodSheetMealId, {
+    const addQueue = selectedFoods.map((food) => ({
       foodId: food.id,
       foodName: food.name,
       quantity,
@@ -669,16 +870,304 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
       protein: food.protein,
       carbs: food.carbs,
       fat: food.fat,
+    }));
+    void (async () => {
+      for (const payload of addQueue) {
+        await addItem(mealId, payload);
+      }
+      setPulseMealId(mealId);
+      window.setTimeout(() => setPulseMealId(null), 280);
+      appToast.success("Foods added", {
+        description: `${addQueue.length} item${addQueue.length === 1 ? "" : "s"} added to ${activeMealForFoodSheet?.label ?? "meal"}.`,
+      });
+      setFoodSheetOpen(false);
+      clearSelectedFoods();
+      setFoodQuery("");
+      triggerLightFeedback();
+    })().catch((error) => {
+      appToast.error(error instanceof Error ? error.message : "Unable to add selected foods.");
     });
-    setPulseMealId(foodSheetMealId);
-    triggerLightFeedback();
-    window.setTimeout(() => setPulseMealId(null), 280);
-    setFoodSheetOpen(false);
   };
 
   const removeMealItem = (itemId: string) => {
     void removeItem(itemId);
     triggerLightFeedback();
+  };
+
+  const restoreItemsToMeal = async (
+    mealId: string,
+    mealItems: MealTemplateItem[],
+  ) => {
+    for (const item of mealItems) {
+      await addItem(mealId, {
+        foodId: item.foodId,
+        foodName: item.foodName,
+        quantity: item.quantity,
+        slot: item.slot,
+        kcal: item.kcal,
+        protein: item.protein,
+        carbs: item.carbs,
+        fat: item.fat,
+      });
+    }
+  };
+
+  const pushUndoAction = (label: string, undo: () => void | Promise<void>) => {
+    const action: UndoAction = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      label,
+      createdAt: Date.now(),
+      undo,
+    };
+    setUndoHistory((prev) => [action, ...prev].slice(0, 12));
+    return action;
+  };
+
+  const runUndoAction = (action: UndoAction) => {
+    triggerLightFeedback();
+    void Promise.resolve(action.undo())
+      .then(() => {
+        setUndoHistory((prev) => prev.filter((entry) => entry.id !== action.id));
+        appToast.success("Undid action", { description: action.label });
+      })
+      .catch((error) => {
+        appToast.error(error instanceof Error ? error.message : "Unable to undo this action.");
+      });
+  };
+
+  const clearMealItems = (mealId: string) => {
+    triggerLightFeedback();
+    const mealItems = mealItemsMap.get(mealId) ?? [];
+    if (!mealItems.length) {
+      appToast.info("Meal is already empty.");
+      return;
+    }
+    const snapshot = mealItems.map((item) => ({
+      foodId: item.foodId,
+      foodName: item.foodName,
+      quantity: item.quantity,
+      slot: item.slot,
+      kcal: item.kcal,
+      protein: item.protein,
+      carbs: item.carbs,
+      fat: item.fat,
+    }));
+    void Promise.all(mealItems.map((item) => removeItem(item.id)))
+      .then(() => {
+        const undo = pushUndoAction("Clear meal", () => restoreItemsToMeal(mealId, snapshot));
+        appToast.success("Meal cleared", {
+          description: `${mealItems.length} item${mealItems.length === 1 ? "" : "s"} removed.`,
+          action: {
+            label: "Undo",
+            onClick: () => runUndoAction(undo),
+          },
+        });
+      })
+      .catch((error) => {
+        appToast.error(error instanceof Error ? error.message : "Unable to clear meal.");
+      });
+  };
+
+  const openDuplicateMealSheet = (mealId: string) => {
+    triggerLightFeedback();
+    setDuplicateSourceMealId(mealId);
+    setDuplicateMealSheetOpen(true);
+  };
+
+  const duplicateMealItemsToTarget = () => {
+    triggerLightFeedback();
+    if (!duplicateSourceMealId || !duplicateTargetMealId) return;
+    const mealItems = mealItemsMap.get(duplicateSourceMealId) ?? [];
+    if (!mealItems.length) {
+      appToast.info("Add at least one food to duplicate this meal.");
+      return;
+    }
+    const snapshot = mealItems.map((item) => ({
+      foodId: item.foodId,
+      foodName: item.foodName,
+      quantity: item.quantity,
+      slot: item.slot,
+      kcal: item.kcal,
+      protein: item.protein,
+      carbs: item.carbs,
+      fat: item.fat,
+    }));
+    const targetMealId = duplicateTargetMealId;
+    void restoreItemsToMeal(targetMealId, snapshot)
+      .then(() => {
+        setDuplicateMealSheetOpen(false);
+        const undo = pushUndoAction("Duplicate meal", async () => {
+          const targetMealItems = items
+            .filter((item) => item.mealId === targetMealId)
+            .slice(-snapshot.length);
+          await Promise.all(targetMealItems.map((item) => removeItem(item.id)));
+        });
+        const sourceMeal = meals.find((meal) => meal.id === duplicateSourceMealId);
+        const targetMeal = meals.find((meal) => meal.id === targetMealId);
+        appToast.success("Meal duplicated", {
+          description: `${snapshot.length} item${snapshot.length === 1 ? "" : "s"} copied from ${sourceMeal?.label ?? "meal"} to ${targetMeal?.label ?? "meal"}.`,
+          action: { label: "Undo", onClick: () => runUndoAction(undo) },
+        });
+      })
+      .catch((error) => {
+        appToast.error(error instanceof Error ? error.message : "Unable to duplicate meal.");
+      });
+  };
+
+  const clearActiveDay = () => {
+    triggerLightFeedback();
+    if (!activeDay) return;
+    const mealIds = dayMeals.map((meal) => meal.id);
+    const dayItemsSnapshot = items.filter((item) => mealIds.includes(item.mealId));
+    if (!dayItemsSnapshot.length) {
+      appToast.info("Day is already empty.");
+      return;
+    }
+    void Promise.all(dayItemsSnapshot.map((item) => removeItem(item.id)))
+      .then(() => {
+        const undo = pushUndoAction("Clear day", async () => {
+          for (const item of dayItemsSnapshot) {
+            await addItem(item.mealId, {
+              foodId: item.foodId,
+              foodName: item.foodName,
+              quantity: item.quantity,
+              slot: item.slot,
+              kcal: item.kcal,
+              protein: item.protein,
+              carbs: item.carbs,
+              fat: item.fat,
+            });
+          }
+        });
+        appToast.success("Day cleared", {
+          description: `${dayItemsSnapshot.length} food${dayItemsSnapshot.length === 1 ? "" : "s"} removed from ${activeDay.name}.`,
+          action: { label: "Undo", onClick: () => runUndoAction(undo) },
+        });
+      })
+      .catch((error) => {
+        appToast.error(error instanceof Error ? error.message : "Unable to clear day.");
+      });
+  };
+
+  const copyActiveDayToTarget = () => {
+    triggerLightFeedback();
+    if (!activeDay || !copyTargetDayId) return;
+    const targetMeals = mealsByDayId.get(copyTargetDayId) ?? [];
+    const targetMealByLabel = new Map(targetMeals.map((meal) => [meal.label.toLowerCase(), meal.id]));
+    const sourceItems = items.filter((item) => {
+      const sourceMeal = dayMeals.find((meal) => meal.id === item.mealId);
+      return Boolean(sourceMeal);
+    });
+    if (!sourceItems.length) {
+      appToast.info("Add foods to this day before copying.");
+      return;
+    }
+    void (async () => {
+      const copied: string[] = [];
+      for (const item of sourceItems) {
+        const sourceMeal = dayMeals.find((meal) => meal.id === item.mealId);
+        if (!sourceMeal) continue;
+        const targetMealId = targetMealByLabel.get(sourceMeal.label.toLowerCase()) ?? targetMeals[0]?.id;
+        if (!targetMealId) continue;
+        const created = await addItem(targetMealId, {
+          foodId: item.foodId,
+          foodName: item.foodName,
+          quantity: item.quantity,
+          slot: item.slot,
+          kcal: item.kcal,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat,
+        });
+        if (created?.id) copied.push(created.id);
+      }
+      setCopyDaySheetOpen(false);
+      const undo = pushUndoAction("Copy day", async () => {
+        await Promise.all(copied.map((id) => removeItem(id)));
+      });
+      const targetDay = days.find((day) => day.id === copyTargetDayId);
+      appToast.success("Day copied", {
+        description: `${sourceItems.length} planned food${sourceItems.length === 1 ? "" : "s"} copied to ${targetDay?.name ?? "target day"}.`,
+        action: { label: "Undo", onClick: () => runUndoAction(undo) },
+      });
+    })().catch((error) => {
+      appToast.error(error instanceof Error ? error.message : "Unable to copy day.");
+    });
+  };
+
+  const saveMealAsTemplate = (mealId: string) => {
+    triggerLightFeedback();
+    const meal = meals.find((entry) => entry.id === mealId);
+    const mealItems = mealItemsMap.get(mealId) ?? [];
+    if (!meal || !mealItems.length) {
+      appToast.info("Add foods to this meal before saving as template.");
+      return;
+    }
+    const template: MealPlanTemplate = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: mealTemplateNameDraft.trim() || `${meal.label} template`,
+      items: mealItems.map((item) => ({
+        foodId: item.foodId,
+        foodName: item.foodName,
+        quantity: item.quantity,
+        slot: item.slot,
+        kcal: item.kcal,
+        protein: item.protein,
+        carbs: item.carbs,
+        fat: item.fat,
+      })),
+      createdAt: Date.now(),
+    };
+    setMealTemplates((prev) => {
+      const next = [template, ...prev].slice(0, 60);
+      writeMealPlanTemplates(next);
+      return next;
+    });
+    setMealTemplateNameDraft("");
+    appToast.success("Template saved", { description: template.name });
+  };
+
+  const applyTemplateToMeal = (mealId: string, template: MealPlanTemplate) => {
+    triggerLightFeedback();
+    void restoreItemsToMeal(mealId, template.items)
+      .then(() => {
+        setTemplatePickerOpen(false);
+        appToast.success("Template applied", { description: template.name });
+      })
+      .catch((error) => {
+        appToast.error(error instanceof Error ? error.message : "Unable to apply template.");
+      });
+  };
+
+  const deleteMealTemplate = (templateId: string) => {
+    triggerLightFeedback();
+    setMealTemplates((prev) => {
+      const next = prev.filter((template) => template.id !== templateId);
+      writeMealPlanTemplates(next);
+      return next;
+    });
+  };
+
+  const openTemplatePicker = (mealId: string) => {
+    triggerLightFeedback();
+    setTemplatePickerMealId(mealId);
+    setTemplatePickerOpen(true);
+  };
+
+  const applySourceFoodUpdate = (itemId: string) => {
+    triggerLightFeedback();
+    const item = items.find((entry) => entry.id === itemId);
+    if (!item?.foodId) return;
+    const sourceFood = foodSyncById[item.foodId];
+    if (!sourceFood) return;
+    void patchItem(itemId, {
+      foodName: sourceFood.name,
+      kcal: sourceFood.kcal,
+      protein: sourceFood.protein,
+      carbs: sourceFood.carbs,
+      fat: sourceFood.fat,
+    });
+    appToast.success("Updated from source", { description: sourceFood.name });
   };
 
   const startRenameDay = () => {
@@ -707,43 +1196,6 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
       if (group && activeDay) void patchDay(activeDay.id, { groupId: group.id });
       setNewGroupName("");
     });
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id || !activeDay) return;
-
-    const activeMeta = parseDndId(String(active.id));
-    const overMeta = parseDndId(String(over.id));
-
-    if (activeMeta.kind === "item" && overMeta.kind === "item") {
-      const activeItemId = activeMeta.value;
-      const overItemId = overMeta.value;
-      const activeItem = items.find((item) => item.id === activeItemId);
-      const overItem = items.find((item) => item.id === overItemId);
-      if (!activeItem || !overItem) return;
-      if (activeItem.mealId !== overItem.mealId || activeItem.slot !== overItem.slot) return;
-
-      const mealId = activeItem.mealId;
-      const mealItems = mealItemsMap.get(mealId) ?? [];
-      const sameSlotIds = mealItems
-        .filter((item) => item.slot === activeItem.slot)
-        .map((item) => item.id);
-      const fromIndex = sameSlotIds.indexOf(activeItemId);
-      const toIndex = sameSlotIds.indexOf(overItemId);
-      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
-
-      const reorderedSlotIds = arrayMove(sameSlotIds, fromIndex, toIndex);
-      let slotCursor = 0;
-      const reorderedMealIds = mealItems.map((item) => {
-        if (item.slot !== activeItem.slot) return item.id;
-        const nextId = reorderedSlotIds[slotCursor];
-        slotCursor += 1;
-        return nextId;
-      });
-      void reorderItems(mealId, reorderedMealIds);
-      triggerLightFeedback();
-    }
   };
 
   if (status === "loading" && days.length === 0) {
@@ -1024,6 +1476,33 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
               <Button type="button" variant="ghost" size="icon" className="rounded-full shrink-0" onClick={duplicateActiveDay} aria-label="Duplicate day">
                 <Copy className="h-4 w-4" />
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="rounded-full shrink-0"
+                onClick={() => {
+                  triggerLightFeedback();
+                  setCopyTargetDayId(days.find((day) => day.id !== activeDay.id)?.id ?? null);
+                  setCopyDaySheetOpen(true);
+                }}
+                aria-label="Copy day to another day"
+              >
+                <Sparkles className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="rounded-full shrink-0"
+                onClick={() => {
+                  triggerLightFeedback();
+                  setUndoHistoryOpen(true);
+                }}
+                aria-label="Open undo history"
+              >
+                <History className="h-4 w-4" />
+              </Button>
               <Button type="button" variant="ghost" size="icon" className="rounded-full shrink-0 text-destructive hover:text-destructive" onClick={deleteActiveDay} disabled={days.length <= 1} aria-label="Delete day">
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -1049,9 +1528,40 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
               </div>
             </div>
 
-            <p className="mt-3 text-sm text-muted-foreground">
-              Set targets and meals on one canvas. Updates are autosaved with live progress feedback.
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              Plan calmly on one canvas. Edits save continuously and stay in sync as you go.
             </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {!isOnline ? (
+                <span className="rounded-full border border-amber-300 bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                  Offline • changes queue automatically
+                </span>
+              ) : null}
+              {pendingMutations > 0 ? (
+                <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                  {pendingMutations} pending change{pendingMutations === 1 ? "" : "s"}
+                </span>
+              ) : null}
+              {foodSyncLoading ? (
+                <span className="rounded-full border border-border/60 bg-background px-2.5 py-1 text-[11px] text-muted-foreground">
+                  Checking for food updates...
+                </span>
+              ) : null}
+              {stalePlanItems.length > 0 ? (
+                <span className="rounded-full border border-amber-300 bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                  {stalePlanItems.length} food update{stalePlanItems.length === 1 ? "" : "s"} available
+                </span>
+              ) : null}
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 rounded-full px-2.5 text-[11px]"
+                onClick={clearActiveDay}
+              >
+                Clear day
+              </Button>
+            </div>
 
             <div className="sticky top-2 z-20 mt-3">
               <div className="inline-flex rounded-full border border-border/50 bg-background/90 p-1 shadow-sm backdrop-blur">
@@ -1136,6 +1646,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                   <motion.div
                     initial={{ opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
+                    transition={TRANSITION_FAST}
                     className="mt-3 space-y-2.5"
                   >
                     {(Object.keys(CORE_MICRO_GUIDE) as CoreMicroKey[]).map((key) => {
@@ -1368,9 +1879,8 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
               className="mt-6"
               initial="hidden"
               animate="show"
-              variants={{ show: { transition: { staggerChildren: 0.04 } } }}
+              variants={{ show: { transition: { staggerChildren: STAGGER_CALM } } }}
             >
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <div className="space-y-3">
             {dayMeals.map((meal) => {
               const mealItems = mealItemsMap.get(meal.id) ?? [];
@@ -1379,31 +1889,44 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                 ...slot,
                 items: mealItems.filter((item) => item.slot === slot.id),
               }));
+              const staleCount = mealItems.filter((item) => stalePlanItems.some((stale) => stale.id === item.id)).length;
+              const isFocusedMeal = focusedMealId === meal.id;
 
               return (
-                <motion.div key={meal.id} variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
+                <motion.div
+                  key={meal.id}
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    show: { opacity: 1, y: 0, transition: TRANSITION_MEDIUM },
+                  }}
+                >
                 <Card
                   className={cn(
                     "overflow-hidden rounded-[24px] border border-border/60 bg-card/85 shadow-[0_10px_24px_rgba(15,23,42,0.1)] transition-shadow",
                     pulseMealId === meal.id && "ring-2 ring-primary/30 shadow-md",
                   )}
                 >
-                  <div className="bg-secondary/45 px-3 py-3">
+                  <div className={cn("px-3 py-3", isFocusedMeal ? "bg-secondary/50" : "bg-secondary/35")}>
                     <div className="flex items-center justify-between gap-3">
                       <p className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
                         <MealIcon mealId={meal.id} size={18} className="shrink-0 text-primary" />
                         <span className="truncate">{meal.label}</span>
                       </p>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-9 shrink-0 rounded-full px-3"
-                        onClick={() => openFoodPicker(meal.id)}
-                      >
-                        <Search className="mr-1.5 h-3.5 w-3.5" />
-                        Add food
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        {staleCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-700">
+                            <AlertCircle className="h-3 w-3" />
+                            {staleCount} update{staleCount === 1 ? "" : "s"}
+                          </span>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="shrink-0 rounded-full border border-border/60 bg-background/70 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground transition hover:text-foreground"
+                          onClick={() => setFocusedMealId(isFocusedMeal ? null : meal.id)}
+                        >
+                          {isFocusedMeal ? "Collapse" : "Focus"}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -1411,7 +1934,7 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                     <motion.div
                       className="rounded-[18px] border border-border/60 bg-card/70 px-3 py-3 shadow-[0_6px_16px_rgba(15,23,42,0.06)]"
                       animate={pulseMealId === meal.id ? { scale: [1, 1.02, 1] } : undefined}
-                      transition={{ duration: 0.32, ease: "easeOut" }}
+                      transition={{ duration: 0.34, ease: EASE_CALM }}
                     >
                       <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/75">
                         <span>Meal summary</span>
@@ -1446,6 +1969,82 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                     </motion.div>
                   </div>
 
+                  {isFocusedMeal ? (
+                    <div className="mt-2 px-3 pb-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-full px-3"
+                          onClick={() => openFoodPicker(meal.id)}
+                        >
+                          <Search className="mr-1.5 h-3.5 w-3.5" />
+                          Add food
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 rounded-full px-3 text-muted-foreground"
+                          onClick={() => openDuplicateMealSheet(meal.id)}
+                        >
+                          <Copy className="mr-1.5 h-3.5 w-3.5" />
+                          Duplicate
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 rounded-full px-3 text-muted-foreground"
+                          onClick={() => openTemplatePicker(meal.id)}
+                        >
+                          <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                          Apply template
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 rounded-full px-3 text-destructive hover:text-destructive"
+                          onClick={() => clearMealItems(meal.id)}
+                        >
+                          <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                          Clear
+                        </Button>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <Input
+                          value={mealTemplateNameDraft}
+                          onChange={(event) => setMealTemplateNameDraft(event.target.value)}
+                          placeholder="Template name (optional)"
+                          className="h-8 rounded-full text-xs"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-full px-3"
+                          onClick={() => saveMealAsTemplate(meal.id)}
+                        >
+                          Save template
+                        </Button>
+                      </div>
+                    </div>
+                  ) : mealItems.length > 0 ? (
+                    <div className="mt-2 px-3 pb-1">
+                      <p className="line-clamp-1 text-xs text-muted-foreground">
+                        {mealItems.slice(0, 3).map((item) => item.foodName).join(" • ")}
+                        {mealItems.length > 3 ? " • ..." : ""}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-2 px-3 pb-1">
+                      <p className="text-xs text-muted-foreground">No foods yet. Tap Focus to design this meal.</p>
+                    </div>
+                  )}
+
+                  {isFocusedMeal && (
                   <div className="mt-2.5 space-y-1.5 px-3 pb-3">
                     {grouped.map((slot) => (
                       <div key={slot.id} className={cn("rounded-[14px] border border-border/45 bg-background/45 px-2.5 py-2", slot.tone)}>
@@ -1456,13 +2055,9 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                               No items yet. Add food to get closer to your targets.
                             </p>
                           ) : (
-                            <SortableContext
-                              items={slot.items.map((item) => `item:${item.id}`)}
-                              strategy={verticalListSortingStrategy}
-                            >
+                            <>
                               {slot.items.map((item) => {
                                 const qty = item.quantity || 1;
-                                const step = 0.25;
                                 const setQuantity = (newQty: number) => {
                                   const clamped = Math.max(0.25, Math.min(20, Math.round(newQty * 100) / 100));
                                   void patchItem(item.id, { quantity: clamped });
@@ -1470,43 +2065,29 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                                   window.setTimeout(() => setPulseMealId((prev) => (prev === meal.id ? null : prev)), 280);
                                 };
                                 return (
-                                  <SortableMealItemRow
+                                  <MealItemRow
                                     key={item.id}
-                                    id={`item:${item.id}`}
                                     rightContent={
-                                      <div className="flex shrink-0 items-center gap-1">
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6 shrink-0 rounded-full"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
+                                      <div className="flex shrink-0 items-center gap-1.5">
+                                        <Input
+                                          defaultValue={String(Number.isInteger(qty) ? qty : Number(qty.toFixed(2)))}
+                                          type="number"
+                                          min={0.25}
+                                          max={20}
+                                          step={0.25}
+                                          inputMode="decimal"
+                                          className="h-7 w-20 rounded-full border-border/60 bg-background/90 px-2 text-center text-[11px]"
+                                          onBlur={(e) => {
                                             triggerLightFeedback();
-                                            setQuantity(qty - step);
+                                            setQuantity(coerceNumber(e.target.value, qty));
                                           }}
-                                          aria-label="Decrease quantity"
-                                          disabled={qty <= 0.25}
-                                        >
-                                          <Minus className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <span className="min-w-[36px] text-center text-[10px] font-semibold tabular-nums text-foreground/80">
-                                          {Number.isInteger(qty) ? qty : qty.toFixed(2)}x
-                                        </span>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6 shrink-0 rounded-full"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            triggerLightFeedback();
-                                            setQuantity(qty + step);
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                              (e.currentTarget as HTMLInputElement).blur();
+                                            }
                                           }}
-                                          aria-label="Increase quantity"
-                                        >
-                                          <Plus className="h-3.5 w-3.5" />
-                                        </Button>
+                                          aria-label="Food quantity"
+                                        />
                                         <Button
                                           type="button"
                                           variant="ghost"
@@ -1550,33 +2131,47 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                                           F {Math.round(item.fat * qty)}g
                                         </span>
                                       </div>
+                                      {stalePlanItems.some((stale) => stale.id === item.id) ? (
+                                        <div className="mt-1.5 flex items-center gap-2">
+                                          <span className="text-[10px] font-medium text-amber-700">
+                                            Food was updated
+                                          </span>
+                                          <button
+                                            type="button"
+                                            className="text-[10px] font-semibold text-primary underline-offset-2 hover:underline"
+                                            onClick={() => applySourceFoodUpdate(item.id)}
+                                          >
+                                            Use latest
+                                          </button>
+                                        </div>
+                                      ) : null}
                                     </div>
-                                  </SortableMealItemRow>
+                                  </MealItemRow>
                                 );
                               })}
-                            </SortableContext>
+                            </>
                           )}
                         </div>
                       </div>
                     ))}
                   </div>
+                  )}
                 </Card>
                 </motion.div>
               );
             })}
           </div>
-      </DndContext>
             </motion.div>
 
       <Drawer open={foodSheetOpen} onOpenChange={setFoodSheetOpen}>
         <DrawerContent className="max-h-[86svh] rounded-t-[36px] border-none bg-background pb-0 overflow-hidden">
           <div className="aura-sheet-scroll max-h-[calc(86svh-56px)] px-4 pb-0">
-            <div className="pt-1">
-              <p className="text-xs uppercase tracking-[0.2em] text-primary">Meal food search</p>
-              <h3 className="text-lg font-display font-semibold text-foreground">
+            <div className="pt-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/90">Meal food search</p>
+              <h3 className="mt-1 text-lg font-display font-semibold text-foreground">
                 {activeMealForFoodSheet?.emoji ?? "Meal"} {activeMealForFoodSheet?.label ?? "Select meal"}
               </h3>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
                 Search foods in your database and add to this meal.
               </p>
             </div>
@@ -1600,6 +2195,54 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                   className="h-10 rounded-full"
                 />
               </div>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <p className="text-[11px] font-medium text-muted-foreground">
+                  {selectedFoods.length} selected
+                </p>
+                <div className="flex items-center gap-1.5">
+                  {selectedFoods.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerLightFeedback();
+                        setShowSelectedOnly((prev) => !prev);
+                      }}
+                      className={cn(
+                        "rounded-full border px-2.5 py-1 text-[11px] font-semibold transition",
+                        showSelectedOnly
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border/50 bg-background/70 text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {showSelectedOnly ? "Show all" : "Selected only"}
+                    </button>
+                  ) : null}
+                  {selectedFoods.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={clearSelectedFoods}
+                      className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-muted-foreground transition hover:text-foreground"
+                    >
+                      Clear selection
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              {selectedFoods.length > 0 ? (
+                <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
+                  {selectedFoods.map((food) => (
+                    <button
+                      key={food.id}
+                      type="button"
+                      onClick={() => removeSelectedFood(food.id)}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary"
+                    >
+                      <span className="max-w-[140px] truncate">{food.name}</span>
+                      <X className="h-3 w-3" />
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             {foodSearchStatus === "loading" ? (
@@ -1610,20 +2253,34 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                 {foodSearchError ?? "Unable to search foods."}
               </p>
             ) : null}
+            {showSelectedOnly && selectedOnlyHiddenCount > 0 ? (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                {selectedOnlyHiddenCount} matching result{selectedOnlyHiddenCount === 1 ? "" : "s"} hidden while Selected only is on.
+              </p>
+            ) : null}
 
             <div className="mt-3 space-y-2 pb-2">
-              {foodOptions.length === 0 && foodSearchStatus === "idle" ? (
+              {visibleFoodOptions.length === 0 && foodSearchStatus === "idle" ? (
                 <ListEmptyState
                   itemName="foods"
                   className="w-full rounded-[16px] border border-dashed border-border/70 bg-card/70 py-6"
                 />
               ) : null}
-              {foodOptions.map((food) => (
+              {visibleFoodOptions.map((food) => {
+                const isSelected = selectedFoodOrder.includes(food.id);
+                const selectedIndex = selectedFoodOrder.indexOf(food.id);
+                return (
                 <button
                   key={food.id}
                   type="button"
-                  onClick={() => addFoodFromDb(food)}
-                  className="w-full rounded-[16px] border border-border/60 bg-card px-3 py-3 text-left shadow-[0_8px_20px_rgba(15,23,42,0.05)] transition hover:border-primary/30 hover:bg-card/80"
+                  onClick={() => toggleFoodSelection(food)}
+                  className={cn(
+                    "w-full rounded-[16px] border bg-card px-3 py-3 text-left shadow-[0_8px_20px_rgba(15,23,42,0.05)] transition",
+                    isSelected
+                      ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
+                      : "border-border/60 hover:border-primary/30 hover:bg-card/80",
+                  )}
+                  aria-pressed={isSelected}
                 >
                   <div className="flex items-center gap-3">
                     <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-secondary/40">
@@ -1638,9 +2295,16 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <p className="truncate text-sm font-semibold text-foreground">{food.name}</p>
-                        <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">
-                          {SLOT_CONFIG.find((slot) => slot.id === inferSlot(food))?.label ?? "Balance"}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {isSelected ? (
+                            <span className="rounded-full border border-primary/30 bg-primary/15 px-2 py-1 text-[10px] font-semibold text-primary">
+                              #{selectedIndex + 1}
+                            </span>
+                          ) : null}
+                          <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">
+                            {SLOT_CONFIG.find((slot) => slot.id === inferSlot(food))?.label ?? "Balance"}
+                          </span>
+                        </div>
                       </div>
                       <p className="truncate text-xs text-muted-foreground">
                         {food.brand ?? "Unbranded"} - {Math.round(food.kcal)} cal
@@ -1651,19 +2315,208 @@ export const MealPlansContent = ({ showHeader = true }: MealPlansContentProps) =
                     </div>
                   </div>
                 </button>
-              ))}
+                );
+              })}
             </div>
 
             <DrawerStickyActions className="px-0">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full rounded-full"
-                onClick={() => setFoodSheetOpen(false)}
-              >
-                Close
-              </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={() => setFoodSheetOpen(false)}
+                >
+                  Close
+                </Button>
+                <Button
+                  type="button"
+                  className="rounded-full"
+                  onClick={addSelectedFoodsToMeal}
+                  disabled={selectedFoods.length === 0}
+                >
+                  <Check className="mr-1.5 h-4 w-4" />
+                  Add {selectedFoods.length > 0 ? selectedFoods.length : ""} food{selectedFoods.length === 1 ? "" : "s"}
+                </Button>
+              </div>
             </DrawerStickyActions>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      <Drawer open={duplicateMealSheetOpen} onOpenChange={setDuplicateMealSheetOpen}>
+        <DrawerContent className="max-h-[84svh] rounded-t-[36px] border-none bg-background pb-0 overflow-hidden">
+          <div className="aura-sheet-scroll max-h-[calc(84svh-56px)] px-4 pb-0">
+            <div className="pt-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/90">Duplicate meal</p>
+              <h3 className="mt-1 text-lg font-display font-semibold text-foreground">
+                {duplicateSourceMeal?.emoji ?? "Meal"} {duplicateSourceMeal?.label ?? "Select source"}
+              </h3>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                Copy this meal into a target day and meal slot.
+              </p>
+            </div>
+            <div className="mt-4 space-y-3">
+              <div className="rounded-[16px] border border-border/50 bg-card/70 px-3 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                  Target day
+                </p>
+                <select
+                  className="mt-2 h-10 w-full rounded-full border border-border/60 bg-background px-3 text-sm"
+                  value={duplicateTargetDayId ?? ""}
+                  onChange={(e) => setDuplicateTargetDayId(e.target.value || null)}
+                >
+                  {days.map((day) => (
+                    <option key={day.id} value={day.id}>
+                      {day.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="rounded-[16px] border border-border/50 bg-card/70 px-3 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                  Target meal
+                </p>
+                <select
+                  className="mt-2 h-10 w-full rounded-full border border-border/60 bg-background px-3 text-sm"
+                  value={duplicateTargetMealId ?? ""}
+                  onChange={(e) => setDuplicateTargetMealId(e.target.value || null)}
+                  disabled={duplicateTargetDayMeals.length === 0}
+                >
+                  {duplicateTargetDayMeals.length === 0 ? (
+                    <option value="">No meals available</option>
+                  ) : (
+                    duplicateTargetDayMeals.map((meal) => (
+                      <option key={meal.id} value={meal.id}>
+                        {meal.emoji ? `${meal.emoji} ` : ""}{meal.label}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            </div>
+            <DrawerStickyActions className="px-0">
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant="outline" className="rounded-full" onClick={() => setDuplicateMealSheetOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="button" className="rounded-full" onClick={duplicateMealItemsToTarget} disabled={!duplicateSourceMealId || !duplicateTargetMealId}>
+                  <Copy className="mr-1.5 h-4 w-4" />
+                  Duplicate
+                </Button>
+              </div>
+            </DrawerStickyActions>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      <Drawer open={copyDaySheetOpen} onOpenChange={setCopyDaySheetOpen}>
+        <DrawerContent className="max-h-[78svh] rounded-t-[36px] border-none bg-background pb-0 overflow-hidden">
+          <div className="aura-sheet-scroll max-h-[calc(78svh-56px)] px-4 pb-0">
+            <div className="pt-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/90">Copy day</p>
+              <h3 className="mt-1 text-lg font-display font-semibold text-foreground">{activeDay?.name ?? "Current day"}</h3>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Copy foods into another day using matching meal labels.</p>
+            </div>
+            <div className="mt-4 rounded-[16px] border border-border/50 bg-card/70 px-3 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Target day</p>
+              <select
+                className="mt-2 h-10 w-full rounded-full border border-border/60 bg-background px-3 text-sm"
+                value={copyTargetDayId ?? ""}
+                onChange={(e) => setCopyTargetDayId(e.target.value || null)}
+              >
+                {days.filter((day) => day.id !== activeDay?.id).map((day) => (
+                  <option key={day.id} value={day.id}>
+                    {day.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <DrawerStickyActions className="px-0">
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant="outline" className="rounded-full" onClick={() => setCopyDaySheetOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="button" className="rounded-full" onClick={copyActiveDayToTarget} disabled={!copyTargetDayId}>
+                  <Sparkles className="mr-1.5 h-4 w-4" />
+                  Copy day
+                </Button>
+              </div>
+            </DrawerStickyActions>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      <Drawer open={templatePickerOpen} onOpenChange={setTemplatePickerOpen}>
+        <DrawerContent className="max-h-[84svh] rounded-t-[36px] border-none bg-background pb-0 overflow-hidden">
+          <div className="aura-sheet-scroll max-h-[calc(84svh-56px)] px-4 pb-0">
+            <div className="pt-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/90">Meal templates</p>
+              <h3 className="mt-1 text-lg font-display font-semibold text-foreground">
+                {templatePickerMeal?.emoji ?? "Meal"} {templatePickerMeal?.label ?? "Select meal"}
+              </h3>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Apply a saved template to this meal.</p>
+            </div>
+            <div className="mt-3 space-y-2 pb-2">
+              {mealTemplates.length === 0 ? (
+                <ListEmptyState
+                  itemName="templates"
+                  className="w-full rounded-[16px] border border-dashed border-border/70 bg-card/70 py-6"
+                />
+              ) : (
+                mealTemplates.map((template) => (
+                  <div key={template.id} className="rounded-[16px] border border-border/60 bg-card px-3 py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-foreground">{template.name}</p>
+                        <p className="text-[11px] text-muted-foreground">{template.items.length} items</p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Button type="button" size="sm" className="h-8 rounded-full px-3" onClick={() => templatePickerMealId && applyTemplateToMeal(templatePickerMealId, template)}>
+                          Apply
+                        </Button>
+                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8 rounded-full text-destructive hover:text-destructive" onClick={() => deleteMealTemplate(template.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      <Drawer open={undoHistoryOpen} onOpenChange={setUndoHistoryOpen}>
+        <DrawerContent className="max-h-[78svh] rounded-t-[36px] border-none bg-background pb-0 overflow-hidden">
+          <div className="aura-sheet-scroll max-h-[calc(78svh-56px)] px-4 pb-0">
+            <div className="pt-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/90">Undo history</p>
+              <h3 className="mt-1 text-lg font-display font-semibold text-foreground">Recent planner actions</h3>
+            </div>
+            <div className="mt-3 space-y-2 pb-2">
+              {undoHistory.length === 0 ? (
+                <ListEmptyState
+                  itemName="actions"
+                  className="w-full rounded-[16px] border border-dashed border-border/70 bg-card/70 py-6"
+                />
+              ) : (
+                undoHistory.map((action) => (
+                  <div key={action.id} className="rounded-[16px] border border-border/60 bg-card px-3 py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-foreground">{action.label}</p>
+                        <p className="text-[11px] text-muted-foreground">{new Date(action.createdAt).toLocaleTimeString()}</p>
+                      </div>
+                      <Button type="button" size="sm" variant="outline" className="h-8 rounded-full px-3" onClick={() => runUndoAction(action)}>
+                        Undo
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </DrawerContent>
       </Drawer>
@@ -1802,25 +2655,18 @@ const TargetFieldWithRange = ({
   </div>
 );
 
-const SortableMealItemRow = ({
-  id,
+const MealItemRow = ({
   children,
   rightContent,
 }: {
-  id: string;
   children: ReactNode;
   rightContent?: ReactNode;
 }) => {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
-  const style = { transform: CSS.Transform.toString(transform), transition };
-
   return (
     <div
-      ref={setNodeRef}
-      style={style}
       className="flex items-center justify-between gap-2 rounded-[16px] border border-border/60 bg-card/80 px-2.5 py-2 shadow-[0_6px_14px_rgba(15,23,42,0.06)]"
     >
-      <div {...attributes} {...listeners} className="flex min-w-0 flex-1 items-center">
+      <div className="flex min-w-0 flex-1 items-center">
         {children}
       </div>
       {rightContent}

@@ -372,9 +372,22 @@ export const useMealPlans = () => {
       payload: {
         quantity?: number;
         slot?: MealPlanSlot;
+        foodName?: string;
+        kcal?: number;
+        protein?: number;
+        carbs?: number;
+        fat?: number;
       },
     ) => {
-      const response = await updateMealPlanItem(itemId, payload);
+      const response = await updateMealPlanItem(itemId, {
+        quantity: payload.quantity,
+        slot: payload.slot,
+        foodName: payload.foodName,
+        kcal: payload.kcal,
+        proteinG: payload.protein,
+        carbsG: payload.carbs,
+        fatG: payload.fat,
+      });
       if (response.item) {
         const mapped = mapItem(response.item);
         setItems((prev) => prev.map((item) => (item.id === itemId ? mapped : item)));

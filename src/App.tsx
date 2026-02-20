@@ -877,9 +877,9 @@ const App = () => {
         <Router basename={import.meta.env.BASE_URL}>
           <AppWithErrorBoundary />
         </Router>
-      </TooltipProvider>
+    </TooltipProvider>
     </PersistQueryClientProvider>
-  );
+);
 };
 
 export default App;

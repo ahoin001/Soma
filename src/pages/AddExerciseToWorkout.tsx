@@ -63,6 +63,10 @@ const AddExerciseToWorkout = () => {
   const [thumbnailProgress, setThumbnailProgress] = useState(0);
   const [thumbnailNotice, setThumbnailNotice] = useState<string | null>(null);
   const [selectedName, setSelectedName] = useState(exerciseName);
+  const [selectedExerciseNames, setSelectedExerciseNames] = useState<string[]>(
+    exerciseName.trim() ? [exerciseName.trim()] : [],
+  );
+  const [selectedExerciseIds, setSelectedExerciseIds] = useState<number[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
   const previewItems = useMemo(() => results.slice(0, 120), [results]);
@@ -73,6 +77,8 @@ const AddExerciseToWorkout = () => {
 
   useEffect(() => {
     setSelectedName(exerciseName);
+    setSelectedExerciseNames(exerciseName.trim() ? [exerciseName.trim()] : []);
+    setSelectedExerciseIds([]);
   }, [exerciseName]);
 
   useEffect(() => {
@@ -143,7 +149,13 @@ const AddExerciseToWorkout = () => {
     );
   }
 
-  const handleAdd = async (planId: string, workoutId: string, name: string) => {
+  const handleAddMany = async (
+    planId: string,
+    workoutId: string,
+    names: string[],
+  ) => {
+    const cleanNames = names.map((entry) => entry.trim()).filter(Boolean);
+    if (!cleanNames.length) return;
     const plan = workoutPlans.find((item) => item.id === planId);
     const workout = plan?.workouts.find((item) => item.id === workoutId);
     if (!plan || !workout) return;
@@ -154,30 +166,73 @@ const AddExerciseToWorkout = () => {
       clearWorkoutDraft(workout.id);
     }
     const baseExercises = draftMatches ? draft?.exercises ?? [] : workout.exercises;
-    const nextExercises = [...baseExercises, { id: createId(), name }];
+    const nextExercises = [
+      ...baseExercises,
+      ...cleanNames.map((name) => ({ id: createId(), name })),
+    ];
     try {
       await updateWorkoutTemplate(plan.id, workout.id, { exercises: nextExercises });
       if (navigator.vibrate) {
         navigator.vibrate(8);
       }
       appToast.info("Added to workout", {
-        description: `${name} added to ${workout.name}.`,
+        description:
+          cleanNames.length === 1
+            ? `${cleanNames[0]} added to ${workout.name}.`
+            : `${cleanNames.length} exercises added to ${workout.name}.`,
       });
       if (draft?.exercises.length) {
-        if (!draft.exercises.some((entry) => entry.name === name)) {
-          setWorkoutDraft(
-            workout.id,
-            [...draft.exercises, { id: createId(), name }],
-            draft.baseSignature,
-          );
+        const existingNames = new Set(draft.exercises.map((entry) => entry.name));
+        const nextDraftExercises = [...draft.exercises];
+        for (const name of cleanNames) {
+          if (existingNames.has(name)) continue;
+          nextDraftExercises.push({ id: createId(), name });
+          existingNames.add(name);
         }
+        setWorkoutDraft(workout.id, nextDraftExercises, draft.baseSignature);
       } else {
         clearWorkoutDraft(workout.id);
       }
+      setSelectedExerciseNames([]);
+      setSelectedExerciseIds([]);
+      setSelectedName("");
       navigate(`/fitness/workouts/${plan.id}/${workout.id}`);
     } catch {
       // handled in hook
     }
+  };
+
+  const selectedOrderById = useMemo(() => {
+    const orderMap: Record<number, number> = {};
+    selectedExerciseIds.forEach((id, idx) => {
+      orderMap[id] = idx + 1;
+    });
+    return orderMap;
+  }, [selectedExerciseIds]);
+
+  const toggleExerciseSelection = (exercise: { id: number; name: string }) => {
+    setSelectedName(exercise.name);
+    setSelectedExerciseNames((prev) => {
+      if (prev.includes(exercise.name)) {
+        return prev.filter((entry) => entry !== exercise.name);
+      }
+      return [...prev, exercise.name];
+    });
+    setSelectedExerciseIds((prev) => {
+      if (prev.includes(exercise.id)) {
+        return prev.filter((entry) => entry !== exercise.id);
+      }
+      return [...prev, exercise.id];
+    });
+  };
+
+  const selectCustomExercise = (name: string) => {
+    const normalized = name.trim();
+    if (!normalized) return;
+    setSelectedName(normalized);
+    setSelectedExerciseNames((prev) =>
+      prev.includes(normalized) ? prev : [...prev, normalized],
+    );
   };
 
   return (
@@ -196,7 +251,9 @@ const AddExerciseToWorkout = () => {
               {adminEdit ? "Admin edit" : "Add to workout"}
             </p>
             <p className="text-sm text-foreground/85">
-              {selectedName || exerciseName || "Select an exercise"}
+              {selectedExerciseNames.length > 0
+                ? `${selectedExerciseNames.length} selected`
+                : selectedName || exerciseName || "Select an exercise"}
             </p>
           </div>
           <div className="h-10 w-10" />
@@ -226,11 +283,10 @@ const AddExerciseToWorkout = () => {
                 {previewItems.length ? (
                   <VirtualizedExerciseList
                     items={previewItems}
+                    selectedIds={selectedExerciseIds}
+                    selectedOrderById={selectedOrderById}
                     onSelect={(exercise) => {
-                      setSelectedName(exercise.name);
-                      if (targetPlan && targetWorkout) {
-                        void handleAdd(targetPlan.id, targetWorkout.id, exercise.name);
-                      }
+                      toggleExerciseSelection(exercise);
                     }}
                   />
                 ) : (
@@ -242,14 +298,29 @@ const AddExerciseToWorkout = () => {
                   <Button
                     className="w-full rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
                     onClick={() => {
-                      setSelectedName(query.trim());
-                      if (targetPlan && targetWorkout) {
-                        void handleAdd(targetPlan.id, targetWorkout.id, query.trim());
-                      }
+                      selectCustomExercise(query.trim());
                     }}
                   >
-                    Create "{query.trim()}"
+                    Select "{query.trim()}"
                   </Button>
+                ) : null}
+                {selectedExerciseNames.length > 0 ? (
+                  <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-card/60 px-3 py-2">
+                    <p className="text-xs text-muted-foreground">
+                      Selection order is preserved when adding.
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 rounded-full px-3 text-xs"
+                      onClick={() => {
+                        setSelectedExerciseNames([]);
+                        setSelectedExerciseIds([]);
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  </div>
                 ) : null}
               </SearchField>
             </div>
@@ -338,14 +409,17 @@ const AddExerciseToWorkout = () => {
                 <Button
                   className="mt-4 w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={() =>
-                    void handleAdd(
+                    void handleAddMany(
                       targetPlan.id,
                       targetWorkout.id,
-                      selectedName || exerciseName,
+                      selectedExerciseNames,
                     )
                   }
+                  disabled={selectedExerciseNames.length === 0}
                 >
-                  Add exercise
+                  {selectedExerciseNames.length === 0
+                    ? "Select exercises to add"
+                    : `Add ${selectedExerciseNames.length} exercise${selectedExerciseNames.length === 1 ? "" : "s"}`}
                 </Button>
               </div>
             ) : workoutPlans.length === 0 ? (
@@ -374,12 +448,13 @@ const AddExerciseToWorkout = () => {
                       type="button"
                       className="flex w-full items-center justify-between rounded-2xl border border-border/70 bg-card/60 px-3 py-3 text-left text-sm text-foreground/85 hover:border-border"
                       onClick={() =>
-                        void handleAdd(
+                        void handleAddMany(
                           plan.id,
                           workout.id,
-                          selectedName || exerciseName,
+                          selectedExerciseNames,
                         )
                       }
+                      disabled={selectedExerciseNames.length === 0}
                     >
                       <span>{workout.name}</span>
                       <span className="text-xs text-muted-foreground">
@@ -395,12 +470,13 @@ const AddExerciseToWorkout = () => {
                         plan.id,
                         "New workout",
                       );
-                      await handleAdd(
+                      await handleAddMany(
                         plan.id,
                         workout.id,
-                        selectedName || exerciseName,
+                        selectedExerciseNames,
                       );
                     }}
+                    disabled={selectedExerciseNames.length === 0}
                   >
                     Create workout in {plan.name}
                   </Button>

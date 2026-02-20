@@ -49,6 +49,9 @@ export const WORKOUT_DRAFTS_KEY_V2 = "ironflow-workout-drafts-v2";
 export const WORKOUT_LAST_SETS_KEY_PREFIX = "ironflow-workout-last-sets:";
 export const workoutLastSetsKey = (workoutId: string) =>
   `${WORKOUT_LAST_SETS_KEY_PREFIX}${workoutId}`;
+export const WORKOUT_SESSION_DRAFT_KEY_PREFIX = "ironflow-workout-session-draft:";
+export const workoutSessionDraftKey = (sessionIdOrWorkoutId: string) =>
+  `${WORKOUT_SESSION_DRAFT_KEY_PREFIX}${sessionIdOrWorkoutId}`;
 export const ADVANCED_LOGGING_KEY = "ironflow-advanced-logging";
 export const EXERCISE_CACHE_KEY = "ironflow-exercise-cache-v1";
 
@@ -60,3 +63,4 @@ export const OFFLINE_DB_NAME = "aurafit-offline";
 
 // Meal plans
 export const MEAL_PLANS_KEY = "aurafit-meal-plans-v1";
+export const MEAL_PLAN_TEMPLATES_KEY = "aurafit-meal-plan-templates-v1";

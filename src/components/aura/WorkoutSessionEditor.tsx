@@ -16,6 +16,8 @@ import { GripVertical, MoreHorizontal, PencilLine, Plus, Trash2 } from "lucide-r
 import { ReplaceExerciseSheet } from "./ReplaceExerciseSheet";
 import { ExerciseSwapModal } from "./ExerciseSwapModal";
 import { ExerciseImage } from "./ExerciseImage";
+import { WorkoutRestHud } from "./WorkoutRestHud";
+import { WorkoutSessionMeta } from "./WorkoutSessionMeta";
 import { preloadExerciseGuide } from "./ExerciseGuideSheet";
 import { cn } from "@/lib/utils";
 import { normalizeExerciseImageUrl } from "@/lib/exerciseImageUrl";
@@ -44,7 +46,11 @@ import {
   upsertActivityGoals,
 } from "@/lib/api";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
-import { ADVANCED_LOGGING_KEY, workoutLastSetsKey } from "@/lib/storageKeys";
+import {
+  ADVANCED_LOGGING_KEY,
+  workoutLastSetsKey,
+  workoutSessionDraftKey,
+} from "@/lib/storageKeys";
 import { playRestCompleteSound } from "@/lib/restCompleteSound";
 import { appToast } from "@/lib/toast";
 import {
@@ -151,7 +157,7 @@ type ExerciseCardProps = {
   /** Session mode: rest duration in seconds when starting rest after marking set complete */
   restDurationSec?: number;
   /** Session mode: called when user marks a set complete; starts rest for that set */
-  onSetComplete?: (exerciseId: string, setId: string) => void;
+  onSetComplete?: (exerciseId: string, setId: string, durationSec?: number) => void;
   /** Session mode: toggle completed state for a set */
   onToggleSetCompleted?: (exerciseId: string, setId: string, completed: boolean) => void;
   /** Session mode: alternate exercises for this slot; when set, show "Swap" action */
@@ -200,6 +206,300 @@ const SortableExercise = ({
   );
 };
 
+type SetRowProps = {
+  set: EditableSet;
+  setIndex: number;
+  exerciseId: string;
+  isSession: boolean;
+  mode: "edit" | "session";
+  advancedLogging: boolean;
+  swipedSetId: string | null;
+  setSwipedSetId: (id: string | null) => void;
+  setSwipeState: React.MutableRefObject<{
+    id: string | null;
+    startX: number;
+    startY: number;
+    active: boolean;
+  } | null>;
+  unitUsed: "lb" | "kg";
+  restDurationSec: number;
+  activeRest?: { exerciseId: string; setId: string; durationSec: number; startedAt: number } | null;
+  onToggleSetCompleted?: (exerciseId: string, setId: string, completed: boolean) => void;
+  onSetComplete?: (exerciseId: string, setId: string, durationSec?: number) => void;
+  onUpdateSetFields: (setId: string, patch: Partial<EditableSet>) => void;
+  onRemoveSetWithUndo: (setId: string, setIndex: number, removedSet: EditableSet) => void;
+};
+
+const SetRow = memo(
+  ({
+    set,
+    setIndex,
+    exerciseId,
+    isSession,
+    mode,
+    advancedLogging,
+    swipedSetId,
+    setSwipedSetId,
+    setSwipeState,
+    unitUsed,
+    restDurationSec,
+    activeRest,
+    onToggleSetCompleted,
+    onSetComplete,
+    onUpdateSetFields,
+    onRemoveSetWithUndo,
+  }: SetRowProps) => {
+    const weightValid = isValidNumber(set.weight);
+    const repsValid = isValidNumber(set.reps);
+    const rpeValid = isValidOptionalRange(set.rpe ?? "", 1, 10);
+    const restValid = isValidOptionalMin(set.restSeconds ?? "", 0);
+    const restValue = Number(set.restSeconds);
+    const restSeconds = Number.isFinite(restValue) ? restValue : 120;
+    const restLabel = `${Math.floor(restSeconds / 60)}:${String(restSeconds % 60).padStart(2, "0")}`;
+
+    return (
+      <div
+        className={cn(
+          "space-y-2 rounded-[18px] transition-colors",
+          isSession && set.completed === true && "bg-emerald-400/5 ring-1 ring-emerald-400/20",
+        )}
+      >
+        <div
+          className="relative overflow-hidden rounded-[18px]"
+          onPointerDown={(event) => {
+            if (event.pointerType === "mouse") return;
+            setSwipeState.current = {
+              id: set.id,
+              startX: event.clientX,
+              startY: event.clientY,
+              active: true,
+            };
+          }}
+          onPointerMove={(event) => {
+            const state = setSwipeState.current;
+            if (!state?.active || state.id !== set.id) return;
+            const deltaX = event.clientX - state.startX;
+            const deltaY = event.clientY - state.startY;
+            if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 18) {
+              state.active = false;
+              return;
+            }
+            if (deltaX < -36) {
+              setSwipedSetId(set.id);
+            } else if (deltaX > 12) {
+              setSwipedSetId(null);
+            }
+          }}
+          onPointerUp={() => {
+            if (setSwipeState.current?.id === set.id) {
+              setSwipeState.current.active = false;
+            }
+          }}
+          onPointerCancel={() => {
+            if (setSwipeState.current?.id === set.id) {
+              setSwipeState.current.active = false;
+            }
+          }}
+        >
+          <div
+            className={cn(
+              "absolute inset-y-0 right-0 flex items-center justify-end px-3",
+              swipedSetId === set.id ? "opacity-100" : "opacity-0",
+            )}
+          >
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-11 w-11 rounded-full bg-rose-500 text-white hover:bg-rose-400"
+              onClick={() => {
+                onRemoveSetWithUndo(set.id, setIndex, set);
+              }}
+              aria-label="Remove set from workout"
+              data-swipe-ignore
+            >
+              ✕
+            </Button>
+          </div>
+          <div
+            className={cn(
+              "grid items-center gap-3 transition-transform duration-200",
+              isSession ? "grid-cols-[auto_48px_1fr_72px_72px]" : "grid-cols-[48px_1fr_72px_72px]",
+              swipedSetId === set.id ? "-translate-x-12" : "translate-x-0",
+            )}
+          >
+            {isSession ? (
+              <div className="flex items-center gap-2" data-swipe-ignore>
+                <Checkbox
+                  checked={set.completed ?? false}
+                  onCheckedChange={(checked) => {
+                    const next = !!checked;
+                    onToggleSetCompleted?.(exerciseId, set.id, next);
+                    if (navigator.vibrate) navigator.vibrate(next ? 10 : 6);
+                    const restForSet = Number(set.restSeconds ?? "");
+                    if (next) {
+                      onSetComplete?.(
+                        exerciseId,
+                        set.id,
+                        Number.isFinite(restForSet) && restForSet > 0
+                          ? restForSet
+                          : restDurationSec,
+                      );
+                    }
+                  }}
+                  className="h-6 w-6 rounded-md border-2 border-emerald-400/60 data-[state=checked]:bg-emerald-400 data-[state=checked]:border-emerald-400"
+                  aria-label={set.completed ? "Set completed" : "Mark set complete"}
+                />
+              </div>
+            ) : null}
+            <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold text-white">
+              {setIndex + 1}
+              {isSession && (() => {
+                const prevW = parsePreviousWeight(set.previous ?? "");
+                const currW = Number(set.weight);
+                if (prevW != null && Number.isFinite(currW) && currW > prevW) {
+                  return (
+                    <motion.span
+                      initial={{ scale: 0.6, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", stiffness: 360, damping: 20 }}
+                      className="absolute -right-1 -top-1 rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-bold text-slate-900"
+                    >
+                      PR
+                    </motion.span>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+            <span className="text-sm text-white/50">{set.previous}</span>
+            <Input
+              type="number"
+              inputMode="decimal"
+              value={set.weight}
+              onChange={(event) => onUpdateSetFields(set.id, { weight: event.target.value })}
+              onPointerDown={(event) => event.stopPropagation()}
+              onFocus={(event) =>
+                event.currentTarget.scrollIntoView({
+                  block: "center",
+                  inline: "nearest",
+                  behavior: "smooth",
+                })
+              }
+              aria-invalid={!weightValid}
+              className={cn(
+                "h-11 rounded-2xl border-white/10 bg-white/5 text-center text-white select-text",
+                !weightValid && "border-rose-400/60",
+              )}
+              data-swipe-ignore
+            />
+            <Input
+              type="number"
+              inputMode="numeric"
+              value={set.reps}
+              onChange={(event) => onUpdateSetFields(set.id, { reps: event.target.value })}
+              onPointerDown={(event) => event.stopPropagation()}
+              onFocus={(event) =>
+                event.currentTarget.scrollIntoView({
+                  block: "center",
+                  inline: "nearest",
+                  behavior: "smooth",
+                })
+              }
+              aria-invalid={!repsValid}
+              className={cn(
+                "h-11 rounded-2xl border-white/10 bg-white/5 text-center text-white select-text",
+                !repsValid && "border-rose-400/60",
+              )}
+              data-swipe-ignore
+            />
+          </div>
+        </div>
+        {!weightValid || !repsValid ? (
+          <p className="text-xs text-rose-300">Use positive numbers for weight and reps.</p>
+        ) : null}
+        {mode === "session" && advancedLogging ? (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[11px] uppercase tracking-[0.2em] text-white/40">
+                RPE
+              </Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                value={set.rpe ?? ""}
+                onChange={(event) => onUpdateSetFields(set.id, { rpe: event.target.value })}
+                onPointerDown={(event) => event.stopPropagation()}
+                onFocus={(event) =>
+                  event.currentTarget.scrollIntoView({
+                    block: "center",
+                    inline: "nearest",
+                    behavior: "smooth",
+                  })
+                }
+                aria-invalid={!rpeValid}
+                className={cn(
+                  "h-11 rounded-2xl border-white/10 bg-white/5 text-center text-white select-text",
+                  !rpeValid && "border-rose-400/60",
+                )}
+                placeholder="8.5"
+                data-swipe-ignore
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] uppercase tracking-[0.2em] text-white/40">
+                Rest (sec)
+              </Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                value={set.restSeconds ?? ""}
+                onChange={(event) =>
+                  onUpdateSetFields(set.id, { restSeconds: event.target.value })
+                }
+                onPointerDown={(event) => event.stopPropagation()}
+                onFocus={(event) =>
+                  event.currentTarget.scrollIntoView({
+                    block: "center",
+                    inline: "nearest",
+                    behavior: "smooth",
+                  })
+                }
+                aria-invalid={!restValid}
+                className={cn(
+                  "h-11 rounded-2xl border-white/10 bg-white/5 text-center text-white select-text",
+                  !restValid && "border-rose-400/60",
+                )}
+                placeholder="120"
+                data-swipe-ignore
+              />
+            </div>
+          </div>
+        ) : null}
+        {mode === "session" ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-white/40">
+              <span>Rest</span>
+              <span>{restLabel}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+              {activeRest?.exerciseId === exerciseId && activeRest?.setId === set.id ? (
+                <div
+                  className="h-full origin-left rounded-full bg-emerald-400/80"
+                  style={{
+                    animation: `restBar ${activeRest.durationSec}s linear forwards`,
+                  }}
+                />
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  },
+);
+
+SetRow.displayName = "SetRow";
+
 const ExerciseCard = memo(
   ({
     exercise,
@@ -232,6 +532,51 @@ const ExerciseCard = memo(
   }: ExerciseCardProps) => {
     const totalSets = (exercise.sets ?? []).length;
     const isSession = mode === "session";
+    const updateSetFields = useCallback(
+      (setId: string, patch: Partial<EditableSet>) => {
+        setExercises((prev) =>
+          prev.map((item) =>
+            item.id === exercise.id
+              ? {
+                  ...item,
+                  sets: item.sets.map((row) =>
+                    row.id === setId ? { ...row, ...patch } : row,
+                  ),
+                }
+              : item,
+          ),
+        );
+      },
+      [exercise.id, setExercises],
+    );
+    const removeSetWithUndo = useCallback(
+      (setId: string, setIndex: number, removedSet: EditableSet) => {
+        setExercises((prev) =>
+          prev.map((item) =>
+            item.id === exercise.id
+              ? { ...item, sets: item.sets.filter((row) => row.id !== setId) }
+              : item,
+          ),
+        );
+        setSwipedSetId(null);
+        appToast.info("Set removed", {
+          action: {
+            label: "Undo",
+            onClick: () => {
+              setExercises((prev) =>
+                prev.map((item) => {
+                  if (item.id !== exercise.id) return item;
+                  const nextSets = [...item.sets];
+                  nextSets.splice(setIndex, 0, removedSet);
+                  return { ...item, sets: nextSets };
+                }),
+              );
+            },
+          },
+        });
+      },
+      [exercise.id, setExercises, setSwipedSetId],
+    );
     return (
     <motion.div
       className={cn(
@@ -456,278 +801,27 @@ const ExerciseCard = memo(
       </div>
 
       <div className="mt-3 space-y-3">
-        {(exercise.sets ?? []).map((set, setIndex) => {
-          const weightValid = isValidNumber(set.weight);
-          const repsValid = isValidNumber(set.reps);
-          const rpeValid = isValidOptionalRange(set.rpe ?? "", 1, 10);
-          const restValid = isValidOptionalMin(set.restSeconds ?? "", 0);
-          const restValue = Number(set.restSeconds);
-          const restSeconds = Number.isFinite(restValue) ? restValue : 120;
-          const restLabel = `${Math.floor(restSeconds / 60)}:${String(
-            restSeconds % 60,
-          ).padStart(2, "0")}`;
-          return (
-            <div
-              key={set.id}
-              className={cn(
-                "space-y-2 rounded-[18px] transition-colors",
-                isSession && (set.completed === true) && "bg-emerald-400/5 ring-1 ring-emerald-400/20",
-              )}
-            >
-              <div
-                className="relative overflow-hidden rounded-[18px]"
-                onPointerDown={(event) => {
-                  if (event.pointerType === "mouse") return;
-                  setSwipeState.current = {
-                    id: set.id,
-                    startX: event.clientX,
-                    startY: event.clientY,
-                    active: true,
-                  };
-                }}
-                onPointerMove={(event) => {
-                  const state = setSwipeState.current;
-                  if (!state?.active || state.id !== set.id) return;
-                  const deltaX = event.clientX - state.startX;
-                  const deltaY = event.clientY - state.startY;
-                  if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 12) {
-                    state.active = false;
-                    return;
-                  }
-                  if (deltaX < -24) {
-                    setSwipedSetId(set.id);
-                  } else if (deltaX > 12) {
-                    setSwipedSetId(null);
-                  }
-                }}
-                onPointerUp={() => {
-                  if (setSwipeState.current?.id === set.id) {
-                    setSwipeState.current.active = false;
-                  }
-                }}
-                onPointerCancel={() => {
-                  if (setSwipeState.current?.id === set.id) {
-                    setSwipeState.current.active = false;
-                  }
-                }}
-              >
-                <div
-                  className={cn(
-                    "absolute inset-y-0 right-0 flex items-center justify-end px-3",
-                    swipedSetId === set.id ? "opacity-100" : "opacity-0",
-                  )}
-                >
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-9 w-9 rounded-full bg-rose-500 text-white hover:bg-rose-400"
-                    onClick={() => {
-                      setExercises((prev) =>
-                        prev.map((item) =>
-                          item.id === exercise.id
-                            ? { ...item, sets: item.sets.filter((row) => row.id !== set.id) }
-                            : item,
-                        ),
-                      );
-                      setSwipedSetId(null);
-                    }}
-                    aria-label="Remove set from workout"
-                    data-swipe-ignore
-                  >
-                    ✕
-                  </Button>
-                </div>
-                <div
-                  className={cn(
-                    "grid items-center gap-3 transition-transform duration-200",
-                    isSession ? "grid-cols-[auto_48px_1fr_72px_72px]" : "grid-cols-[48px_1fr_72px_72px]",
-                    swipedSetId === set.id ? "-translate-x-12" : "translate-x-0",
-                  )}
-                >
-                  {isSession ? (
-                    <div className="flex items-center gap-2" data-swipe-ignore>
-                      <Checkbox
-                        checked={set.completed ?? false}
-                        onCheckedChange={(checked) => {
-                          const next = !!checked;
-                          onToggleSetCompleted?.(exercise.id, set.id, next);
-                          if (next) onSetComplete?.(exercise.id, set.id);
-                        }}
-                        className="h-6 w-6 rounded-md border-2 border-emerald-400/60 data-[state=checked]:bg-emerald-400 data-[state=checked]:border-emerald-400"
-                        aria-label={set.completed ? "Set completed" : "Mark set complete"}
-                      />
-                    </div>
-                  ) : null}
-                  <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold text-white">
-                    {setIndex + 1}
-                    {isSession && (() => {
-                      const prevW = parsePreviousWeight(set.previous ?? "");
-                      const currW = Number(set.weight);
-                      if (prevW != null && Number.isFinite(currW) && currW > prevW) {
-                        return (
-                          <span className="absolute -right-1 -top-1 rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-bold text-slate-900">
-                            PR
-                          </span>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </div>
-                  <span className="text-sm text-white/50">{set.previous}</span>
-                  <Input
-                    type="number"
-                    inputMode="decimal"
-                    value={set.weight}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setExercises((prev) =>
-                        prev.map((item) =>
-                          item.id === exercise.id
-                            ? {
-                                ...item,
-                                sets: item.sets.map((row) =>
-                                  row.id === set.id ? { ...row, weight: value } : row,
-                                ),
-                              }
-                            : item,
-                        ),
-                      );
-                    }}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    aria-invalid={!weightValid}
-                    className={cn(
-                      "h-10 rounded-2xl border-white/10 bg-white/5 text-center text-white select-text",
-                      !weightValid && "border-rose-400/60",
-                    )}
-                    data-swipe-ignore
-                  />
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    value={set.reps}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setExercises((prev) =>
-                        prev.map((item) =>
-                          item.id === exercise.id
-                            ? {
-                                ...item,
-                                sets: item.sets.map((row) =>
-                                  row.id === set.id ? { ...row, reps: value } : row,
-                                ),
-                              }
-                            : item,
-                        ),
-                      );
-                    }}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    aria-invalid={!repsValid}
-                    className={cn(
-                      "h-10 rounded-2xl border-white/10 bg-white/5 text-center text-white select-text",
-                      !repsValid && "border-rose-400/60",
-                    )}
-                    data-swipe-ignore
-                  />
-                </div>
-              </div>
-              {!weightValid || !repsValid ? (
-                <p className="text-xs text-rose-300">
-                  Use positive numbers for weight and reps.
-                </p>
-              ) : null}
-              {mode === "session" && advancedLogging ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-[11px] uppercase tracking-[0.2em] text-white/40">
-                      RPE
-                    </Label>
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      value={set.rpe ?? ""}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setExercises((prev) =>
-                          prev.map((item) =>
-                            item.id === exercise.id
-                              ? {
-                                  ...item,
-                                  sets: item.sets.map((row) =>
-                                    row.id === set.id ? { ...row, rpe: value } : row,
-                                  ),
-                                }
-                              : item,
-                          ),
-                        );
-                      }}
-                      onPointerDown={(event) => event.stopPropagation()}
-                      aria-invalid={!rpeValid}
-                      className={cn(
-                        "h-9 rounded-2xl border-white/10 bg-white/5 text-center text-white select-text",
-                        !rpeValid && "border-rose-400/60",
-                      )}
-                      placeholder="8.5"
-                      data-swipe-ignore
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] uppercase tracking-[0.2em] text-white/40">
-                      Rest (sec)
-                    </Label>
-                    <Input
-                      type="number"
-                      inputMode="numeric"
-                      value={set.restSeconds ?? ""}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setExercises((prev) =>
-                          prev.map((item) =>
-                            item.id === exercise.id
-                              ? {
-                                  ...item,
-                                  sets: item.sets.map((row) =>
-                                    row.id === set.id
-                                      ? { ...row, restSeconds: value }
-                                      : row,
-                                  ),
-                                }
-                              : item,
-                          ),
-                        );
-                      }}
-                      onPointerDown={(event) => event.stopPropagation()}
-                      aria-invalid={!restValid}
-                      className={cn(
-                        "h-9 rounded-2xl border-white/10 bg-white/5 text-center text-white select-text",
-                        !restValid && "border-rose-400/60",
-                      )}
-                      placeholder="120"
-                      data-swipe-ignore
-                    />
-                  </div>
-                </div>
-              ) : null}
-              {mode === "session" ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-white/40">
-                    <span>Rest</span>
-                    <span>{restLabel}</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-                    {activeRest?.exerciseId === exercise.id && activeRest?.setId === set.id ? (
-                      <div
-                        className="h-full origin-left rounded-full bg-emerald-400/80"
-                        style={{
-                          animation: `restBar ${activeRest.durationSec}s linear forwards`,
-                        }}
-                      />
-                    ) : null}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
+        {(exercise.sets ?? []).map((set, setIndex) => (
+          <SetRow
+            key={set.id}
+            set={set}
+            setIndex={setIndex}
+            exerciseId={exercise.id}
+            isSession={isSession}
+            mode={mode}
+            advancedLogging={advancedLogging}
+            swipedSetId={swipedSetId}
+            setSwipedSetId={setSwipedSetId}
+            setSwipeState={setSwipeState}
+            unitUsed={unitUsed}
+            restDurationSec={restDurationSec}
+            activeRest={activeRest}
+            onToggleSetCompleted={onToggleSetCompleted}
+            onSetComplete={onSetComplete}
+            onUpdateSetFields={updateSetFields}
+            onRemoveSetWithUndo={removeSetWithUndo}
+          />
+        ))}
       </div>
 
       <Button
@@ -850,6 +944,20 @@ type PersistSetPayload = Array<{
   }>;
 }>;
 
+type SessionDraftPayload = {
+  exercises: EditableExercise[];
+  unitUsed: "lb" | "kg";
+  advancedLogging: boolean;
+  restDuration: number;
+  activeRest: {
+    exerciseId: string;
+    setId: string;
+    durationSec: number;
+    startedAt: number;
+  } | null;
+  savedAt: number;
+};
+
 type WorkoutSessionEditorProps = {
   mode: "edit" | "session";
   workout: WorkoutTemplate | null;
@@ -929,9 +1037,9 @@ export const WorkoutSessionEditor = ({
     active: boolean;
   } | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [lastSessionAutosaveAt, setLastSessionAutosaveAt] = useState<number | null>(null);
   const [restSecondsRemaining, setRestSecondsRemaining] = useState<number | null>(null);
   const [restDuration, setRestDuration] = useState(90);
-  const restEndedRef = useRef(false);
   /** Session mode: which set is in rest; only that set's bar fills. */
   const [activeRest, setActiveRest] = useState<{
     exerciseId: string;
@@ -955,6 +1063,46 @@ export const WorkoutSessionEditor = ({
       activationConstraint: { distance: 4 },
     }),
   );
+  const sessionDraftStorageKey = useMemo(() => {
+    if (mode !== "session" || !workout) return null;
+    return workoutSessionDraftKey(activeSessionId ?? workout.id);
+  }, [activeSessionId, mode, workout]);
+
+  const persistSessionDraft = useCallback(() => {
+    if (
+      typeof window === "undefined" ||
+      mode !== "session" ||
+      !workout ||
+      !sessionDraftStorageKey
+    ) {
+      return;
+    }
+    const payload: SessionDraftPayload = {
+      exercises,
+      unitUsed,
+      advancedLogging,
+      restDuration,
+      activeRest,
+      savedAt: Date.now(),
+    };
+    window.localStorage.setItem(sessionDraftStorageKey, JSON.stringify(payload));
+    setLastSessionAutosaveAt(payload.savedAt);
+  }, [
+    activeRest,
+    advancedLogging,
+    exercises,
+    mode,
+    restDuration,
+    sessionDraftStorageKey,
+    unitUsed,
+    workout,
+  ]);
+
+  const clearSessionDraft = useCallback(() => {
+    if (!sessionDraftStorageKey || typeof window === "undefined") return;
+    window.localStorage.removeItem(sessionDraftStorageKey);
+    setLastSessionAutosaveAt(null);
+  }, [sessionDraftStorageKey]);
 
   const buildSignature = useCallback((entries: WorkoutTemplate["exercises"]) => {
     return entries
@@ -974,6 +1122,35 @@ export const WorkoutSessionEditor = ({
 
   useEffect(() => {
     if (!workout) return;
+    const canRestoreSessionDraft =
+      mode === "session" && typeof window !== "undefined" && sessionDraftStorageKey;
+    if (canRestoreSessionDraft) {
+      try {
+        const raw = window.localStorage.getItem(sessionDraftStorageKey);
+        if (raw) {
+          const parsed = JSON.parse(raw) as SessionDraftPayload;
+          if (Array.isArray(parsed.exercises) && parsed.exercises.length > 0) {
+            setExercises(parsed.exercises);
+            setUnitUsed(parsed.unitUsed === "kg" ? "kg" : "lb");
+            setAdvancedLogging(Boolean(parsed.advancedLogging));
+            setRestDuration(
+              Number.isFinite(parsed.restDuration) && parsed.restDuration > 0
+                ? parsed.restDuration
+                : 90,
+            );
+            setActiveRest(parsed.activeRest ?? null);
+            setLastSessionAutosaveAt(
+              Number.isFinite(parsed.savedAt) ? parsed.savedAt : Date.now(),
+            );
+            appToast.info("Recovered in-progress workout");
+            return;
+          }
+        }
+      } catch {
+        // ignore malformed drafts and fall back to template defaults
+      }
+    }
+
     if (mode === "edit" && draftWriteRef.current === workout.id) {
       draftWriteRef.current = null;
       return;
@@ -1022,7 +1199,14 @@ export const WorkoutSessionEditor = ({
         };
       }),
     );
-  }, [workout, mode, workoutDrafts, buildSignature, clearWorkoutDraft]);
+  }, [
+    workout,
+    mode,
+    workoutDrafts,
+    buildSignature,
+    clearWorkoutDraft,
+    sessionDraftStorageKey,
+  ]);
 
   useEffect(() => {
     if (mode !== "session" || !sessionExercises?.length || exercises.length !== sessionExercises.length) return;
@@ -1197,11 +1381,15 @@ export const WorkoutSessionEditor = ({
   );
 
   const handleSetCompleteStartRest = useCallback(
-    (exerciseId: string, setId: string) => {
+    (exerciseId: string, setId: string, durationSec?: number) => {
+      const safeDuration =
+        Number.isFinite(durationSec) && (durationSec ?? 0) > 0
+          ? Number(durationSec)
+          : restDuration;
       setActiveRest({
         exerciseId,
         setId,
-        durationSec: restDuration,
+        durationSec: safeDuration,
         startedAt: Date.now(),
       });
     },
@@ -1344,23 +1532,6 @@ export const WorkoutSessionEditor = ({
     [advancedLogging, exercises, mode],
   );
 
-  useEffect(() => {
-    if (restSecondsRemaining === null || restSecondsRemaining <= 0) return;
-    const id = window.setInterval(() => {
-      setRestSecondsRemaining((prev) => {
-        if (prev === null || prev <= 1) {
-          if (prev === 1 && !restEndedRef.current) {
-            restEndedRef.current = true;
-            if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
-          }
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [restSecondsRemaining]);
-
   // Per-set rest: when timer ends, clear and notify
   useEffect(() => {
     if (!activeRest) return;
@@ -1374,6 +1545,47 @@ export const WorkoutSessionEditor = ({
     }, 200);
     return () => window.clearInterval(id);
   }, [activeRest]);
+
+  // Keep a live countdown value so we can show a sticky rest HUD.
+  useEffect(() => {
+    if (!activeRest) {
+      setRestSecondsRemaining(null);
+      return;
+    }
+    const update = () => {
+      const remaining = Math.max(
+        0,
+        Math.ceil((activeRest.startedAt + activeRest.durationSec * 1000 - Date.now()) / 1000),
+      );
+      setRestSecondsRemaining(remaining || null);
+    };
+    update();
+    const id = window.setInterval(update, 250);
+    return () => window.clearInterval(id);
+  }, [activeRest]);
+
+  // Autosave in-session work frequently to prevent data loss on mobile/tab kills.
+  useEffect(() => {
+    if (mode !== "session" || !sessionDraftStorageKey) return;
+    persistSessionDraft();
+    const id = window.setInterval(() => {
+      persistSessionDraft();
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [mode, persistSessionDraft, sessionDraftStorageKey]);
+
+  // Save once more when app is backgrounded or tab/page is hidden.
+  useEffect(() => {
+    if (mode !== "session") return;
+    const saveNow = () => persistSessionDraft();
+    document.addEventListener("visibilitychange", saveNow);
+    window.addEventListener("pagehide", saveNow);
+    return () => {
+      saveNow();
+      document.removeEventListener("visibilitychange", saveNow);
+      window.removeEventListener("pagehide", saveNow);
+    };
+  }, [mode, persistSessionDraft]);
 
   useEffect(() => {
     if (!isEditMode || exercises.length < 2) {
@@ -1460,6 +1672,15 @@ export const WorkoutSessionEditor = ({
     [exercises],
   );
   const hasIncompleteSets = mode === "session" && totalSetCount > 0 && completedSetCount < totalSetCount;
+  const activeRestExerciseName = useMemo(() => {
+    if (!activeRest) return null;
+    return exercises.find((exercise) => exercise.id === activeRest.exerciseId)?.name ?? null;
+  }, [activeRest, exercises]);
+  const restProgressPct = useMemo(() => {
+    if (!activeRest || restSecondsRemaining == null) return 0;
+    const elapsed = Math.max(0, activeRest.durationSec - restSecondsRemaining);
+    return Math.min(100, (elapsed / activeRest.durationSec) * 100);
+  }, [activeRest, restSecondsRemaining]);
 
   const doFinish = async () => {
     if (isEditMode) {
@@ -1487,7 +1708,10 @@ export const WorkoutSessionEditor = ({
             description: message,
             action: {
               label: "Finish anyway",
-              onClick: () => onFinish?.(),
+              onClick: () => {
+                clearSessionDraft();
+                onFinish?.();
+              },
             },
           });
           return;
@@ -1506,6 +1730,7 @@ export const WorkoutSessionEditor = ({
         durationMs,
       });
     }
+    clearSessionDraft();
     onFinish?.();
   };
 
@@ -1516,6 +1741,14 @@ export const WorkoutSessionEditor = ({
     }
     void doFinish();
   };
+
+  const getExerciseScopedSwipedSetId = useCallback(
+    (exercise: EditableExercise) => {
+      if (!swipedSetId) return null;
+      return exercise.sets.some((set) => set.id === swipedSetId) ? swipedSetId : null;
+    },
+    [swipedSetId],
+  );
 
   return (
     <div className="relative min-h-screen bg-slate-950 text-white select-none touch-pan-y">
@@ -1534,22 +1767,15 @@ export const WorkoutSessionEditor = ({
           >
             ✕
           </Button>
-          <div className="text-center">
-            <p className="text-xs uppercase tracking-[0.2em] text-white/50">
-              {isEditMode ? "Edit template" : "In session"}
-            </p>
-            <h3 className="mt-1 text-lg font-display font-semibold">
-              {workout?.name ?? "Workout"}
-            </h3>
-            <p className="text-xs text-white/60">
-              {plan?.name ?? "Workout plan"} · {totalSets} sets
-            </p>
-            {isEditMode && lastSavedAt ? (
-              <p className="mt-1 text-[11px] text-white/40">
-                Last saved {formatRelativeTime(lastSavedAt)}
-              </p>
-            ) : null}
-          </div>
+          <WorkoutSessionMeta
+            mode={mode}
+            workout={workout}
+            plan={plan}
+            totalSets={totalSets}
+            lastSavedAt={lastSavedAt}
+            lastSessionAutosaveAt={lastSessionAutosaveAt}
+            formatRelativeTime={formatRelativeTime}
+          />
           <div className="flex items-center gap-2">
             {(isEditMode || mode === "session") && exercises.length > 1 ? (
               <Button
@@ -1759,7 +1985,7 @@ export const WorkoutSessionEditor = ({
                         unitUsed={unitUsed}
                         mode={mode}
                         advancedLogging={advancedLogging}
-                        swipedSetId={swipedSetId}
+                        swipedSetId={getExerciseScopedSwipedSetId(exercise)}
                         setSwipedSetId={setSwipedSetId}
                         setSwipeState={setSwipeState}
                         setExercises={setExercises}
@@ -1826,7 +2052,7 @@ export const WorkoutSessionEditor = ({
                   unitUsed={unitUsed}
                   mode={mode}
                   advancedLogging={advancedLogging}
-                  swipedSetId={swipedSetId}
+                  swipedSetId={getExerciseScopedSwipedSetId(exercise)}
                   setSwipedSetId={setSwipedSetId}
                   setSwipeState={setSwipeState}
                   setExercises={setExercises}
@@ -1878,6 +2104,14 @@ export const WorkoutSessionEditor = ({
           </Button>
         ) : null}
       </div>
+
+      {mode === "session" && activeRest && restSecondsRemaining != null ? (
+        <WorkoutRestHud
+          restSecondsRemaining={restSecondsRemaining}
+          exerciseName={activeRestExerciseName}
+          restProgressPct={restProgressPct}
+        />
+      ) : null}
 
       <ReplaceExerciseSheet
         open={replaceOpen}
@@ -1946,6 +2180,7 @@ export const WorkoutSessionEditor = ({
               className="w-full rounded-full border-rose-400/50 text-rose-200 hover:bg-rose-500/20"
               onClick={() => {
                 setLeaveSessionConfirmOpen(false);
+                clearSessionDraft();
                 onDiscardAndLeave?.();
               }}
             >
